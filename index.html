@@ -568,6 +568,29 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   display:none;
 }
     @media(max-width:960px){
+      .calc-grid{
+  grid-template-columns:1fr !important;
+}
+
+.calc-card{
+  width:100%;
+  overflow:hidden;
+}
+
+.calc-row input[type="range"]{
+  width:100%;
+}
+
+.calc-row{
+  width:100%;
+  overflow:hidden;
+}
+      .calc-row .value{
+  width:100%;
+  display:block;
+  text-align:left;
+  word-break:break-word;
+}
 
   .calc-row{
     grid-template-columns:1fr;
