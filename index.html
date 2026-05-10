@@ -569,7 +569,8 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
 }
     @media(max-width:960px){
 .mobile-menu-wrap{
-  display:block;
+  display:flex;
+  margin-left:auto;
   position:relative;
 }
 
@@ -621,10 +622,12 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   }
 
   .nav-links{
-    display:flex;
-    gap:.8rem;
-    font-size:.7rem;
-  }
+  display:none;
+}
+
+.nav-cta{
+  display:none;
+}
 
   .nav-cta{
     height:36px;
@@ -1535,5 +1538,41 @@ function startConv(){
 }
 
 </script>
+  </script>
+
+<script>
+
+function toggleMenu(){
+
+  const menu = document.getElementById('mobileDropdown');
+
+  if(menu.style.display === 'flex'){
+    menu.style.display = 'none';
+  }else{
+    menu.style.display = 'flex';
+  }
+
+}
+
+</script>
+</script>
+
+<script>
+
+function toggleMenu(){
+
+  const menu = document.getElementById('mobileDropdown');
+
+  if(menu.style.display === 'flex'){
+    menu.style.display = 'none';
+  }else{
+    menu.style.display = 'flex';
+  }
+
+}
+
+</script>
+
+</body>
 </body>
 </html>
