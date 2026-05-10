@@ -1221,7 +1221,7 @@ overflow-y:auto;
       <div class="demo-logo-text">SABE</div>
       <div class="demo-sub-text">Ristorante Giapponese · Demo Interattiva</div>
     </div>
-    <canvas id="sphere-c" width="280" height="280"></canvas>
+    <canvas id="sphere-c" width="280" height="280" onclick="toggleListen(event)" style="cursor:pointer;"></canvas>
     <div class="ctrl-row-new">
       <button class="sbtn active" onclick="setMode('idle',event)">IDLE</button>
       <button class="sbtn" onclick="setMode('listening',event)">ASCOLTA</button>
@@ -1677,6 +1677,7 @@ function startConv(){
       Object.assign(makeLayer(500,0.76,0.014,0x00d4ff,0.75),{speed:1.9,baseCol:0x00d4ff}),
     ];
     var mode='idle',clock=0,targetLvl=0,lvl=0;
+window.toggleListen=function(ev){setMode(mode==='idle'?'listening':'idle',ev);};
     function noise(x,y,z){return(Math.sin(x*6.28+y*3.77)*Math.cos(z*4.71+x*2.1)+Math.sin(y*5.13+z*2.69)*Math.cos(x*3.33+y*1.5))*0.5;}
     function tick(){
       requestAnimationFrame(tick);clock+=0.011;lvl+=(targetLvl-lvl)*0.06;
