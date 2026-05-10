@@ -563,8 +563,58 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   background:linear-gradient(135deg,var(--cyan),var(--green));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
 .sp-big-label{font-family:var(--mono);font-size:.55rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:.2rem;}
-@media(max-width:960px){
 
+    .mobile-menu-wrap{
+  display:none;
+}
+    @media(max-width:960px){
+.mobile-menu-wrap{
+  display:block;
+  position:relative;
+}
+
+.mobile-menu-btn{
+  width:42px;
+  height:42px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.45);
+  color:#fff;
+  border-radius:10px;
+  font-size:1.2rem;
+  cursor:pointer;
+}
+
+.mobile-dropdown{
+  position:absolute;
+  top:52px;
+  left:0;
+  min-width:180px;
+  background:#060609;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  padding:.5rem;
+  display:none;
+  flex-direction:column;
+  gap:.3rem;
+  z-index:9999;
+  backdrop-filter:blur(12px);
+}
+
+.mobile-dropdown a{
+  color:#fff;
+  text-decoration:none;
+  padding:.8rem 1rem;
+  border-radius:10px;
+  font-size:.85rem;
+}
+
+.mobile-dropdown a:hover{
+  background:rgba(255,255,255,.06);
+}
+
+.nav-links{
+  display:none;
+}
   nav{
     padding:0 1rem;
     height:64px;
