@@ -568,6 +568,27 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   display:none;
 }
     @media(max-width:960px){
+
+      .calc-row{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  width:100% !important;
+  gap:.8rem;
+}
+
+.calc-row > *{
+  width:100% !important;
+  max-width:100% !important;
+}
+
+.calc-row span,
+.calc-row div{
+  position:static !important;
+  right:auto !important;
+  left:auto !important;
+  text-align:left !important;
+}
       .calc-grid{
   grid-template-columns:1fr !important;
 }
