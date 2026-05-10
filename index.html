@@ -568,6 +568,12 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   display:none;
 }
     @media(max-width:960px){
+      html,
+body{
+  overflow-x:hidden;
+  overflow-y:auto;
+  height:auto;
+}
 .mobile-menu-wrap{
   display:flex;
   position:relative;
@@ -599,6 +605,8 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   z-index:9999;
   backdrop-filter:blur(12px);
   box-shadow:0 10px 40px rgba(0,0,0,.45);
+  max-height:70vh;
+overflow-y:auto;
 }
 
 .mobile-dropdown a{
