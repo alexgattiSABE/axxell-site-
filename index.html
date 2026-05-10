@@ -569,60 +569,22 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
 }
     @media(max-width:960px){
 
-      .calc-row{
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:flex-start !important;
-  width:100% !important;
-  gap:.8rem;
+      .s-row{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:.7rem;
 }
 
-.calc-row > *{
-  width:100% !important;
-  max-width:100% !important;
-}
-
-.calc-row span,
-.calc-row div{
-  position:static !important;
-  right:auto !important;
-  left:auto !important;
-  text-align:left !important;
-}
-      .calc-grid{
-  grid-template-columns:1fr !important;
-}
-
-.calc-card{
-  width:100%;
-  overflow:hidden;
-}
-
-.calc-row input[type="range"]{
+.s-row input[type="range"]{
   width:100%;
 }
 
-.calc-row{
+.s-num{
   width:100%;
-  overflow:hidden;
-}
-      .calc-row .value{
-  width:100%;
-  display:block;
   text-align:left;
-  word-break:break-word;
+  font-size:1rem;
 }
-
-  .calc-row{
-    grid-template-columns:1fr;
-    gap:1rem;
-  }
-
-  .calc-row .value{
-    text-align:left;
-    margin-top:.4rem;
-    font-size:1rem;
-  }
 
       html,
 body{
