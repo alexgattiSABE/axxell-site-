@@ -569,25 +569,23 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
 }
     @media(max-width:960px){
 .val-g{
-  grid-template-columns:1fr !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
   gap:2rem;
 }
 
 .val-g > *{
-  width:100%;
-  max-width:100%;
+  width:100% !important;
+  max-width:100% !important;
 }
 
 .sp-counter-wrap{
-  width:100%;
+  width:100% !important;
 }
 
-.sp-big-num{
-  font-size:3rem;
-}
-
-.sp-big-label{
-  font-size:.8rem;
+.sp-ring{
+  margin:auto;
 }
       .s-row{
   display:flex;
