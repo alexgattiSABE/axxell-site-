@@ -570,10 +570,9 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
     @media(max-width:960px){
 .mobile-menu-wrap{
   display:flex;
-  margin-left:auto;
   position:relative;
+  order:2;
 }
-
 .mobile-menu-btn{
   width:42px;
   height:42px;
@@ -617,10 +616,16 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   display:none;
 }
   nav{
-    padding:0 1rem;
-    height:64px;
-  }
+  padding:0 1rem;
+  height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
 
+.nav-logo-img{
+  order:1;
+}      
   .nav-links{
   display:none;
 }
