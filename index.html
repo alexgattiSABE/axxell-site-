@@ -1156,7 +1156,7 @@ overflow-y:auto;
       <div class="roi-grid">
         <div class="rc"><span class="rc-n" id="lc">30</span><p class="rc-l">chiamate perse al mese</p></div>
         <div class="rc"><span class="rc-n" id="lr">€1.500</span><p class="rc-l">fatturato perso ogni mese</p></div>
-        <div class="rc rhl"><span class="rc-n" id="rec">€1.350</span><p class="rc-l">recuperabile con Sabe</p></div>
+        <div class="rc rhl"><span class="rc-n" id="rec">€1.350</span><p class="rc-l">fatturato recuperabile con Sabe</p></div>
       </div>
 
   </div></div>
@@ -1508,7 +1508,7 @@ function roi(){
   document.getElementById('co').textContent=c;
   document.getElementById('lo').textContent=l+'%';
   document.getElementById('vo').textContent='€'+v;
-  var lc=Math.round(c*l/100),lr=lc*v,rc=Math.round(lr*.9);
+  var lc=Math.round(c*l/100),lr=lc*v,rc=Math.round(lr);
   document.getElementById('lc').textContent=lc;
   document.getElementById('lr').textContent='€'+lr.toLocaleString('it-IT');
   document.getElementById('rec').textContent='€'+rc.toLocaleString('it-IT');
