@@ -1215,19 +1215,9 @@ overflow-y:auto;
     <div class="mono-tag" data-anim>Demo interattiva</div>
     <h2 class="sec-h" data-anim data-d="1">Parla con Sabe <span class="hl">adesso</span></h2>
     <p class="sec-sub" data-anim data-d="2">Clicca la sfera e prova tu stesso. È esattamente ciò che i tuoi clienti sentiranno.</p>
-   <div class="demo-wrap-new">
-  <div id="ws">
-    <div class="demo-header">
-      <div class="demo-logo-text">SABE</div>
-      <div class="demo-sub-text">Ristorante Giapponese · Demo Interattiva</div>
-    </div>
-    <canvas id="sphere-c" width="280" height="280" onclick="toggleListen(event)" style="cursor:pointer;"></canvas>
-    <div class="ctrl-row-new">
-      <button class="sbtn active" onclick="setMode('idle',event)">IDLE</button>
-      <button class="sbtn" onclick="setMode('listening',event)">ASCOLTA</button>
-      <button class="sbtn" onclick="setMode('speaking',event)">PARLA</button>
-    </div>
-    <div class="state-label-new" id="slabel">● sistema pronto</div>
+  <div class="demo-wrap-new">
+  <div id="ws" style="padding:0;overflow:hidden;height:580px;">
+    <iframe src="https://saka-widget.vercel.app" allow="microphone" style="width:100%;height:100%;border:none;display:block;"></iframe>
   </div>
   <div class="demo-note">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
