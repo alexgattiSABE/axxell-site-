@@ -901,7 +901,38 @@ overflow-y:auto;
      onclick="openPrev();return false;">
      Preventivo gratuito
   </a>
+<div class="mobile-menu-wrap">
 
+  <button class="mobile-menu-btn"
+  onclick="toggleMenu()">
+  ☰
+  </button>
+
+  <div class="mobile-dropdown" id="mobileDropdown">
+
+    <a href="#"
+       onclick="return go('sabe')">
+       Sabe
+    </a>
+
+    <a href="#"
+       onclick="return go('servizi')">
+       Servizi
+    </a>
+
+    <a href="#"
+       onclick="return go('visione')">
+       Visione
+    </a>
+
+    <a href="#"
+       onclick="openPrev();return false;">
+       Preventivo gratuito
+    </a>
+
+  </div>
+
+</div>
 </nav>
 
 <!-- PREVENTIVO MODAL -->
@@ -1732,20 +1763,6 @@ window.toggleListen=function(ev){setMode(mode==='idle'?'listening':'idle',ev);};
   </script>
 
 <script>
-function toggleMobileMenu(){
-  const menu = document.getElementById('mobileDropdown');
-
-  if(menu.style.display === 'flex'){
-    menu.style.display = 'none';
-  } else {
-    menu.style.display = 'flex';
-  }
-}
-
-</script>
-</script>
-
-<script>
 
 function toggleMenu(){
 
@@ -1761,6 +1778,5 @@ function toggleMenu(){
 
 </script>
 
-</body>
 </body>
 </html>
