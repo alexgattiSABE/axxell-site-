@@ -652,7 +652,11 @@ body{
   overflow-y:auto;
   height:auto;
 }
-.mobile-menu-wrap{
+.mobile-dropdown{
+  display:none;
+  flex-direction:column;
+}
+      .mobile-menu-wrap{
   display:flex;
   position:relative;
   order:2;
@@ -1743,17 +1747,14 @@ window.toggleListen=function(ev){setMode(mode==='idle'?'listening':'idle',ev);};
   </script>
 
 <script>
-
-function toggleMenu(){
-
+function toggleMobileMenu(){
   const menu = document.getElementById('mobileDropdown');
 
   if(menu.style.display === 'flex'){
     menu.style.display = 'none';
-  }else{
+  } else {
     menu.style.display = 'flex';
   }
-
 }
 
 </script>
