@@ -1212,11 +1212,23 @@ overflow-y:auto;
     width:100%!important;
   }
   /* Ticker: mantiene il testo scorrevole */
-  .ticker{overflow:hidden!important;}
+  .ticker{overflow:hidden!important;height:30px!important;}
   .ticker-inner{
+    display:flex!important;
+    flex-wrap:nowrap!important;
     white-space:nowrap!important;
     word-break:normal!important;
     overflow-wrap:normal!important;
+    max-width:none!important;
+    min-width:max-content!important;
+    width:max-content!important;
+    animation:tick 22s linear infinite!important;
+  }
+  .ticker .td,.ticker span{
+    white-space:nowrap!important;
+    word-break:normal!important;
+    max-width:none!important;
+    flex-shrink:0!important;
   }
   img,svg,video,iframe{max-width:100%!important;height:auto;}
 
