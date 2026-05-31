@@ -1176,6 +1176,110 @@ overflow-y:auto;
   .mani-text{font-size:.92rem;}
 
 }
+
+/* ═══════════════════════════════════════════
+   MOBILE FIX GLOBALE — overflow + griglie
+═══════════════════════════════════════════ */
+@media(max-width:480px){
+
+  /* 1 ── Previeni overflow orizzontale globale */
+  html,body{overflow-x:hidden!important;max-width:100vw;}
+  *,*::before,*::after{box-sizing:border-box;min-width:0;}
+  p,h1,h2,h3,h4,h5,span,li,td,th,div{
+    overflow-wrap:break-word;
+    word-break:break-word;
+    max-width:100%;
+  }
+  img,svg,video,iframe{max-width:100%!important;height:auto;}
+
+  /* 2 ── Forza tutte le griglie classi a colonna singola */
+  .at-g,.sg,.srv-g,.proc-g,.val-g,.fisc-g,.vis-g,
+  .vis-nums,.home-band,.versus,.cg,.hp-g,.pchi-g,
+  .ss-strip,.roi-grid,.form-row,.fchks,.at-who,
+  .cal-steps,.rm-item + .rm-item,.eco-cols{
+    grid-template-columns:1fr!important;
+  }
+
+  /* 3 ── Griglie con stile inline (servizi, visione, atlas) */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns:1fr 1.6fr"],
+  [style*="grid-template-columns:1fr 1.7fr"],
+  [style*="grid-template-columns:repeat(2"],
+  [style*="grid-template-columns:repeat(3"],
+  [style*="grid-template-columns:repeat(4"]{
+    grid-template-columns:1fr!important;
+  }
+
+  /* 4 ── Flex row con space-between (es. "Due prodotti" header) */
+  .home-products .inner>div:first-child{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:.8rem!important;
+  }
+  /* Qualsiasi flex inline con space-between che contiene un link */
+  [style*="justify-content:space-between"]{
+    flex-wrap:wrap!important;
+    gap:.8rem!important;
+  }
+
+  /* 5 ── Testo che fuoriesce in elementi specifici */
+  .bi-v,.bi-l,.bi-desc,
+  .srv-title,.srv-desc,
+  .sc-title,.sc-desc,
+  .at-title,.at-desc,
+  .vn-l,.rm-title,.rm-desc,
+  .mani-text,.vis-desc,.vis-title,
+  .proc-title,.proc-desc,
+  .val-title,.val-desc,
+  .fisc-title,.fisc-desc{
+    overflow-wrap:break-word;
+    word-break:break-word;
+    hyphens:auto;
+  }
+
+  /* 6 ── Padding coerente in tutti i riquadri */
+  .srv-c,.sc,.at-c,.at-who-c,.vn-c,.vis-c,.fisc-c,
+  .val-c,.proc-i,.rc,.cc,.v-col,.bi{
+    padding:1.2rem 1rem!important;
+  }
+
+  /* 7 ── Demo iframe altezza fissa ok su mobile */
+  #demo-live .inner,
+  [id="demo-live"]>div:first-of-type{height:auto!important;}
+  #demo-live iframe{height:520px!important;}
+
+  /* 8 ── Titoli hero: niente overflow */
+  .hero-h1,.pg-h1,.cta-h,.sec-h{
+    font-size:clamp(1.4rem,6vw,2rem)!important;
+    white-space:normal!important;
+  }
+
+  /* 9 ── Tag / badge non escano dai box */
+  .srv-tags,.srv-tag,.rm-tag,.ctag,.at-pill{
+    white-space:normal!important;
+    word-break:break-word!important;
+  }
+
+  /* 10 ── Sezione atlas terminal */
+  .at-term{overflow-x:auto;font-size:.65rem!important;}
+  .at-term-line{white-space:pre-wrap!important;}
+
+  /* 11 ── Cal carousel: info e immagine in colonna */
+  .cal-slide{grid-template-columns:1fr!important;}
+  .cal-img-wrap{padding:.8rem!important;}
+
+  /* 12 ── hp-badge non sovrapposti */
+  .hp-badge-sabe,.hp-badge-atlas{display:block;width:fit-content;margin-bottom:.6rem;}
+
+  /* 13 ── Ticker: evita overflow testo */
+  .ticker-inner{font-size:.5rem!important;gap:1.5rem!important;}
+
+  /* 14 ── Footer compatto */
+  footer{flex-direction:column!important;height:auto!important;gap:.3rem!important;text-align:center!important;}
+  .f-copy{text-align:center;}
+
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
