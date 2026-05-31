@@ -1031,8 +1031,16 @@ overflow-y:auto;
   /* ── Nav ── */
   nav{height:60px;padding:0 1rem;}
 
-  /* ── Sphere: nascondi su telefono (performance) ── */
-  .home-right{display:none!important;}
+  /* ── Sphere: visibile in cima alla home su mobile ── */
+  .home-right{
+    display:flex!important;
+    order:-1;
+    height:260px;
+    padding:0;
+    background:transparent;
+    justify-content:center;
+    align-items:center;
+  }
 
   /* ── Hero ── */
   .home-left{padding:1.8rem 1rem 2.5rem;}
