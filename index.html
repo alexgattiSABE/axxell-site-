@@ -918,6 +918,11 @@ overflow-y:auto;
 @media(max-width:700px){.hp-g{grid-template-columns:1fr;}.ax-duo{flex-direction:column;}.ax-connector{width:1px;height:16px;background:linear-gradient(var(--cyan),var(--green));}}
 
 /* ─── PER CHI È ─── */
+.manifesto-sec{padding:5rem 0;border-top:1px solid var(--border);}
+.manifesto-inner{max-width:720px;margin:0 auto;}
+.manifesto-lead{font-size:1.25rem;font-weight:600;color:var(--white);line-height:1.65;letter-spacing:-.015em;margin-bottom:1.6rem;}
+.manifesto-body{font-size:1rem;color:var(--muted);line-height:1.9;margin-bottom:1.2rem;}
+.manifesto-quote{border-left:2px solid var(--cyan);padding-left:1.4rem;margin:2rem 0 0;font-size:1rem;color:var(--muted);line-height:1.8;font-style:italic;}
 .pchi-sec{padding:3.5rem 0;border-top:1px solid var(--border);}
 .pchi-g{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 .pchi-c{background:var(--bg2);padding:1.2rem 1.5rem;display:flex;align-items:center;gap:.8rem;transition:background .2s;}
@@ -1071,6 +1076,12 @@ overflow-y:auto;
   .social-proof{padding:1.5rem 1rem;gap:1.2rem;}
   .sp-title{font-size:.88rem;}
   .sp-big-num{font-size:1.5rem;}
+
+  /* ── Manifesto ── */
+  .manifesto-sec{padding:3rem 0;}
+  .manifesto-lead{font-size:1.05rem;}
+  .manifesto-body{font-size:.92rem;}
+  .manifesto-quote{font-size:.92rem;}
 
   /* ── Per chi è ── */
   .pchi-sec{padding:2.5rem 0;}
@@ -1457,6 +1468,16 @@ overflow-y:auto;
     </div>
   </div>
 
+  <!-- MANIFESTO AXXELL -->
+  <div class="manifesto-sec">
+    <div class="inner manifesto-inner">
+      <p class="manifesto-lead" data-anim data-d="1">Axxell nasce da una convinzione: l'intelligenza artificiale non è un lusso per grandi aziende. È uno strumento che ogni impresa ha il diritto di usare.</p>
+      <p class="manifesto-body" data-anim data-d="2">Le PMI hanno le stesse sfide delle grandi realtà — clienti da gestire, processi da ottimizzare, tempo che manca — ma raramente gli strumenti per affrontarle. Axxell esiste per cambiare questo.</p>
+      <p class="manifesto-body" data-anim data-d="3">Sviluppiamo automazioni, agenti vocali e sistemi AI integrati nei processi reali di chi lavora ogni giorno. Non vendiamo tecnologia. Costruiamo soluzioni che funzionano, che si capiscono subito e che liberano tempo.</p>
+      <blockquote class="manifesto-quote" data-anim data-d="4"><em>L'AI è già qui. La domanda non è se usarla, ma come farlo nel modo giusto per la tua impresa.</em></blockquote>
+    </div>
+  </div>
+
   <!-- PER CHI È AXXELL -->
   <div class="pchi-sec">
     <div class="inner">
@@ -1482,7 +1503,7 @@ overflow-y:auto;
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
         <div>
           <div class="mono-tag" style="margin-bottom:.4rem;opacity:1;transform:none;">I nostri prodotti</div>
-          <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.025em;color:#f0f0f6;">Due prodotti. <span class="hl">Un ecosistema.</span></h2>
+          <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.025em;color:#f0f0f6;">I nostri prodotti AI.</h2>
         </div>
         <a href="#" class="btn-g" style="flex-shrink:0;" onclick="return go('servizi')">Tutti i servizi →</a>
       </div>
