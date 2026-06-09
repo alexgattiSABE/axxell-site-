@@ -923,6 +923,12 @@ overflow-y:auto;
 .manifesto-lead{font-size:1.25rem;font-weight:600;color:var(--white);line-height:1.65;letter-spacing:-.015em;margin-bottom:1.6rem;}
 .manifesto-body{font-size:1rem;color:var(--muted);line-height:1.9;margin-bottom:1.2rem;}
 .manifesto-quote{border-left:2px solid var(--cyan);padding-left:1.4rem;margin:2rem 0 0;font-size:1rem;color:var(--muted);line-height:1.8;font-style:italic;}
+.atlas-mfst-sec{padding:4.5rem 0 4rem;border-top:1px solid var(--border);}
+.atlas-mfst-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;}
+.atlas-mfst-lead{font-size:1.22rem;font-weight:600;color:var(--white);line-height:1.65;letter-spacing:-.015em;margin-bottom:1.4rem;}
+.atlas-mfst-values{display:flex;flex-wrap:wrap;gap:.5rem;margin:1.4rem 0;}
+.atlas-mfst-val{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding:.35rem .8rem;border-radius:999px;background:rgba(0,232,162,.07);border:1px solid rgba(0,232,162,.18);color:var(--green);}
+.atlas-agent-vis{display:flex;align-items:center;justify-content:center;}
 .sabe-what-sec{padding:4rem 0 3.5rem;border-top:1px solid var(--border);}
 .sabe-what-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;}
 .sabe-what-list{list-style:none;padding:0;margin:1.4rem 0 0;display:flex;flex-direction:column;gap:.7rem;}
@@ -1082,6 +1088,10 @@ overflow-y:auto;
   .social-proof{padding:1.5rem 1rem;gap:1.2rem;}
   .sp-title{font-size:.88rem;}
   .sp-big-num{font-size:1.5rem;}
+
+  /* ── ATLAS Manifesto ── */
+  .atlas-mfst-grid{grid-template-columns:1fr;gap:2rem;}
+  .atlas-agent-vis svg{max-width:280px;}
 
   /* ── SABE What ── */
   .sabe-what-grid{grid-template-columns:1fr;gap:2rem;}
@@ -2262,6 +2272,112 @@ overflow-y:auto;
     </div>
   </div>
 
+  <!-- MANIFESTO ATLAS -->
+  <div class="inner atlas-mfst-sec">
+    <div class="atlas-mfst-grid">
+      <div data-anim data-d="1">
+        <div class="mono-tag" style="margin-bottom:.8rem;">Perché ATLAS</div>
+        <p class="atlas-mfst-lead">Il tempo è l'unica cosa che non puoi comprare, recuperare o rimandare.</p>
+        <p class="manifesto-body">Ogni giorno che passa è irripetibile. Eppure la maggior parte di noi lo consuma in frammenti — piccole interruzioni, operazioni meccaniche, momenti rubati dalla disorganizzazione.</p>
+        <p class="manifesto-body">L'organizzazione non è un metodo. È la condizione che permette al tempo di avere un senso. Quando nulla viene dimenticato o perso, quando ogni azione ha il suo posto — il tempo si dilata. Non hai più una lista infinita, hai chiarezza.</p>
+        <p class="manifesto-body" style="margin-bottom:0;">ATLAS è stato costruito su questa idea. Non è un assistente che ti risponde. È un sistema che lavora mentre tu vivi — che ricorda mentre tu pensi, che esegue mentre tu decidi, che organizza mentre tu crei.</p>
+        <div class="atlas-mfst-values">
+          <span class="atlas-mfst-val">Recuperi tempo</span>
+          <span class="atlas-mfst-val">Agisci con velocità</span>
+          <span class="atlas-mfst-val">Operi con efficacia</span>
+          <span class="atlas-mfst-val">Tutto in ordine</span>
+          <span class="atlas-mfst-val">Zero meccanico</span>
+          <span class="atlas-mfst-val">Sempre affidabile</span>
+        </div>
+        <blockquote class="manifesto-quote" style="font-family:var(--mono);font-style:normal;font-size:.88rem;letter-spacing:.03em;color:var(--green);">Perché il tempo non si trova. Si sceglie. <span style="color:var(--white);">E scegliere ATLAS significa scegliere di averne di più.</span></blockquote>
+        <div style="margin-top:2rem;display:flex;gap:.8rem;flex-wrap:wrap;">
+          <a href="#" class="btn-p" onclick="openPrev();return false;">Inizia gratis →</a>
+          <a href="#" class="btn-g" onclick="return go('atlas')">Scopri ATLAS</a>
+        </div>
+      </div>
+      <div class="atlas-agent-vis" data-anim data-d="2">
+        <svg viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:360px;display:block;margin:0 auto;">
+          <defs>
+            <radialGradient id="atv-core-g" cx="38%" cy="32%" r="70%">
+              <stop offset="0%" stop-color="rgba(255,255,255,.22)"/>
+              <stop offset="22%" stop-color="rgba(0,232,162,.35)"/>
+              <stop offset="60%" stop-color="rgba(0,40,30,.88)"/>
+              <stop offset="100%" stop-color="#02040b"/>
+            </radialGradient>
+            <radialGradient id="atv-glow-g" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="rgba(0,232,162,.15)"/>
+              <stop offset="100%" stop-color="rgba(0,232,162,0)"/>
+            </radialGradient>
+          </defs>
+
+          <!-- ambient glow -->
+          <circle cx="190" cy="190" r="90" fill="url(#atv-glow-g)"/>
+          <!-- orbit ring -->
+          <circle cx="190" cy="190" r="128" fill="none" stroke="rgba(0,232,162,.07)" stroke-width="1"/>
+
+          <!-- connector lines -->
+          <line x1="190" y1="138" x2="190" y2="79" stroke="rgba(0,212,255,.2)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="242" y1="190" x2="301" y2="190" stroke="rgba(0,212,255,.2)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="190" y1="242" x2="190" y2="301" stroke="rgba(0,232,162,.18)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="138" y1="190" x2="79" y2="190" stroke="rgba(0,232,162,.18)" stroke-width="1" stroke-dasharray="3 5"/>
+
+          <!-- animated flow dots -->
+          <circle r="3" fill="#00d4ff" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="0s"/><animateMotion dur="2s" repeatCount="indefinite" begin="0s" path="M190,138 L190,79"/></circle>
+          <circle r="3" fill="#00d4ff" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin=".5s"/><animateMotion dur="2s" repeatCount="indefinite" begin=".5s" path="M242,190 L301,190"/></circle>
+          <circle r="3" fill="#00e8a2" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="1s"/><animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M190,242 L190,301"/></circle>
+          <circle r="3" fill="#00e8a2" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="1.5s"/><animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M138,190 L79,190"/></circle>
+
+          <!-- ATLAS core -->
+          <circle cx="190" cy="190" r="52" fill="url(#atv-core-g)"/>
+          <circle cx="190" cy="190" r="52" fill="none" stroke="rgba(0,232,162,.42)" stroke-width="1.5"/>
+          <circle cx="190" cy="190" r="60" fill="none" stroke="rgba(0,232,162,.07)" stroke-width="7">
+            <animate attributeName="r" values="60;68;60" dur="3.5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".5;0;.5" dur="3.5s" repeatCount="indefinite"/>
+          </circle>
+          <text x="190" y="185" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="#00e8a2" letter-spacing="5" font-weight="500">ATLAS</text>
+          <text x="190" y="202" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(255,255,255,.38)" letter-spacing="2.5">AI PERSONALE</text>
+
+          <!-- Top: Mic → ASCOLTA (190, 62) -->
+          <g transform="translate(190,62)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,212,255,.28)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,212,255,.75)" letter-spacing="1.5">ASCOLTA</text>
+          </g>
+
+          <!-- Right: Calendar → ORGANIZZA (318, 190) -->
+          <g transform="translate(318,190)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,212,255,.28)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,212,255,.75)" letter-spacing="1.5">ORGANIZZA</text>
+          </g>
+
+          <!-- Bottom: Monitor → CONTROLLA (190, 318) -->
+          <g transform="translate(190,318)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,232,162,.22)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e8a2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,232,162,.75)" letter-spacing="1.5">CONTROLLA</text>
+          </g>
+
+          <!-- Left: FileText → TRASCRIVE (62, 190) -->
+          <g transform="translate(62,190)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,232,162,.22)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e8a2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,232,162,.75)" letter-spacing="1.5">TRASCRIVE</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <hr class="sep">
+
   <!-- TIER 1 -->
   <div class="at-tier">
     <div class="at-tier-num">// 01</div>
@@ -2300,12 +2416,6 @@ overflow-y:auto;
         <div class="at-desc">Gestisci Gmail e controlla Spotify con la voce. Leggi, rispondi, cerca email. Metti in pausa, cambia traccia, alza il volume.</div>
       </div>
       <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
-        <div class="at-title">Wake Word</div>
-        <div class="at-desc">Dì "Hey ATLAS" in qualsiasi momento. L'interfaccia si apre a schermo intero, ATLAS ti saluta e si mette in ascolto.</div>
-        <div class="at-examples"><div class="at-ex">"Hey ATLAS"</div></div>
-      </div>
-      <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
         <div class="at-title">Privacy totale</div>
         <div class="at-desc">Gira in locale sul tuo Mac. I dati non lasciano mai il tuo computer. Nessun cloud obbligatorio, nessuna sorveglianza.</div>
@@ -2314,43 +2424,12 @@ overflow-y:auto;
   </div></div>
   <hr class="sep">
 
-  <!-- MODALITÀ ASCOLTO -->
-  <div class="inner"><div class="sec">
-    <div class="mono-tag" data-anim>Modalità ascolto</div>
-    <h2 class="sec-h" data-anim data-d="1">Registra. Trascrivi. <span class="hl">Struttura.</span></h2>
-    <p class="sec-sub" data-anim data-d="2">Un comando per trasformare una conversazione in documento.</p>
-    <div class="at-listen-steps" data-anim data-d="3">
-      <div class="at-ls">
-        <div class="at-ls-num">01 →</div>
-        <div class="at-ls-voice">"Hey ATLAS, avvia modalità ascolto"</div>
-        <div class="at-ls-title">ATLAS attiva la registrazione</div>
-        <div class="at-ls-desc">ATLAS chiede come nominare il file e inizia ad ascoltare. Puoi parlare liberamente.</div>
-        <div class="at-ls-connector"></div>
-      </div>
-      <div class="at-ls">
-        <div class="at-ls-num">02 →</div>
-        <div class="at-ls-voice">Parli liberamente</div>
-        <div class="at-ls-title">Visita, riunione, consulenza</div>
-        <div class="at-ls-desc">ATLAS trascrive tutto in tempo reale. Nessun limite di durata, nessuna interruzione.</div>
-        <div class="at-ls-connector"></div>
-      </div>
-      <div class="at-ls">
-        <div class="at-ls-num">03</div>
-        <div class="at-ls-voice">"Hey ATLAS, chiudi modalità ascolto"</div>
-        <div class="at-ls-title">PDF strutturato salvato in locale</div>
-        <div class="at-ls-desc">Il documento viene organizzato e salvato automaticamente sul tuo Mac.</div>
-      </div>
-    </div>
-    <p style="margin-top:2rem;font-size:.88rem;color:var(--muted);line-height:1.9;max-width:620px;" data-anim data-d="4">Ideale per medici, avvocati, psicologi, commercialisti, venditori. Ogni sessione diventa un documento professionale, automaticamente organizzato e salvato sul tuo Mac.</p>
-  </div></div>
-  <hr class="sep">
-
   <!-- TIER 2 -->
   <div class="at-tier">
     <div class="at-tier-num">// 02</div>
     <div class="at-tier-info">
       <div class="at-tier-title">ATLAS × SABE</div>
-      <div class="at-tier-sub">Analisi locale, prenotazioni e inventario — con la voce.</div>
+      <div class="at-tier-sub">Analisi dati, attività e inventario — con la voce.</div>
     </div>
     <div class="at-tier-line"></div>
   </div>
@@ -2403,8 +2482,8 @@ overflow-y:auto;
     <div class="at-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:2rem;" data-anim data-d="2">
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-        <div class="at-title">Analisi prenotazioni</div>
-        <div class="at-desc">Chiedi ad ATLAS com'è andata la settimana. Prenotazioni, coperti e ore di punta — tutto in voce.</div>
+        <div class="at-title">Analisi attività</div>
+        <div class="at-desc">Chiedi ad ATLAS com'è andata la settimana. Appuntamenti, andamento e ore di punta — tutto in voce.</div>
         <div class="at-examples"><div class="at-ex">"Com'è andata questa settimana?"</div></div>
       </div>
       <div class="at-c">
@@ -2435,20 +2514,20 @@ overflow-y:auto;
       </div>
       <div class="at-term-body">
         <div class="at-qa">
-          <div class="at-q">Come va la settimana al ristorante?</div>
-          <div class="at-a">Questa settimana hai avuto 43 prenotazioni, media 6,1 coperti a tavolo. Martedì il giorno più forte con 9 prenotazioni. Rispetto alla settimana scorsa +12%.</div>
+          <div class="at-q">Com'è andata questa settimana?</div>
+          <div class="at-a">Questa settimana hai avuto 43 appuntamenti. Martedì il giorno più intenso con 9 clienti. Rispetto alla settimana scorsa +12%. Vuoi il dettaglio giornaliero?</div>
         </div>
         <div class="at-qa">
           <div class="at-q">Cosa sta per finire in magazzino?</div>
-          <div class="at-a">Sotto soglia: vino rosso della casa (3 bottiglie), acqua frizzante 0,75 (2 casse), tonno sott'olio (1 confezione). Vuoi che prepari una lista d'ordine?</div>
+          <div class="at-a">Sotto soglia: 3 articoli. Vuoi che prepari una lista d'ordine da inviare al fornitore?</div>
         </div>
         <div class="at-qa">
-          <div class="at-q">Apri il calendario di Tokyo Sushi</div>
-          <div class="at-a">Apro il pannello prenotazioni nel browser. Un momento...</div>
+          <div class="at-q">Apri il calendario SABE</div>
+          <div class="at-a">Apro il pannello appuntamenti nel browser. Un momento...</div>
         </div>
         <div class="at-qa">
-          <div class="at-q">Sposta la prenotazione di Bianchi alle 21</div>
-          <div class="at-a">Ho trovato la prenotazione di Marco Bianchi per stasera alle 20:00, 3 persone. Confermo lo spostamento alle 21:00?</div>
+          <div class="at-q">Sposta l'appuntamento di Bianchi alle 15</div>
+          <div class="at-a">Ho trovato l'appuntamento di Marco Bianchi per oggi alle 14:00. Confermo lo spostamento alle 15:00?</div>
         </div>
       </div>
     </div>
@@ -2472,48 +2551,18 @@ overflow-y:auto;
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
         <div class="at-title">Trascrizione visite</div>
-        <div class="at-desc">Avvia la registrazione con la voce. ATLAS trascrive l'intera visita in tempo reale, senza interruzioni.</div>
       </div>
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
         <div class="at-title">Cartelle cliniche</div>
-        <div class="at-desc">Ogni sessione diventa una cartella strutturata e salvata in locale, organizzata per paziente.</div>
       </div>
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
         <div class="at-title">Database cifrato</div>
-        <div class="at-desc">I dati dei pazienti non lasciano mai il tuo Mac. Cifrato, privato, GDPR compliant by design.</div>
       </div>
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
         <div class="at-title">PDF professionale</div>
-        <div class="at-desc">Ogni visita genera un documento organizzato e formattato automaticamente, pronto da firmare.</div>
-      </div>
-    </div>
-    <div class="at-terminal" style="margin-top:2rem;" data-anim data-d="4">
-      <div class="at-term-bar">
-        <div class="at-term-dot" style="background:#ff5c5c;"></div>
-        <div class="at-term-dot" style="background:#f5c400;"></div>
-        <div class="at-term-dot" style="background:#00e8a2;"></div>
-        <span class="at-term-label">ATLAS Medical · sessione clinica</span>
-      </div>
-      <div class="at-term-body">
-        <div class="at-qa">
-          <div class="at-q">Avvia modalità ascolto per la visita Rossi</div>
-          <div class="at-a">Cartella aperta per Marco Rossi. Registrazione avviata — parla liberamente.</div>
-        </div>
-        <div class="at-qa">
-          <div class="at-q">Qual è la storia clinica di Rossi?</div>
-          <div class="at-a">Marco Rossi, 47 anni. Ipertensione in trattamento dal 2019, allergia documentata a penicillina. Ultima visita: 14 marzo 2026.</div>
-        </div>
-        <div class="at-qa">
-          <div class="at-q">Aggiungi nota: intolleranza latticini confermata</div>
-          <div class="at-a">Nota aggiunta alla cartella di Rossi con data odierna.</div>
-        </div>
-        <div class="at-qa">
-          <div class="at-q">Chiudi visita e genera PDF</div>
-          <div class="at-a">Trascrizione completata. PDF strutturato salvato in: /Pazienti/Rossi/2026-05-30.pdf</div>
-        </div>
       </div>
     </div>
   </div></div>
