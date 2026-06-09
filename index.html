@@ -923,6 +923,12 @@ overflow-y:auto;
 .manifesto-lead{font-size:1.25rem;font-weight:600;color:var(--white);line-height:1.65;letter-spacing:-.015em;margin-bottom:1.6rem;}
 .manifesto-body{font-size:1rem;color:var(--muted);line-height:1.9;margin-bottom:1.2rem;}
 .manifesto-quote{border-left:2px solid var(--cyan);padding-left:1.4rem;margin:2rem 0 0;font-size:1rem;color:var(--muted);line-height:1.8;font-style:italic;}
+.sabe-what-sec{padding:4rem 0 3.5rem;border-top:1px solid var(--border);}
+.sabe-what-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;}
+.sabe-what-list{list-style:none;padding:0;margin:1.4rem 0 0;display:flex;flex-direction:column;gap:.7rem;}
+.sabe-what-list li{display:flex;align-items:center;gap:.75rem;font-size:.9rem;color:var(--muted);line-height:1.5;}
+.sabe-hl-dot{width:5px;height:5px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--green));flex-shrink:0;}
+.sabe-agent-vis{display:flex;align-items:center;justify-content:center;}
 .pchi-sec{padding:3.5rem 0;border-top:1px solid var(--border);}
 .pchi-g{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 .pchi-c{background:var(--bg2);padding:1.2rem 1.5rem;display:flex;align-items:center;gap:.8rem;transition:background .2s;}
@@ -1076,6 +1082,10 @@ overflow-y:auto;
   .social-proof{padding:1.5rem 1rem;gap:1.2rem;}
   .sp-title{font-size:.88rem;}
   .sp-big-num{font-size:1.5rem;}
+
+  /* ── SABE What ── */
+  .sabe-what-grid{grid-template-columns:1fr;gap:2rem;}
+  .sabe-agent-vis svg{max-width:280px;}
 
   /* ── Manifesto ── */
   .manifesto-sec{padding:3rem 0;}
@@ -1626,6 +1636,103 @@ overflow-y:auto;
     <div class="ss-i" data-anim data-d="2"><span class="ss-n">24/7</span><p class="ss-l">disponibilità senza costi aggiuntivi o straordinari</p></div>
     <div class="ss-i" data-anim data-d="4"><span class="ss-n">−90%</span><p class="ss-l">del costo rispetto a una receptionist in carne e ossa</p></div>
   </div>
+
+  <!-- COS'È SABE -->
+  <div class="inner sabe-what-sec">
+    <div class="sabe-what-grid">
+      <div data-anim data-d="1">
+        <div class="mono-tag" style="margin-bottom:.8rem;">Cos'è SABE</div>
+        <h2 class="sec-h">Un agente che risponde, capisce <span class="hl">e agisce.</span></h2>
+        <p style="font-size:.97rem;color:var(--muted);line-height:1.9;margin-bottom:0;">SABE è un agente vocale AI che risponde al telefono esattamente come farebbe un operatore esperto. Capisce il contesto della chiamata, gestisce prenotazioni e informa i clienti — in autonomia, senza che tu debba alzare un dito. Non è un risponditore automatico: è un agente che pensa e agisce.</p>
+        <ul class="sabe-what-list">
+          <li><span class="sabe-hl-dot"></span>Risponde in italiano naturale, non robotico</li>
+          <li><span class="sabe-hl-dot"></span>Prende prenotazioni e le registra nel calendario</li>
+          <li><span class="sabe-hl-dot"></span>Informa i clienti su orari, servizi e disponibilità</li>
+          <li><span class="sabe-hl-dot"></span>Attivo 24/7 — nessuna chiamata persa</li>
+        </ul>
+      </div>
+      <div class="sabe-agent-vis" data-anim data-d="2">
+        <svg viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:360px;display:block;margin:0 auto;">
+          <defs>
+            <radialGradient id="sav-core-g" cx="38%" cy="32%" r="70%">
+              <stop offset="0%" stop-color="rgba(255,255,255,.22)"/>
+              <stop offset="22%" stop-color="rgba(0,212,255,.38)"/>
+              <stop offset="60%" stop-color="rgba(0,28,65,.88)"/>
+              <stop offset="100%" stop-color="#02040b"/>
+            </radialGradient>
+            <radialGradient id="sav-glow-g" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="rgba(0,212,255,.18)"/>
+              <stop offset="100%" stop-color="rgba(0,212,255,0)"/>
+            </radialGradient>
+          </defs>
+
+          <!-- ambient glow -->
+          <circle cx="190" cy="190" r="90" fill="url(#sav-glow-g)"/>
+          <!-- orbit ring -->
+          <circle cx="190" cy="190" r="128" fill="none" stroke="rgba(0,212,255,.07)" stroke-width="1"/>
+
+          <!-- connector lines (dashed) -->
+          <line x1="190" y1="138" x2="190" y2="79" stroke="rgba(0,212,255,.2)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="242" y1="190" x2="301" y2="190" stroke="rgba(0,212,255,.2)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="190" y1="242" x2="190" y2="301" stroke="rgba(0,232,162,.15)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="138" y1="190" x2="79" y2="190" stroke="rgba(0,232,162,.15)" stroke-width="1" stroke-dasharray="3 5"/>
+
+          <!-- animated flow dots -->
+          <circle r="3" fill="#00d4ff" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="0s"/><animateMotion dur="2s" repeatCount="indefinite" begin="0s" path="M190,138 L190,79"/></circle>
+          <circle r="3" fill="#00d4ff" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin=".5s"/><animateMotion dur="2s" repeatCount="indefinite" begin=".5s" path="M242,190 L301,190"/></circle>
+          <circle r="3" fill="#00e8a2" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="1s"/><animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M190,242 L190,301"/></circle>
+          <circle r="3" fill="#00e8a2" opacity="0"><animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="1.5s"/><animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M138,190 L79,190"/></circle>
+
+          <!-- SABE core -->
+          <circle cx="190" cy="190" r="52" fill="url(#sav-core-g)"/>
+          <circle cx="190" cy="190" r="52" fill="none" stroke="rgba(0,212,255,.45)" stroke-width="1.5"/>
+          <circle cx="190" cy="190" r="60" fill="none" stroke="rgba(0,212,255,.08)" stroke-width="7">
+            <animate attributeName="r" values="60;68;60" dur="3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".5;0;.5" dur="3s" repeatCount="indefinite"/>
+          </circle>
+          <text x="190" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="#00d4ff" letter-spacing="5" font-weight="500">SABE</text>
+          <text x="190" y="202" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(255,255,255,.38)" letter-spacing="2.5">AI VOCALE</text>
+
+          <!-- Top: Phone / Risponde (190, 62) -->
+          <g transform="translate(190,62)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,212,255,.28)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6 6"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,212,255,.75)" letter-spacing="1.5">RISPONDE</text>
+          </g>
+
+          <!-- Right: Calendar / Prenota (318, 190) -->
+          <g transform="translate(318,190)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,212,255,.28)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,212,255,.75)" letter-spacing="1.5">PRENOTA</text>
+          </g>
+
+          <!-- Bottom: MessageSquare / Informa (190, 318) -->
+          <g transform="translate(190,318)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,232,162,.22)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e8a2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,232,162,.75)" letter-spacing="1.5">INFORMA</text>
+          </g>
+
+          <!-- Left: BarChart / Analizza (62, 190) -->
+          <g transform="translate(62,190)">
+            <rect x="-30" y="-17" width="60" height="34" rx="7" fill="rgba(4,8,16,.95)" stroke="rgba(0,232,162,.22)" stroke-width="1"/>
+            <svg x="-9" y="-13" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e8a2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="22" x2="22" y2="22"/>
+            </svg>
+            <text y="27" text-anchor="middle" font-family="DM Mono,monospace" font-size="7" fill="rgba(0,232,162,.75)" letter-spacing="1.5">ANALIZZA</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <hr class="sep">
 
   <!-- VIDEO SABE -->
   <div class="inner" style="padding-top:3.5rem;padding-bottom:3rem;" data-anim>
