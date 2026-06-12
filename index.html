@@ -1385,6 +1385,7 @@ overflow-y:auto;
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -1434,14 +1435,14 @@ overflow-y:auto;
       </div>
       <form class="form" id="prevForm" onsubmit="submitPrev(event)">
         <div class="form-row">
-          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" placeholder="Mario" required></div>
-          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" placeholder="Rossi" required></div>
+          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" id="prevNome" placeholder="Mario" required></div>
+          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" id="prevCognome" placeholder="Rossi" required></div>
         </div>
-        <div class="fg"><label class="fl">Azienda <span class="req">*</span></label><input type="text" class="fi" placeholder="Nome della tua azienda" required></div>
+        <div class="fg"><label class="fl">Azienda <span class="req">*</span></label><input type="text" class="fi" id="prevAzienda" placeholder="Nome della tua azienda" required></div>
         <div class="form-row">
           <div class="fg">
             <label class="fl">Tipo di attività <span class="req">*</span></label>
-            <select class="fi" required>
+            <select class="fi" id="prevSettore" required>
               <option value="" disabled selected>Seleziona il settore</option>
               <option>Ristorante / Pizzeria / Bar</option>
               <option>Salute e benessere</option>
@@ -1454,11 +1455,11 @@ overflow-y:auto;
               <option>Altro</option>
             </select>
           </div>
-          <div class="fg"><label class="fl">Partita IVA <span class="req">*</span></label><input type="text" class="fi" placeholder="IT12345678901" required></div>
+          <div class="fg"><label class="fl">Partita IVA <span class="req">*</span></label><input type="text" class="fi" id="prevPiva" placeholder="IT12345678901" required></div>
         </div>
         <div class="form-row">
-          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" placeholder="mario@azienda.it" required></div>
-          <div class="fg"><label class="fl">Telefono <span class="req">*</span></label><input type="tel" class="fi" placeholder="+39 333 000 0000" required></div>
+          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="prevEmail" placeholder="mario@azienda.it" required></div>
+          <div class="fg"><label class="fl">Telefono <span class="req">*</span></label><input type="tel" class="fi" id="prevTel" placeholder="+39 333 000 0000" required></div>
         </div>
         <div class="fg">
           <label class="fl">Servizi di interesse</label>
@@ -1472,7 +1473,7 @@ overflow-y:auto;
             <label class="fchk"><input type="checkbox"><span>Integrazioni custom</span></label>
           </div>
         </div>
-        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare..." rows="3"></textarea></div>
+        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" id="prevNote" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare..." rows="3"></textarea></div>
         <div class="fpriv">
           <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
         </div>
@@ -1499,12 +1500,12 @@ overflow-y:auto;
       </div>
       <form class="form" id="prevAtlasForm" onsubmit="submitPrevAtlas(event)">
         <div class="form-row">
-          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" placeholder="Mario" required></div>
-          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" placeholder="Rossi" required></div>
+          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" id="atlasNome" placeholder="Mario" required></div>
+          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" id="atlasCognome" placeholder="Rossi" required></div>
         </div>
         <div class="form-row">
-          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" placeholder="mario@email.it" required></div>
-          <div class="fg"><label class="fl">Telefono</label><input type="tel" class="fi" placeholder="+39 333 000 0000"></div>
+          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="atlasEmail" placeholder="mario@email.it" required></div>
+          <div class="fg"><label class="fl">Telefono</label><input type="tel" class="fi" id="atlasTel" placeholder="+39 333 000 0000"></div>
         </div>
         <div class="fg">
           <label class="fl">Come vuoi usare ATLAS?</label>
@@ -1539,7 +1540,7 @@ overflow-y:auto;
             <div class="fg"><label class="fl">Partita IVA <span class="req">*</span></label><input type="text" class="fi" id="atlasBizIva" placeholder="IT12345678901"></div>
           </div>
         </div>
-        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" placeholder="Descrivi brevemente la tua attività o il contesto in cui useresti ATLAS: lavoro, routine, obiettivi..." rows="3"></textarea></div>
+        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" id="atlasNote" placeholder="Descrivi brevemente la tua attività o il contesto in cui useresti ATLAS: lavoro, routine, obiettivi..." rows="3"></textarea></div>
         <div class="fpriv">
           <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
         </div>
@@ -2690,9 +2691,7 @@ overflow-y:auto;
   </div>
 
   <div class="inner"><div class="sec">
-    <div class="mono-tag" data-anim>Per professionisti sanitari</div>
-    <h2 class="sec-h" data-anim data-d="1">Ogni visita diventa un <span class="hl">documento.</span></h2>
-    <p class="sec-sub" data-anim data-d="2">Parla liberamente durante la visita. ATLAS trascrive, struttura e salva tutto in locale sul tuo Mac.</p>
+    <div class="mono-tag" data-anim>Per professionisti sanitari e cliniche</div>
     <div class="at-g" style="grid-template-columns:repeat(4,1fr);" data-anim data-d="3">
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
@@ -2764,14 +2763,34 @@ function sDemo(){setTimeout(function(){var el=document.getElementById('demo-live
 function openPrev(){document.getElementById('prevOverlay').classList.add('open');}
 function closePrev(){document.getElementById('prevOverlay').classList.remove('open');}
 document.getElementById('prevOverlay').addEventListener('click',function(e){if(e.target===this)closePrev();});
+emailjs.init('Jass-MWY1fZy7RTCk');
+
 function submitPrev(e){
   e.preventDefault();
   var btn=e.target.querySelector('button[type=submit]');
-  btn.disabled=true;btn.textContent='Invio in corso...';
-  setTimeout(function(){
+  btn.disabled=true; btn.textContent='Invio in corso...';
+  var servizi=[];
+  document.querySelectorAll('#prevForm .fchk input[type=checkbox]:not([required])').forEach(function(cb){
+    if(cb.checked) servizi.push(cb.nextElementSibling.textContent.trim());
+  });
+  var msg=
+    'Azienda: '+document.getElementById('prevAzienda').value+'<br>'+
+    'Settore: '+document.getElementById('prevSettore').value+'<br>'+
+    'P.IVA: '+document.getElementById('prevPiva').value+'<br>'+
+    (servizi.length?'Servizi: '+servizi.join(', ')+'<br>':'')+
+    'Note: '+(document.getElementById('prevNote').value||'—');
+  emailjs.send('service_ma1qdph','template_btru4ua',{
+    nome: document.getElementById('prevNome').value+' '+document.getElementById('prevCognome').value,
+    email: document.getElementById('prevEmail').value,
+    telefono: document.getElementById('prevTel').value,
+    messaggio: msg
+  }).then(function(){
     document.getElementById('prevForm').style.display='none';
     document.getElementById('fSuccess').classList.add('show');
-  },1000);
+  },function(){
+    btn.disabled=false; btn.textContent='Invia richiesta a info@axxell.ai →';
+    alert('Errore nell\'invio. Riprova o scrivi a info@axxell.ai');
+  });
 }
 function openPrevAtlas(){document.getElementById('prevAtlasOverlay').classList.add('open');}
 function closePrevAtlas(){document.getElementById('prevAtlasOverlay').classList.remove('open');}
@@ -2788,11 +2807,28 @@ function toggleAtlasBiz(val){
 function submitPrevAtlas(e){
   e.preventDefault();
   var btn=e.target.querySelector('button[type=submit]');
-  btn.disabled=true;btn.textContent='Invio in corso...';
-  setTimeout(function(){
+  btn.disabled=true; btn.textContent='Invio in corso...';
+  var uso=document.getElementById('atlasUsoSelect').value;
+  var msg='Uso ATLAS: '+uso+'<br>';
+  if(uso==='sabe'){
+    msg+=
+      'Nome attività: '+document.getElementById('atlasBizName').value+'<br>'+
+      'Tipo attività: '+document.getElementById('atlasBizTipo').value+'<br>'+
+      'P.IVA: '+document.getElementById('atlasBizIva').value+'<br>';
+  }
+  msg+='Note: '+(document.getElementById('atlasNote').value||'—');
+  emailjs.send('service_ma1qdph','template_btru4ua',{
+    nome: document.getElementById('atlasNome').value+' '+document.getElementById('atlasCognome').value,
+    email: document.getElementById('atlasEmail').value,
+    telefono: document.getElementById('atlasTel').value||'—',
+    messaggio: msg
+  }).then(function(){
     document.getElementById('prevAtlasForm').style.display='none';
     document.getElementById('fAtlasSuccess').classList.add('show');
-  },1000);
+  },function(){
+    btn.disabled=false; btn.textContent='Invia richiesta a info@axxell.ai →';
+    alert('Errore nell\'invio. Riprova o scrivi a info@axxell.ai');
+  });
 }
 
 // HERO ANIM
