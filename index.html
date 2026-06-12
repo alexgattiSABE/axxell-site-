@@ -156,6 +156,19 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
   border-radius:50%;pointer-events:none;opacity:.5;z-index:2;
   background:radial-gradient(circle,rgba(255,255,255,.4),rgba(0,229,204,.22) 42%,transparent 72%);filter:blur(20px);}
 #heroSphere{position:absolute;left:57%;top:56%;transform:translate(-50%,-50%);pointer-events:none;z-index:3;display:block;}
+@media(max-width:768px){
+  /* sezione più bassa: il crop orizzontale dell'immagine si riduce e le mani restano visibili */
+  .srv-hands-wrap{height:44vh;min-height:300px;max-height:420px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 50%,#000 52%,transparent 100%);
+    mask-image:radial-gradient(ellipse 90% 80% at 50% 50%,#000 52%,transparent 100%);}
+  .hero-sphere-glow{width:280px;height:280px;}
+  #heroSphere{width:280px!important;height:280px!important;}
+}
+@media(max-width:480px){
+  .srv-hands-wrap{height:38vh;min-height:260px;max-height:340px;}
+  .hero-sphere-glow{width:220px;height:220px;}
+  #heroSphere{width:220px!important;height:220px!important;}
+}
 
 /* Home band */
 .home-band{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);position:relative;z-index:1;}
