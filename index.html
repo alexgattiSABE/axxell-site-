@@ -144,6 +144,19 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 .ss-svg{width:100%;max-width:460px;height:auto;overflow:visible;}
 .sabe-orbit{position:relative;width:100%;max-width:460px;aspect-ratio:1;display:grid;place-items:center;} .sabe-orbit::before{content:'';position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,.2),transparent 62%);filter:blur(22px);} .sabe-planet{position:absolute;width:142px;height:142px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.28),rgba(0,212,255,.42) 24%,rgba(0,30,70,.9) 62%,#02040b 100%);border:1px solid rgba(0,212,255,.5);box-shadow:0 0 70px rgba(0,212,255,.28),inset -18px -18px 34px rgba(0,0,0,.55);z-index:2;} .sabe-planet span{font-family:var(--mono);font-size:1.05rem;color:var(--cyan);letter-spacing:.18em;} .sabe-planet small{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.35rem;} .orbit-ring{position:absolute;border:1px solid rgba(0,212,255,.13);border-radius:50%;animation:orb 18s linear infinite;} .ring-a{width:230px;height:230px;} .ring-b{width:300px;height:300px;animation-duration:26s;animation-direction:reverse;} .ring-c{width:370px;height:370px;animation-duration:34s;} .ring-d{width:430px;height:430px;animation-duration:44s;animation-direction:reverse;} .sat{position:absolute;top:-13px;left:50%;transform:translateX(-50%);padding:.28rem .55rem;border-radius:999px;background:rgba(6,6,9,.92);border:1px solid rgba(0,212,255,.28);color:var(--cyan);font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;} @keyframes orb{to{transform:rotate(360deg);}}
 
+/* ── SERVIZI — mani + sfera con eruzioni, sfumata nel mezzo ── */
+.srv-hands-wrap{height:72vh;min-height:480px;position:relative;z-index:1;overflow:hidden;
+  -webkit-mask-image:radial-gradient(ellipse 70% 72% at 50% 50%,#000 48%,transparent 97%);
+  mask-image:radial-gradient(ellipse 70% 72% at 50% 50%,#000 48%,transparent 97%);}
+.hero-hand-half{position:absolute;inset:0;z-index:1;opacity:.85;}
+#handLeft{transform:translateX(-5%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 53%,transparent 61%);mask-image:linear-gradient(90deg,#000 0%,#000 53%,transparent 61%);}
+#handRight{transform:translateX(5%);-webkit-mask-image:linear-gradient(90deg,transparent 53%,#000 61%,#000 100%);mask-image:linear-gradient(90deg,transparent 53%,#000 61%,#000 100%);}
+.hero-hands-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:57% 56%;}
+.hero-sphere-glow{position:absolute;left:57%;top:56%;width:440px;height:440px;transform:translate(-50%,-50%);
+  border-radius:50%;pointer-events:none;opacity:.5;z-index:2;
+  background:radial-gradient(circle,rgba(255,255,255,.4),rgba(0,229,204,.22) 42%,transparent 72%);filter:blur(20px);}
+#heroSphere{position:absolute;left:57%;top:56%;transform:translate(-50%,-50%);pointer-events:none;z-index:3;display:block;}
+
 /* Home band */
 .home-band{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);position:relative;z-index:1;}
 .bi{padding:1.8rem 2.5rem;border-right:1px solid var(--border);transition:background .25s;position:relative;overflow:hidden;}
@@ -2154,6 +2167,15 @@ overflow-y:auto;
     <h1 class="pg-h1" data-anim data-d="1">Due prodotti core.<br><span class="hl">Una suite completa.</span></h1>
     <p class="pg-body" data-anim data-d="2">SABE e ATLAS sono il cuore di Axxell. Intorno a loro, una suite di strumenti per automatizzare ogni area del tuo business.</p>
   </div>
+
+  <!-- MANI + SFERA DI PARTICELLE -->
+  <div class="srv-hands-wrap">
+    <div class="hero-hand-half" id="handLeft"><img src="hands.png" alt="Mano robotica e mano umana che si incontrano" class="hero-hands-img"></div>
+    <div class="hero-hand-half" id="handRight"><img src="hands.png" alt="" class="hero-hands-img"></div>
+    <div class="hero-sphere-glow" id="heroSphereGlow"></div>
+    <canvas id="heroSphere"></canvas>
+  </div>
+
   <!-- PRODOTTI CORE -->
   <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Prodotti core</div>
@@ -3251,6 +3273,181 @@ window.addEventListener('load', function(){
 });
 </script>
 
-</body>
+<script>
+window.addEventListener('load', function(){
+  var canvas = document.getElementById('heroSphere');
+  if(!canvas || typeof THREE === 'undefined'){ return; }
+
+  var SZ = 440;
+  var renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:true});
+  renderer.setSize(SZ, SZ);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.setClearColor(0x000000, 0);
+  canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.z = 5;
+
+  // ── SFERA — 800 particelle su superficie raggio 1.2 ──────────────
+  var N = 800, R = 1.2;
+  var base = new Float32Array(N*3);
+  var clr  = new Float32Array(N*3);
+
+  for(var i=0;i<N;i++){
+    var phi = Math.acos(1 - 2*(i+0.5)/N);
+    var th  = Math.PI*(1+Math.sqrt(5))*i;
+    base[i*3]  = Math.sin(phi)*Math.cos(th)*R;
+    base[i*3+1]= Math.sin(phi)*Math.sin(th)*R;
+    base[i*3+2]= Math.cos(phi)*R;
+
+    // 10% cyan #00e5cc, resto mix #ffffff / #e0e0e0
+    var rnd=Math.random(), c;
+    if(rnd<0.10)      c=[0,0.898,0.8];
+    else if(rnd<0.55) c=[1,1,1];
+    else              c=[0.878,0.878,0.878];
+    var brt=0.55+Math.random()*0.45;
+    clr[i*3]=c[0]*brt; clr[i*3+1]=c[1]*brt; clr[i*3+2]=c[2]*brt;
+  }
+
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(base,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(clr,3));
+  var group=new THREE.Group();
+  group.add(new THREE.Points(geo,new THREE.PointsMaterial({
+    size:0.035, vertexColors:true, transparent:true, opacity:0.9,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  })));
+
+  // ── 150 linee di connessione tra particelle vicine ───────────────
+  var pairs=[];
+  for(var i=0;i<N && pairs.length<150;i++){
+    var bestJ=-1, bestD=1e9;
+    for(var j=i+1;j<N;j++){
+      var dx=base[i*3]-base[j*3], dy=base[i*3+1]-base[j*3+1], dz=base[i*3+2]-base[j*3+2];
+      var d=dx*dx+dy*dy+dz*dz;
+      if(d<bestD){bestD=d; bestJ=j;}
+    }
+    if(bestJ>=0 && bestD<0.16) pairs.push([i,bestJ]);
+  }
+  var linePos=new Float32Array(pairs.length*6);
+  for(var k=0;k<pairs.length;k++){
+    var a=pairs[k][0], b=pairs[k][1];
+    linePos[k*6]  =base[a*3]; linePos[k*6+1]=base[a*3+1]; linePos[k*6+2]=base[a*3+2];
+    linePos[k*6+3]=base[b*3]; linePos[k*6+4]=base[b*3+1]; linePos[k*6+5]=base[b*3+2];
+  }
+  var lineGeo=new THREE.BufferGeometry();
+  lineGeo.setAttribute('position',new THREE.BufferAttribute(linePos,3));
+  group.add(new THREE.LineSegments(lineGeo,new THREE.LineBasicMaterial({
+    color:0xffffff, transparent:true, opacity:0.14,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  })));
+  scene.add(group);
+
+  // ── ERUZIONI — flussi irregolari tipo protuberanze solari ────────
+  // Ogni eruzione è un arco: le particelle partono da un punto della
+  // superficie, si alzano lungo un'ansa e ricadono su un punto vicino.
+  var FN=600;
+  var fPos =new Float32Array(FN*3);
+  var fClr =new Float32Array(FN*3);
+  var fDirA=new Float32Array(FN*3); // direzione di partenza
+  var fDirB=new Float32Array(FN*3); // direzione di ricaduta
+  var fH   =new Float32Array(FN);   // altezza dell'ansa
+  var fAge =new Float32Array(FN);   // età normalizzata (negativa = in attesa)
+  var fDur =new Float32Array(FN);
+  var fBClr=new Float32Array(FN*3);
+  var fAlive=new Uint8Array(FN);
+  var fFree=[];
+  for(var i=0;i<FN;i++){ fFree.push(i); fPos[i*3]=fPos[i*3+1]=fPos[i*3+2]=999; }
+
+  var fPosAttr=new THREE.BufferAttribute(fPos,3); fPosAttr.setUsage(THREE.DynamicDrawUsage);
+  var fClrAttr=new THREE.BufferAttribute(fClr,3); fClrAttr.setUsage(THREE.DynamicDrawUsage);
+  var fGeo=new THREE.BufferGeometry();
+  fGeo.setAttribute('position',fPosAttr);
+  fGeo.setAttribute('color',fClrAttr);
+  group.add(new THREE.Points(fGeo,new THREE.PointsMaterial({
+    size:0.045, vertexColors:true, transparent:true, opacity:1,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  })));
+
+  function spawnEruption(){
+    var n=25+Math.floor(Math.random()*35);
+    if(fFree.length<n) return;
+    // punto di origine random sulla superficie
+    var phi=Math.acos(1-2*Math.random()), th=Math.random()*Math.PI*2;
+    var ax=Math.sin(phi)*Math.cos(th), ay=Math.sin(phi)*Math.sin(th), az=Math.cos(phi);
+    // direzione tangente random per il punto di ricaduta
+    var rx=Math.random()-0.5, ry=Math.random()-0.5, rz=Math.random()-0.5;
+    var tx=ay*rz-az*ry, ty=az*rx-ax*rz, tz=ax*ry-ay*rx;
+    var tl=Math.sqrt(tx*tx+ty*ty+tz*tz)||1; tx/=tl; ty/=tl; tz/=tl;
+    var ang=0.35+Math.random()*0.75;
+    var bx=ax*Math.cos(ang)+tx*Math.sin(ang);
+    var by=ay*Math.cos(ang)+ty*Math.sin(ang);
+    var bz=az*Math.cos(ang)+tz*Math.sin(ang);
+    var h=0.25+Math.random()*0.6;
+    var rn=Math.random();
+    var col = rn<0.25 ? [0,0.898,0.8] : rn<0.7 ? [1,1,1] : [0.878,0.878,0.878];
+    for(var k=0;k<n;k++){
+      var s=fFree.pop();
+      var jit=0.07;
+      fDirA[s*3]=ax+(Math.random()-0.5)*jit; fDirA[s*3+1]=ay+(Math.random()-0.5)*jit; fDirA[s*3+2]=az+(Math.random()-0.5)*jit;
+      fDirB[s*3]=bx+(Math.random()-0.5)*jit; fDirB[s*3+1]=by+(Math.random()-0.5)*jit; fDirB[s*3+2]=bz+(Math.random()-0.5)*jit;
+      fH[s]=h*(0.75+Math.random()*0.5);
+      fDur[s]=1.4+Math.random()*1.8;
+      fAge[s]=-k*0.025-Math.random()*0.02; // partenza scaglionata: effetto flusso
+      var brt=0.5+Math.random()*0.5;
+      fBClr[s*3]=col[0]*brt; fBClr[s*3+1]=col[1]*brt; fBClr[s*3+2]=col[2]*brt;
+      fAlive[s]=1;
+    }
+  }
+
+  var glow=document.getElementById('heroSphereGlow');
+  var nextEr=0.3;
+  var clock=new THREE.Clock(), prev=0;
+
+  (function animate(){
+    requestAnimationFrame(animate);
+    var t=clock.getElapsedTime(), dt=Math.min(t-prev,0.05); prev=t;
+
+    // rotazione lenta della sfera
+    group.rotation.y+=0.004;
+    group.rotation.x+=0.001;
+
+    // nuove eruzioni a intervalli irregolari
+    if(t>nextEr){ spawnEruption(); nextEr=t+0.4+Math.random()*1.1; }
+
+    // aggiornamento flussi
+    for(var i=0;i<FN;i++){
+      if(!fAlive[i]) continue;
+      fAge[i]+=dt/fDur[i];
+      var a=fAge[i];
+      if(a<0) continue; // ancora in attesa nello scaglionamento
+      if(a>=1){
+        fAlive[i]=0; fFree.push(i);
+        fPos[i*3]=fPos[i*3+1]=fPos[i*3+2]=999;
+        fClr[i*3]=fClr[i*3+1]=fClr[i*3+2]=0;
+        continue;
+      }
+      // direzione interpolata lungo l'arco + raggio ad ansa
+      var dx=fDirA[i*3]+(fDirB[i*3]-fDirA[i*3])*a;
+      var dy=fDirA[i*3+1]+(fDirB[i*3+1]-fDirA[i*3+1])*a;
+      var dz=fDirA[i*3+2]+(fDirB[i*3+2]-fDirA[i*3+2])*a;
+      var dl=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+      var r=R+fH[i]*Math.sin(Math.PI*a);
+      fPos[i*3]=dx/dl*r; fPos[i*3+1]=dy/dl*r; fPos[i*3+2]=dz/dl*r;
+      // dissolvenza dolce in entrata e uscita
+      var fade=Math.sin(Math.PI*a);
+      fClr[i*3]=fBClr[i*3]*fade; fClr[i*3+1]=fBClr[i*3+1]*fade; fClr[i*3+2]=fBClr[i*3+2]*fade;
+    }
+    fPosAttr.needsUpdate=true;
+    fClrAttr.needsUpdate=true;
+
+    // leggero respiro del glow
+    if(glow) glow.style.opacity=(0.45+0.12*Math.sin(t*0.9)+0.05*Math.sin(t*2.3)).toFixed(3);
+
+    renderer.render(scene,camera);
+  })();
+});
+</script></body>
 </body>
 </html>
