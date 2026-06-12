@@ -146,8 +146,10 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 
 /* ── SERVIZI — mani + sfera con eruzioni, sfumata nel mezzo ── */
 .srv-hands-wrap{height:72vh;min-height:480px;position:relative;z-index:1;overflow:hidden;
-  -webkit-mask-image:radial-gradient(ellipse 70% 72% at 50% 50%,#000 48%,transparent 97%);
-  mask-image:radial-gradient(ellipse 70% 72% at 50% 50%,#000 48%,transparent 97%);}
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 24%,#000 76%,transparent 100%),linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(180deg,transparent 0,#000 24%,#000 76%,transparent 100%),linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  mask-composite:intersect;}
 .hero-hand-half{position:absolute;inset:0;z-index:1;opacity:.85;}
 #handLeft{transform:translateX(-5%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 53%,transparent 61%);mask-image:linear-gradient(90deg,#000 0%,#000 53%,transparent 61%);}
 #handRight{transform:translateX(5%);-webkit-mask-image:linear-gradient(90deg,transparent 53%,#000 61%,#000 100%);mask-image:linear-gradient(90deg,transparent 53%,#000 61%,#000 100%);}
@@ -159,8 +161,8 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 @media(max-width:768px){
   /* sezione più bassa: il crop orizzontale dell'immagine si riduce e le mani restano visibili */
   .srv-hands-wrap{height:44vh;min-height:300px;max-height:420px;
-    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 50%,#000 52%,transparent 100%);
-    mask-image:radial-gradient(ellipse 90% 80% at 50% 50%,#000 52%,transparent 100%);}
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 20%,#000 80%,transparent 100%),linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+    mask-image:linear-gradient(180deg,transparent 0,#000 20%,#000 80%,transparent 100%),linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);}
   .hero-sphere-glow{width:280px;height:280px;}
   #heroSphere{width:280px!important;height:280px!important;}
 }
