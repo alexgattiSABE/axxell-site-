@@ -942,7 +942,7 @@ overflow-y:auto;
 .pchi-icon{width:32px;height:32px;border-radius:6px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pchi-icon svg{width:14px;height:14px;color:var(--cyan);}
 .pchi-name{font-size:.88rem;font-weight:500;color:var(--white);}
-@media(max-width:700px){.pchi-g{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.pchi-g{grid-template-columns:1fr 1fr;}.sys-mods-g{grid-template-columns:1fr 1fr;}}
 
 /* ─── PRODOTTI card upgrade ─── */
 .hp-c{padding:3rem 2.8rem!important;}
@@ -953,6 +953,17 @@ overflow-y:auto;
 .hp-desc{font-size:.85rem!important;color:var(--muted);line-height:1.8!important;}
 
 /* ─── ECOSISTEMA ─── */
+/* System modules grid */
+.sys-mods-g{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
+.sys-mod-c{background:var(--bg2);padding:1.6rem 1.8rem;transition:background .25s;position:relative;overflow:hidden;}
+.sys-mod-c:hover{background:var(--bg3);}
+.sys-mod-c::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);transform:scaleX(0);transition:transform .4s;transform-origin:left;}
+.sys-mod-c:hover::after{transform:scaleX(1);}
+.sys-mod-icon{width:28px;height:28px;margin-bottom:.9rem;color:rgba(0,212,255,.45);}
+.sys-mod-icon svg{width:100%;height:100%;}
+.sys-mod-name{font-weight:600;font-size:.88rem;color:var(--white);margin-bottom:.3rem;}
+.sys-mod-desc{font-size:.82rem;font-weight:400;color:var(--muted);line-height:1.65;}
+
 .eco-sec{background:#0c0e14;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:4rem 0;}
 .eco-cols{display:grid;grid-template-columns:1fr 80px 1fr;gap:1.5rem;align-items:center;margin-top:2.8rem;}
 .eco-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2.2rem;position:relative;overflow:hidden;}
@@ -1448,7 +1459,7 @@ overflow-y:auto;
             <label class="fchk"><input type="checkbox"><span>Integrazioni custom</span></label>
           </div>
         </div>
-        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" placeholder="Descrivi la tua attività e cosa cerchi..." rows="3"></textarea></div>
+        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare..." rows="3"></textarea></div>
         <div class="fpriv">
           <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
         </div>
@@ -1463,23 +1474,90 @@ overflow-y:auto;
   </div>
 </div>
 
+<!-- ══ MODAL ATLAS PRIVATI ══ -->
+<div class="prev-overlay" id="prevAtlasOverlay">
+  <div class="prev-modal">
+    <button class="prev-close" onclick="closePrevAtlas()">✕</button>
+    <div class="prev-inner">
+      <div class="prev-head">
+        <div class="prev-mono">// ATLAS · privati e professionisti</div>
+        <h2 class="prev-h">Inizia con <span class="hl">ATLAS</span></h2>
+        <p class="prev-sub">Compila il modulo — ti contatteremo entro 24 ore con tutti i dettagli. Nessun impegno.</p>
+      </div>
+      <form class="form" id="prevAtlasForm" onsubmit="submitPrevAtlas(event)">
+        <div class="form-row">
+          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" placeholder="Mario" required></div>
+          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" placeholder="Rossi" required></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" placeholder="mario@email.it" required></div>
+          <div class="fg"><label class="fl">Telefono</label><input type="tel" class="fi" placeholder="+39 333 000 0000"></div>
+        </div>
+        <div class="fg">
+          <label class="fl">Come vuoi usare ATLAS?</label>
+          <select class="fi" id="atlasUsoSelect" onchange="toggleAtlasBiz(this.value)">
+            <option value="" disabled selected>Seleziona</option>
+            <option>Produttività personale</option>
+            <option>Libero professionista / freelance</option>
+            <option value="sabe">Gestione attività con SABE</option>
+            <option>Altro</option>
+          </select>
+        </div>
+        <!-- Campi extra — visibili solo con "Gestione attività con SABE" -->
+        <div id="atlasBizFields" style="display:none;border:1px solid rgba(0,212,255,.12);border-radius:8px;padding:1.4rem;background:rgba(0,212,255,.03);flex-direction:column;gap:1.2rem;">
+          <p style="font-family:var(--mono);font-size:.62rem;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:-.2rem;">// dati attività</p>
+          <div class="fg"><label class="fl">Nome attività <span class="req">*</span></label><input type="text" class="fi" id="atlasBizName" placeholder="Es. Ristorante Da Mario"></div>
+          <div class="form-row">
+            <div class="fg">
+              <label class="fl">Tipo di attività <span class="req">*</span></label>
+              <select class="fi" id="atlasBizTipo">
+                <option value="" disabled selected>Seleziona il settore</option>
+                <option>Ristorante / Pizzeria / Bar</option>
+                <option>Salute e benessere</option>
+                <option>Sport e fitness</option>
+                <option>Hotel / B&B / Agriturismo</option>
+                <option>Stabilimento balneare / Lido</option>
+                <option>Studio professionale</option>
+                <option>Automotive / Officina</option>
+                <option>E-commerce / Retail</option>
+                <option>Altro</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Partita IVA <span class="req">*</span></label><input type="text" class="fi" id="atlasBizIva" placeholder="IT12345678901"></div>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" placeholder="Descrivi brevemente la tua attività o il contesto in cui useresti ATLAS: lavoro, routine, obiettivi..." rows="3"></textarea></div>
+        <div class="fpriv">
+          <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
+        </div>
+        <button type="submit" class="btn-p f-submit">Invia richiesta a info@axxell.ai →</button>
+      </form>
+      <div class="f-success" id="fAtlasSuccess">
+        <div class="fs-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h3>Richiesta inviata!</h3>
+        <p>Ti contatteremo entro 24 ore con tutti i dettagli su ATLAS.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ HOME ══ -->
 <div id="p-home" class="page active">
   <div class="home-hero">
     <div class="home-left">
-      <div class="eyebrow"><div class="eyebrow-line"></div><div class="eyebrow-text">Automazione AI per PMI italiane</div><div class="eyebrow-dot"></div></div>
+      <div class="eyebrow"><div class="eyebrow-line"></div><div class="eyebrow-text">Axxell System · Ecosistema AI per PMI italiane</div><div class="eyebrow-dot"></div></div>
       <h1 class="hero-h1">
-        <span class="line"><span class="li" id="ht1">L'AI che risponde,</span></span>
-        <span class="line"><span class="li" id="ht2">ascolta e <span class="hl">agisce.</span></span></span>
+        <span class="line"><span class="li" id="ht1">Axxell System.</span></span>
+        <span class="line"><span class="li" id="ht2">Il tuo ecosistema AI <span class="hl">completo.</span></span></span>
       </h1>
-      <p class="hero-body" id="hb">SABE risponde alle chiamate per la tua attività, 24 ore su 24. ATLAS lavora al tuo fianco sul Mac: gestisce la giornata, analizza il business e trascrive ogni riunione in automatico. Due prodotti AI. Un ecosistema per far crescere la tua attività.</p>
+      <p class="hero-body" id="hb">SABE risponde alle chiamate 24/7. ATLAS gestisce e analizza il tuo business. Sei moduli complementari automatizzano clienti, marketing e operazioni. Un sistema unico, integrato e sempre attivo — pensato per le PMI italiane.</p>
       <div class="hero-btns" id="hbt">
-        <a href="#" class="btn-p" onclick="return go('sabe'),sDemo()">Prova SABE →</a>
-        <a href="#" class="btn-g" onclick="return go('atlas')">Scopri ATLAS</a>
+        <a href="#" class="btn-p" onclick="return go('servizi')">Scopri il sistema →</a>
+        <a href="#" class="btn-g" onclick="openPrev();return false;">Richiedi preventivo</a>
       </div>
       <div class="hero-stats" id="hst">
         <div><div class="stat-n">24/7</div><div class="stat-l">SABE sempre attivo</div></div>
-        <div><div class="stat-n">&lt;1s</div><div class="stat-l">Risposta ATLAS</div></div>
+        <div><div class="stat-n">8</div><div class="stat-l">Moduli nel sistema</div></div>
         <div><div class="stat-n">127</div><div class="stat-l">Attività attive</div></div>
       </div>
     </div>
@@ -1503,7 +1581,7 @@ overflow-y:auto;
     <div class="inner">
       <div class="mono-tag" style="margin-bottom:.8rem;">Per chi è</div>
       <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.025em;color:var(--white);margin-bottom:.4rem;" data-anim data-d="1">Pensato per chi lavora ogni giorno.</h2>
-      <p style="font-size:.9rem;color:var(--muted);line-height:1.8;max-width:560px;margin-bottom:2rem;">SABE e ATLAS si adattano a qualsiasi attività che riceve clienti o gestisce appuntamenti.</p>
+      <p style="font-size:.9rem;color:var(--muted);line-height:1.8;max-width:560px;margin-bottom:2rem;">Axxell System si adatta a qualsiasi attività che riceve clienti o gestisce appuntamenti.</p>
       <div class="pchi-g">
         <div class="pchi-c"><div class="pchi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div><div class="pchi-name">Ristoranti e locali</div></div>
         <div class="pchi-c"><div class="pchi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div><div class="pchi-name">Studi medici e cliniche</div></div>
@@ -1517,19 +1595,20 @@ overflow-y:auto;
   </div>
 
 
-  <!-- HOME PRODUCTS -->
+  <!-- AXXELL SYSTEM COMPONENTS -->
   <div class="home-products">
     <div class="inner">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
         <div>
-          <div class="mono-tag" style="margin-bottom:.4rem;opacity:1;transform:none;">I nostri prodotti</div>
-          <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.025em;color:#f0f0f6;">I nostri prodotti AI.</h2>
+          <div class="mono-tag" style="margin-bottom:.4rem;opacity:1;transform:none;">Axxell System</div>
+          <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.025em;color:#f0f0f6;">I componenti del sistema.</h2>
         </div>
-        <a href="#" class="btn-g" style="flex-shrink:0;" onclick="return go('servizi')">Tutti i servizi →</a>
+        <a href="#" class="btn-g" style="flex-shrink:0;" onclick="return go('servizi')">Vedi tutto →</a>
       </div>
-      <div class="hp-g">
+      <!-- Core: SABE + ATLAS -->
+      <div class="hp-g" style="margin-bottom:1px;">
         <div class="hp-c" onclick="go('sabe')">
-          <span class="hp-badge-sabe">Prodotto core 01</span>
+          <span class="hp-badge-sabe">Core 01 · Agente vocale</span>
           <div class="hp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6 6"/></svg></div>
           <div class="hp-name" style="color:#f0f0f6;">SABE</div>
           <div class="hp-sub" style="color:rgba(240,240,246,.55);">Agente vocale AI · 24/7</div>
@@ -1542,7 +1621,7 @@ overflow-y:auto;
           <a href="#" class="hp-link" onclick="return go('sabe')">Scopri SABE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg></a>
         </div>
         <div class="hp-c" onclick="go('atlas')">
-          <span class="hp-badge-atlas">Prodotto core 02</span>
+          <span class="hp-badge-atlas">Core 02 · Assistente AI</span>
           <div class="hp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
           <div class="hp-name" style="color:#f0f0f6;">ATLAS</div>
           <div class="hp-sub" style="color:rgba(240,240,246,.55);">Assistente AI personale · macOS</div>
@@ -1555,6 +1634,42 @@ overflow-y:auto;
           <a href="#" class="hp-link" onclick="return go('atlas')">Scopri ATLAS <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg></a>
         </div>
       </div>
+      <!-- Moduli complementari -->
+      <div style="margin-top:2.5rem;">
+        <div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:1.2rem;">Moduli complementari inclusi nel sistema</div>
+        <div class="sys-mods-g">
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="sys-mod-name">Chatbot AI</div>
+            <div class="sys-mod-desc">Assistente virtuale per sito e WhatsApp. Qualifica lead in tempo reale.</div>
+          </div>
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="sys-mod-name">CRM Intelligente</div>
+            <div class="sys-mod-desc">Gestione clienti centralizzata. Contatti aggiornati dopo ogni interazione.</div>
+          </div>
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+            <div class="sys-mod-name">Lead Generation AI</div>
+            <div class="sys-mod-desc">Campagne automatizzate. Prospect qualificati contattati al momento giusto.</div>
+          </div>
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <div class="sys-mod-name">Marketing Automation</div>
+            <div class="sys-mod-desc">Email, SMS e notifiche personalizzate per segmento. Fidelizzazione automatica.</div>
+          </div>
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+            <div class="sys-mod-name">Inventario Intelligente</div>
+            <div class="sys-mod-desc">Gestione scorte vocale. Notifiche automatiche e briefing mattutino con ATLAS.</div>
+          </div>
+          <div class="sys-mod-c">
+            <div class="sys-mod-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div class="sys-mod-name">Calendario Dedicato</div>
+            <div class="sys-mod-desc">Pannello prenotazioni SABE. Ogni appuntamento con tutti i dettagli del cliente.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1562,15 +1677,15 @@ overflow-y:auto;
   <div class="eco-sec">
     <div class="inner">
       <div style="text-align:center;">
-        <div class="mono-tag" style="justify-content:center;margin-bottom:.8rem;">Ecosistema</div>
-        <h2 class="sec-h" style="margin-bottom:.6rem;">Due agenti. <span class="hl">Un ecosistema.</span></h2>
-        <p style="font-size:.9rem;color:var(--muted);line-height:1.8;max-width:520px;margin:0 auto;">SABE e ATLAS non sono prodotti separati. Comunicano, si completano e lavorano insieme per darti il controllo totale del tuo business.</p>
+        <div class="mono-tag" style="justify-content:center;margin-bottom:.8rem;">Axxell System</div>
+        <h2 class="sec-h" style="margin-bottom:.6rem;">Un sistema. <span class="hl">Otto componenti. Zero lacune.</span></h2>
+        <p style="font-size:.9rem;color:var(--muted);line-height:1.8;max-width:540px;margin:0 auto;">I moduli dell'Axxell System comunicano tra loro in tempo reale — ogni dato raccolto da SABE è immediatamente disponibile per ATLAS e tutti gli altri strumenti del sistema.</p>
       </div>
       <div class="eco-cols">
         <div class="eco-box sabe">
-          <div class="eco-lbl sabe">SABE · Front-end</div>
+          <div class="eco-lbl sabe">SABE · Front-end del sistema</div>
           <div class="eco-box-title">Gestisce il rapporto con i clienti</div>
-          <div class="eco-box-desc">Risponde ai clienti, prende prenotazioni, non perde mai una chiamata. Registra ogni dato nel calendario dedicato — pronto per ATLAS da analizzare.</div>
+          <div class="eco-box-desc">Risponde ai clienti, prende prenotazioni, non perde mai una chiamata. Registra ogni dato nel calendario dedicato — disponibile per ATLAS e tutti i moduli.</div>
         </div>
         <div class="eco-mid">
           <div class="eco-mid-line"></div>
@@ -1578,9 +1693,9 @@ overflow-y:auto;
           <div class="eco-mid-line"></div>
         </div>
         <div class="eco-box atlas">
-          <div class="eco-lbl atlas">ATLAS · Back-end</div>
+          <div class="eco-lbl atlas">ATLAS · Back-end del sistema</div>
           <div class="eco-box-title">Analizza e organizza il tuo business</div>
-          <div class="eco-box-desc">Legge i dati SABE, organizza la giornata, trascrive riunioni e aggiorna l'inventario — tutto con la voce. Il cervello che trasforma i dati in decisioni.</div>
+          <div class="eco-box-desc">Legge i dati SABE, organizza la giornata, trascrive riunioni e coordina inventario, CRM e marketing — il cervello che trasforma i dati in decisioni.</div>
         </div>
       </div>
     </div>
@@ -1589,33 +1704,39 @@ overflow-y:auto;
   <!-- Ticker -->
   <div class="ticker">
     <div class="ticker-inner">
+      <span class="td"><span class="tdot"></span>AXXELL SYSTEM</span>
       <span class="td"><span class="tdot"></span>SABE — AGENTE VOCALE AI</span>
       <span class="td"><span class="tdot"></span>ATLAS — ASSISTENTE AI PERSONALE</span>
-      <span class="td"><span class="tdot"></span>24/7 DISPONIBILE</span>
-      <span class="td"><span class="tdot"></span>PRODUTTIVITÀ VOCALE</span>
-      <span class="td"><span class="tdot"></span>CALENDARIO DEDICATO</span>
+      <span class="td"><span class="tdot"></span>CHATBOT AI — WHATSAPP & WEB</span>
+      <span class="td"><span class="tdot"></span>CRM INTELLIGENTE</span>
+      <span class="td"><span class="tdot"></span>LEAD GENERATION AI</span>
+      <span class="td"><span class="tdot"></span>MARKETING AUTOMATION</span>
       <span class="td"><span class="tdot"></span>INVENTARIO INTELLIGENTE</span>
+      <span class="td"><span class="tdot"></span>CALENDARIO DEDICATO</span>
       <span class="td"><span class="tdot"></span>GDPR COMPLIANT</span>
+      <span class="td"><span class="tdot"></span>AXXELL SYSTEM</span>
       <span class="td"><span class="tdot"></span>SABE — AGENTE VOCALE AI</span>
       <span class="td"><span class="tdot"></span>ATLAS — ASSISTENTE AI PERSONALE</span>
-      <span class="td"><span class="tdot"></span>24/7 DISPONIBILE</span>
-      <span class="td"><span class="tdot"></span>PRODUTTIVITÀ VOCALE</span>
-      <span class="td"><span class="tdot"></span>CALENDARIO DEDICATO</span>
+      <span class="td"><span class="tdot"></span>CHATBOT AI — WHATSAPP & WEB</span>
+      <span class="td"><span class="tdot"></span>CRM INTELLIGENTE</span>
+      <span class="td"><span class="tdot"></span>LEAD GENERATION AI</span>
+      <span class="td"><span class="tdot"></span>MARKETING AUTOMATION</span>
       <span class="td"><span class="tdot"></span>INVENTARIO INTELLIGENTE</span>
+      <span class="td"><span class="tdot"></span>CALENDARIO DEDICATO</span>
       <span class="td"><span class="tdot"></span>GDPR COMPLIANT</span>
     </div>
   </div>
 
   <!-- Home band -->
   <div class="home-band">
-    <div class="bi in"><div class="bi-l">Prodotto 01 · Core</div><div class="bi-v">SABE — Agente vocale AI</div><div class="bi-desc">24/7 disponibile · Prenotazioni, info e chiamate in autonomia</div></div>
-    <div class="bi in"><div class="bi-l">Prodotto 02 · Core</div><div class="bi-v">ATLAS — Assistente AI per Mac</div><div class="bi-desc">Produttività vocale · Analisi business · Trascrizione</div></div>
+    <div class="bi in"><div class="bi-l">Axxell System · Core</div><div class="bi-v">SABE + ATLAS — Due agenti AI</div><div class="bi-desc">Vocale 24/7 · Analisi business · Briefing automatico · Trascrizione</div></div>
+    <div class="bi in"><div class="bi-l">Axxell System · Moduli</div><div class="bi-v">6 moduli complementari inclusi</div><div class="bi-desc">Chatbot · CRM · Lead Gen · Marketing · Inventario · Calendario</div></div>
     <div class="bi in"><div class="bi-l">Settori</div><div class="bi-v">Qualsiasi attività commerciale</div><div class="bi-desc">Ristoranti · Hotel · Studi medici · Palestre · PMI</div></div>
   </div>
 
   <div class="cta-band in">
-    <h2 class="cta-h">SABE e ATLAS sono pronti.<br><span class="hl">Qual è il tuo punto di partenza?</span></h2>
-    <p class="cta-p">Raccontaci la tua attività in una chiamata gratuita. Ti diciamo quali prodotti fanno al caso tuo — e quanto costano.</p>
+    <h2 class="cta-h">Axxell System è pronto.<br><span class="hl">Inizia oggi.</span></h2>
+    <p class="cta-p">Raccontaci la tua attività in una chiamata gratuita. Ti costruiamo il sistema su misura — e ti diciamo esattamente quanto costa attivarlo.</p>
     <a href="#" class="btn-p" onclick="openPrev();return false;">Richiedi preventivo gratuito →</a>
   </div>
     <div class="contact-bar">
@@ -1808,6 +1929,7 @@ overflow-y:auto;
         <div class="rc"><span class="rc-n" id="lc">30</span><p class="rc-l">chiamate perse al mese</p></div>
         <div class="rc"><span class="rc-n" id="lr">€1.500</span><p class="rc-l">fatturato perso ogni mese</p></div>
         <div class="rc rhl"><span class="rc-n" id="rec">€1.350</span><p class="rc-l">recuperabile con Sabe</p></div>
+        <div class="rc rhl" style="grid-column:1/-1;"><span class="rc-n" id="rec-annual">€16.200</span><p class="rc-l">recupero annuale stimato (×12)</p></div>
       </div>
       <p class="roi-note">// stima basata su tasso di recupero 90%</p>
     </div>
@@ -1825,7 +1947,7 @@ overflow-y:auto;
       <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div><div class="sc-title">Professionisti</div><div class="sc-desc">Avvocati, commercialisti, notai e consulenti. Gestione agenda e filtro richieste senza interruzioni.</div></div>
       <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="sc-title">Hotel e strutture ricettive</div><div class="sc-desc">Hotel, B&B, agriturismi. Disponibilità camere, prenotazioni e informazioni ospiti — anche di notte.</div></div>
       <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22V12"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/><path d="M6 12a6 6 0 0 1 12 0"/></svg></div><div class="sc-title">Stabilimenti e lidi balneari</div><div class="sc-desc">Lidi e beach club. Prenotazioni ombrelloni, lettini, cabine ed eventi gestiti automaticamente per tutta la stagione.</div></div>
-      <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="sc-title">Automotive</div><div class="sc-desc">Officine e carrozzerie. Prenota tagliandi e libera il personale dal telefono.</div></div>
+      <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="sc-title">Automotive</div><div class="sc-desc">Officine, carrozzerie e concessionari. Prenota tagliandi e appuntamenti, libera il personale dal telefono.</div></div>
       <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2l1 5h10l1-5"/><path d="M3 7h18l-2 14H5L3 7z"/><path d="M9 11a3 3 0 0 0 6 0"/></svg></div><div class="sc-title">Retail e negozi</div><div class="sc-desc">Boutique, showroom e negozi fisici. Sabe risponde su orari, disponibilità prodotti, appuntamenti, ordini e richieste clienti.</div></div>
       <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><div class="sc-title">Qualsiasi altra attività</div><div class="sc-desc">Sabe si configura per qualsiasi business che riceve chiamate. Se hai un telefono, Sabe può rispondere al posto tuo.</div></div>
     </div>
@@ -1856,7 +1978,7 @@ overflow-y:auto;
         <div class="crow"><span class="cl">Orario operativo</span><span class="cv gv">24/7 — 365 giorni</span></div>
         <div class="crow"><span class="cl">Chiamate simultanee</span><span class="cv gv">Illimitate</span></div>
         <div class="crow"><span class="cl">Errori di registrazione</span><span class="cv gv">Zero</span></div>
-        <div class="ctot gt"><span>Risparmio annuale + fatturato recuperato</span><span class="ctot-v">€35.000+ all'anno</span></div>
+        <div class="ctot gt"><span>Risparmio annuale + fatturato recuperato</span><span class="ctot-v">€40.000+ all'anno</span></div>
       </div>
     </div>
   </div></div>
@@ -2173,9 +2295,10 @@ overflow-y:auto;
     <div class="mono-tag" data-anim>La nostra missione</div>
     <div class="mani-wrap" data-anim data-d="2">
       <div class="mani-line"><span class="mani-num">01</span><p class="mani-text">Crediamo che <strong>ogni attività commerciale</strong> meriti gli stessi strumenti AI delle grandi corporation — senza budget enterprise, senza team tecnici dedicati.</p></div>
-      <div class="mani-line"><span class="mani-num">02</span><p class="mani-text">Crediamo che <strong>la tecnologia debba essere invisibile</strong> — il cliente chiama, Sabe risponde, la prenotazione è confermata. Zero attrito, zero complessità.</p></div>
-      <div class="mani-line"><span class="mani-num">03</span><p class="mani-text">Crediamo che <strong>automatizzare non significhi disumanizzare</strong> — Sabe libera le persone dal telefono perché possano fare ciò che sanno fare meglio.</p></div>
-      <div class="mani-line"><span class="mani-num">04</span><p class="mani-text">Crediamo che <strong>il futuro delle imprese</strong> passi dall'AI — e vogliamo essere il partner che rende quel futuro accessibile oggi, non tra cinque anni.</p></div>
+      <div class="mani-line"><span class="mani-num">02</span><p class="mani-text">Crediamo che <strong>la tecnologia debba essere invisibile</strong> — il cliente chiama, il sistema risponde, registra e analizza. Zero attrito, zero complessità visibile.</p></div>
+      <div class="mani-line"><span class="mani-num">03</span><p class="mani-text">Crediamo che <strong>automatizzare non significhi disumanizzare</strong> — il sistema libera le persone dalle attività meccaniche perché possano fare ciò che sanno fare meglio.</p></div>
+      <div class="mani-line"><span class="mani-num">04</span><p class="mani-text">Crediamo che <strong>un sistema completo valga più di mille strumenti separati</strong> — SABE, ATLAS e i sei moduli sono progettati per lavorare insieme, non uno alla volta.</p></div>
+      <div class="mani-line"><span class="mani-num">05</span><p class="mani-text">Crediamo che <strong>il futuro delle imprese</strong> passi dall'AI — e vogliamo essere il partner che rende quel futuro accessibile oggi, non tra cinque anni.</p></div>
     </div>
   </div></div>
 
@@ -2251,9 +2374,9 @@ overflow-y:auto;
 <div id="p-atlas" class="page">
   <!-- HERO -->
   <div class="pg-hero">
-    <div class="pg-mono" data-anim>Assistente AI personale · macOS</div>
-    <h1 class="pg-h1" data-anim data-d="1">ATLAS — il tuo assistente <span class="hl">AI personale.</span></h1>
-    <p class="pg-body" data-anim data-d="2">Ascolta, capisce e agisce. Dal tuo Mac, in tempo reale.</p>
+    <div class="pg-mono" data-anim>Agente AI per il lavoro · macOS</div>
+    <h1 class="pg-h1" data-anim data-d="1">ATLAS — l'agente AI <span class="hl">dedicato al tuo lavoro.</span></h1>
+    <p class="pg-body" data-anim data-d="2">Gestisce il tuo tempo, organizza le priorità e agisce in tempo reale — tutto con la voce, dal tuo Mac.</p>
     <p style="font-size:.75rem;color:var(--dim);font-family:var(--mono);letter-spacing:.1em;margin-top:1rem;" data-anim data-d="4">Disponibile per macOS · Windows in arrivo</p>
   </div>
 
@@ -2379,7 +2502,7 @@ overflow-y:auto;
     <div class="at-tier-num">// 01</div>
     <div class="at-tier-info">
       <div class="at-tier-title">ATLAS per privati e professionisti</div>
-      <div class="at-tier-sub">Produttività, automazione, privacy. Dal tuo Mac.</div>
+      <div class="at-tier-sub">Tempo, organizzazione e lavoro. Dal tuo Mac.</div>
     </div>
     <div class="at-tier-line"></div>
   </div>
@@ -2416,12 +2539,20 @@ overflow-y:auto;
         <div class="at-title">Analisi e proiezioni</div>
         <div class="at-desc">Chiedi ad ATLAS com'è andato il mese, quali giorni rendono di più, dove perdi tempo. Ottieni proiezioni sull'andamento della tua attività — tutto in voce, senza aprire un foglio di calcolo.</div>
         <div class="at-examples"><div class="at-ex">"Com'è andato questo mese?"</div><div class="at-ex">"Quando sono più produttivo?"</div></div>
+        <span style="display:inline-block;margin-top:.8rem;font-family:var(--mono);font-size:.58rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:.22rem .65rem;border-radius:3px;background:rgba(255,92,92,.08);color:var(--red);border:1px solid rgba(255,92,92,.22);">Incluso solo con pacchetto SABE</span>
       </div>
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
         <div class="at-title">Privacy totale</div>
         <div class="at-desc">Gira in locale sul tuo Mac. I dati non lasciano mai il tuo computer. Nessun cloud obbligatorio, nessuna sorveglianza.</div>
       </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2.5rem;padding-top:2rem;border-top:1px solid var(--border);" data-anim data-d="4">
+      <div>
+        <p style="font-size:.92rem;color:var(--white);font-weight:600;margin-bottom:.25rem;">Pronto a iniziare con ATLAS?</p>
+        <p style="font-size:.82rem;color:var(--muted);">Nessuna partita IVA richiesta. Ti rispondiamo entro 24 ore.</p>
+      </div>
+      <a href="#" class="btn-p" style="flex-shrink:0;" onclick="openPrevAtlas();return false;">Richiedi ATLAS →</a>
     </div>
   </div></div>
   <hr class="sep">
@@ -2575,7 +2706,7 @@ overflow-y:auto;
   <!-- CTA -->
   <div class="cta-band" data-anim>
     <h2 class="cta-h">Pronto a lavorare diversamente?</h2>
-    <p class="cta-p">ATLAS è disponibile per macOS. Contattaci per una demo personalizzata.</p>
+    <p class="cta-p">ATLAS è disponibile per macOS. Scopri come può trasformare il tuo modo di gestire il tempo e il lavoro.</p>
     <a href="#" class="btn-p" onclick="openPrev();return false;">Richiedi un preventivo →</a>
   </div>
   <div class="contact-bar">
@@ -2627,6 +2758,27 @@ function submitPrev(e){
   setTimeout(function(){
     document.getElementById('prevForm').style.display='none';
     document.getElementById('fSuccess').classList.add('show');
+  },1000);
+}
+function openPrevAtlas(){document.getElementById('prevAtlasOverlay').classList.add('open');}
+function closePrevAtlas(){document.getElementById('prevAtlasOverlay').classList.remove('open');}
+document.getElementById('prevAtlasOverlay').addEventListener('click',function(e){if(e.target===this)closePrevAtlas();});
+function toggleAtlasBiz(val){
+  var box=document.getElementById('atlasBizFields');
+  var nome=document.getElementById('atlasBizName');
+  var tipo=document.getElementById('atlasBizTipo');
+  var iva=document.getElementById('atlasBizIva');
+  var isSabe=(val==='sabe');
+  box.style.display=isSabe?'flex':'none';
+  nome.required=isSabe; tipo.required=isSabe; iva.required=isSabe;
+}
+function submitPrevAtlas(e){
+  e.preventDefault();
+  var btn=e.target.querySelector('button[type=submit]');
+  btn.disabled=true;btn.textContent='Invio in corso...';
+  setTimeout(function(){
+    document.getElementById('prevAtlasForm').style.display='none';
+    document.getElementById('fAtlasSuccess').classList.add('show');
   },1000);
 }
 
@@ -2683,6 +2835,7 @@ function roi(){
   document.getElementById('lc').textContent=lc;
   document.getElementById('lr').textContent='€'+lr.toLocaleString('it-IT');
   document.getElementById('rec').textContent='€'+rc.toLocaleString('it-IT');
+  document.getElementById('rec-annual').textContent='€'+(rc*12).toLocaleString('it-IT');
 }
 ['calls','lost','val'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('input',roi);});
 
