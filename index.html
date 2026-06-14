@@ -1028,6 +1028,7 @@ overflow-y:auto;
 .at-who-tag::before{content:'';width:12px;height:1px;background:var(--cyan);}
 .at-who-h{font-size:1.05rem;font-weight:700;color:var(--white);margin-bottom:.7rem;letter-spacing:-.02em;}
 .at-who-p{font-size:.88rem;color:var(--muted);line-height:1.8;}
+.sg-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 .at-g{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 .at-c{background:var(--bg2);padding:2rem 1.7rem;transition:background .25s;position:relative;overflow:hidden;}
 .at-c:hover{background:var(--bg3);}
@@ -1072,6 +1073,7 @@ overflow-y:auto;
 .at-tier-sub{font-size:.84rem;color:var(--muted);}
 .at-tier-line{display:none;}
 @media(max-width:900px){
+  .sg-4{grid-template-columns:1fr 1fr;}
   .at-g{grid-template-columns:1fr 1fr;}
   .at-who{grid-template-columns:1fr;}
   .at-who-c.at-who-hl{border-left:none;border-top:2px solid var(--cyan);}
@@ -1080,7 +1082,7 @@ overflow-y:auto;
   .at-tier{padding:.9rem 1.5rem;}
   .at-tier-line{display:none;}
 }
-@media(max-width:600px){.at-g{grid-template-columns:1fr;}}
+@media(max-width:600px){.at-g{grid-template-columns:1fr;}.sg-4{grid-template-columns:1fr;}}
 
 /* ═══════════════════════════════════════════
    MOBILE — 480px e sotto
@@ -2445,6 +2447,38 @@ overflow-y:auto;
       <p class="ss-l">locale — i dati non lasciano il tuo Mac e rimangono privati</p>
     </div>
   </div>
+
+  <hr class="sep">
+
+  <!-- PER CHI È ATLAS -->
+  <div class="inner"><div class="sec">
+    <div class="mono-tag" data-anim>Per chi è ATLAS</div>
+    <h2 class="sec-h" data-anim data-d="1">Pensato per chi <span class="hl">non può permettersi di perdere tempo.</span></h2>
+    <p class="sec-sub" data-anim data-d="2">ATLAS si adatta al tuo modo di lavorare — che tu sia solo o a capo di un team.</p>
+    <div class="sg-4" data-anim data-d="3">
+      <div class="sc">
+        <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+        <div class="sc-title">Liberi professionisti</div>
+        <div class="sc-desc">Avvocati, commercialisti, consulenti, architetti. Gestisci agenda, email e clienti con un comando vocale — e torna a fare il lavoro che conta.</div>
+      </div>
+      <div class="sc">
+        <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="sc-title">Imprenditori e PMI</div>
+        <div class="sc-desc">Tieni sotto controllo l'andamento del business, ottieni analisi vocali in tempo reale e coordina le attività quotidiane senza aprire un foglio di calcolo.</div>
+      </div>
+      <div class="sc">
+        <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="sc-title">Manager e dirigenti</div>
+        <div class="sc-desc">Briefing automatico ogni mattina, gestione email, appuntamenti e task — tutto in voce, anche mentre ti sposti tra una riunione e l'altra.</div>
+      </div>
+      <div class="sc">
+        <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <div class="sc-title">Professionisti creativi</div>
+        <div class="sc-desc">Designer, marketer, copywriter, fotografi. Focus totale sul lavoro creativo — ATLAS gestisce scadenze, ricerche e note mentre tu produci.</div>
+      </div>
+    </div>
+  </div></div>
+  <hr class="sep">
 
   <!-- MANIFESTO ATLAS -->
   <div class="inner atlas-mfst-sec">
