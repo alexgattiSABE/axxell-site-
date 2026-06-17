@@ -1041,6 +1041,9 @@ overflow-y:auto;
 .at-desc{font-size:.82rem;color:var(--muted);line-height:1.65;margin-bottom:.5rem;}
 .at-examples{display:flex;flex-direction:column;gap:.25rem;margin-top:.5rem;}
 .at-ex{font-family:var(--mono);font-size:.65rem;color:var(--dim);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:3px;padding:.25rem .55rem;}
+.at-list{list-style:none;display:flex;flex-direction:column;gap:.45rem;margin-top:.4rem;}
+.at-list li{font-size:.8rem;color:var(--muted);line-height:1.5;padding-left:.95rem;position:relative;}
+.at-list li::before{content:'';position:absolute;left:0;top:.55em;width:4px;height:4px;border-radius:50%;background:var(--cyan);}
 .at-listen-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 .at-ls{background:var(--bg2);padding:2rem;position:relative;}
 .at-ls-num{font-family:var(--mono);font-size:.58rem;color:var(--cyan);letter-spacing:.14em;margin-bottom:.7rem;}
@@ -1599,11 +1602,6 @@ overflow-y:auto;
         <a href="#" class="btn-p" onclick="return go('servizi')">Scopri il sistema →</a>
         <a href="#" class="btn-g" onclick="openPrev();return false;">Richiedi preventivo</a>
       </div>
-      <div class="hero-stats" id="hst">
-        <div><div class="stat-n">24/7</div><div class="stat-l">SABE sempre attivo</div></div>
-        <div><div class="stat-n">8</div><div class="stat-l">Moduli nel sistema</div></div>
-        <div><div class="stat-n">127</div><div class="stat-l">Attività attive</div></div>
-      </div>
     </div>
     <div class="home-right" style="position:relative;display:flex;align-items:center;justify-content:center;">
       <canvas id="sphereCanvas" style="display:block;pointer-events:none;"></canvas>
@@ -1616,7 +1614,6 @@ overflow-y:auto;
       <p class="manifesto-lead" data-anim data-d="1">Axxell nasce da una convinzione: <span class="hl">l'intelligenza artificiale</span> non è un lusso per grandi aziende. È uno strumento che ogni impresa ha il <span style="color:var(--cyan);">diritto di usare.</span></p>
       <p class="manifesto-body" data-anim data-d="2">Le <span style="color:var(--cyan);">PMI</span> hanno le stesse sfide delle grandi realtà — clienti da gestire, processi da ottimizzare, tempo che manca — ma raramente gli strumenti per affrontarle. <span style="color:var(--white);font-weight:500;">Axxell esiste per cambiare questo.</span></p>
       <p class="manifesto-body" data-anim data-d="3">Sviluppiamo <span class="hl">automazioni, agenti vocali e sistemi AI</span> integrati nei processi reali di chi lavora ogni giorno. Non vendiamo tecnologia. Costruiamo soluzioni che funzionano, che si capiscono subito e che <span style="color:var(--cyan);">liberano tempo.</span></p>
-      <blockquote class="manifesto-quote" data-anim data-d="4" style="font-family:var(--mono);font-style:normal;font-size:.88rem;letter-spacing:.03em;color:var(--cyan);">L'AI è già qui. La domanda non è se usarla, ma <span style="color:var(--white);">come farlo nel modo giusto per la tua impresa.</span></blockquote>
     </div>
   </div>
 
@@ -2276,38 +2273,6 @@ overflow-y:auto;
 
   <hr class="sep">
   <div class="inner"><div class="sec">
-    <div class="mono-tag" data-anim>I nostri prodotti</div>
-    <h2 class="sec-h" data-anim data-d="1">Due prodotti. <span class="hl">Un ecosistema.</span></h2>
-    <p class="sec-sub" data-anim data-d="2">SABE e ATLAS lavorano in autonomia o insieme — dipende da cosa ti serve.</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-radius:8px;overflow:hidden;" data-anim data-d="3">
-      <div style="background:var(--bg2);padding:2.5rem;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--green));"></div>
-        <div style="font-family:var(--mono);font-size:.58rem;color:var(--cyan);letter-spacing:.16em;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;"><span style="width:10px;height:1px;background:var(--cyan);display:inline-block;"></span>Prodotto 01</div>
-        <div style="font-size:1.6rem;font-weight:700;letter-spacing:-.03em;color:var(--white);margin-bottom:.5rem;">SABE</div>
-        <div style="font-size:.88rem;color:var(--muted);line-height:1.75;margin-bottom:1.4rem;">L'agente vocale AI che risponde al telefono, gestisce prenotazioni e non perde una chiamata. Attivo 24/7, si adatta a qualsiasi settore.</div>
-        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.6rem;">
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Agente vocale 24/7</div>
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Calendario prenotazioni dedicato</div>
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Analisi e storico prenotazioni</div>
-        </div>
-        <a href="#" class="btn-p" style="font-size:.78rem;height:38px;" onclick="return go('sabe')">Scopri SABE →</a>
-      </div>
-      <div style="background:var(--bg2);padding:2.5rem;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--green));"></div>
-        <div style="font-family:var(--mono);font-size:.58rem;color:var(--cyan);letter-spacing:.16em;text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;"><span style="width:10px;height:1px;background:var(--cyan);display:inline-block;"></span>Prodotto 02</div>
-        <div style="font-size:1.6rem;font-weight:700;letter-spacing:-.03em;color:var(--white);margin-bottom:.5rem;">ATLAS</div>
-        <div style="font-size:.88rem;color:var(--muted);line-height:1.75;margin-bottom:1.4rem;">L'assistente AI personale per Mac. Ascolta, capisce e agisce — gestisce il tuo computer, analizza il tuo business SABE e trascrive sessioni in PDF.</div>
-        <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.6rem;">
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Assistente vocale per Mac</div>
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Integrazione nativa con SABE</div>
-          <div style="font-family:var(--mono);font-size:.7rem;color:var(--dim);display:flex;align-items:center;gap:.5rem;"><span style="color:var(--green);">✓</span>Modalità ascolto e trascrizione PDF</div>
-        </div>
-        <a href="#" class="btn-p" style="font-size:.78rem;height:38px;" onclick="return go('atlas')">Scopri ATLAS →</a>
-      </div>
-    </div>
-  </div></div>
-
-  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>I numeri</div>
     <h2 class="sec-h" data-anim data-d="1">I numeri che ogni<br><span class="hl">imprenditore</span> dovrebbe conoscere</h2>
     <p class="sec-sub" data-anim data-d="2">Dati reali raccolti da migliaia di attività commerciali in tutto il mondo.</p>
@@ -2364,8 +2329,9 @@ overflow-y:auto;
       <div class="rm-line"></div>
       <div class="rm-item rm-done"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">Q1 2026</div><div class="rm-title">Lancio Sabe v1.0</div><div class="rm-desc">Agente vocale AI per gestione chiamate e prenotazioni. Integrazione con Google Calendar e CRM. Prime attività onboard.</div><span class="rm-tag tag-done">Completato</span></div></div>
       <div class="rm-item rm-done"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">Q2 2026</div><div class="rm-title">ATLAS & Suite completa</div><div class="rm-desc">ATLAS — assistente AI personale per Mac — operativo. Calendario dedicato SABE, chatbot, CRM e analytics. Ecosistema completo attivo.</div><span class="rm-tag tag-done">Completato</span></div></div>
+      <div class="rm-item rm-done"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">Q2 2026</div><div class="rm-title">Supporto multilingua</div><div class="rm-desc">Supporto multilingua completo su SABE e ATLAS.</div><span class="rm-tag tag-done">Completato</span></div></div>
       <div class="rm-item rm-soon"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">Q3–Q4 2026</div><div class="rm-title">ATLAS Medical & Enterprise</div><div class="rm-desc">Modulo Medical per professionisti sanitari: cartelle cliniche vocali, database pazienti cifrato. Piattaforma white-label per agenzie e franchise.</div><span class="rm-tag tag-soon">In sviluppo</span></div></div>
-      <div class="rm-item rm-future"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">2027</div><div class="rm-title">Espansione globale</div><div class="rm-desc">Supporto multilingua completo. Partner network in Europa e nel mondo. Compliance EU AI Act inclusa.</div><span class="rm-tag tag-fut">Visione</span></div></div>
+      <div class="rm-item rm-future"><div class="rm-dot"><div class="rm-dot-i"></div></div><div class="rm-content"><div class="rm-date">2027</div><div class="rm-title">Espansione globale</div><div class="rm-desc">Partner network in Europa e nel mondo. Compliance EU AI Act inclusa.</div><span class="rm-tag tag-fut">Visione</span></div></div>
     </div>
   </div></div>
 
@@ -2439,7 +2405,7 @@ overflow-y:auto;
       <p class="ss-l">sempre a disposizione</p>
     </div>
     <div class="ss-i" data-anim data-d="2">
-      <div class="ss-n" style="background:linear-gradient(135deg,var(--cyan),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">&lt; 1s</div>
+      <div class="ss-n" style="background:linear-gradient(135deg,var(--cyan),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">&lt; 2s</div>
       <p class="ss-l">risposta vocale in tempo reale</p>
     </div>
     <div class="ss-i" data-anim data-d="4">
@@ -2595,40 +2561,121 @@ overflow-y:auto;
   <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Funzionalità</div>
     <h2 class="sec-h" data-anim data-d="1">Tutto quello che può fare <span class="hl">ATLAS</span></h2>
-    <p class="sec-sub" data-anim data-d="2">Sei moduli integrati, un'unica interfaccia vocale.</p>
+    <p class="sec-sub" data-anim data-d="2">Tutte le capacità di ATLAS, organizzate per area — un'unica interfaccia vocale.</p>
     <div class="at-g" style="grid-template-columns:repeat(3,1fr);" data-anim data-d="3">
       <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg></div>
-        <div class="at-title">Controllo Mac</div>
-        <div class="at-desc">Apri app, file e cartelle con un comando vocale. ATLAS agisce direttamente sul tuo Mac senza intermediari.</div>
-        <div class="at-examples"><div class="at-ex">"Apri Spotify"</div><div class="at-ex">"Apri la cartella LAVORO"</div><div class="at-ex">"Chiudi Safari"</div></div>
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+        <div class="at-title">Voce &amp; Conversazione</div>
+        <ul class="at-list">
+          <li>Wake word "Atlas" — attivazione vocale a mani libere</li>
+          <li>Conversazione naturale in tempo reale</li>
+          <li>Voce sintetica naturale</li>
+          <li>Multilingua: italiano, inglese, spagnolo, tedesco</li>
+          <li>Personalità calibrabile</li>
+        </ul>
       </div>
       <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-        <div class="at-title">Produttività vocale</div>
-        <div class="at-desc">Task manager, journal, note Obsidian. Aggiungi impegni, scrivi nel diario, organizza la giornata — tutto parlando. Daily briefing automatico alle 9:00.</div>
-      </div>
-      <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-        <div class="at-title">Calendario e Ricerca</div>
-        <div class="at-desc">Leggi gli impegni del giorno, crea eventi, consulta il web in tempo reale. ATLAS risponde con informazioni sempre aggiornate.</div>
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <div class="at-title">Produttività</div>
+        <ul class="at-list">
+          <li>Task &amp; to-do con priorità e scadenze</li>
+          <li>Promemoria temporizzati (relativi e assoluti, persistenti)</li>
+          <li>Calendario Apple — crea, vedi, modifica, elimina eventi</li>
+          <li>Timer &amp; cronometro</li>
+          <li>Diario / journal</li>
+          <li>Tracciamento abitudini</li>
+          <li>Memoria personale persistente tra le sessioni</li>
+        </ul>
       </div>
       <div class="at-c">
         <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-        <div class="at-title">Email e Musica</div>
-        <div class="at-desc">Gestisci Gmail e controlla Spotify con la voce. Leggi, rispondi, cerca email. Metti in pausa, cambia traccia, alza il volume.</div>
+        <div class="at-title">Email (Apple Mail + Gmail)</div>
+        <ul class="at-list">
+          <li>Leggi le email del giorno, anche per mittente/argomento</li>
+          <li>Cerca, rispondi, invia nuove, elimina</li>
+        </ul>
       </div>
       <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><path d="M2 20h20"/><path d="M5 10l4-3 4 3 4-5"/></svg></div>
-        <div class="at-title">Analisi e proiezioni</div>
-        <div class="at-desc">Chiedi ad ATLAS com'è andato il mese, quali giorni rendono di più, dove perdi tempo. Ottieni proiezioni sull'andamento della tua attività — tutto in voce, senza aprire un foglio di calcolo.</div>
-        <div class="at-examples"><div class="at-ex">"Com'è andato questo mese?"</div><div class="at-ex">"Quando sono più produttivo?"</div></div>
-        <span style="display:inline-block;margin-top:.8rem;font-family:var(--mono);font-size:.58rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:.22rem .65rem;border-radius:3px;background:rgba(255,92,92,.08);color:var(--red);border:1px solid rgba(255,92,92,.22);">Incluso solo con pacchetto SABE</span>
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+        <div class="at-title">Comunicazione</div>
+        <ul class="at-list">
+          <li>Chiamate e videochiamate (FaceTime)</li>
+          <li>Messaggi iMessage/SMS</li>
+          <li>WhatsApp</li>
+          <li>Rubrica contatti</li>
+        </ul>
       </div>
       <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <div class="at-title">Privacy totale</div>
-        <div class="at-desc">Gira in locale sul tuo Mac. I dati non lasciano mai il tuo computer. Nessun cloud obbligatorio, nessuna sorveglianza.</div>
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+        <div class="at-title">Mac &amp; Sistema</div>
+        <ul class="at-list">
+          <li>Apri/chiudi app, file e cartelle</li>
+          <li>Screenshot</li>
+          <li>Stampa file</li>
+          <li>WiFi — stato, on/off, connessione, reti disponibili</li>
+          <li>Bluetooth — stato, on/off, connetti/disconnetti</li>
+          <li>Appunti, statistiche di sistema</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <div class="at-title">Documenti</div>
+        <ul class="at-list">
+          <li>Crea documenti da zero in Pages</li>
+          <li>Fatture, preventivi, contratti strutturati con dati aziendali</li>
+          <li>Modifica PDF e Pages preservando il layout</li>
+          <li>Lettura PDF, Pages, TXT, MD, CSV, JSON</li>
+          <li>Confronto tra documenti</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="at-title">Musica &amp; Media</div>
+        <ul class="at-list">
+          <li>Controllo Spotify</li>
+          <li>Auto-ducking — abbassa la musica mentre parli</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></div>
+        <div class="at-title">Mappe &amp; Viaggi</div>
+        <ul class="at-list">
+          <li>Mappe 3D interattive con edifici e punti d'interesse</li>
+          <li>Percorsi e navigazione</li>
+          <li>Ricerca voli, treni, soggiorni con browser pre-compilato</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="at-title">Informazioni in tempo reale</div>
+        <ul class="at-list">
+          <li>Ricerca web automatica</li>
+          <li>Meteo</li>
+          <li>Quotazioni azionarie</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+        <div class="at-title">Vault Knowledge</div>
+        <ul class="at-list">
+          <li>7 profili professionali: commercialista, avvocato, commerciale, privato, tatuatore, studente università, studente superiori</li>
+          <li>Note, nuovi clienti/progetti, query e dashboard aggregata</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="at-title">Salute &amp; Fitness</div>
+        <ul class="at-list">
+          <li>Modalità allenamento con cronometro, feedback e proiezioni</li>
+        </ul>
+      </div>
+      <div class="at-c">
+        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="at-title">Privacy &amp; Performance</div>
+        <ul class="at-list">
+          <li>Comandi locali deterministici</li>
+          <li>Deepgram on-demand</li>
+        </ul>
       </div>
     </div>
     <div class="atlas-priv-cta" data-anim data-d="4">
@@ -2759,28 +2806,6 @@ overflow-y:auto;
     <div class="at-tier-line"></div>
     <span class="at-badge" style="font-size:.6rem;padding:.3rem .75rem;">In arrivo</span>
   </div>
-
-  <div class="inner"><div class="sec">
-    <div class="mono-tag" data-anim>Per professionisti sanitari e cliniche</div>
-    <div class="at-g" style="grid-template-columns:repeat(4,1fr);" data-anim data-d="3">
-      <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
-        <div class="at-title">Trascrizione visite</div>
-      </div>
-      <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-        <div class="at-title">Cartelle cliniche</div>
-      </div>
-      <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <div class="at-title">Database cifrato</div>
-      </div>
-      <div class="at-c">
-        <div class="at-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
-        <div class="at-title">PDF professionale</div>
-      </div>
-    </div>
-  </div></div>
 
   <hr class="sep">
 
