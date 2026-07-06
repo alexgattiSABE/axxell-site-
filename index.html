@@ -1291,11 +1291,20 @@ overflow-y:auto;
   .mobile-dropdown,.mobile-dropdown a,
   .ticker,.ticker-inner,.ticker .td,.ticker span,
   .nav-links,.nav-links a,
-  .mono-tag,.eyebrow-text,
+  .mono-tag,
   .hp-link,.btn-p,.btn-g,.nav-cta{
     word-break:keep-all!important;
     overflow-wrap:normal!important;
     white-space:nowrap!important;
+  }
+  /* Eyebrow: può andare a capo tra le parole per non uscire dallo schermo */
+  .eyebrow{flex-wrap:wrap;}
+  .eyebrow-text{
+    white-space:normal!important;
+    word-break:keep-all!important;
+    overflow-wrap:break-word!important;
+    letter-spacing:.08em;
+    max-width:100%;
   }
   /* Dropdown: larghezza fissa, non collassa */
   .mobile-dropdown{
