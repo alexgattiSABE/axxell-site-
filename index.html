@@ -884,6 +884,11 @@ overflow-y:auto;
 .act-step-n b{font-size:2rem;font-weight:600;line-height:1;letter-spacing:-.03em;color:var(--white);}
 .act-step-t{font-weight:600;font-size:1rem;color:var(--white);margin-bottom:.5rem;letter-spacing:-.01em;}
 .act-step-d{font-size:.85rem;color:var(--muted);line-height:1.7;}
+.priv-doc{max-width:720px;margin-top:1.6rem;}
+.priv-doc h3{font-size:.98rem;color:var(--white);margin:1.9rem 0 .5rem;letter-spacing:-.01em;}
+.priv-doc p{font-size:.9rem;color:var(--muted);line-height:1.85;margin-bottom:.4rem;}
+.priv-doc a{color:var(--cyan);}
+.priv-back{margin-top:2.6rem;font-family:var(--mono);font-size:.8rem;}
 .cal-carousel{position:relative;z-index:1;margin-bottom:2.5rem;}
 .cal-track{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
 .cal-slide{display:none;grid-template-columns:1fr 1.7fr;min-height:400px;}
@@ -1525,7 +1530,7 @@ overflow-y:auto;
         </div>
         <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" id="prevNote" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare..." rows="3"></textarea></div>
         <div class="fpriv">
-          <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
+          <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" onclick="closePrev();closePrevAtlas();return go('privacy');" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
         </div>
         <button type="submit" class="btn-p f-submit">Invia richiesta a info@axxell.ai →</button>
       </form>
@@ -1592,7 +1597,7 @@ overflow-y:auto;
         </div>
         <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" id="atlasNote" placeholder="Descrivi brevemente la tua attività o il contesto in cui useresti ATLAS: lavoro, routine, obiettivi..." rows="3"></textarea></div>
         <div class="fpriv">
-          <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
+          <label class="fchk"><input type="checkbox" required><span>Ho letto e accetto la <a href="#" onclick="closePrev();closePrevAtlas();return go('privacy');" style="color:var(--cyan)">Privacy Policy</a>. Acconsento al trattamento dei dati. <span class="req">*</span></span></label>
         </div>
         <button type="submit" class="btn-p f-submit">Invia richiesta a info@axxell.ai →</button>
       </form>
@@ -2789,6 +2794,43 @@ overflow-y:auto;
   </div>
 </div>
 
+<!-- ══ PAGINA PRIVACY ══ -->
+<div id="p-privacy" class="page">
+  <div class="inner"><div class="sec">
+    <div class="mono-tag">Privacy Policy</div>
+    <h2 class="sec-h">Informativa sul trattamento dei <span class="hl">dati personali</span></h2>
+    <p class="sec-sub">Ai sensi degli artt. 13-14 del Regolamento UE 2016/679 (GDPR).</p>
+    <div class="priv-doc">
+      <h3>Titolare del trattamento</h3>
+      <p>Axxell — Reggio Emilia, Italia. Per qualsiasi richiesta relativa ai tuoi dati puoi scrivere a <a href="mailto:info@axxell.ai">info@axxell.ai</a>.</p>
+
+      <h3>Dati che raccogliamo</h3>
+      <p>Tramite i moduli di richiesta preventivo e contatto raccogliamo esclusivamente i dati che ci fornisci volontariamente: nome e cognome, indirizzo email, numero di telefono e, quando indicati, i dati della tua attività (ragione sociale, tipologia, partita IVA) e le note che decidi di comunicarci.</p>
+
+      <h3>Finalità e base giuridica</h3>
+      <p>I dati sono trattati per rispondere alle tue richieste, fornirti un preventivo e gestire il rapporto pre-contrattuale. La base giuridica è il tuo consenso e l'adozione di misure precontrattuali richieste da te (art. 6 del GDPR). Non utilizziamo i dati per marketing senza un tuo ulteriore consenso.</p>
+
+      <h3>Modalità del trattamento e destinatari</h3>
+      <p>I dati inseriti nei moduli vengono recapitati via email tramite il servizio EmailJS, che agisce come responsabile del trattamento per il solo invio del messaggio. Non cediamo né vendiamo i tuoi dati a terzi.</p>
+
+      <h3>Conservazione</h3>
+      <p>Conserviamo i dati per il tempo strettamente necessario a gestire la tua richiesta e ad adempiere agli obblighi di legge, dopodiché vengono cancellati.</p>
+
+      <h3>I tuoi diritti</h3>
+      <p>Puoi in ogni momento richiedere l'accesso, la rettifica, la cancellazione, la limitazione o la portabilità dei tuoi dati, opporti al trattamento e revocare il consenso, scrivendo a <a href="mailto:info@axxell.ai">info@axxell.ai</a>. Hai inoltre il diritto di presentare reclamo al Garante per la protezione dei dati personali.</p>
+
+      <p class="priv-back"><a href="#" onclick="return go('home')">← Torna alla home</a></p>
+    </div>
+  </div></div>
+  <div class="contact-bar">
+    <span>Contatti:</span>
+    <a href="mailto:info@axxell.ai">info@axxell.ai</a>
+    <span class="contact-sep">·</span>
+    <span>Sede:</span>
+    <span class="contact-sede">Reggio Emilia, Italia</span>
+  </div>
+</div>
+
 <script>
 // CURSOR
 var cur=document.getElementById('cur'),curR=document.getElementById('curR'),mx=0,my=0,rx=0,ry=0;
@@ -2808,15 +2850,14 @@ function go(name){
   var md=document.getElementById('mobileDropdown');if(md)md.style.display='none';
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.nav-links a').forEach(function(a){a.classList.remove('active');});
-  var map={home:'p-home',sabe:'p-sabe',atlas:'p-atlas',servizi:'p-servizi',visione:'p-visione'};
+  var map={home:'p-home',sabe:'p-sabe',atlas:'p-atlas',servizi:'p-servizi',visione:'p-visione',privacy:'p-privacy'};
   var nmap={sabe:'n-sabe',atlas:'n-atlas',servizi:'n-servizi',visione:'n-visione'};
   document.getElementById(map[name]).classList.add('active');
   if(nmap[name])document.getElementById(nmap[name]).classList.add('active');
   window.scrollTo({top:0,behavior:'instant'});
-  setTimeout(function(){initAnim();if(name==='home')heroAnim();initCountUp();if(name==='sabe')startConv();initSocialProof();},80);
+  setTimeout(function(){initAnim();if(name==='home')heroAnim();initCountUp();},80);
   return false;
 }
-function sDemo(){setTimeout(function(){var el=document.getElementById('demo-live');if(el)el.scrollIntoView({behavior:'smooth'});},350);}
 
 // PREVENTIVO MODAL
 function openPrev(){document.getElementById('prevOverlay').classList.add('open');}
@@ -2828,6 +2869,7 @@ function submitPrev(e){
   e.preventDefault();
   var btn=e.target.querySelector('button[type=submit]');
   btn.disabled=true; btn.textContent='Invio in corso...';
+  if(!window.emailjs){btn.disabled=false;btn.textContent='Invia richiesta a info@axxell.ai →';alert('Servizio di invio non disponibile al momento. Scrivi direttamente a info@axxell.ai');return;}
   var servizi=[];
   document.querySelectorAll('#prevForm .fchk input[type=checkbox]:not([required])').forEach(function(cb){
     if(cb.checked) servizi.push(cb.nextElementSibling.textContent.trim());
@@ -2867,6 +2909,7 @@ function submitPrevAtlas(e){
   e.preventDefault();
   var btn=e.target.querySelector('button[type=submit]');
   btn.disabled=true; btn.textContent='Invio in corso...';
+  if(!window.emailjs){btn.disabled=false;btn.textContent='Invia richiesta a info@axxell.ai →';alert('Servizio di invio non disponibile al momento. Scrivi direttamente a info@axxell.ai');return;}
   var uso=document.getElementById('atlasUsoSelect').value;
   var msg='Uso ATLAS: '+uso+'<br>';
   if(uso==='sabe'){
@@ -2952,7 +2995,7 @@ function roi(){
   var c=document.getElementById('nc'),ctx=c.getContext('2d'),W,H,nodes=[];
   function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
-  for(var i=0;i<55;i++)nodes.push({x:Math.random()*1920,y:Math.random()*1080,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:.8+Math.random()*1.2,p:Math.random()*Math.PI*2,ps:.015+Math.random()*.015});
+  for(var i=0;i<55;i++)nodes.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:.8+Math.random()*1.2,p:Math.random()*Math.PI*2,ps:.015+Math.random()*.015});
   function draw(){
     c.width=W;
     for(var i=0;i<nodes.length;i++){
@@ -2979,103 +3022,6 @@ initAnim();
 initCountUp();
 
 // ── SOCIAL PROOF ANIMATION ──
-function initSocialProof(){
-  // Animate ring - 83/100 = 83% filled
-  // circumference = 2*pi*18 = ~113. dashoffset for 83% = 113*(1-0.83) = ~19
-  var rings = document.querySelectorAll('.sp-ring-fill');
-  rings.forEach(function(ring){
-    setTimeout(function(){ring.classList.add('animated');}, 500);
-  });
-
-  // Animate counter - count up from 80 to 83 slowly, then occasionally +1
-  var counts = document.querySelectorAll('[id^="spCount"]');
-  counts.forEach(function(el){
-    var n = 124;
-    el.textContent = n;
-    var interval = setInterval(function(){
-      if(n < 127){ n++; el.textContent = n; }
-      else { clearInterval(interval); }
-    }, 400);
-  });
-
-  // Occasionally tick up by 1 to look live (random between 2-5 min)
-  function randomTick(){
-    var delay = (120 + Math.random()*180) * 1000;
-    setTimeout(function(){
-      document.querySelectorAll('[id^="spCount"]').forEach(function(el){
-        var v = parseInt(el.textContent);
-        el.textContent = v + 1;
-      });
-      document.querySelectorAll('.sp-big-num').forEach(function(el){
-        el.style.transform = 'scale(1.15)';
-        el.style.transition = 'transform .2s';
-        setTimeout(function(){ el.style.transform = 'scale(1)'; }, 200);
-      });
-      randomTick();
-    }, delay);
-  }
-  randomTick();
-}
-
-// Call on page load and page change
-initSocialProof();
-
-
-// ── CONVERSATION DEMO ──
-var convScript = [
-  {role:'human', text:'Buongiorno, vorrei prenotare un tavolo per sabato sera, siamo in quattro.'},
-  {role:'bot',   text:'Buongiorno! Certo, sabato sera per 4 persone. Preferisce alle 19:30 o alle 21:00?'},
-  {role:'human', text:'Alle 20:00 se possibile.'},
-  {role:'bot',   text:'Perfetto. Ho disponibilità alle 20:00. A nome di chi registro la prenotazione?'},
-  {role:'human', text:'Marco Bianchi.'},
-  {role:'bot',   text:'✓ Prenotazione confermata — Marco Bianchi, sabato ore 20:00 per 4 persone. Le invieremo un promemoria. A presto!'},
-  {role:'human', text:'Grazie mille, arrivederci!'},
-  {role:'bot',   text:'Prego! Ci vediamo sabato. Buona giornata! 😊'},
-];
-var convIdx = 0, convTimer = null;
-
-function convAvatar(role){
-  return '<div class="msg-av '+(role==='bot'?'bot':'human')+'">'+(role==='bot'?'S':'👤')+'</div>';
-}
-
-function showNextMsg(){
-  var body = document.getElementById('convBody');
-  if(!body) return;
-  if(convIdx >= convScript.length){
-    convTimer = setTimeout(function(){body.innerHTML='';convIdx=0;convTimer=setTimeout(showNextMsg,800);},4000);
-    return;
-  }
-  var item = convScript[convIdx];
-  if(item.role==='bot'){
-    var typing=document.createElement('div');
-    typing.className='msg ai show';typing.id='typing-ind';
-    typing.innerHTML=convAvatar('bot')+'<div class="msg-typing"><span></span><span></span><span></span></div>';
-    body.appendChild(typing);body.scrollTop=body.scrollHeight;
-    setTimeout(function(){var t=document.getElementById('typing-ind');if(t)t.remove();addMsg(item,body);},900+item.text.length*18);
-  } else {
-    setTimeout(function(){addMsg(item,body);},200);
-  }
-}
-
-function addMsg(item,body){
-  var div=document.createElement('div');
-  div.className='msg'+(item.role==='bot'?' ai':'');
-  div.innerHTML=convAvatar(item.role)+'<div class="msg-bubble">'+item.text+'</div>';
-  body.appendChild(div);
-  setTimeout(function(){div.classList.add('show');},30);
-  body.scrollTop=body.scrollHeight;
-  convIdx++;
-  convTimer=setTimeout(showNextMsg,item.role==='bot'?1800:1200);
-}
-
-function startConv(){
-  var body=document.getElementById('convBody');
-  if(!body) return;
-  if(convTimer){clearTimeout(convTimer);convTimer=null;}
-  convIdx=0;body.innerHTML='';
-  setTimeout(showNextMsg,600);
-}
-
 </script>
 
 <script>
