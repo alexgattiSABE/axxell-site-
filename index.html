@@ -2387,8 +2387,7 @@ overflow-y:auto;
       <div data-anim data-d="1">
         <div class="mono-tag" style="margin-bottom:.8rem;">Perché ATLAS</div>
         <p class="atlas-mfst-lead">Il tempo è l'unica cosa che non puoi comprare, recuperare o rimandare.</p>
-        <p class="manifesto-body">Ogni giorno che passa è irripetibile. Eppure la maggior parte di noi lo consuma in frammenti — piccole interruzioni, operazioni meccaniche, momenti rubati dalla disorganizzazione.</p>
-<p class="manifesto-body" style="margin-bottom:0;">ATLAS è stato costruito su questa idea. Non è un chatbot che ti risponde. È un agente che parla, ascolta e agisce — come un segretario personale sempre disponibile, che ricorda mentre tu pensi, esegue mentre tu decidi, organizza mentre tu crei.</p>
+        <p class="manifesto-body" style="margin-bottom:0;">Gran parte della giornata se ne va in interruzioni e operazioni meccaniche. ATLAS le prende in carico: non è un chatbot che risponde, è un agente che parla, ascolta e agisce — un segretario personale sempre disponibile, che esegue mentre tu decidi.</p>
         <div class="atlas-mfst-values">
           <span class="atlas-mfst-val">Recuperi tempo</span>
           <span class="atlas-mfst-val">Agisci con velocità</span>
@@ -2823,7 +2822,7 @@ function sDemo(){setTimeout(function(){var el=document.getElementById('demo-live
 function openPrev(){document.getElementById('prevOverlay').classList.add('open');}
 function closePrev(){document.getElementById('prevOverlay').classList.remove('open');}
 document.getElementById('prevOverlay').addEventListener('click',function(e){if(e.target===this)closePrev();});
-emailjs.init('Jass-MWY1fZy7RTCk');
+if(window.emailjs)emailjs.init('Jass-MWY1fZy7RTCk');
 
 function submitPrev(e){
   e.preventDefault();
@@ -2897,7 +2896,7 @@ function heroAnim(){
   setTimeout(function(){document.getElementById('ht2').classList.add('in');},260);
   setTimeout(function(){document.getElementById('hb').classList.add('in');},400);
   setTimeout(function(){document.getElementById('hbt').classList.add('in');},440);
-  setTimeout(function(){document.getElementById('hst').classList.add('in');},480);
+  setTimeout(function(){var s=document.getElementById('hst');if(s)s.classList.add('in');},480);
   setTimeout(function(){var v=document.getElementById('hvid');if(v){v.style.opacity='1';v.style.transform='translateY(0)';}},560);
 }
 
@@ -3078,7 +3077,6 @@ function startConv(){
 }
 
 </script>
-  </script>
 
 <script>
 
@@ -3094,7 +3092,6 @@ function toggleMenu(){
 
 }
 
-</script>
 </script>
 
 <script>
@@ -3109,22 +3106,6 @@ function calGo(n) {
 }
 function calNext() { calGo(calCurrent + 1); }
 function calPrev() { calGo(calCurrent - 1); }
-</script>
-
-<script>
-
-function toggleMenu(){
-
-  const menu = document.getElementById('mobileDropdown');
-
-  if(menu.style.display === 'flex'){
-    menu.style.display = 'none';
-  }else{
-    menu.style.display = 'flex';
-  }
-
-}
-
 </script>
 
 
