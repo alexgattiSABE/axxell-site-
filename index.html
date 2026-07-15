@@ -751,8 +751,26 @@ overflow-y:auto;
 }
 
 .nav-logo-img{
-  order:1;
-}      
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+}
+
+/* switch lingua a sinistra della barra (solo mobile) */
+.nav-right{
+  display:flex;
+  align-items:center;
+  order:0;
+  margin:0;
+}
+.lang-sw{
+  display:flex !important;
+  margin:0;
+  padding:0;
+  border-left:none;
+}
+
   .nav-links{
   display:none;
 }
@@ -1491,8 +1509,6 @@ overflow-y:auto;
     <a href="#" onclick="return go('atlas')">ATLAS</a>
     <a href="#" onclick="return go('servizi')">Servizi</a>
     <a href="#" onclick="return go('visione')">Visione</a>
-    <a href="#" onclick="setLang('it');return false;" id="mlang-it">Italiano</a>
-    <a href="#" onclick="setLang('en');return false;" id="mlang-en">English</a>
   </div>
 
 </div>
