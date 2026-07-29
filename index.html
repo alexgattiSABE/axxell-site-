@@ -1601,33 +1601,6 @@ overflow-y:auto;
         <p class="prev-sub">Compila il modulo — ti contatteremo entro 24 ore. Nessun impegno.</p>
       </div>
       <form class="form" id="prevForm" onsubmit="submitPrev(event)">
-        <div class="form-row">
-          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" id="prevNome" placeholder="Mario" required></div>
-          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" id="prevCognome" placeholder="Rossi" required></div>
-        </div>
-        <div class="fg"><label class="fl">Azienda <span class="req" id="prevAziendaReq">*</span></label><input type="text" class="fi" id="prevAzienda" placeholder="Nome della tua azienda" required></div>
-        <div class="form-row">
-          <div class="fg">
-            <label class="fl">Tipo di attività <span class="req" id="prevSettoreReq">*</span></label>
-            <select class="fi" id="prevSettore" required>
-              <option value="" disabled selected>Seleziona il settore</option>
-              <option>Ristorante / Pizzeria / Bar</option>
-              <option>Salute e benessere</option>
-              <option>Sport e fitness</option>
-              <option>Hotel / B&B / Agriturismo</option>
-              <option>Stabilimento balneare / Lido</option>
-              <option>Studio professionale</option>
-              <option>Automotive / Officina</option>
-              <option>E-commerce / Retail</option>
-              <option>Altro</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">Partita IVA <span class="req" id="prevPivaReq">*</span><span id="prevPivaOpt" style="display:none;color:var(--muted);font-weight:400"> (facoltativa)</span></label><input type="text" class="fi" id="prevPiva" placeholder="IT12345678901" required></div>
-        </div>
-        <div class="form-row">
-          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="prevEmail" placeholder="mario@azienda.it" required></div>
-          <div class="fg"><label class="fl">Telefono <span class="req">*</span></label><input type="tel" class="fi" id="prevTel" placeholder="+39 333 000 0000" required></div>
-        </div>
         <div class="fg">
           <label class="fl"><span style="color:var(--cyan)">SABE</span> — scegli il piano</label>
           <div class="fchks-piani plan-cards sabe-cards">
@@ -1676,6 +1649,34 @@ overflow-y:auto;
             <label class="fchk"><input type="checkbox"><span>Chatbot</span></label>
             <label class="fchk"><input type="checkbox"><span>Website</span></label>
           </div>
+        </div>
+        <p style="font-family:var(--mono);font-size:.62rem;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin:1.2rem 0 -.2rem;">// i tuoi dati</p>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" id="prevNome" placeholder="Mario" required></div>
+          <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" id="prevCognome" placeholder="Rossi" required></div>
+        </div>
+        <div class="fg"><label class="fl">Azienda <span class="req" id="prevAziendaReq">*</span></label><input type="text" class="fi" id="prevAzienda" placeholder="Nome della tua azienda" required></div>
+        <div class="form-row">
+          <div class="fg">
+            <label class="fl">Tipo di attività <span class="req" id="prevSettoreReq">*</span></label>
+            <select class="fi" id="prevSettore" required>
+              <option value="" disabled selected>Seleziona il settore</option>
+              <option>Ristorante / Pizzeria / Bar</option>
+              <option>Salute e benessere</option>
+              <option>Sport e fitness</option>
+              <option>Hotel / B&B / Agriturismo</option>
+              <option>Stabilimento balneare / Lido</option>
+              <option>Studio professionale</option>
+              <option>Automotive / Officina</option>
+              <option>E-commerce / Retail</option>
+              <option>Altro</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Partita IVA <span class="req" id="prevPivaReq">*</span><span id="prevPivaOpt" style="display:none;color:var(--muted);font-weight:400"> (facoltativa)</span></label><input type="text" class="fi" id="prevPiva" placeholder="IT12345678901" required></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="prevEmail" placeholder="mario@azienda.it" required></div>
+          <div class="fg"><label class="fl">Telefono <span class="req">*</span></label><input type="tel" class="fi" id="prevTel" placeholder="+39 333 000 0000" required></div>
         </div>
         <div class="fg"><label class="fl">Note aggiuntive</label><textarea class="fi" id="prevNote" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare..." rows="3"></textarea></div>
         <div class="fpriv">
@@ -3846,7 +3847,7 @@ function setLang(lang){
 .pcard:hover{border-color:rgba(0,212,255,.45)}
 .pcard:has(input:checked){border-color:var(--cyan);background:rgba(0,212,255,.07)}
 .pc-ic svg{width:22px;height:22px;display:block;color:var(--cyan)}
-.pc-name{font-weight:600;font-size:.9rem;color:#f0f0f6}
+.pc-name{font-weight:700;font-size:.9rem;color:#f0f0f6;text-transform:uppercase;letter-spacing:.05em}
 .pc-desc{font-size:.8rem;color:rgba(240,240,246,.78);line-height:1.5}
 .pc-desc .kw{color:var(--cyan);font-weight:600}
 .fchks-extra .fchk span{font-size:.95rem;color:var(--cyan);font-weight:600}
