@@ -1605,10 +1605,10 @@ overflow-y:auto;
           <div class="fg"><label class="fl">Nome <span class="req">*</span></label><input type="text" class="fi" id="prevNome" placeholder="Mario" required></div>
           <div class="fg"><label class="fl">Cognome <span class="req">*</span></label><input type="text" class="fi" id="prevCognome" placeholder="Rossi" required></div>
         </div>
-        <div class="fg"><label class="fl">Azienda <span class="req">*</span></label><input type="text" class="fi" id="prevAzienda" placeholder="Nome della tua azienda" required></div>
+        <div class="fg"><label class="fl">Azienda <span class="req" id="prevAziendaReq">*</span></label><input type="text" class="fi" id="prevAzienda" placeholder="Nome della tua azienda" required></div>
         <div class="form-row">
           <div class="fg">
-            <label class="fl">Tipo di attività <span class="req">*</span></label>
+            <label class="fl">Tipo di attività <span class="req" id="prevSettoreReq">*</span></label>
             <select class="fi" id="prevSettore" required>
               <option value="" disabled selected>Seleziona il settore</option>
               <option>Ristorante / Pizzeria / Bar</option>
@@ -1622,35 +1622,53 @@ overflow-y:auto;
               <option>Altro</option>
             </select>
           </div>
-          <div class="fg"><label class="fl">Partita IVA <span class="req">*</span></label><input type="text" class="fi" id="prevPiva" placeholder="IT12345678901" required></div>
+          <div class="fg"><label class="fl">Partita IVA <span class="req" id="prevPivaReq">*</span><span id="prevPivaOpt" style="display:none;color:var(--muted);font-weight:400"> (facoltativa)</span></label><input type="text" class="fi" id="prevPiva" placeholder="IT12345678901" required></div>
         </div>
         <div class="form-row">
           <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="prevEmail" placeholder="mario@azienda.it" required></div>
           <div class="fg"><label class="fl">Telefono <span class="req">*</span></label><input type="tel" class="fi" id="prevTel" placeholder="+39 333 000 0000" required></div>
         </div>
         <div class="fg">
-          <label class="fl">Piano di interesse</label>
-          <div class="fchks-piani plan-cards">
+          <label class="fl"><span style="color:var(--cyan)">SABE</span> — scegli il piano</label>
+          <div class="fchks-piani plan-cards sabe-cards">
             <label class="pcard">
               <input type="checkbox">
               <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.09 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
               <span class="pc-name">Gold</span>
-              <span class="pc-desc">SABE + Calendario personalizzato</span>
+              <span class="pc-desc">L'agente vocale <b class="kw">SABE</b> che risponde al telefono e prende le <b class="kw">prenotazioni 24/7</b>, con <b class="kw">calendario personalizzato</b> per la tua attività.</span>
             </label>
             <label class="pcard">
               <input type="checkbox">
               <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
               <span class="pc-name">Premium</span>
-              <span class="pc-desc">SABE + Calendario e Gestionale</span>
+              <span class="pc-desc">SABE con calendario e <b class="kw">gestionale completo</b>: prenotazioni, magazzino, incassi e report, tutto in un unico posto.</span>
             </label>
             <label class="pcard pcard-top">
               <span class="pc-badge">Più acquistato</span>
               <input type="checkbox">
               <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 3.5v3M20 5h-3"/></svg></span>
               <span class="pc-name">Ultra</span>
-              <span class="pc-desc">Piano Premium + ATLAS</span>
+              <span class="pc-desc">Tutto il piano Premium più <b class="kw">ATLAS</b>, l'assistente vocale completo che gestisce l'attività al posto tuo.</span>
             </label>
           </div>
+        </div>
+        <div class="fg">
+          <label class="fl"><span style="color:var(--cyan)">ATLAS</span> — scegli la versione</label>
+          <div class="fchks-piani plan-cards atlas-cards">
+            <label class="pcard">
+              <input type="checkbox">
+              <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6"/></svg></span>
+              <span class="pc-name">Atlas Light</span>
+              <span class="pc-desc">L'assistente vocale <b class="kw">personale</b> di ATLAS per la tua giornata: promemoria, agenda, note e risposte rapide. <b class="kw">Senza la funzione business</b> — pensato per privati e liberi professionisti. <b class="kw">Nessuna partita IVA</b> richiesta.</span>
+            </label>
+            <label class="pcard">
+              <input type="checkbox">
+              <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></span>
+              <span class="pc-name">Atlas Pro</span>
+              <span class="pc-desc">ATLAS completo con la <b class="kw">funzione business</b>: si collega alla tua attività per gestire agenda, prenotazioni, ordini e automazioni. Per aziende e professionisti con <b class="kw">partita IVA</b>.</span>
+            </label>
+          </div>
+          <p id="atlasLockNote" style="display:none;margin:.6rem 0 0;font-size:.75rem;color:var(--cyan)">ATLAS è già incluso nel piano Ultra.</p>
         </div>
         <div class="fg">
           <label class="fl">Servizi aggiuntivi</label>
@@ -3115,19 +3133,64 @@ function closePrev(){document.getElementById('prevOverlay').classList.remove('op
 document.getElementById('prevOverlay').addEventListener('click',function(e){if(e.target===this)closePrev();});
 if(window.emailjs)emailjs.init('Jass-MWY1fZy7RTCk');
 
+// Preventivo: scelta singola per gruppo (SABE / ATLAS) con deseleziona, e P.IVA condizionata.
+function prevSingle(input){
+  if(input.checked){ input.closest('.plan-cards').querySelectorAll('input[type=checkbox]').forEach(function(o){ if(o!==input) o.checked=false; }); }
+  atlasLock();
+  prevPivaState();
+}
+// Ultra include già ATLAS → blocca (e deseleziona) le opzioni ATLAS.
+function atlasLock(){
+  var ultra=false;
+  document.querySelectorAll('#prevForm .sabe-cards input:checked').forEach(function(cb){ var n=cb.closest('.pcard').querySelector('.pc-name'); if(n && n.textContent.trim().toLowerCase()==='ultra') ultra=true; });
+  document.querySelectorAll('#prevForm .atlas-cards .pcard').forEach(function(card){
+    var inp=card.querySelector('input[type=checkbox]');
+    if(ultra){ if(inp){ inp.checked=false; inp.disabled=true; } card.classList.add('locked'); }
+    else { if(inp) inp.disabled=false; card.classList.remove('locked'); }
+  });
+  var note=document.getElementById('atlasLockNote'); if(note) note.style.display=ultra?'':'none';
+}
+function prevPivaState(){
+  var piva=document.getElementById('prevPiva'); if(!piva) return;
+  var sabe=document.querySelector('#prevForm .sabe-cards input:checked');
+  var atlasEl=document.querySelector('#prevForm .atlas-cards input:checked');
+  var atlasName=atlasEl?atlasEl.closest('.pcard').querySelector('.pc-name').textContent.trim().toLowerCase():'';
+  // P.IVA non richiesta SOLO se è selezionato Atlas Light e nessun piano SABE
+  var required=!(atlasName.indexOf('light')>=0 && !sabe);
+  piva.required=required;
+  // con solo Atlas Light non servono nemmeno Azienda e Tipo di attività (uso personale)
+  var az=document.getElementById('prevAzienda'), se=document.getElementById('prevSettore');
+  if(az) az.required=required;
+  if(se) se.required=required;
+  var rq=document.getElementById('prevPivaReq'), op=document.getElementById('prevPivaOpt');
+  if(rq) rq.style.display=required?'':'none';
+  if(op) op.style.display=required?'none':'';
+  var azr=document.getElementById('prevAziendaReq'), ser=document.getElementById('prevSettoreReq');
+  if(azr) azr.style.display=required?'':'none';
+  if(ser) ser.style.display=required?'':'none';
+}
+(function(){
+  document.querySelectorAll('#prevForm .sabe-cards input[type=checkbox], #prevForm .atlas-cards input[type=checkbox]').forEach(function(cb){ cb.addEventListener('change',function(){ prevSingle(cb); }); });
+  atlasLock();
+  prevPivaState();
+})();
+
 function submitPrev(e){
   e.preventDefault();
   var btn=e.target.querySelector('button[type=submit]');
   btn.disabled=true; btn.textContent='Invio in corso...';
   if(!window.emailjs){btn.disabled=false;btn.textContent='Invia richiesta a info@axxell.ai →';alert('Servizio di invio non disponibile al momento. Scrivi direttamente a info@axxell.ai');return;}
-  var piani=[], extra=[];
-  document.querySelectorAll('#prevForm .fchks-piani input[type=checkbox]').forEach(function(cb){ if(cb.checked){ var n=cb.parentElement.querySelector('.pc-name'); piani.push(n?n.textContent.trim():''); } });
+  var piani=[], extra=[], atlas='';
+  document.querySelectorAll('#prevForm .sabe-cards input[type=checkbox]').forEach(function(cb){ if(cb.checked){ var n=cb.parentElement.querySelector('.pc-name'); piani.push(n?n.textContent.trim():''); } });
+  document.querySelectorAll('#prevForm .atlas-cards input[type=checkbox]').forEach(function(cb){ if(cb.checked){ var n=cb.parentElement.querySelector('.pc-name'); atlas=n?n.textContent.trim():''; } });
   document.querySelectorAll('#prevForm .fchks-extra input[type=checkbox]').forEach(function(cb){ if(cb.checked) extra.push(cb.nextElementSibling.textContent.trim()); });
+  var pivaVal=document.getElementById('prevPiva').value.trim();
   var msg=
     'Azienda: '+document.getElementById('prevAzienda').value+'<br>'+
     'Settore: '+document.getElementById('prevSettore').value+'<br>'+
-    'P.IVA: '+document.getElementById('prevPiva').value+'<br>'+
-    (piani.length?'Piano di interesse: '+piani.join(', ')+'<br>':'')+
+    (pivaVal?'P.IVA: '+pivaVal+'<br>':'')+
+    (piani.length?'Piano SABE: '+piani.join(', ')+'<br>':'')+
+    (atlas?'ATLAS: '+atlas+'<br>':'')+
     (extra.length?'Servizi aggiuntivi: '+extra.join(', ')+'<br>':'')+
     'Note: '+(document.getElementById('prevNote').value||'—');
   emailjs.send('service_ma1qdph','template_btru4ua',{
@@ -3775,14 +3838,18 @@ function setLang(lang){
 </script>
 <canvas id="fxSky" aria-hidden="true"></canvas>
 <style>#fxSky{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;}@media (prefers-reduced-motion:reduce){#fxSky{display:none;}}
-.plan-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:12px}
-.pcard{display:flex;flex-direction:column;gap:.25rem;padding:.65rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:rgba(255,255,255,.02);position:relative;transition:border-color .15s,background .15s}
+.plan-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:12px}
+.atlas-cards{grid-template-columns:repeat(2,1fr)}
+.pcard{display:flex;flex-direction:column;gap:.45rem;padding:1rem .85rem;min-height:180px;border:1px solid rgba(255,255,255,.12);border-radius:10px;cursor:pointer;background:rgba(255,255,255,.02);position:relative;transition:border-color .15s,background .15s}
+.pcard.locked{opacity:.4;pointer-events:none;filter:grayscale(.5)}
 .pcard input{position:absolute;top:.5rem;right:.5rem;width:14px;height:14px;accent-color:var(--cyan);cursor:pointer}
 .pcard:hover{border-color:rgba(0,212,255,.45)}
 .pcard:has(input:checked){border-color:var(--cyan);background:rgba(0,212,255,.07)}
 .pc-ic svg{width:22px;height:22px;display:block;color:var(--cyan)}
 .pc-name{font-weight:600;font-size:.9rem;color:#f0f0f6}
-.pc-desc{font-size:.67rem;color:rgba(240,240,246,.55);line-height:1.35}
+.pc-desc{font-size:.8rem;color:rgba(240,240,246,.78);line-height:1.5}
+.pc-desc .kw{color:var(--cyan);font-weight:600}
+.fchks-extra .fchk span{font-size:.95rem;color:var(--cyan);font-weight:600}
 .pc-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.52rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:var(--cyan);color:#041016;padding:2px 8px;border-radius:20px;box-shadow:0 2px 8px rgba(0,212,255,.35)}
 .pcard-top{border-color:rgba(0,212,255,.5)}
 @media(max-width:600px){.plan-cards{grid-template-columns:1fr}}</style>
