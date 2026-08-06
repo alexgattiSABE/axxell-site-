@@ -1148,8 +1148,6 @@ overflow-y:auto;
 /* System modules grid */
 .sys-mods-g{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
 
-/* Atlas privati CTA strip */
-.atlas-priv-cta{display:flex;align-items:center;justify-content:space-between;gap:1.2rem;margin-top:2.5rem;padding-top:2rem;border-top:1px solid var(--border);}
 .sys-mod-c{background:var(--bg2);padding:1.6rem 1.8rem;transition:background .25s;position:relative;overflow:hidden;}
 .sys-mod-c:hover{background:var(--bg3);}
 .sys-mod-c::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);transform:scaleX(0);transition:transform .4s;transform-origin:left;}
@@ -1332,8 +1330,6 @@ overflow-y:auto;
   .sys-mods-g{grid-template-columns:1fr;}
   .sys-mod-c{padding:1.2rem 1rem;}
 
-  /* ── Atlas privati CTA strip ── */
-  .atlas-priv-cta{flex-direction:column;align-items:flex-start;gap:.9rem;}
 
   /* ── Atlas biz fields ── */
   #atlasBizFields{padding:1rem;}
@@ -1673,21 +1669,6 @@ overflow-y:auto;
           </div>
         </div>
         <div class="fg">
-          <label class="fl"><span style="color:var(--cyan)">ATLAS</span> — scegli la versione</label>
-          <div class="fchks-piani plan-cards atlas-cards">
-            <label class="pcard">
-              <input type="checkbox">
-              <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6"/></svg></span>
-              <span class="pc-name">Atlas Light</span>
-              <span class="pc-desc">L'assistente vocale <b class="kw">personale</b> di ATLAS per la tua giornata: promemoria, agenda, note e risposte rapide. <b class="kw">Senza la funzione business</b> — pensato per privati e liberi professionisti. <b class="kw">Nessuna partita IVA</b> richiesta.</span>
-            </label>
-            <label class="pcard">
-              <input type="checkbox">
-              <span class="pc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></span>
-              <span class="pc-name">Atlas Pro</span>
-              <span class="pc-desc">ATLAS completo con la <b class="kw">funzione business</b>: si collega alla tua attività per gestire agenda, prenotazioni, ordini e automazioni. Per aziende e professionisti con <b class="kw">partita IVA</b>.</span>
-            </label>
-          </div>
           <p id="atlasLockNote" style="display:none;margin:.6rem 0 0;font-size:.75rem;color:var(--cyan)">ATLAS è già incluso nel piano Ultra.</p>
           <div style="margin-top:.8rem;padding:.75rem .9rem;border:1px solid rgba(245,200,50,.55);border-radius:8px;background:rgba(245,200,50,.06);font-size:.78rem;color:rgba(240,240,246,.82);line-height:1.55">
             <b style="color:var(--cyan)">Come funziona il prezzo:</b> il piano <b style="color:var(--cyan)">Ultra</b> è un'<b style="color:var(--cyan)">unica voce</b> nel preventivo, perché include già <b style="color:var(--cyan)">SABE</b> e <b style="color:var(--cyan)">ATLAS Pro</b> insieme. Se invece scegli un piano diverso da Ultra (<b style="color:var(--cyan)">Gold</b> o <b style="color:var(--cyan)">Premium</b>) con una versione di ATLAS, nel preventivo trovi <b style="color:var(--cyan)">due voci distinte</b>: una per <b style="color:var(--cyan)">SABE</b> e una per il <b style="color:var(--cyan)">piano ATLAS</b>.
@@ -2644,11 +2625,6 @@ overflow-y:auto;
     <h2 class="pg-h1" data-anim data-d="1">ATLAS — il tuo <span class="hl">segretario personale AI.</span></h2>
     <p class="pg-body" data-anim data-d="2">Parla con lui come parleresti a un collaboratore. ATLAS capisce, risponde a voce e completa le richieste in autonomia — gestisce il tuo tempo, organizza le priorità e agisce in tempo reale, dal tuo Mac.</p>
     <p style="font-size:.75rem;color:var(--dim);font-family:var(--mono);letter-spacing:.1em;margin-top:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;" data-anim data-d="4"><span style="color:var(--green);">Disponibile per macOS</span><span style="color:#ff4fd8;border:1px solid rgba(255,79,216,.5);border-radius:999px;padding:.25rem .6rem;">Windows in arrivo</span></p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:1.2rem 0;justify-content:center;">
-      <a href="https://atlas-server-production-787d.up.railway.app/buy" class="btn-p">Scopri i piani</a>
-      <a href="https://atlas-server-production-787d.up.railway.app/buy/light" class="btn-g">Acquista Light · €29/mese</a>
-      <a href="https://atlas-server-production-787d.up.railway.app/buy/pro" class="btn-g">Acquista Pro · €149/mese</a>
-    </div>
   </div>
 
   <div class="ss-strip">
@@ -2849,13 +2825,6 @@ overflow-y:auto;
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       Privacy &amp; performance — i comandi girano in locale sul tuo Mac, la trascrizione vocale si attiva solo quando serve.
     </p>
-    <div class="atlas-priv-cta" data-anim data-d="4">
-      <div>
-        <p style="font-size:.92rem;color:var(--white);font-weight:600;margin-bottom:.25rem;">Pronto a iniziare con ATLAS?</p>
-        <p style="font-size:.82rem;color:var(--muted);">Nessuna partita IVA richiesta. Ti rispondiamo entro 24 ore.</p>
-      </div>
-      <a href="#" class="btn-p" style="flex-shrink:0;" onclick="openPrevAtlas();return false;">Richiedi ATLAS →</a>
-    </div>
   </div></div>
   <hr class="sep">
 
@@ -2884,6 +2853,43 @@ overflow-y:auto;
         <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/></svg></div>
         <div class="sc-title">Studenti &amp; uso quotidiano</div>
         <div class="sc-desc">Università e scuole superiori. Appunti vocali, organizzazione dello studio, scadenze e ricerche — ATLAS tiene tutto in ordine mentre tu ti concentri sull'apprendimento.</div>
+      </div>
+    </div>
+  </div></div>
+  <hr class="sep">
+  <div class="inner"><div class="sec" style="text-align:center;">
+    <button id="atlasPlansToggle" class="btn-p" onclick="toggleAtlasPlans()" style="font-size:.9rem;">Scopri i piani</button>
+    <div id="atlasPlansPanel" style="display:none;margin-top:1.8rem;">
+      <p style="font-family:var(--mono);font-size:.82rem;letter-spacing:.03em;margin:0 0 1.6rem;color:var(--dim);">
+        <span style="color:var(--green);">Disponibile per macOS</span> · la versione <span style="color:#ff4fd8;">Windows è in arrivo</span>
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;max-width:760px;margin:0 auto;text-align:left;">
+        <div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.7rem;background:rgba(255,255,255,.02);">
+          <div style="font-size:1.15rem;font-weight:700;color:var(--white);">Atlas Light</div>
+          <div style="font-size:1.7rem;font-weight:800;color:var(--white);margin:.35rem 0 .1rem;">29 €<span style="font-size:.8rem;color:var(--dim);font-weight:400;"> / mese</span></div>
+          <ul style="list-style:none;padding:0;margin:1rem 0 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.7;">
+            <li>✓ Voce, task e calendario</li>
+            <li>✓ Note, promemoria e routine</li>
+            <li>✓ Meteo e ricerca web</li>
+            <li>✓ Email, apri app, file e PDF</li>
+            <li>✓ Mappe e prenotazioni</li>
+            <li style="color:var(--dim);">— Senza funzione business</li>
+          </ul>
+          <a href="https://atlas-server-production-787d.up.railway.app/buy/light" class="btn-p" style="display:block;text-align:center;width:100%;">Acquista Light</a>
+        </div>
+        <div style="border:1px solid var(--cyan);border-radius:14px;padding:1.7rem;background:rgba(0,212,255,.03);">
+          <div style="font-size:1.15rem;font-weight:700;color:var(--white);">Atlas Pro</div>
+          <div style="font-size:1.7rem;font-weight:800;color:var(--white);margin:.35rem 0 .1rem;">149 €<span style="font-size:.8rem;color:var(--dim);font-weight:400;"> / mese</span></div>
+          <ul style="list-style:none;padding:0;margin:1rem 0 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.7;">
+            <li>✓ Tutto quello di Light</li>
+            <li>✓ Funzione business completa</li>
+            <li>✓ Andamento attività e fatturato</li>
+            <li>✓ Clienti, scadenze, preventivi</li>
+            <li>✓ Registro fatture e conto</li>
+            <li>✓ Ordini a fornitori e PEC</li>
+          </ul>
+          <a href="https://atlas-server-production-787d.up.railway.app/buy/pro" class="btn-p" style="display:block;text-align:center;width:100%;">Acquista Pro</a>
+        </div>
       </div>
     </div>
   </div></div>
@@ -3199,17 +3205,12 @@ function prevSingle(input){
 function atlasLock(){
   var ultra=false;
   document.querySelectorAll('#prevForm .sabe-cards input:checked').forEach(function(cb){ var n=cb.closest('.pcard').querySelector('.pc-name'); if(n && n.textContent.trim().toLowerCase()==='ultra') ultra=true; });
-  document.querySelectorAll('#prevForm .atlas-cards .pcard').forEach(function(card){
-    var inp=card.querySelector('input[type=checkbox]');
-    if(ultra){ if(inp){ inp.checked=false; inp.disabled=true; } card.classList.add('locked'); }
-    else { if(inp) inp.disabled=false; card.classList.remove('locked'); }
-  });
   var note=document.getElementById('atlasLockNote'); if(note) note.style.display=ultra?'':'none';
 }
 function prevPivaState(){
   var piva=document.getElementById('prevPiva'); if(!piva) return;
   var sabe=document.querySelector('#prevForm .sabe-cards input:checked');
-  var atlasEl=document.querySelector('#prevForm .atlas-cards input:checked');
+  var atlasEl=null;
   var atlasName=atlasEl?atlasEl.closest('.pcard').querySelector('.pc-name').textContent.trim().toLowerCase():'';
   // P.IVA non richiesta SOLO se è selezionato Atlas Light e nessun piano SABE
   var required=!(atlasName.indexOf('light')>=0 && !sabe);
@@ -3226,7 +3227,7 @@ function prevPivaState(){
   if(ser) ser.style.display=required?'':'none';
 }
 (function(){
-  document.querySelectorAll('#prevForm .sabe-cards input[type=checkbox], #prevForm .atlas-cards input[type=checkbox]').forEach(function(cb){ cb.addEventListener('change',function(){ prevSingle(cb); }); });
+  document.querySelectorAll('#prevForm .sabe-cards input[type=checkbox]').forEach(function(cb){ cb.addEventListener('change',function(){ prevSingle(cb); }); });
   atlasLock();
   prevPivaState();
 })();
@@ -3238,7 +3239,6 @@ function submitPrev(e){
   if(!window.emailjs){btn.disabled=false;btn.textContent='Invia richiesta a info@axxell.ai →';alert('Servizio di invio non disponibile al momento. Scrivi direttamente a info@axxell.ai');return;}
   var piani=[], extra=[], atlas='';
   document.querySelectorAll('#prevForm .sabe-cards input[type=checkbox]').forEach(function(cb){ if(cb.checked){ var n=cb.parentElement.querySelector('.pc-name'); piani.push(n?n.textContent.trim():''); } });
-  document.querySelectorAll('#prevForm .atlas-cards input[type=checkbox]').forEach(function(cb){ if(cb.checked){ var n=cb.parentElement.querySelector('.pc-name'); atlas=n?n.textContent.trim():''; } });
   document.querySelectorAll('#prevForm .fchks-extra input[type=checkbox]').forEach(function(cb){ if(cb.checked) extra.push(cb.nextElementSibling.textContent.trim()); });
   var pivaVal=document.getElementById('prevPiva').value.trim();
   var msg=
@@ -3895,7 +3895,6 @@ function setLang(lang){
 <canvas id="fxSky" aria-hidden="true"></canvas>
 <style>#fxSky{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;}@media (prefers-reduced-motion:reduce){#fxSky{display:none;}}
 .plan-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:12px}
-.atlas-cards{grid-template-columns:repeat(2,1fr)}
 .pcard{display:flex;flex-direction:column;gap:.45rem;padding:1rem .85rem;min-height:180px;border:1px solid rgba(255,255,255,.12);border-radius:10px;cursor:pointer;background:rgba(255,255,255,.02);position:relative;transition:border-color .15s,background .15s}
 .pcard.locked{opacity:.4;pointer-events:none;filter:grayscale(.5)}
 .pcard input{position:absolute;top:.5rem;right:.5rem;width:14px;height:14px;accent-color:var(--cyan);cursor:pointer}
@@ -3958,5 +3957,6 @@ function setLang(lang){
   scheduleNext();
 })();
 </script>
+<script>function toggleAtlasPlans(){var p=document.getElementById('atlasPlansPanel');if(!p)return;var b=document.getElementById('atlasPlansToggle');var open=(p.style.display==='none'||!p.style.display);p.style.display=open?'block':'none';if(b)b.textContent=open?'Nascondi i piani':'Scopri i piani';}</script>
 </body>
 </html>
