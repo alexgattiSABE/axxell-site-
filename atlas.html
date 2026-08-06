@@ -2944,7 +2944,7 @@ overflow-y:auto;
             <span style="font-size:.85rem;color:var(--muted);line-height:1.6;">I dati del tuo SABE diventano conversazione. ATLAS li interpreta in tempo reale.</span>
           </div>
         </div>
-        <a href="#" class="btn-p" style="align-self:flex-start;" onclick="openPrev();return false;">Attiva il pacchetto →</a>
+        <a href="#" class="btn-p" style="align-self:flex-start;" onclick="openPrevUltra();return false;">Richiedi preventivo gratuito →</a>
       </div>
       <div style="padding:1.5rem;background:var(--bg3);display:flex;align-items:center;justify-content:center;">
         <img src="atlas-dashboard.png" alt="ATLAS Analytics Dashboard" style="width:100%;border-radius:8px;display:block;box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);transform:perspective(900px) rotateY(-4deg) rotateX(2deg);transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s ease;" onmouseover="this.style.transform='perspective(900px) rotateY(0) rotateX(0)';this.style.boxShadow='0 28px 80px rgba(0,0,0,.65),0 0 40px rgba(0,212,255,.12),0 0 0 1px rgba(255,255,255,.08)'" onmouseout="this.style.transform='perspective(900px) rotateY(-4deg) rotateX(2deg)';this.style.boxShadow='0 20px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05)'">
@@ -3021,12 +3021,6 @@ overflow-y:auto;
   <hr class="sep">
 
 
-  <!-- CTA -->
-  <div class="cta-band" data-anim>
-    <h2 class="cta-h">Pronto a lavorare diversamente?</h2>
-    <p class="cta-p">ATLAS è disponibile per macOS. Scopri come può trasformare il tuo modo di gestire il tempo e il lavoro.</p>
-    <a href="#" class="btn-p" onclick="openPrev();return false;">Richiedi preventivo gratuito →</a>
-  </div>
   <div class="contact-bar">
     <span>Contatti:</span>
     <a href="mailto:info@axxell.ai">info@axxell.ai</a>
@@ -3958,5 +3952,6 @@ function setLang(lang){
 })();
 </script>
 <script>function toggleAtlasPlans(){var p=document.getElementById('atlasPlansPanel');if(!p)return;var b=document.getElementById('atlasPlansToggle');var open=(p.style.display==='none'||!p.style.display);p.style.display=open?'block':'none';if(b)b.textContent=open?'Nascondi i piani':'Scopri i piani';}</script>
+<script>function openPrevUltra(){openPrev();try{var cards=document.querySelectorAll('#prevForm .sabe-cards .pcard');cards.forEach(function(l){var n=l.querySelector('.pc-name');var inp=l.querySelector('input');if(!inp)return;var isUltra=n&&/ultra/i.test(n.textContent);inp.checked=isUltra;if(isUltra){inp.dispatchEvent(new Event('change',{bubbles:true}));}});}catch(e){}}</script>
 </body>
 </html>
