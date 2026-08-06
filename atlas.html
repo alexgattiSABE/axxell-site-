@@ -2857,17 +2857,25 @@ overflow-y:auto;
     </div>
   </div></div>
   <hr class="sep">
+  <style>
+  @keyframes atlasPlansPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.45),0 6px 26px rgba(0,212,255,.30)}50%{box-shadow:0 0 0 10px rgba(0,212,255,0),0 8px 40px rgba(0,212,255,.55)}}
+  @keyframes atlasPlansShine{0%{left:-130%}55%,100%{left:150%}}
+  #atlasPlansToggle.atlas-plans-btn{position:relative;overflow:hidden;animation:atlasPlansPulse 2.6s ease-in-out infinite;transition:transform .25s cubic-bezier(.16,1,.3,1)}
+  #atlasPlansToggle.atlas-plans-btn:hover{transform:translateY(-2px) scale(1.04)}
+  #atlasPlansToggle.atlas-plans-btn::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;background:linear-gradient(115deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:atlasPlansShine 3.4s ease-in-out infinite;pointer-events:none}
+  .atlas-buy-btn{display:flex !important;align-items:center;justify-content:center;text-align:center;width:100%;}
+  </style>
   <div class="inner"><div class="sec" style="text-align:center;">
-    <button id="atlasPlansToggle" class="btn-p" onclick="toggleAtlasPlans()" style="font-size:.9rem;">Scopri i piani</button>
+    <button id="atlasPlansToggle" class="btn-p atlas-plans-btn" onclick="toggleAtlasPlans()" style="font-size:.9rem;text-align:center;justify-content:center;">Scopri i piani</button>
     <div id="atlasPlansPanel" style="display:none;margin-top:1.8rem;">
       <p style="font-family:var(--mono);font-size:.82rem;letter-spacing:.03em;margin:0 0 1.6rem;color:var(--dim);">
         <span style="color:var(--green);">Disponibile per macOS</span> · la versione <span style="color:#ff4fd8;">Windows è in arrivo</span>
       </p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;max-width:760px;margin:0 auto;text-align:left;">
-        <div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.7rem;background:rgba(255,255,255,.02);">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;max-width:760px;margin:0 auto;text-align:left;align-items:stretch;">
+        <div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.7rem;background:rgba(255,255,255,.02);display:flex;flex-direction:column;">
           <div style="font-size:1.15rem;font-weight:700;color:var(--white);">Atlas Light</div>
           <div style="font-size:1.7rem;font-weight:800;color:var(--white);margin:.35rem 0 .1rem;">29 €<span style="font-size:.8rem;color:var(--dim);font-weight:400;"> / mese</span></div>
-          <ul style="list-style:none;padding:0;margin:1rem 0 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.7;">
+          <ul style="list-style:none;padding:0;margin:1rem 0 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.7;flex:1;">
             <li>✓ Voce, task e calendario</li>
             <li>✓ Note, promemoria e routine</li>
             <li>✓ Meteo e ricerca web</li>
@@ -2875,20 +2883,23 @@ overflow-y:auto;
             <li>✓ Mappe e prenotazioni</li>
             <li style="color:var(--dim);">— Senza funzione business</li>
           </ul>
-          <a href="https://atlas-server-production-787d.up.railway.app/buy/light" class="btn-p" style="display:block;text-align:center;width:100%;">Acquista Light</a>
+          <a href="https://atlas-server-production-787d.up.railway.app/buy/light" class="btn-p atlas-buy-btn">Acquista Light</a>
         </div>
-        <div style="border:1px solid var(--cyan);border-radius:14px;padding:1.7rem;background:rgba(0,212,255,.03);">
+        <div style="border:1px solid var(--cyan);border-radius:14px;padding:1.7rem;background:rgba(0,212,255,.03);display:flex;flex-direction:column;">
           <div style="font-size:1.15rem;font-weight:700;color:var(--white);">Atlas Pro</div>
           <div style="font-size:1.7rem;font-weight:800;color:var(--white);margin:.35rem 0 .1rem;">149 €<span style="font-size:.8rem;color:var(--dim);font-weight:400;"> / mese</span></div>
-          <ul style="list-style:none;padding:0;margin:1rem 0 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.7;">
-            <li>✓ Tutto quello di Light</li>
-            <li>✓ Funzione business completa</li>
-            <li>✓ Andamento attività e fatturato</li>
-            <li>✓ Clienti, scadenze, preventivi</li>
-            <li>✓ Registro fatture e conto</li>
-            <li>✓ Ordini a fornitori e PEC</li>
-          </ul>
-          <a href="https://atlas-server-production-787d.up.railway.app/buy/pro" class="btn-p" style="display:block;text-align:center;width:100%;">Acquista Pro</a>
+          <div style="display:flex;align-items:center;gap:.5rem;color:var(--cyan);font-weight:600;font-size:.92rem;margin:1rem 0 .9rem;">✓ Tutto quello di Light</div>
+          <div style="border:1px solid rgba(0,212,255,.32);border-radius:10px;padding:1rem 1.1rem;background:rgba(0,212,255,.06);margin-bottom:1.5rem;flex:1;">
+            <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:.7rem;">Pacchetto business</div>
+            <ul style="list-style:none;padding:0;margin:0;font-size:.85rem;color:var(--muted);line-height:1.7;">
+              <li>✓ Funzione business completa</li>
+              <li>✓ Andamento attività e fatturato</li>
+              <li>✓ Clienti, scadenze, preventivi</li>
+              <li>✓ Registro fatture e conto</li>
+              <li>✓ Ordini a fornitori e PEC</li>
+            </ul>
+          </div>
+          <a href="https://atlas-server-production-787d.up.railway.app/buy/pro" class="btn-p atlas-buy-btn">Acquista Pro</a>
         </div>
       </div>
     </div>
