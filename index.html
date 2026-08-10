@@ -2450,8 +2450,8 @@ overflow-y:auto;
   <!-- CHATBOT CLIENTI (chat animata) -->
 <div class="inner"><div class="sec">
   <div class="mono-tag" data-anim>Chatbot clienti</div>
-  <h2 class="sec-h" data-anim data-d="1">Risponde ai clienti <span class="hl">in un attimo</span></h2>
-  <p class="sec-sub" data-anim data-d="2">Un assistente che dà informazioni, prende ordini e fissa appuntamenti — 24/7, per qualsiasi attività.</p>
+  <h2 class="sec-h" data-anim data-d="1">Chat bot</h2>
+  <p class="sec-sub" data-anim data-d="2">Risponde ai clienti <span class="hl">in un attimo</span> — dà informazioni, prende ordini e fissa appuntamenti, 24/7, per qualsiasi attività.</p>
   <div class="axc-stage">
     <div class="axc-chat">
       <div class="axc-head">
@@ -2493,32 +2493,32 @@ overflow-y:auto;
   var msgs=document.getElementById('axc-msgs'),ctx=document.getElementById('axc-ctx');
   if(!msgs)return;
   var chats=[
-    {tag:'🍣 Ristorante',s:[
+    {tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" style="vertical-align:-2px;margin-right:5px"><path d="M4 3v6a2 2 0 0 0 2 2 2 2 0 0 0 2-2V3M6 3v18M15 3c-1.5 1-2 3-2 5s.5 3 2 3v10"/></svg>Ristorante',s:[
       {who:'user',text:'Ciao! Siete aperti stasera?'},
-      {who:'bot',text:'Ciao! 👋 Sì, stasera siamo aperti fino alle 23:30.',typ:1100},
+      {who:'bot',text:'Ciao! Sì, stasera siamo aperti fino alle 23:30.',typ:1100},
       {who:'user',text:'Fate consegna a domicilio?'},
-      {who:'bot',text:'Certo 🛵 Consegniamo in zona centro, ordine minimo 15€.',typ:1300},
+      {who:'bot',text:'Certo, consegniamo in zona centro, ordine minimo 15€.',typ:1300},
       {who:'user',text:'Perfetto, come ordino?'},
-      {who:'bot',text:'Ti mando il link per ordinare 👉 <a class="axc-link" href="#" onclick="return false">Ordina qui</a>. A presto! 🍣',typ:1200}
+      {who:'bot',text:'Ti mando il link per ordinare: <a class="axc-link" href="#" onclick="return false">Ordina qui</a>. A presto!',typ:1200}
     ]},
-    {tag:'🚗 Concessionario',s:[
+    {tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" style="vertical-align:-2px;margin-right:5px"><path d="M5 13l1.6-4.5A2 2 0 0 1 8.5 7h7a2 2 0 0 1 1.9 1.5L19 13v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="15.5" r="1"/><circle cx="16.5" cy="15.5" r="1"/></svg>Concessionario',s:[
       {who:'user',text:'Buongiorno, avete la Golf usata disponibile?'},
-      {who:'bot',text:'Buongiorno! 🚗 Sì, una Golf 1.5 TSI del 2022, 30.000 km, a 21.900€.',typ:1300},
+      {who:'bot',text:'Buongiorno! Sì, una Golf 1.5 TSI del 2022, 30.000 km, a 21.900€.',typ:1300},
       {who:'user',text:'Fate anche il finanziamento?'},
-      {who:'bot',text:'Certo 💳 Da circa 199€/mese. Vuole provarla con un test drive?',typ:1200},
+      {who:'bot',text:'Certo, da circa 199€/mese. Vuole provarla con un test drive?',typ:1200},
       {who:'user',text:'Sì, sabato mattina'},
-      {who:'bot',text:'Perfetto! Sabato alle 10:00 le riservo la vettura. 🔑',typ:1100}
+      {who:'bot',text:'Perfetto! Sabato alle 10:00 le riservo la vettura.',typ:1100}
     ]}
   ];
   var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
   function el(c,h){var d=document.createElement('div');d.className=c;if(h!=null)d.innerHTML=h;return d;}
   function row(w,i){var r=el('axc-row axc-'+w);r.appendChild(el('axc-bubble',i));return r;}
   function scroll(){msgs.scrollTop=msgs.scrollHeight;}
-  if(reduce){ctx.textContent=chats[0].tag;chats[0].s.forEach(function(m){msgs.appendChild(row(m.who,m.text));});return;}
+  if(reduce){ctx.innerHTML=chats[0].tag;chats[0].s.forEach(function(m){msgs.appendChild(row(m.who,m.text));});return;}
   var timers=[],ci=0;
   function clr(){timers.forEach(clearTimeout);timers=[];msgs.innerHTML='';}
   function wait(ms){return new Promise(function(r){timers.push(setTimeout(r,ms));});}
-  async function setTag(t){ctx.style.opacity=0;await wait(180);ctx.textContent=t;ctx.style.opacity=1;}
+  async function setTag(t){ctx.style.opacity=0;await wait(180);ctx.innerHTML=t;ctx.style.opacity=1;}
   async function play(){
     var chat=chats[ci];clr();await setTag(chat.tag);await wait(500);
     for(var i=0;i<chat.s.length;i++){var m=chat.s[i];
