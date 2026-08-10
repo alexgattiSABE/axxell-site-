@@ -2447,7 +2447,94 @@ overflow-y:auto;
 
   <hr class="sep">
 
-  <!-- SERVIZI COMPLEMENTARI -->
+  <!-- CHATBOT CLIENTI (chat animata) -->
+<div class="inner"><div class="sec">
+  <div class="mono-tag" data-anim>Chatbot clienti</div>
+  <h2 class="sec-h" data-anim data-d="1">Risponde ai clienti <span class="hl">in un attimo</span></h2>
+  <p class="sec-sub" data-anim data-d="2">Un assistente che dà informazioni, prende ordini e fissa appuntamenti — 24/7, per qualsiasi attività.</p>
+  <div class="axc-stage">
+    <div class="axc-chat">
+      <div class="axc-head">
+        <span class="axc-orb"></span>
+        <div class="axc-who"><b>Assistente</b><span class="axc-status"><i class="axc-dot"></i> Online · risponde subito</span></div>
+        <div class="axc-ctx" id="axc-ctx"></div>
+      </div>
+      <div class="axc-msgs" id="axc-msgs" aria-label="Esempio di conversazione col chatbot"></div>
+    </div>
+  </div>
+</div></div>
+<style>
+  .axc-stage{display:flex;justify-content:center;margin-top:2rem}
+  .axc-chat{width:100%;max-width:520px;text-align:left;background:var(--bg2);border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(0,212,255,.04)}
+  .axc-head{display:flex;align-items:center;gap:11px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+  .axc-orb{width:34px;height:34px;border-radius:50%;flex:0 0 auto;background:radial-gradient(circle at 32% 30%,#7ff0ff,var(--cyan) 45%,#0a6f86 100%);box-shadow:0 0 16px rgba(0,212,255,.5)}
+  .axc-who{flex:1;font-family:var(--mono)}
+  .axc-who b{font-size:13.5px;display:block;font-weight:500;color:var(--white)}
+  .axc-status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}
+  .axc-status .axc-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .axc-ctx{font-size:11px;color:var(--muted);font-family:var(--mono);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:4px 10px;white-space:nowrap;transition:opacity .35s ease;background:rgba(255,255,255,.02)}
+  .axc-msgs{padding:18px 16px;display:flex;flex-direction:column;gap:10px;height:340px;overflow:hidden;scroll-behavior:smooth}
+  .axc-row{display:flex;opacity:0;transform:translateY(8px);animation:axcpop .34s ease forwards}
+  .axc-row.axc-user{justify-content:flex-end}
+  @keyframes axcpop{to{opacity:1;transform:none}}
+  .axc-bubble{max-width:80%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;font-family:var(--mono);word-wrap:break-word}
+  .axc-bot .axc-bubble{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.18);color:#eafbff;border-bottom-left-radius:5px}
+  .axc-user .axc-bubble{background:var(--bg3);border:1px solid rgba(255,255,255,.08);color:var(--white);border-bottom-right-radius:5px}
+  .axc-link{color:var(--cyan);text-decoration:none;border-bottom:1px solid rgba(0,212,255,.4)}
+  .axc-typing .axc-bubble{display:inline-flex;gap:4px;padding:12px 14px;align-items:center}
+  .axc-typing i{width:6px;height:6px;border-radius:50%;background:var(--cyan);opacity:.5;animation:axcblink 1.2s infinite}
+  .axc-typing i:nth-child(2){animation-delay:.2s}.axc-typing i:nth-child(3){animation-delay:.4s}
+  @keyframes axcblink{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+  @media (prefers-reduced-motion:reduce){.axc-row{opacity:1;transform:none;animation:none}.axc-typing{display:none}.axc-msgs{height:auto;overflow:visible}}
+</style>
+<script>
+(function(){
+  if(window.__axcChat)return;window.__axcChat=1;
+  var msgs=document.getElementById('axc-msgs'),ctx=document.getElementById('axc-ctx');
+  if(!msgs)return;
+  var chats=[
+    {tag:'🍣 Ristorante',s:[
+      {who:'user',text:'Ciao! Siete aperti stasera?'},
+      {who:'bot',text:'Ciao! 👋 Sì, stasera siamo aperti fino alle 23:30.',typ:1100},
+      {who:'user',text:'Fate consegna a domicilio?'},
+      {who:'bot',text:'Certo 🛵 Consegniamo in zona centro, ordine minimo 15€.',typ:1300},
+      {who:'user',text:'Perfetto, come ordino?'},
+      {who:'bot',text:'Ti mando il link per ordinare 👉 <a class="axc-link" href="#" onclick="return false">Ordina qui</a>. A presto! 🍣',typ:1200}
+    ]},
+    {tag:'🚗 Concessionario',s:[
+      {who:'user',text:'Buongiorno, avete la Golf usata disponibile?'},
+      {who:'bot',text:'Buongiorno! 🚗 Sì, una Golf 1.5 TSI del 2022, 30.000 km, a 21.900€.',typ:1300},
+      {who:'user',text:'Fate anche il finanziamento?'},
+      {who:'bot',text:'Certo 💳 Da circa 199€/mese. Vuole provarla con un test drive?',typ:1200},
+      {who:'user',text:'Sì, sabato mattina'},
+      {who:'bot',text:'Perfetto! Sabato alle 10:00 le riservo la vettura. 🔑',typ:1100}
+    ]}
+  ];
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function el(c,h){var d=document.createElement('div');d.className=c;if(h!=null)d.innerHTML=h;return d;}
+  function row(w,i){var r=el('axc-row axc-'+w);r.appendChild(el('axc-bubble',i));return r;}
+  function scroll(){msgs.scrollTop=msgs.scrollHeight;}
+  if(reduce){ctx.textContent=chats[0].tag;chats[0].s.forEach(function(m){msgs.appendChild(row(m.who,m.text));});return;}
+  var timers=[],ci=0;
+  function clr(){timers.forEach(clearTimeout);timers=[];msgs.innerHTML='';}
+  function wait(ms){return new Promise(function(r){timers.push(setTimeout(r,ms));});}
+  async function setTag(t){ctx.style.opacity=0;await wait(180);ctx.textContent=t;ctx.style.opacity=1;}
+  async function play(){
+    var chat=chats[ci];clr();await setTag(chat.tag);await wait(500);
+    for(var i=0;i<chat.s.length;i++){var m=chat.s[i];
+      if(m.who==='bot'){var t=el('axc-row axc-bot axc-typing');t.appendChild(el('axc-bubble','<i></i><i></i><i></i>'));msgs.appendChild(t);scroll();await wait(m.typ||1000);msgs.removeChild(t);}
+      else{await wait(i?650:0);}
+      msgs.appendChild(row(m.who,m.text));scroll();await wait(m.who==='bot'?850:500);
+    }
+    await wait(2600);ci=(ci+1)%chats.length;play();
+  }
+  var started=false;
+  if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting&&!started){started=true;play();}});},{threshold:.35});io.observe(msgs);}else{play();}
+})();
+</script>
+<!-- /CHATBOT CLIENTI -->
+
+<!-- SERVIZI COMPLEMENTARI -->
   <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Servizi complementari</div>
     <h2 class="sec-h" data-anim data-d="1">La suite <span class="hl">completa</span></h2>
