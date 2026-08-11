@@ -16,3 +16,18 @@
 .wc-curtain-b{bottom:0;}
 /* la pagina non scrolla finché il loader è aperto */
 body.wc-locked{overflow:hidden;}
+
+/* ---- CAP 01 — HERO WARP ---- */
+.wc-hero{min-height:100svh;display:flex;align-items:center;overflow:hidden;}
+.wc-warp{position:absolute;inset:0;width:100%;height:100%;z-index:-1;}
+.wc-hero-content{max-width:64ch;display:flex;flex-direction:column;gap:1.6rem;}
+.wc-hero-title .w{display:inline-block;overflow:hidden;vertical-align:bottom;}
+.wc-hero-title .wi{display:inline-block;will-change:transform;}
+.wc-magnet{align-self:flex-start;display:inline-flex;align-items:center;
+  padding:.9rem 1.6rem;border:1px solid var(--cyan);border-radius:2px;
+  color:var(--cyan);text-decoration:none;font-size:.9rem;font-weight:500;
+  will-change:transform;}
+.wc-scroll-cue{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);
+  width:1px;height:56px;background:var(--border2);overflow:hidden;}
+.wc-scroll-cue span{position:absolute;top:0;left:0;width:100%;height:40%;
+  background:var(--cyan);}
