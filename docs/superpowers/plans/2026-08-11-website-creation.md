@@ -891,12 +891,13 @@ aggiungere padding verticale — **non** `height`, che romperebbe l'allineamento
 della nav:
 
 ```css
-.nav-links a{padding:.75rem .5rem;}
-footer a{padding:.5rem 0;display:inline-block;}
+.nav-links a{padding:1rem .5rem;}
+footer a{padding:.875rem 0;display:inline-block;}
 ```
 
 Misurare prima di modificare: `getBoundingClientRect().height` su ciascuno.
-Se un elemento è già ≥ 44px, lasciarlo stare.
+Se un elemento è già ≥ 44px, lasciarlo stare. Se i valori qui sopra non
+bastano a superare 44, alzarli — conta la misura, non il numero scritto.
 
 - [ ] **Step 3: Lenis solo su desktop**
 
