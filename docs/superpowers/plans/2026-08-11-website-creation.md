@@ -22,6 +22,13 @@
 - **`prefers-reduced-motion: reduce`** deve spegnere 3D, warp e shader e fermare i Lottie sul primo fotogramma, lasciando la pagina leggibile e navigabile.
 - **Token di design** identici a `index.html`: `--bg:#060609` `--bg2:#0b0b12` `--bg3:#101019` `--white:#f0f0f6` `--muted:rgba(240,240,246,.72)` `--dim:rgba(240,240,246,.38)` `--cyan:#00d4ff` `--green:#00e8a2` `--border:rgba(255,255,255,.07)` `--border2:rgba(255,255,255,.13)`, font `'Space Grotesk',sans-serif` e `'DM Mono',monospace`.
 - **Testi in italiano.** Nessun prezzo, nessun nome di cliente.
+- **`:focus-visible` visibile su ogni elemento interattivo** — nav, CTA, card, campi form, stage interattivi. Invariante atelier, non negoziabile.
+- **Target tattili ≥ 44px.**
+- **Hover: un solo segnale per elemento** (atelier D20). Colore/opacità *oppure* `translateY` ≤ 2px, mai entrambi. Mai `scale` su elementi che spostano il layout.
+- **Lenis solo su desktop** (atelier D2). Su mobile lo scroll di sistema resta nativo.
+- **OG image 1200×630**, non il favicon.
+- **Si animano solo `transform`, `opacity`, `filter`.**
+- **Deroghe consapevoli registrate in `design.md`:** due sezioni pinnate invece di una (D4) e sei animazioni Lottie (D15). Decise dall'utente, motivate nel file. Non sono sviste: non "correggerle".
 - **Branch:** `feature/website-creation`. Un commit per task.
 
 ### Ciclo di verifica (sostituisce il TDD)
@@ -402,7 +409,9 @@ window.WC = (function(){
       api.motionOk = c.motionOk;
       api.desktop  = c.desktop;
 
-      if (c.motionOk) initLenis();
+      // Lenis solo su desktop: su mobile lo scroll inerziale di sistema è già
+      // buono e il momentum sintetico lo peggiora (atelier D2).
+      if (c.motionOk && c.desktop) initLenis();
 
       var cleanups = [];
       registry.forEach(function(entry){
@@ -837,6 +846,125 @@ git commit -m "feat(wc): cap. 00 loader cinematografico
 
 Contatore 0-100, logo Lottie, sipario in apertura. Emette wc:loaded.
 Con reduced-motion il loader viene saltato del tutto."
+```
+
+---
+
+### Task 3b: Invarianti atelier — focus, OG image, Lenis desktop
+
+**Files:**
+- Modify: `website-creation/css/base.css`
+- Modify: `website-creation/js/core.js`
+- Modify: `website-creation/index.html`
+- Create: `website-creation/assets/og.png`
+
+**Interfaces:**
+- Consumes: tutto il costruito nei Task 1, 2, 2b, 3.
+- Produces: niente di nuovo per i task successivi — chiude tre lacune trovate
+  passando il piano contro le invarianti di atelier. Va fatto **adesso** e non
+  alla fine: ogni capitolo costruito dopo eredita gratis le regole di focus.
+
+- [ ] **Step 1: Anello di focus su ogni elemento interattivo**
+
+Oggi non esiste da nessuna parte: chi naviga da tastiera non vede dove si trova.
+In fondo al blocco tipografia di `css/base.css`:
+
+```css
+/* ---- FOCUS ---- */
+/* Una regola sola per tutta la pagina. L'anello è staccato dall'elemento così
+   resta leggibile anche sui bordi già ciano. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible{
+  outline:2px solid var(--cyan);
+  outline-offset:3px;
+  border-radius:2px;
+}
+/* Il cursore custom non deve coprire l'anello di chi usa la tastiera. */
+body:has(:focus-visible) .cursor,
+body:has(:focus-visible) .cursor-ring,
+body:has(:focus-visible) .cursor-trail{opacity:0;}
+```
+
+- [ ] **Step 2: Target tattili ≥ 44px**
+
+Verificare i link di nav e il footer. Dove l'altezza calcolata è sotto 44px,
+aggiungere padding verticale — **non** `height`, che romperebbe l'allineamento
+della nav:
+
+```css
+.nav-links a{padding:.75rem .5rem;}
+footer a{padding:.5rem 0;display:inline-block;}
+```
+
+Misurare prima di modificare: `getBoundingClientRect().height` su ciascuno.
+Se un elemento è già ≥ 44px, lasciarlo stare.
+
+- [ ] **Step 3: Lenis solo su desktop**
+
+In `js/core.js`, dentro il callback di `matchMedia`:
+
+```js
+      // Lenis solo su desktop: su mobile lo scroll inerziale di sistema è già
+      // buono e il momentum sintetico lo peggiora (atelier D2).
+      if (c.motionOk && c.desktop) initLenis();
+```
+
+Una riga. Il teardown esiste già e non cambia.
+
+- [ ] **Step 4: OG image 1200×630**
+
+Oggi `index.html` punta a `favicon.png`: un link condiviso mostra un quadratino.
+
+Generare `website-creation/assets/og.png` a 1200×630, procedurale, coerente col
+brand — fondo `#060609`, griglia sottile ciano al 12%, la parola **AXXELL** in
+Space Grotesk bianca con "ELL" in `#00d4ff`, e sotto in DM Mono maiuscoletto
+`WEBSITE CREATION`. Nessuna immagine presa da altrove.
+
+Il modo più diretto senza aggiungere dipendenze: disegnarla in un canvas nel
+browser via Playwright e salvarne il PNG. Va bene qualsiasi metodo che non
+introduca librerie o build step.
+
+Poi in `index.html`:
+
+```html
+<meta property="og:image" content="https://axxell.ai/website-creation/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
+```
+
+- [ ] **Step 5: Verificare**
+
+Playwright MCP:
+- `browser_press_key` con `Tab` ripetuto dall'apertura: **ogni** elemento
+  raggiungibile deve mostrare l'anello ciano. Screenshot di almeno tre tappe
+  diverse (logo, link di nav, link del footer).
+- Con un elemento a fuoco, verificare che il cursore custom sia sparito:
+  `browser_evaluate` → `() => getComputedStyle(document.getElementById('cur')).opacity`
+  atteso `"0"`.
+- `browser_evaluate` sulle altezze:
+  ```js
+  () => [...document.querySelectorAll('.nav-links a, footer a')]
+          .map(el => Math.round(el.getBoundingClientRect().height))
+  ```
+  Atteso: ogni valore ≥ 44.
+- `browser_resize` a 500×900, ricaricare, `browser_evaluate` →
+  `() => !!window.WC.lenis` atteso `false`. Tornare a desktop: atteso `true`.
+- Aprire `assets/og.png` e confermare 1200×630 e leggibilità.
+- `browser_console_messages` → zero errori.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add website-creation/ design.md
+git commit -m "feat(wc): invarianti atelier — focus, target, OG image, Lenis desktop
+
+Anello di focus-visible su tutta la pagina: prima non esisteva da nessuna
+parte. Target tattili portati a 44px. OG image 1200x630 procedurale al posto
+del favicon. Lenis solo su desktop (D2).
+
+design.md registra genere, tema, font, seed colore, motion budget e le due
+deroghe consapevoli (D4 due pin, D15 sei Lottie)."
 ```
 
 ---
@@ -1427,7 +1555,7 @@ verticale spinge il nastro. Con reduced-motion l'autoscroll è fermo."
 
 ---
 
-### Task 8: Capitolo 05 — griglia bento con tilt e icone Lottie
+### Task 8: Capitolo 05 — griglia bento con spotlight e icone Lottie
 
 **Files:**
 - Modify: `website-creation/index.html`
@@ -1492,8 +1620,7 @@ Script: `<script src="js/bento.js"></script>`
   grid-template-columns:repeat(3,1fr);}
 .wc-card{grid-column:span var(--span,1);border:1px solid var(--border);
   border-radius:6px;background:var(--bg2);padding:1.8rem;
-  display:flex;flex-direction:column;gap:.7rem;position:relative;overflow:hidden;
-  transform-style:preserve-3d;will-change:transform;}
+  display:flex;flex-direction:column;gap:.7rem;position:relative;overflow:hidden;}
 .wc-card::before{content:'';position:absolute;inset:0;pointer-events:none;
   opacity:0;transition:opacity .3s;
   background:radial-gradient(220px circle at var(--mx,50%) var(--my,50%),
@@ -1531,26 +1658,16 @@ WC.register('bento', function(ctx){
     }
 
     // --- spotlight che segue il cursore ---
+    // Unico segnale di hover della card (atelier D20). Niente tilt 3D,
+    // niente bordo illuminato: tre segnali contemporanei sono rumore.
     var onMove = function(e){
       var r = card.getBoundingClientRect();
       card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
       card.style.setProperty('--my', (e.clientY - r.top)  + 'px');
-      if (!ctx.motionOk || !ctx.desktop) return;
-      // --- tilt magnetico ---
-      var px = (e.clientX - r.left) / r.width  - .5;
-      var py = (e.clientY - r.top)  / r.height - .5;
-      gsap.to(card, { rotationY: px * 9, rotationX: -py * 9,
-                      transformPerspective: 900, duration: .5, ease: 'power2.out' });
-    };
-    var onLeave = function(){
-      if (!ctx.motionOk || !ctx.desktop) return;
-      gsap.to(card, { rotationY: 0, rotationX: 0, duration: .6, ease: 'power3.out' });
     };
     card.addEventListener('mousemove', onMove);
-    card.addEventListener('mouseleave', onLeave);
     cleanups.push(function(){
       card.removeEventListener('mousemove', onMove);
-      card.removeEventListener('mouseleave', onLeave);
     });
   });
 
