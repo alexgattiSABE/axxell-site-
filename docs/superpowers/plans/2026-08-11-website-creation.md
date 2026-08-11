@@ -192,6 +192,17 @@ footer a:hover{color:var(--cyan);}
 
 I tag `<script>` delle sezioni non ancora costruite restano **fuori** finché il task che le crea non li aggiunge — un 404 su uno script rompe la verifica console dei task successivi.
 
+**I blocchi di codice di questo piano mostrano i `<script>` CDN senza `integrity` per
+leggibilità.** Non copiarli così: ogni `<script src="https://…">` di questa pagina, in
+questo task e in tutti i successivi, va scritto con gli attributi calcolati allo Step 1b:
+
+```html
+<script src="https://…" integrity="sha384-<hash calcolato>" crossorigin="anonymous"></script>
+```
+
+Vale per GSAP, ScrollTrigger, Lenis, three.js, lottie\_light ed EmailJS. Gli script
+locali `js/*.js` non ne hanno bisogno.
+
 ```html
 <!DOCTYPE html>
 <html lang="it">
