@@ -871,9 +871,15 @@ In fondo al blocco tipografia di `css/base.css`:
 
 ```css
 /* ---- FOCUS ---- */
+/* La nav è fissa e alta 72px. Senza questo, il Tab porta l'elemento a filo del
+   bordo alto della finestra, cioè sotto la nav, e l'anello di focus resta
+   coperto. Vale anche per i salti ad ancora tipo href="#cap08". */
+html{scroll-padding-top:calc(var(--nav-h) + 1rem);}
+
 /* Una regola sola per tutta la pagina. L'anello è staccato dall'elemento così
    resta leggibile anche sui bordi già ciano. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible{
+  scroll-margin-top:calc(var(--nav-h) + 1rem);
   outline:2px solid var(--cyan);
   outline-offset:3px;
   border-radius:2px;
