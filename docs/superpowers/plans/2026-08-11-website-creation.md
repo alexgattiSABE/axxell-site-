@@ -367,14 +367,26 @@ window.WC = (function(){
   // ---- SMOOTH SCROLL ----
   // Lenis si avvia solo se il motion è consentito. Con reduced-motion
   // resta lo scroll nativo del browser.
+  var lenisTick = null;
+
   function initLenis(){
     api.lenis = new Lenis({
       duration: 1.1,
       easing: function(t){ return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }
     });
     api.lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add(function(time){ api.lenis.raf(time * 1000); });
+    // Il riferimento alla callback va tenuto. Senza, il cleanup non ha modo
+    // di staccarla dal ticker: chi attiva "riduci animazioni" a pagina aperta
+    // vedrebbe Lenis distrutto e api.lenis a null, ma la callback continuerebbe
+    // a girare e a chiamare raf() su null a ogni frame.
+    lenisTick = function(time){ api.lenis.raf(time * 1000); };
+    gsap.ticker.add(lenisTick);
     gsap.ticker.lagSmoothing(0);
+  }
+
+  function destroyLenis(){
+    if (lenisTick) { gsap.ticker.remove(lenisTick); lenisTick = null; }
+    if (api.lenis) { api.lenis.destroy(); api.lenis = null; }
   }
 
   function boot(){
@@ -403,8 +415,12 @@ window.WC = (function(){
       });
 
       return function(){
-        cleanups.forEach(function(fn){ fn(); });
-        if (api.lenis) { api.lenis.destroy(); api.lenis = null; }
+        // Il teardown è protetto come gli init: il cleanup di una sezione che
+        // lancia non deve impedire quelli successivi né la distruzione di Lenis.
+        cleanups.forEach(function(fn){
+          try { fn(); } catch (err) { console.error('[WC] cleanup fallito', err); }
+        });
+        destroyLenis();
       };
     });
   }
