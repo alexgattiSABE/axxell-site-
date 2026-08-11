@@ -47,7 +47,9 @@ window.WC = (function(){
       api.motionOk = c.motionOk;
       api.desktop  = c.desktop;
 
-      if (c.motionOk) initLenis();
+      // Lenis solo su desktop: su mobile lo scroll inerziale di sistema è già
+      // buono e il momentum sintetico lo peggiora (atelier D2).
+      if (c.motionOk && c.desktop) initLenis();
 
       var cleanups = [];
       registry.forEach(function(entry){

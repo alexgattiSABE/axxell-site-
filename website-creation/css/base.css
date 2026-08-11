@@ -94,7 +94,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--nav-h);
   color:var(--white);text-decoration:none;}
 .nav-logo span{color:var(--cyan);}
 .nav-links{display:flex;list-style:none;gap:1.4rem;}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;
+  padding:1rem .5rem;}
 .nav-links a:hover,.nav-links a.active{color:var(--cyan);}
 
 /* TIPOGRAFIA */
@@ -105,6 +106,19 @@ h1{font-size:clamp(2.6rem,7vw,5.5rem);}
 h2{font-size:clamp(1.8rem,4vw,3rem);}
 .lead{color:var(--muted);font-size:clamp(1rem,1.6vw,1.15rem);max-width:56ch;}
 
+/* ---- FOCUS ---- */
+/* Una regola sola per tutta la pagina. L'anello è staccato dall'elemento così
+   resta leggibile anche sui bordi già ciano. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible{
+  outline:2px solid var(--cyan);
+  outline-offset:3px;
+  border-radius:2px;
+}
+/* Il cursore custom non deve coprire l'anello di chi usa la tastiera. */
+body:has(:focus-visible) .cursor,
+body:has(:focus-visible) .cursor-ring,
+body:has(:focus-visible) .cursor-trail{opacity:0;}
+
 section{position:relative;z-index:2;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
 
 /* FOOTER */
@@ -112,5 +126,5 @@ footer{position:relative;z-index:2;border-top:1px solid var(--border);
   padding:2.5rem clamp(1.5rem,5vw,4rem);
   display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;
   font-size:.82rem;color:var(--dim);}
-footer a{color:var(--muted);text-decoration:none;}
+footer a{color:var(--muted);text-decoration:none;padding:.875rem 0;display:inline-block;}
 footer a:hover{color:var(--cyan);}
