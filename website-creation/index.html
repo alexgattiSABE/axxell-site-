@@ -48,14 +48,37 @@
 <main id="wc-main">
   <!-- i capitoli vengono aggiunti dai Task 3-11 -->
   <section class="wc-hero" id="cap01" data-cursor="default">
-    <canvas class="wc-warp" id="wcWarp"></canvas>
-    <div class="wc-hero-content">
-      <p class="eyebrow">// 01 — Website Creation</p>
-      <h1 class="wc-hero-title">Il sito non si racconta. Si attraversa.</h1>
-      <p class="lead">Questa pagina è il portfolio. Ogni sezione che scorri è una cosa che sappiamo fare, mostrata mentre la fa.</p>
-      <a href="#cap08" class="wc-magnet wc-hover" id="wcHeroCta">Parliamone →</a>
+    <div class="wc-hero-pin" id="wcHeroPin">
+      <canvas class="wc-tunnel" id="wcTunnel"></canvas>
+      <!-- Ogni `.wc-fly` è l'involucro che vola nel tunnel. Serve perché
+           l'entrata dal loader anima già `transform` sugli elementi dentro:
+           due animazioni sulla stessa proprietà dello stesso nodo si
+           sovrascrivono a vicenda. -->
+      <div class="wc-hero-content" id="wcHeroContent">
+        <div class="wc-fly"><p class="eyebrow">// 01 — Website Creation</p></div>
+        <h1 class="wc-hero-title">Il sito non si racconta. Si attraversa.</h1>
+        <div class="wc-fly"><p class="lead">Questa pagina è il portfolio. Ogni sezione che scorri è una cosa che sappiamo fare, mostrata mentre la fa.</p></div>
+        <div class="wc-fly"><button type="button" class="wc-magnet wc-hover" id="wcHeroCta">Entra →</button></div>
+      </div>
+      <div class="wc-scroll-cue"><span></span></div>
     </div>
-    <div class="wc-scroll-cue"><span></span></div>
+  </section>
+
+  <section class="wc-manifesto" id="cap02" data-cursor="read">
+    <p class="eyebrow">// 02 — Metodo</p>
+    <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
+  </section>
+
+  <section class="wc-dna" id="cap03" data-cursor="orbit">
+    <div class="wc-dna-pin" id="wcDnaPin">
+      <div class="wc-dna-orbit" id="wcDnaOrbit" aria-hidden="true"></div>
+      <canvas id="wcDnaCanvas"></canvas>
+      <div class="wc-dna-copy">
+        <p class="eyebrow">// 03 — Tridimensionale</p>
+        <h2>Profondità vera,<br>non un'ombra finta.</h2>
+        <p class="lead">Geometria in WebGL guidata dallo scroll. Nessun video, nessuna GIF: il fotogramma lo calcola il browser mentre scendi, e le parole gli girano intorno passandogli davanti e dietro.</p>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -69,9 +92,13 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
 <script src="js/core.js"></script>
+<script src="js/glsl.js"></script>
 <script src="js/cursor.js"></script>
 <script src="js/loader.js"></script>
-<script src="js/warp.js"></script>
+<script src="js/tunnel.js"></script>
+<script src="js/manifesto.js"></script>
+<script src="js/dna.js"></script>
 </body>
 </html>

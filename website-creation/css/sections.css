@@ -17,17 +17,101 @@
 /* la pagina non scrolla finché il loader è aperto */
 body.wc-locked{overflow:hidden;}
 
-/* ---- CAP 01 — HERO WARP ---- */
-.wc-hero{min-height:100svh;display:flex;align-items:center;overflow:hidden;}
-.wc-warp{position:absolute;inset:0;width:100%;height:100%;z-index:-1;}
-.wc-hero-content{max-width:64ch;display:flex;flex-direction:column;gap:1.6rem;}
+/* ---- CAP 01 — HERO TUNNEL ---- */
+/* Alta 380svh: la sezione non si legge, si attraversa. 100 per leggere la
+   copy, il resto è la corsa nel tubo. */
+.wc-hero{padding:0;height:380svh;}
+.wc-hero-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+/* Il fondo del pass finale della scene sorgente, in CSS: il canvas resta
+   trasparente e la copy non ha un rettangolo opaco sotto. */
+.wc-hero-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(45% 45% at 50% 50%, rgba(0,212,255,.13), transparent 72%),
+    radial-gradient(80% 60% at 50% 110%, rgba(0,232,162,.07), transparent 70%),
+    var(--bg);}
+.wc-tunnel{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* La copy sta sopra una parete di particelle in movimento: senza un velo il
+   lead e il pulsante scendono sotto il contrasto leggibile. Il velo se ne va
+   insieme alla copy (--scrim lo guida lo stesso codice della coreografia),
+   così la bocca del tunnel resta pulita appena la copy è volata via. */
+.wc-hero-pin::after{content:'';position:absolute;inset:0;z-index:1;
+  pointer-events:none;opacity:var(--scrim,1);
+  background:radial-gradient(46% 40% at 50% 50%, rgba(6,6,9,.78), rgba(6,6,9,.42) 58%, transparent 80%);}
+/* La prospettiva sta qui e il punto di fuga è il centro dello schermo, cioè
+   la bocca del tunnel: è lì che le parole devono convergere. */
+.wc-hero-content{position:relative;z-index:2;max-width:64ch;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.6rem;
+  perspective:1100px;perspective-origin:50% 50%;}
+.wc-fly{will-change:transform,opacity;}
+.wc-fly .lead{margin-inline:auto;}
+.wc-hero-title{transform-style:preserve-3d;}
+.wc-hero-title .w{will-change:transform,opacity;}
 .wc-hero-title .w{display:inline-block;overflow:hidden;vertical-align:bottom;}
 .wc-hero-title .wi{display:inline-block;will-change:transform;}
-.wc-magnet{align-self:flex-start;display:inline-flex;align-items:center;
+/* Non è più un'ancora ma un pulsante: non porta da qualche parte, entra. */
+.wc-magnet{align-self:center;display:inline-flex;align-items:center;
   padding:.9rem 1.6rem;border:1px solid var(--cyan);border-radius:2px;
+  background:none;font-family:inherit;cursor:pointer;
   color:var(--cyan);text-decoration:none;font-size:.9rem;font-weight:500;
   will-change:transform;}
+.wc-magnet:hover{color:var(--white);}
 .wc-scroll-cue{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);
-  width:1px;height:56px;background:var(--border2);overflow:hidden;}
+  z-index:2;width:1px;height:56px;background:var(--border2);overflow:hidden;}
 .wc-scroll-cue span{position:absolute;top:0;left:0;width:100%;height:40%;
   background:var(--cyan);}
+
+/* Senza motion il tunnel non esiste: la sezione torna a essere alta quanto
+   basta a leggerla, invece di lasciare tre schermate vuote da scorrere. */
+.wc-hero.-static{height:auto;min-height:100svh;}
+.wc-hero.-static .wc-hero-pin{height:auto;min-height:100svh;}
+.wc-hero.-static .wc-tunnel{display:none;}
+.wc-hero.-static .wc-scroll-cue{display:none;}
+
+/* ---- CAP 02 — MANIFESTO ---- */
+.wc-manifesto{min-height:100svh;display:flex;flex-direction:column;
+  justify-content:center;gap:2.5rem;}
+.wc-manifesto-text{font-size:clamp(1.5rem,3.4vw,2.8rem);line-height:1.35;
+  font-weight:500;letter-spacing:-.015em;max-width:22ch;}
+.wc-manifesto-text .wi{color:var(--dim);transition:none;}
+
+/* ---- CAP 03 — DOPPIA ELICA WEBGL ---- */
+.wc-dna{padding:0;height:320svh;}
+.wc-dna-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:center;padding:0 clamp(1.5rem,5vw,4rem);}
+/* Il fondo del pass finale della scene sorgente (gradiente + fiamme d'angolo)
+   vive qui, in CSS: così il canvas resta trasparente e metà orbita delle
+   parole può passargli dietro. */
+.wc-dna-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(70% 55% at 72% 45%, rgba(0,212,255,.10), transparent 70%),
+    radial-gradient(60% 60% at 20% 85%, rgba(0,232,162,.07), transparent 70%),
+    var(--bg);}
+#wcDnaCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;}
+.wc-dna-layer{position:absolute;inset:0;pointer-events:none;}
+.wc-dna-layer.-back{z-index:1;}
+.wc-dna-layer.-front{z-index:3;}
+.wc-dna-word{position:absolute;top:0;left:0;white-space:nowrap;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;
+  color:var(--white);will-change:transform,opacity;}
+.wc-dna-layer.-back .wc-dna-word{color:var(--muted);filter:blur(1.5px);}
+.wc-dna-copy{position:relative;z-index:4;max-width:40ch;
+  display:flex;flex-direction:column;gap:1.2rem;}
+
+/* Senza WebGL la sezione smette di essere alta 320svh: non c'è nulla da
+   scorrere, e lasciarla alta darebbe tre schermate vuote. */
+.wc-dna.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-dna.-static .wc-dna-pin{height:auto;padding:0;display:block;overflow:visible;}
+.wc-dna.-static #wcDnaCanvas{display:none;}
+.wc-dna-orbit.-static{position:static;display:flex;flex-wrap:wrap;gap:.8rem 1.6rem;
+  margin-top:2.5rem;}
+.wc-dna-orbit.-static .wc-dna-layer{position:static;display:contents;}
+.wc-dna-orbit.-static .wc-dna-layer.-back{display:none;}
+.wc-dna-orbit.-static .wc-dna-word{position:static;transform:none;opacity:1;
+  color:var(--muted);}
+
+@media (max-width:900px){
+  .wc-dna-copy{max-width:none;}
+  .wc-dna-word{font-size:.62rem;letter-spacing:.16em;}
+}

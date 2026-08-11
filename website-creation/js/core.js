@@ -7,7 +7,34 @@ window.WC = (function(){
     motionOk: true,
     desktop: true,
     loaded: false,   // messo a true dal loader (Task 3) a sipario aperto
-    register: function(name, initFn){ registry.push({ name: name, init: initFn }); }
+    register: function(name, initFn){ registry.push({ name: name, init: initFn }); },
+
+    // Split a mano: SplitText è un plugin a pagamento e non si usa. Sta in
+    // core perché la usano tre capitoli diversi.
+    //
+    // Passa attraverso i nodi figli invece di leggere textContent: diversi
+    // titoli portano un <br> voluto, e riscrivere l'innerHTML dal solo testo
+    // lo cancellerebbe insieme al ritorno a capo.
+    splitWords: function(el){
+      var out = document.createDocumentFragment();
+      Array.prototype.slice.call(el.childNodes).forEach(function(node){
+        if (node.nodeType !== 3) { out.appendChild(node.cloneNode(true)); return; }
+        node.textContent.split(/(\s+)/).forEach(function(chunk){
+          if (!chunk) return;
+          if (/^\s+$/.test(chunk)) { out.appendChild(document.createTextNode(' ')); return; }
+          var outer = document.createElement('span');
+          outer.className = 'w';
+          var inner = document.createElement('span');
+          inner.className = 'wi';
+          inner.textContent = chunk;
+          outer.appendChild(inner);
+          out.appendChild(outer);
+        });
+      });
+      el.textContent = '';
+      el.appendChild(out);
+      return el.querySelectorAll('.wi');
+    }
   };
 
   // ---- SMOOTH SCROLL ----
