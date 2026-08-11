@@ -52,7 +52,8 @@ axxell-site/
       base.css                  ← token, reset, nav, footer, cursore, grana, tipografia
       sections.css              ← stili dei 9 capitoli
     js/
-      core.js                   ← Lenis, GSAP, motion routing, cursore, loader
+      core.js                   ← Lenis, GSAP, motion routing
+      cursor.js                 ← cursore a stati, uno per capitolo
       warp.js                   ← cap. 01 — canvas warp
       manifesto.js              ← cap. 02 — scrub parola per parola
       scene3d.js                ← cap. 03 — three.js pinnato
@@ -445,6 +446,223 @@ con motion consentito; sotto prefers-reduced-motion resta lo scroll nativo."
 
 ---
 
+### Task 2b: Cursore a stati
+
+**Files:**
+- Modify: `website-creation/index.html` (markup del cursore)
+- Modify: `website-creation/css/base.css` (i 9 stati)
+- Modify: `website-creation/js/core.js` (togliere `initCursor`)
+- Create: `website-creation/js/cursor.js`
+
+**Interfaces:**
+- Consumes: `WC.register` (Task 2).
+- Produces: il contratto che tutti i capitoli usano. Ogni `<section>` dichiara:
+  - `data-cursor="<stato>"` — uno tra `default` `read` `orbit` `grab` `cross` `invert` `arrow` `caret`
+  - `data-cursor-label="TESTO"` — facoltativo, testo dentro il ring
+  Il cursore reagisce da solo. Nessun capitolo importa o chiama niente.
+
+**Perché gli stati stanno nel CSS.** Le `transition` CSS fanno il morphing tra uno stato
+e l'altro senza una riga di JS, e sotto `prefers-reduced-motion` si spengono tutte con
+una regola sola. GSAP qui non serve: il JS cambia una classe su `<body>` e basta.
+
+- [ ] **Step 1: Sostituire il markup del cursore in `index.html`**
+
+Al posto dei due `<div class="cursor">` del Task 1:
+
+```html
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="curR"><span class="cursor-label" id="curLabel"></span></div>
+<div class="cursor-trail" data-i="0"></div>
+<div class="cursor-trail" data-i="1"></div>
+<div class="cursor-trail" data-i="2"></div>
+```
+
+E dopo `core.js`: `<script src="js/cursor.js"></script>`
+
+- [ ] **Step 2: Sostituire il blocco CURSORE in `css/base.css`**
+
+```css
+/* ---- CURSORE A STATI ---- */
+.cursor,.cursor-ring,.cursor-trail{
+  position:fixed;pointer-events:none;transform:translate(-50%,-50%);
+  mix-blend-mode:screen;
+  transition:width .35s cubic-bezier(.22,1,.36,1),
+             height .35s cubic-bezier(.22,1,.36,1),
+             border-radius .35s cubic-bezier(.22,1,.36,1),
+             background-color .35s ease, border-color .35s ease,
+             opacity .3s ease, rotate .5s cubic-bezier(.22,1,.36,1);
+}
+.cursor{width:8px;height:8px;background:var(--cyan);border-radius:50%;z-index:9999;}
+.cursor-ring{width:32px;height:32px;border:1px solid rgba(0,212,255,.4);
+  border-radius:50%;z-index:9998;display:flex;align-items:center;justify-content:center;}
+.cursor-trail{width:22px;height:22px;border:1px solid rgba(0,212,255,.18);
+  border-radius:50%;z-index:9997;opacity:0;}
+.cursor-label{font-family:var(--mono);font-size:.52rem;letter-spacing:.14em;
+  color:var(--cyan);white-space:nowrap;opacity:0;transition:opacity .3s ease;}
+
+/* --- 00 hidden: sotto il sipario --- */
+body.cur-hidden .cursor,body.cur-hidden .cursor-ring{opacity:0;}
+
+/* --- 01 default: punto + ring, la scia accesa --- */
+body.cur-default .cursor-trail{opacity:1;}
+
+/* --- 02 read: barra verticale spenta, un accento di lettura --- */
+body.cur-read .cursor{width:2px;height:26px;border-radius:1px;
+  background:rgba(240,240,246,.55);}
+body.cur-read .cursor-ring{opacity:0;}
+
+/* --- 03 orbit: quadrato verde in rotazione --- */
+body.cur-orbit .cursor{opacity:0;}
+body.cur-orbit .cursor-ring{width:42px;height:42px;border-radius:2px;
+  border-color:var(--green);rotate:45deg;}
+
+/* --- 04 grab: disco pieno con etichetta --- */
+body.cur-grab .cursor{opacity:0;}
+body.cur-grab .cursor-ring{width:84px;height:84px;
+  background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.75);}
+body.cur-grab .cursor-label{opacity:1;}
+
+/* --- 05 cross: mirino --- */
+body.cur-cross .cursor{width:1px;height:22px;border-radius:0;}
+body.cur-cross .cursor-ring{width:22px;height:1px;border-radius:0;
+  border:0;background:var(--cyan);}
+
+/* --- 06 invert: ring largo che inverte la superficie sotto --- */
+body.cur-invert .cursor{opacity:0;}
+body.cur-invert .cursor-ring{width:110px;height:110px;
+  background:#fff;border-color:transparent;mix-blend-mode:difference;}
+body.cur-invert .cursor-label{opacity:1;color:#060609;}
+
+/* --- 07 arrow: freccia orizzontale --- */
+body.cur-arrow .cursor{opacity:0;}
+body.cur-arrow .cursor-ring{width:54px;height:1px;border:0;
+  border-radius:0;background:var(--cyan);}
+body.cur-arrow .cursor-ring::after{content:'';position:absolute;right:-1px;
+  width:9px;height:9px;border-top:1px solid var(--cyan);
+  border-right:1px solid var(--cyan);rotate:45deg;}
+
+/* --- 08 caret: I-beam sottile --- */
+body.cur-caret .cursor{width:1px;height:20px;border-radius:0;background:var(--white);}
+body.cur-caret .cursor-ring{opacity:0;}
+
+/* Reduced-motion: gli stati restano, il morphing no. */
+@media (prefers-reduced-motion:reduce){
+  .cursor,.cursor-ring,.cursor-trail,.cursor-label{transition:none;}
+  .cursor-trail{display:none;}
+}
+@media (pointer:coarse){.cursor,.cursor-ring,.cursor-trail{display:none;}}
+```
+
+- [ ] **Step 3: Togliere `initCursor` da `core.js`**
+
+In `core.js`, cancellare l'intera funzione `initCursor` e la sua chiamata dentro `boot()`.
+Il cursore ora è una sezione registrata come le altre. `core.js` resta responsabile solo
+di Lenis, matchMedia e registry.
+
+- [ ] **Step 4: Creare `website-creation/js/cursor.js`**
+
+```js
+WC.register('cursor', function(ctx){
+  var dot   = document.getElementById('cur');
+  var ring  = document.getElementById('curR');
+  var label = document.getElementById('curLabel');
+  var trail = Array.prototype.slice.call(document.querySelectorAll('.cursor-trail'));
+  if (!dot || !ring) return;
+
+  var mx = 0, my = 0, rx = 0, ry = 0;
+  var tp = trail.map(function(){ return { x: 0, y: 0 }; });
+
+  var onMove = function(e){
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  };
+  document.addEventListener('mousemove', onMove);
+
+  var raf;
+  (function loop(){
+    rx += (mx - rx) * .12; ry += (my - ry) * .12;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    // ogni elemento della scia insegue il precedente più lentamente
+    for (var i = 0; i < trail.length; i++) {
+      var prev = i === 0 ? { x: rx, y: ry } : tp[i - 1];
+      var k = .16 - i * .035;
+      tp[i].x += (prev.x - tp[i].x) * k;
+      tp[i].y += (prev.y - tp[i].y) * k;
+      trail[i].style.left = tp[i].x + 'px';
+      trail[i].style.top  = tp[i].y + 'px';
+    }
+    raf = requestAnimationFrame(loop);
+  })();
+
+  // --- macchina a stati ---
+  var STATES = ['hidden','default','read','orbit','grab','cross','invert','arrow','caret'];
+  var current = '';
+
+  function setState(name, text){
+    if (!name || name === current) return;
+    STATES.forEach(function(s){ document.body.classList.remove('cur-' + s); });
+    document.body.classList.add('cur-' + name);
+    label.textContent = text || '';
+    current = name;
+  }
+  WC.setCursor = setState;   // il loader (Task 3) lo usa per 'hidden'
+
+  setState('default');
+
+  // Ogni sezione dichiara il proprio stato: il cursore non sa nulla dei capitoli.
+  var triggers = [];
+  document.querySelectorAll('[data-cursor]').forEach(function(sec){
+    triggers.push(ScrollTrigger.create({
+      trigger: sec, start: 'top 50%', end: 'bottom 50%',
+      onEnter:     function(){ setState(sec.dataset.cursor, sec.dataset.cursorLabel); },
+      onEnterBack: function(){ setState(sec.dataset.cursor, sec.dataset.cursorLabel); }
+    }));
+  });
+
+  return function(){
+    cancelAnimationFrame(raf);
+    document.removeEventListener('mousemove', onMove);
+    triggers.forEach(function(t){ t.kill(); });
+    STATES.forEach(function(s){ document.body.classList.remove('cur-' + s); });
+  };
+});
+```
+
+- [ ] **Step 5: Verificare**
+
+Playwright MCP, con una sezione finta per provare gli stati prima che i capitoli
+esistano — aggiungere temporaneamente in `<main>`:
+
+```html
+<section data-cursor="grab" data-cursor-label="TRASCINA" style="height:120svh"></section>
+<section data-cursor="invert" style="height:120svh"></section>
+```
+
+- `browser_evaluate` → `() => document.body.className` all'apertura: atteso `"cur-default"`
+- scrollare nella prima sezione finta, `browser_evaluate` → atteso `"cur-grab"`
+- `browser_take_screenshot` con `browser_hover` al centro → ring grande con scritta TRASCINA
+- scrollare nella seconda → `"cur-invert"`, ring bianco in `difference`
+- risalire indietro → lo stato deve tornare `cur-grab` (verifica di `onEnterBack`)
+- `browser_resize` a 500×900 → `browser_evaluate`:
+  ```js
+  () => getComputedStyle(document.getElementById('cur')).display
+  ```
+  Atteso: `"none"` — su puntatore grosso il cursore non esiste
+- **Rimuovere le due sezioni finte prima del commit.**
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add website-creation/
+git commit -m "feat(wc): cursore a stati guidato dalle sezioni
+
+Nove stati definiti in CSS, il JS cambia solo una classe su body. Le sezioni
+li dichiarano con data-cursor: il cursore non conosce i capitoli.
+Sotto reduced-motion gli stati restano, il morphing e la scia no."
+```
+
+---
+
 ### Task 3: Capitolo 00 — loader cinematografico con Lottie
 
 **Files:**
@@ -489,7 +707,8 @@ E prima di `js/core.js`:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js"></script>
 ```
 
-E dopo `js/core.js`:
+E **dopo `js/cursor.js`** — l'ordine conta: il loader chiama `WC.setCursor`, che esiste
+solo se `cursor.js` si è già registrato:
 
 ```html
 <script src="js/loader.js"></script>
@@ -527,6 +746,7 @@ WC.register('loader', function(ctx){
     root.style.display = 'none';
     document.body.classList.remove('wc-locked');
     if (WC.lenis) WC.lenis.start();
+    if (WC.setCursor) WC.setCursor('default');
     WC.loaded = true;                                   // per chi si registra dopo
     document.dispatchEvent(new CustomEvent('wc:loaded'));
   }
@@ -535,6 +755,7 @@ WC.register('loader', function(ctx){
   if (!ctx.motionOk) { finish(); return; }
 
   document.body.classList.add('wc-locked');
+  if (WC.setCursor) WC.setCursor('hidden');
   // Lenis va fermato: overflow:hidden sul body non lo blocca, continuerebbe
   // a scorrere dietro al sipario.
   if (WC.lenis) WC.lenis.stop();
@@ -604,7 +825,7 @@ Con reduced-motion il loader viene saltato del tutto."
 - [ ] **Step 1: Aggiungere il markup dell'hero dentro `<main id="wc-main">`**
 
 ```html
-<section class="wc-hero" id="cap01">
+<section class="wc-hero" id="cap01" data-cursor="default">
   <canvas class="wc-warp" id="wcWarp"></canvas>
   <div class="wc-hero-content">
     <p class="eyebrow">// 01 — Website Creation</p>
@@ -791,7 +1012,7 @@ Warp in canvas 2D puro. Con reduced-motion il titolo è statico e visibile."
 - [ ] **Step 1: Markup, dopo il cap. 01**
 
 ```html
-<section class="wc-manifesto" id="cap02">
+<section class="wc-manifesto" id="cap02" data-cursor="read">
   <p class="eyebrow">// 02 — Metodo</p>
   <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
 </section>
@@ -875,7 +1096,7 @@ git commit -m "feat(wc): cap. 02 manifesto rivelato in scroll-scrub"
 - [ ] **Step 1: Markup**
 
 ```html
-<section class="wc-3d" id="cap03">
+<section class="wc-3d" id="cap03" data-cursor="orbit">
   <div class="wc-3d-pin" id="wc3dPin">
     <canvas id="wc3dCanvas"></canvas>
     <div class="wc-3d-copy">
@@ -1032,7 +1253,7 @@ accumulo. Su mobile e reduced-motion: singolo frame statico."
 - [ ] **Step 1: Markup — 8 tessere, contenuto procedurale (nessuna immagine)**
 
 ```html
-<section class="wc-carousel" id="cap04">
+<section class="wc-carousel" id="cap04" data-cursor="grab" data-cursor-label="TRASCINA">
   <p class="eyebrow">// 04 — Movimento continuo</p>
   <h2>Trascina. Ha una massa.</h2>
   <div class="wc-track-wrap">
@@ -1202,7 +1423,7 @@ Quattro icone lineari, tratto 2px, colore `#00d4ff`, canvas 120×120, loop, **se
 - [ ] **Step 2: Markup**
 
 ```html
-<section class="wc-bento" id="cap05">
+<section class="wc-bento" id="cap05" data-cursor="cross">
   <p class="eyebrow">// 05 — Cosa c'è sotto</p>
   <h2>Bello è il minimo.<br>Il resto è ingegneria.</h2>
   <div class="wc-bento-grid">
@@ -1355,7 +1576,7 @@ La texture è **generata a runtime in un canvas 2D** e passata a `THREE.CanvasTe
 - [ ] **Step 1: Markup**
 
 ```html
-<section class="wc-shader" id="cap06">
+<section class="wc-shader" id="cap06" data-cursor="invert" data-cursor-label="CLICCA">
   <p class="eyebrow">// 06 — Interazione</p>
   <h2>Passaci sopra. Cliccaci.</h2>
   <p class="lead">Questa superficie non è un video. È una griglia di pixel che reagisce al tuo cursore in tempo reale.</p>
@@ -1531,7 +1752,7 @@ immagine. Fallback testuale su mobile e reduced-motion."
 - [ ] **Step 1: Markup**
 
 ```html
-<section class="wc-process" id="cap07">
+<section class="wc-process" id="cap07" data-cursor="arrow">
   <div class="wc-process-pin" id="wcProcessPin">
     <div class="wc-process-head">
       <p class="eyebrow">// 07 — Processo</p>
@@ -1666,7 +1887,7 @@ Spunta che si disegna dentro un cerchio, colore `#00e8a2`, canvas 120×120, dura
 - [ ] **Step 2: Markup**
 
 ```html
-<section class="wc-cta" id="cap08">
+<section class="wc-cta" id="cap08" data-cursor="caret">
   <p class="eyebrow">// 08 — Parliamone</p>
   <h2>Raccontaci cosa deve fare<br>il tuo sito.</h2>
   <form class="wc-form" id="wcForm" novalidate>
