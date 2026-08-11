@@ -15,14 +15,75 @@ body{background:var(--bg);color:var(--white);font-family:var(--font);
 body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");}
 
-/* CURSORE — identico al sito madre */
-.cursor{position:fixed;width:8px;height:8px;background:var(--cyan);border-radius:50%;
-  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
-  transition:width .2s,height .2s;mix-blend-mode:screen;}
-.cursor-ring{position:fixed;width:32px;height:32px;border:1px solid rgba(0,212,255,.4);
-  border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);
-  transition:width .3s,height .3s,border-color .3s;mix-blend-mode:screen;}
-@media (pointer:coarse){.cursor,.cursor-ring{display:none;}}
+/* ---- CURSORE A STATI ---- */
+.cursor,.cursor-ring,.cursor-trail{
+  position:fixed;pointer-events:none;transform:translate(-50%,-50%);
+  mix-blend-mode:screen;
+  transition:width .35s cubic-bezier(.22,1,.36,1),
+             height .35s cubic-bezier(.22,1,.36,1),
+             border-radius .35s cubic-bezier(.22,1,.36,1),
+             background-color .35s ease, border-color .35s ease,
+             opacity .3s ease, rotate .5s cubic-bezier(.22,1,.36,1);
+}
+.cursor{width:8px;height:8px;background:var(--cyan);border-radius:50%;z-index:9999;}
+.cursor-ring{width:32px;height:32px;border:1px solid rgba(0,212,255,.4);
+  border-radius:50%;z-index:9998;display:flex;align-items:center;justify-content:center;}
+.cursor-trail{width:22px;height:22px;border:1px solid rgba(0,212,255,.18);
+  border-radius:50%;z-index:9997;opacity:0;}
+.cursor-label{font-family:var(--mono);font-size:.52rem;letter-spacing:.14em;
+  color:var(--cyan);white-space:nowrap;opacity:0;transition:opacity .3s ease;}
+
+/* --- 00 hidden: sotto il sipario --- */
+body.cur-hidden .cursor,body.cur-hidden .cursor-ring{opacity:0;}
+
+/* --- 01 default: punto + ring, la scia accesa --- */
+body.cur-default .cursor-trail{opacity:1;}
+
+/* --- 02 read: barra verticale spenta, un accento di lettura --- */
+body.cur-read .cursor{width:2px;height:26px;border-radius:1px;
+  background:rgba(240,240,246,.55);}
+body.cur-read .cursor-ring{opacity:0;}
+
+/* --- 03 orbit: quadrato verde in rotazione --- */
+body.cur-orbit .cursor{opacity:0;}
+body.cur-orbit .cursor-ring{width:42px;height:42px;border-radius:2px;
+  border-color:var(--green);rotate:45deg;}
+
+/* --- 04 grab: disco pieno con etichetta --- */
+body.cur-grab .cursor{opacity:0;}
+body.cur-grab .cursor-ring{width:84px;height:84px;
+  background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.75);}
+body.cur-grab .cursor-label{opacity:1;}
+
+/* --- 05 cross: mirino --- */
+body.cur-cross .cursor{width:1px;height:22px;border-radius:0;}
+body.cur-cross .cursor-ring{width:22px;height:1px;border-radius:0;
+  border:0;background:var(--cyan);}
+
+/* --- 06 invert: ring largo che inverte la superficie sotto --- */
+body.cur-invert .cursor{opacity:0;}
+body.cur-invert .cursor-ring{width:110px;height:110px;
+  background:#fff;border-color:transparent;mix-blend-mode:difference;}
+body.cur-invert .cursor-label{opacity:1;color:#060609;}
+
+/* --- 07 arrow: freccia orizzontale --- */
+body.cur-arrow .cursor{opacity:0;}
+body.cur-arrow .cursor-ring{width:54px;height:1px;border:0;
+  border-radius:0;background:var(--cyan);}
+body.cur-arrow .cursor-ring::after{content:'';position:absolute;right:-1px;
+  width:9px;height:9px;border-top:1px solid var(--cyan);
+  border-right:1px solid var(--cyan);rotate:45deg;}
+
+/* --- 08 caret: I-beam sottile --- */
+body.cur-caret .cursor{width:1px;height:20px;border-radius:0;background:var(--white);}
+body.cur-caret .cursor-ring{opacity:0;}
+
+/* Reduced-motion: gli stati restano, il morphing no. */
+@media (prefers-reduced-motion:reduce){
+  .cursor,.cursor-ring,.cursor-trail,.cursor-label{transition:none;}
+  .cursor-trail{display:none;}
+}
+@media (pointer:coarse){.cursor,.cursor-ring,.cursor-trail{display:none;}}
 
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--nav-h);

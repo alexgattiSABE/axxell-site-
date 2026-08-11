@@ -10,36 +10,6 @@ window.WC = (function(){
     register: function(name, initFn){ registry.push({ name: name, init: initFn }); }
   };
 
-  // ---- CURSORE ----
-  function initCursor(){
-    var cur = document.getElementById('cur'), curR = document.getElementById('curR');
-    if (!cur || !curR) return;
-    var mx = 0, my = 0, rx = 0, ry = 0;
-    document.addEventListener('mousemove', function(e){
-      mx = e.clientX; my = e.clientY;
-      cur.style.left = mx + 'px'; cur.style.top = my + 'px';
-    });
-    (function ring(){
-      rx += (mx - rx) * .12; ry += (my - ry) * .12;
-      curR.style.left = rx + 'px'; curR.style.top = ry + 'px';
-      requestAnimationFrame(ring);
-    })();
-    document.addEventListener('mouseover', function(e){
-      if (e.target.closest('a,button,.wc-hover')) {
-        cur.style.width = '14px'; cur.style.height = '14px';
-        curR.style.width = '44px'; curR.style.height = '44px';
-        curR.style.borderColor = 'rgba(0,212,255,.7)';
-      }
-    });
-    document.addEventListener('mouseout', function(e){
-      if (e.target.closest('a,button,.wc-hover')) {
-        cur.style.width = '8px'; cur.style.height = '8px';
-        curR.style.width = '32px'; curR.style.height = '32px';
-        curR.style.borderColor = 'rgba(0,212,255,.4)';
-      }
-    });
-  }
-
   // ---- SMOOTH SCROLL ----
   // Lenis si avvia solo se il motion è consentito. Con reduced-motion
   // resta lo scroll nativo del browser.
@@ -67,7 +37,6 @@ window.WC = (function(){
 
   function boot(){
     gsap.registerPlugin(ScrollTrigger);
-    initCursor();
 
     var mm = gsap.matchMedia();
     mm.add({
