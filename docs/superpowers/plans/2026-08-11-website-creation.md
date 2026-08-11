@@ -748,7 +748,10 @@ solo se `cursor.js` si è già registrato:
 .wc-loader{position:fixed;inset:0;z-index:10000;background:var(--bg);
   display:flex;align-items:center;justify-content:center;}
 .wc-loader.done{pointer-events:none;}
-.wc-loader-inner{display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* position + z-index servono: senza, i pannelli del sipario (position:absolute)
+   dipingono sopra contatore e logo e il loader resta uno schermo nero vuoto. */
+.wc-loader-inner{display:flex;flex-direction:column;align-items:center;gap:1.2rem;
+  position:relative;z-index:1;}
 .wc-loader-lottie{width:min(60vw,320px);}
 .wc-loader-count{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;
   color:var(--dim);}
