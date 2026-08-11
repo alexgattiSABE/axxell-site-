@@ -102,8 +102,16 @@ body.wc-locked{overflow:hidden;}
 /* Senza WebGL la sezione smette di essere alta 320svh: non c'è nulla da
    scorrere, e lasciarla alta darebbe tre schermate vuote. */
 .wc-dna.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
-.wc-dna.-static .wc-dna-pin{height:auto;padding:0;display:block;overflow:visible;}
+/* Le parole stanno prima della copy nel markup perché lì sono posizionate in
+   assoluto e l'ordine non conta. Rimesse nel flusso conta eccome: senza
+   questo `order` la fila di etichette precede il titolo del capitolo. */
+.wc-dna.-static .wc-dna-pin{height:auto;padding:0;overflow:visible;
+  display:flex;flex-direction:column;align-items:stretch;}
+.wc-dna.-static .wc-dna-copy{order:1;}
+.wc-dna.-static .wc-dna-orbit{order:2;}
 .wc-dna.-static #wcDnaCanvas{display:none;}
+/* Senza orbita la frase che la descrive non è più vera. */
+.-static .wc-only-motion{display:none;}
 .wc-dna-orbit.-static{position:static;display:flex;flex-wrap:wrap;gap:.8rem 1.6rem;
   margin-top:2.5rem;}
 .wc-dna-orbit.-static .wc-dna-layer{position:static;display:contents;}

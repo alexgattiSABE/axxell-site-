@@ -66,7 +66,23 @@ con SRI.
 Due, entrambe decise dall'utente dopo che gli è stato presentato il verdetto
 contrario.
 
-### D4 — due sezioni pinnate invece di una
+### D4 — quattro sezioni pinnate invece di una
+
+> Aggiornata dopo la sessione degli effetti: erano due (cap. 03 e 07), ora
+> sono quattro. Il tunnel dell'hero e la sfera→galassia sono arrivati dopo.
+
+Il piano pinna l'hero (cap. 01), l'oggetto 3D (cap. 03), la sfera che si
+sfalda in galassia (cap. 06) e il processo orizzontale (cap. 07). D4 ne
+ammette una sola per pagina.
+
+**Perché si deroga:** su questa pagina il pin non è un vezzo, è una delle
+capacità in vetrina, e sono quattro pin che fanno quattro cose diverse —
+attraversare, ruotare guidati dal progresso, trasformare una forma in
+un'altra, convertire il verticale in orizzontale. Il costo (quattro punti in
+cui lo scroll si aggancia) è accettato. Il testo storico della deroga a due
+resta qui sotto perché la motivazione non è cambiata, solo il conteggio.
+
+### D4 (testo originale) — due sezioni pinnate invece di una
 
 Il piano pinna sia l'oggetto 3D (cap 03) sia il processo orizzontale
 (cap 07). D4 ne ammette una sola per pagina.
@@ -102,3 +118,59 @@ UI · nessuno scroll orizzontale da 320px a 1920px · `prefers-reduced-motion`
 spegne tutto il movimento non funzionale · si animano solo
 `transform`/`opacity`/`filter` · OG image 1200×630 · versioni pinnate, mai
 `@latest`.
+
+## Deroghe aggiunte con gli effetti (sessione 2026-08-11)
+
+Tutte e tre decise dall'utente, che ha chiesto esplicitamente questi effetti.
+
+### Quattro contesti WebGL su una pagina
+
+Le regole di composizione dicono «una scena sopra la piega, al massimo» e
+«più di ~2 scene su una pagina è quasi sempre sbagliato». Qui ce ne sono
+quattro: il tunnel (cap. 01), la doppia elica (cap. 03), la scena Spline
+(cap. 05) e la sfera→galassia (cap. 06).
+
+**Perché si deroga:** la pagina *è* la vetrina di questa capacità; mostrarla
+una volta sola direbbe meno. Il costo è contenuto in tre modi, e sono
+vincolanti per chiunque tocchi queste sezioni:
+
+1. ogni scena ha due ScrollTrigger, uno che pinna e uno che monta e smonta il
+   loop di rendering. Fuori schermo il canvas non disegna;
+2. niente post-processing da nessuna parte. Le scene sorgente montano tre
+   `EffectComposer` a testa per un solo oggetto: quattro volte tanto non sta
+   in piedi. Fondo e fiamme d'angolo del pass finale sono gradienti CSS;
+3. le sfere-reticolo vanno de-indicizzate, e l'opacità riscalata per il
+   fattore di duplicazione. `THREE.Points` onora l'indice e ridisegnerebbe
+   ogni vertice sei volte esattamente sopra sé stesso.
+
+### Il canvas resta trasparente, il fondo è CSS
+
+Non è solo una scelta di costo. Nel cap. 03 le parole in orbita devono
+passare **dietro** all'elica: il DOM non si interlaccia con un canvas, quindi
+ogni parola vive in due strati — uno sotto e uno sopra il canvas — che si
+scambiano l'opacità sulla silhouette. Con un fondo opaco in WebGL non
+funzionerebbe.
+
+### Asset di terze parti nel cap. 05
+
+Il runtime `@splinetool/viewer` (~2.2 MB) e la scena `.splinecode` (~1.3 MB)
+arrivano da CDN esterne, e la scena è la demo pubblica di Spline, non nostra.
+Rompe due vincoli del piano: «asset procedurali soltanto» e «ogni script da
+CDN porta `integrity`» (il runtime ce l'ha, la scena no — non è uno script ma
+un binario che il runtime va a prendere da sé).
+
+**Contenimento:** niente viene toccato finché la sezione non si avvicina al
+viewport, quindi sopra la piega la pagina non paga un byte.
+
+**Aperto:** il badge «Built with Spline» resta visibile. È l'attribuzione del
+piano gratuito e nasconderla via CSS violerebbe i termini di Spline. Le due
+strade per toglierlo sono un piano Spline a pagamento, oppure rifare la scena
+e ospitarla in proprio.
+
+### Colore: r128 non ha color management
+
+Le scene sorgente di GetLayers girano su `WebGL1Renderer` senza output
+encoding e caricano i byte del colore grezzi. three.js r128 — la versione
+pinnata dal piano — fa lo stesso. Convertire in lineare qui li slaverebbe:
+`WC.glsl.hexToVec3` carica il crudo, di proposito. Se un giorno si sale di
+versione, questa è la prima cosa che si rompe.
