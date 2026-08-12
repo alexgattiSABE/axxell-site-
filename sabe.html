@@ -167,10 +167,21 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
   mask-image:radial-gradient(ellipse 70% 70% at 30% 50%,black,transparent);
   animation:gridP 8s ease-in-out infinite;z-index:0;}
 @keyframes gridP{0%,100%{opacity:.4}50%{opacity:.9}}
+/* Niente border-right e niente sfondo diverso a destra: la scena attraversa
+   TUTTA la sezione, e un divisore la taglierebbe a metà. */
 .home-left{padding:5rem 4rem;display:flex;flex-direction:column;justify-content:center;
-  position:relative;z-index:1;border-right:1px solid var(--border);}
+  position:relative;z-index:2;}
 .home-right{display:flex;align-items:center;justify-content:center;
-  background:var(--bg2);position:relative;z-index:1;overflow:hidden;padding:2rem;}
+  position:relative;z-index:2;padding:2rem;}
+
+/* La canvas copre l'INTERA hero, sotto al testo: così le particelle nascono a
+   sinistra, attraversano la colonna del titolo e si raccolgono nel disco a
+   destra. Dentro .home-right sarebbe ritagliata dal suo overflow a metà schermo. */
+.home-scene{position:fixed;top:72px;left:0;right:0;height:calc(100vh - 72px);
+  z-index:0;pointer-events:none;overflow:hidden;
+  opacity:0;transition:opacity .45s ease;}
+.home-scene.attiva{opacity:1;}
+.home-scene canvas{display:block;}
 
 .eyebrow{display:flex;align-items:center;gap:.6rem;margin-bottom:1.8rem;}
 .eyebrow-line{width:20px;height:1px;background:var(--cyan);}
@@ -258,6 +269,21 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 
 /* Stats strip */
 .ss-strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+
+/* SCENE 3D in cima alle pagine interne. La canvas si dimensiona da sola sul
+   contenitore (vedi attachResize in axxell-3d.js): qui c'è solo il contenitore.
+   Il contenitore DEVE avere un'altezza propria, altrimenti a pagina nascosta
+   misura zero e la scena esce schiacciata. */
+.scene-3d{position:relative;display:flex;align-items:center;justify-content:center;
+  margin:0 auto;padding:1.5rem 2rem 0;pointer-events:none;}
+.scene-3d canvas{display:block;}
+.scene-3d-brain{max-width:900px;height:min(58vh,560px);}
+.scene-3d-orb{max-width:900px;height:min(62vh,620px);}
+@media(max-width:700px){
+  .scene-3d{padding:1rem 1.2rem 0;}
+  .scene-3d-brain{height:min(38vh,340px);}
+  .scene-3d-orb{height:min(34vh,300px);}
+}
 .ss-i{padding:2.2rem 3rem;text-align:center;border-right:1px solid var(--border);transition:background .25s;position:relative;overflow:hidden;}
 .ss-i:last-child{border-right:none;}
 .ss-i::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:1px;
@@ -477,6 +503,35 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;}
 .fchks{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
 .fchk{display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:rgba(240,240,246,.55);}
 .fchk input[type=checkbox]{width:14px;height:14px;accent-color:var(--cyan);cursor:pointer;flex-shrink:0;}
+
+/* SERVIZI AGGIUNTIVI — schede, non caselle nude.
+
+   Erano due checkbox spoglie in mezzo a un modulo fatto di schede bordate
+   (.pcard): stonavano. Qui riusano gli STESSI valori di quelle — bordo
+   rgba(255,255,255,.12), raggio 10px, fondo .02, bordo ciano al passaggio e
+   alla selezione — cosi' leggono come la stessa famiglia invece che come un
+   pezzo aggiunto dopo.
+
+   L'ordine nel markup NON e' libero: l'invio del modulo legge
+   `input.nextElementSibling.textContent`, quindi subito dopo la casella deve
+   esserci il nome del servizio e nient'altro, o nell'email finirebbe anche la
+   descrizione. L'icona sta prima, la descrizione dopo. */
+.xc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.xc{position:relative;display:flex;flex-direction:column;gap:.3rem;
+  padding:.85rem .9rem .9rem;border:1px solid rgba(255,255,255,.12);border-radius:10px;
+  background:rgba(255,255,255,.02);cursor:pointer;
+  transition:border-color .15s,background .15s;}
+.xc:hover{border-color:rgba(0,212,255,.45);}
+.xc:has(input:checked){border-color:var(--cyan);background:rgba(0,212,255,.07);}
+.xc input[type=checkbox]{position:absolute;top:.6rem;right:.6rem;width:14px;height:14px;
+  accent-color:var(--cyan);cursor:pointer;}
+.xc-ico{display:block;width:22px;height:22px;color:rgba(0,212,255,.45);margin-bottom:.15rem;
+  transition:color .15s;}
+.xc-ico svg{width:100%;height:100%;display:block;}
+.xc:has(input:checked) .xc-ico{color:var(--cyan);}
+.xc-name{font-weight:600;font-size:.85rem;color:var(--white);padding-right:1.4rem;}
+.xc-desc{font-size:.72rem;line-height:1.5;color:rgba(240,240,246,.5);}
+@media(max-width:600px){.xc-grid{grid-template-columns:1fr;}}
 .fpriv{font-size:.78rem;color:rgba(240,240,246,.38);line-height:1.6;}
 .f-submit{width:100%;justify-content:center;height:46px;font-size:.84rem;margin-top:.5rem;}
 .f-success{text-align:center;padding:3rem 2rem;display:none;}
@@ -528,6 +583,15 @@ footer{border-top:1px solid var(--border);height:54px;padding:0 3rem;
   .lang-sw{display:none;}
   .home-hero{grid-template-columns:1fr;}
   .home-right{display:none;}
+  /* La scena resta ACCESA anche su mobile: qui la colonna destra sparisce e
+     senza galassia l'hero e' mezzo schermo di nero.
+
+     Occupa solo la FASCIA ALTA, sopra il titolo. A tutta altezza il disco
+     cadeva dietro al testo — leggibilita' peggiore e vuoto in alto invariato:
+     il difetto restava, spostato. Qui riempie lo spazio che era vuoto e lascia
+     il testo pulito, quindi non serve nemmeno attenuarla molto. */
+  .home-scene{top:58px;height:40vh;}
+  .home-scene.attiva{opacity:.9;}
   .home-left{padding:3rem 1.5rem;}
   .home-band{grid-template-columns:1fr;}
   .inner{padding:0 1.5rem;}
@@ -795,6 +859,37 @@ overflow-y:auto;
   display:flex;
   align-items:center;
   justify-content:space-between;
+
+  /* Base SFUMATA, non un bordo netto.
+
+     Su mobile la barra e' fissa sopra il contenuto: con fondo pieno e filo
+     inferiore taglia di netto cio' che le scorre sotto, e il taglio si vede
+     soprattutto sulla galassia e sulle immagini. Qui il fondo scompare e viene
+     rifatto dal pseudo-elemento sotto, che sfuma fino a trasparente. */
+  background:none;
+  backdrop-filter:none;
+  border-bottom:none;
+}
+
+/* Il velo: tinta + sfocatura che si spengono insieme verso il basso.
+   La maschera agisce su ENTRAMBE — senza, la sfocatura resterebbe a piena
+   forza fino al suo bordo e si vedrebbe comunque una linea netta. */
+nav::before{
+  content:'';
+  position:absolute;
+  left:0;right:0;top:0;
+  bottom:-26px;
+  background:linear-gradient(to bottom,
+    rgba(6,6,9,.97) 0%,
+    rgba(6,6,9,.94) 52%,
+    rgba(6,6,9,.62) 78%,
+    rgba(6,6,9,0) 100%);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+  pointer-events:none;
+  z-index:-1;
 }
 
 .nav-logo-img{
@@ -1633,6 +1728,21 @@ overflow-y:auto;
   </div>
 </nav>
 
+<!-- ══ SCENA 3D DELLA HOME ══
+     Vive FUORI da #p-home, di proposito.
+
+     Il router nasconde le pagine con `display:none`. Quando una canvas WebGL
+     finisce dentro un elemento nascosto, WebKit ne scarta il livello di
+     composizione: al ritorno la scena continua a disegnare — stessi 2 draw
+     call, stessi 66.005 punti, stesse uniform, verificato con renderer.info —
+     ma il browser non la compone piu' e resta invisibile. Nessuna rimisura o
+     forzatura di layout la fa tornare.
+
+     Qui il livello e' fisso, figlio del body, e non viene mai nascosto con
+     `display`: si accende e si spegne con l'opacita', quindi resta sempre
+     composto. -->
+<div class="home-scene"><canvas id="sphereCanvas" data-orb="new"></canvas></div>
+
 <!-- PREVENTIVO MODAL -->
 <div class="prev-overlay" id="prevOverlay">
   <div class="prev-modal">
@@ -1676,9 +1786,19 @@ overflow-y:auto;
         </div>
         <div class="fg">
           <label class="fl">Servizi aggiuntivi</label>
-          <div class="fchks fchks-extra" style="grid-template-columns:1fr;">
-            <label class="fchk"><input type="checkbox"><span>Chatbot</span></label>
-            <label class="fchk"><input type="checkbox"><span>Website</span></label>
+          <div class="fchks-extra xc-grid">
+            <label class="xc">
+              <span class="xc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <input type="checkbox">
+              <span class="xc-name">Chatbot</span>
+              <span class="xc-desc">Assistente virtuale sul sito. Qualifica i contatti in tempo reale.</span>
+            </label>
+            <label class="xc">
+              <span class="xc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+              <input type="checkbox">
+              <span class="xc-name">Website</span>
+              <span class="xc-desc">Sito su misura, veloce e ottimizzato per convertire.</span>
+            </label>
           </div>
         </div>
         <p style="font-family:var(--mono);font-size:.62rem;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin:1.2rem 0 -.2rem;">// i tuoi dati</p>
@@ -1807,7 +1927,7 @@ overflow-y:auto;
       </div>
     </div>
     <div class="home-right" style="position:relative;display:flex;align-items:center;justify-content:center;">
-      <canvas id="sphereCanvas" style="display:block;pointer-events:none;"></canvas>
+
     </div>
   </div>
 
@@ -1952,6 +2072,11 @@ overflow-y:auto;
 
 <!-- ══ SABE ══ -->
 <div id="p-sabe" class="page active">
+  <!-- ══ SFERA 3D — in cima, prima dei titoli ══ -->
+  <div class="scene-3d scene-3d-orb">
+    <canvas id="sabeCanvas" data-orb="new"></canvas>
+  </div>
+
   <div class="pg-hero">
     <div class="pg-mono" data-anim>Prodotto principale</div>
     <h2 class="pg-h1" data-anim data-d="1">Sabe — il tuo operatore <span class="hl">vocale AI</span></h2>
@@ -2706,6 +2831,11 @@ overflow-y:auto;
 </div>
 
 <div id="p-atlas" class="page">
+  <!-- ══ CERVELLO 3D — in cima, prima dei titoli ══ -->
+  <div class="scene-3d scene-3d-brain">
+    <canvas id="brainCanvas" data-orb="new"></canvas>
+  </div>
+
   <!-- HERO -->
   <div class="pg-hero">
     <div class="pg-mono" data-anim>Agente AI personale · macOS</div>
@@ -3531,6 +3661,10 @@ function calPrev() { calGo(calCurrent - 1); }
 window.addEventListener('load', function(){
   var canvas = document.getElementById('sphereCanvas');
   if(!canvas || typeof THREE === 'undefined'){ return; }
+  // La scena nuova (three r185, modulo ES) ha già preso questa canvas: due
+  // renderer sullo stesso elemento non convivono. Lasciata intatta qui sotto
+  // perché togliere data-orb dal markup la rimette in funzione.
+  if(canvas.dataset.orb === 'new'){ return; }
 
   function getSize(){
     var p = canvas.parentElement;
@@ -4062,5 +4196,80 @@ function setLang(lang){
 </script>
 <script>function toggleAtlasPlans(){var p=document.getElementById('atlasPlansPanel');if(!p)return;var b=document.getElementById('atlasPlansToggle');var open=(p.style.display==='none'||!p.style.display);p.style.display=open?'block':'none';if(b)b.textContent=open?'Nascondi i piani':'Scopri i piani';}</script>
 <script>function openPrevUltra(){openPrev();try{var cards=document.querySelectorAll('#prevForm .sabe-cards .pcard');cards.forEach(function(l){var n=l.querySelector('.pc-name');var inp=l.querySelector('input');if(!inp)return;var isUltra=n&&/ultra/i.test(n.textContent);inp.checked=isUltra;if(isUltra){inp.dispatchEvent(new Event('change',{bubbles:true}));}});}catch(e){}}</script>
+<!-- ══ SCENE 3D (three r185, modulo ES) ══
+     Il sito carica three r128 come script globale e ci disegna già la sfera, le
+     mani e lo sky. Queste scene sono scritte per r185, che ha rifatto la
+     gestione del colore: aggiornare il globale vorrebbe dire rimettere alla
+     prova tutto quello che già funziona.
+
+     Caricandolo come modulo ES le due versioni convivono — quella a modulo non
+     finisce in nessuna variabile globale e non tocca window.THREE.
+
+     three.js è servito da vendor/ e NON da una CDN: se la richiesta a unpkg
+     falliva o andava in timeout, il modulo non si caricava e TUTTE E TRE le
+     scene sparivano, lasciando la pagina statica perfetta. Un sito non deve
+     dipendere da un dominio di terzi per disegnare il proprio hero. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+<script type="module">
+  import { mountOrb, mountBrain, mountGalaxy } from './axxell-3d.js';
+
+  // HOME — la galassia. Copre l'intera sezione hero (fill) ma resta inquadrata
+  // sulla destra (offsetXFrac), così le particelle arrivano da sinistra
+  // attraversando la colonna del titolo.
+  const homeCanvas = document.getElementById('sphereCanvas');
+  if (homeCanvas && homeCanvas.dataset.orb === 'new') {
+    mountGalaxy(homeCanvas, { fill: true, offsetXFrac: 0.42, pageSelector: '#p-home' });
+
+    // Il livello e' fisso e non viene mai messo in display:none. Si accende
+    // quando la home e' la pagina attiva e si spegne scorrendo oltre l'hero,
+    // altrimenti resterebbe visibile dietro le sezioni successive.
+    const scena = homeCanvas.parentElement;
+    const home = document.getElementById('p-home');
+    const aggiorna = () => {
+      // La soglia segue l'ALTEZZA REALE del livello, non una frazione fissa
+      // dello schermo: su mobile la scena occupa solo la fascia alta, e con la
+      // vecchia soglia restava accesa dietro mezza pagina mentre scorrevi.
+      const attiva = home.classList.contains('active')
+        && window.scrollY < scena.offsetHeight * 0.55;
+      scena.classList.toggle('attiva', attiva);
+    };
+    new MutationObserver(aggiorna).observe(home, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('scroll', aggiorna, { passive: true });
+    aggiorna();
+  }
+
+  // SABE — la sfera dell'hero.
+  // `density` sotto 1 perché il riquadro è piccolo: a piena densità le sprite
+  // si sovrappongono e la forma si impasta invece di risolversi in particelle.
+  // La deformazione è alzata rispetto al default: in un riquadro piccolo il
+  // movimento di superficie va amplificato per restare leggibile.
+  const sabeCanvas = document.getElementById('sabeCanvas');
+  if (sabeCanvas && sabeCanvas.dataset.orb === 'new') {
+    mountOrb(sabeCanvas, {
+      density: 0.9,
+      maxSize: 720,
+      // Camera più vicina del default (3.8): riempie il riquadro senza dover
+      // ingrandire le sprite, che è ciò che l'aveva impastata la prima volta.
+      cameraZ: 3.1,
+      config: { deform: 0.185, spin: 0.21, tilt: 0.46, oilBulge: 0.58, iridescence: 0.72 },
+    });
+  }
+
+  // ATLAS — il cervello. Scarica una mesh da 43 KB: se fallisce non deve
+  // portarsi dietro il resto della pagina, quindi l'errore si ferma qui.
+  const brainCanvas = document.getElementById('brainCanvas');
+  if (brainCanvas && brainCanvas.dataset.orb === 'new') {
+    mountBrain(brainCanvas).catch((error) => {
+      console.error('[cervello] montaggio fallito:', error);
+      brainCanvas.closest('.scene-3d')?.remove();
+    });
+  }
+</script>
 </body>
 </html>
