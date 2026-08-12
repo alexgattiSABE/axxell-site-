@@ -1630,6 +1630,9 @@ export const SYSTEM_CONFIG = {
   colorBody: "#00d4ff",
   colorRim: "#00e8a2",
 
+  /** Il guscio centrale. Nei Servizi si spegne: lì il soggetto sono le orbite,
+      e una sfera grande al centro ripeterebbe il globo della pagina Visione. */
+  shell: true,
   radius: 1,
   /** Distanza di camera: la stessa scala dei render di SABE e ATLAS, dove la
       forma riempie il riquadro invece di starci in mezzo. */
@@ -1661,9 +1664,11 @@ export const SYSTEM_CONFIG = {
      veloce, e passa davanti alla sfera.
   */
   bodies: [
-    { a: 1.3, b: 1.3, tiltX: -0.32, tiltZ: 0.5, speed: 0.72, phase: 0.9, radius: 0.14, trailSpan: 2.4 },
-    { a: 1.3, b: 1.3, tiltX: -0.32, tiltZ: 0.5, speed: 0.72, phase: 4.04, radius: 0.11, trailSpan: 2.1 },
-    { a: 1.13, b: 1.08, tiltX: 0.5, tiltZ: -0.3, speed: 1.05, phase: 2.2, radius: 0.08, trailSpan: 1.7 },
+    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 0.66, phase: 0.9, radius: 0.13, trailSpan: 3.9 },
+    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 0.66, phase: 4.04, radius: 0.1, trailSpan: 3.4 },
+    { a: 1.95, b: 1.88, tiltX: 0.46, tiltZ: -0.26, speed: 0.45, phase: 2.2, radius: 0.145, trailSpan: 3.6 },
+    { a: 2.42, b: 2.34, tiltX: -0.58, tiltZ: 0.14, speed: 0.33, phase: 5.1, radius: 0.11, trailSpan: 3.1 },
+    { a: 2.86, b: 2.72, tiltX: 0.22, tiltZ: 0.62, speed: 0.25, phase: 3.3, radius: 0.16, trailSpan: 2.8 },
   ],
   /** Dimensione delle sprite dei corpi e delle scie. */
   bodySize: 10,
@@ -1905,20 +1910,24 @@ export const mountSystem = (canvas, options = {}) => {
     uColRim: { value: hexToLinear(config.colorRim) },
   };
 
-  const shell = new THREE.Points(
-    buildShellGeometry(count, config.radius, config.shellJitter),
-    new THREE.ShaderMaterial({
-      uniforms,
-      vertexShader: SPHERE_VERT,
-      fragmentShader: SPHERE_FRAG,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
-  shell.frustumCulled = false;
-  scene.add(shell);
+  const shell = config.shell
+    ? new THREE.Points(
+        buildShellGeometry(count, config.radius, config.shellJitter),
+        new THREE.ShaderMaterial({
+          uniforms,
+          vertexShader: SPHERE_VERT,
+          fragmentShader: SPHERE_FRAG,
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      )
+    : null;
+  if (shell) {
+    shell.frustumCulled = false;
+    scene.add(shell);
+  }
 
   // ── Corpi in orbita ────────────────────────────────────────────────────────
   const sistema = new THREE.Group();
@@ -2036,7 +2045,7 @@ export const mountSystem = (canvas, options = {}) => {
 
     const time = clock.getElapsedTime();
     uniforms.uTime.value = reduceMotion.matches ? 0 : time;
-    if (!reduceMotion.matches) {
+    if (shell && !reduceMotion.matches) {
       shell.rotation.y = time * config.spin;
       // Oscillazione dell'asse: mezzo grado avanti e indietro, lentissima.
       // Senza, il guscio ruotando resta identico a sé stesso.
@@ -2076,8 +2085,10 @@ export const mountSystem = (canvas, options = {}) => {
       observer.disconnect();
       detachPage();
       detachResize();
-      shell.geometry.dispose();
-      shell.material.dispose();
+      if (shell) {
+        shell.geometry.dispose();
+        shell.material.dispose();
+      }
       for (const risorsa of risorse) risorsa.dispose();
       renderer.dispose();
     },
@@ -2106,13 +2117,20 @@ export const mountSystem = (canvas, options = {}) => {
 export const mountGlobe = (canvas, options = {}) =>
   mountSystem(canvas, {
     ...options,
+    // Particelle finissime e in gran numero: è così che il guscio si legge
+    // come una superficie e non come una nuvola.
+    density: 1.4,
     config: {
       bodies: [],
-      // Un filo più fine e più lento della sfera dei Servizi: là il moto lo
-      // danno i corpi, qui deve bastare il globo.
-      pointSize: 8,
+      pointSize: 5,
       spin: 0.045,
-      wobble: 0.042,
+      /*
+         Ondulazione quasi azzerata e guscio più sottile: qui deve leggersi una
+         SFERA, e ogni increspatura in più la fa somigliare a una nuvola
+         sferoidale. Il movimento resta nella rotazione.
+      */
+      wobble: 0.008,
+      shellJitter: 0.026,
       ...(options.config || {}),
     },
   });

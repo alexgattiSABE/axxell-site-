@@ -4088,7 +4088,15 @@ function setLang(lang){
   // l'orbita più esterna, non solo la sfera.
   const systemCanvas = document.getElementById('systemCanvas');
   if (systemCanvas && systemCanvas.dataset.orb === 'new') {
-    mountSystem(systemCanvas, { maxSize: 760 });
+    mountSystem(systemCanvas, {
+      maxSize: 760,
+      // Niente guscio: il soggetto sono le orbite. La camera arretra quanto
+      // basta a tenere in quadro quella più esterna.
+      // Il guscio resta, ma stretto a un quarto di raggio: un nucleo, non la
+      // sfera grande — le orbite hanno bisogno di un fulcro visibile.
+      density: 0.06,
+      config: { radius: 0.24, shellJitter: 0.2, cameraZ: 8.2, cameraZMobile: 9.2 },
+    });
   }
 
   // VISIONE — il globo: la stessa sfera dei Servizi, senza corpi in orbita.
