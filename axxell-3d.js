@@ -1652,9 +1652,9 @@ export const SYSTEM_CONFIG = {
      veloce, e passa davanti alla sfera.
   */
   bodies: [
-    { a: 1.92, b: 1.92, tiltX: -0.46, tiltZ: 0.5, speed: 0.15, phase: 0.9, radius: 0.22, trailSpan: 2.2 },
-    { a: 1.92, b: 1.92, tiltX: -0.46, tiltZ: 0.5, speed: 0.15, phase: 4.04, radius: 0.17, trailSpan: 1.9 },
-    { a: 1.34, b: 1.28, tiltX: 0.58, tiltZ: -0.3, speed: 0.26, phase: 2.2, radius: 0.12, trailSpan: 1.5 },
+    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.42, phase: 0.9, radius: 0.2, trailSpan: 2.2 },
+    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.42, phase: 4.04, radius: 0.155, trailSpan: 1.9 },
+    { a: 1.0, b: 0.95, tiltX: 0.58, tiltZ: -0.3, speed: 0.66, phase: 2.2, radius: 0.11, trailSpan: 1.5 },
   ],
   /** Dimensione delle sprite dei corpi e delle scie. */
   bodySize: 26,
@@ -1985,7 +1985,7 @@ export const mountSystem = (canvas, options = {}) => {
     canvas.style.height = side + "px";
     renderer.setSize(side, side, false);
     camera.aspect = 1;
-    camera.position.z = options.cameraZ ?? distanzaCheTieneTutto(side < 420 ? 0.94 : 0.88);
+    camera.position.z = options.cameraZ ?? distanzaCheTieneTutto(side < 420 ? 1.02 : 0.98);
     camera.updateProjectionMatrix();
 
     // Le sprite seguono il lato della canvas, con un minimo: sotto, la scena
@@ -2096,26 +2096,26 @@ export const mountSystem = (canvas, options = {}) => {
    ═══════════════════════════════════════════════════════════════════════════*/
 
 export const EYE_CONFIG = {
-  /** Iride: verde verso la pupilla, ciano sul bordo esterno — gradiente `.hl`. */
-  colorIris: "#00d4ff",
-  colorIrisInner: "#00e8a2",
-  /** Riflesso e bordo della pupilla: le uniche luci chiare. */
-  colorRim: "#cdf6ff",
-  /** Tessuto: profondo al centro della sclera, acceso sul bordo palpebrale. */
-  colorTissue: "#0d5f96",
-  colorLid: "#00b6ee",
+  /*
+     Due colori soli, i token del sito: il ciano di --cyan e il verde di
+     --green. Tutto il resto è luminosità — niente bianchi, niente azzurri
+     intermedi, che erano ciò che faceva sembrare la figura un bulbo dipinto.
+  */
+  colorCyan: "#00d4ff",
+  colorGreen: "#00e8a2",
 
   width: 1.32,
   height: 0.6,
-  /** Quanto la palpebra inferiore è meno curva della superiore. */
-  lowerRatio: 0.74,
+  /** Quanto la palpebra inferiore è meno curva della superiore. Vicino a 1 la
+      mandorla è quasi simmetrica: si legge come un segno, non come un occhio. */
+  lowerRatio: 0.86,
   irisRadius: 0.44,
   pupilRadius: 0.16,
   fibres: 108,
-  /** Bombatura della cornea verso la camera. */
-  bulge: 0.32,
+  /** Bombatura verso la camera: appena accennata, dà spessore senza fare bulbo. */
+  bulge: 0.16,
 
-  pointSize: 7,
+  pointSize: 5.6,
   brightness: 1.15,
   opacity: 1,
   /** Escursione massima dello sguardo, in unità di scena. */
@@ -2137,11 +2137,11 @@ const EYE_VERT = /* glsl */ `
   uniform float uTime, uSize, uPR, uAssemble, uBlink, uSpin, uWobble, uWobbleSpeed;
   uniform float uIrisR, uPupilR;
   uniform vec2  uLook;
-  uniform vec3  uColIris, uColIrisInner, uColRim, uColTissue, uColLid;
+  uniform vec3  uColCyan, uColGreen;
 
   attribute vec3  aRnd;
   attribute float aSeed;
-  attribute float aKind;   // 0 tessuto · 1 iride · 2 riflesso
+  attribute float aKind;   // 0 tessuto · 1 anello
   attribute float aEdge;   // 0 al centro della mandorla, 1 sul bordo palpebrale
 
   varying vec3  vColor;
@@ -2152,11 +2152,10 @@ const EYE_VERT = /* glsl */ `
   void main(){
     vec3 pos = position;
 
-    float isIris  = step(0.5, aKind) * (1.0 - step(1.5, aKind));
-    float isGlint = step(1.5, aKind);
-    // Ciò che segue lo sguardo: l'iride e il riflesso. Il tessuto resta fermo,
-    // è la parte che tiene la forma dell'occhio.
-    float mobile = max(isIris, isGlint);
+    // L'anello segue lo sguardo; il tessuto resta fermo ed è ciò che tiene
+    // la forma.
+    float isIris = step(0.5, aKind);
+    float mobile = isIris;
 
     // L'iride ruota su sé stessa, lentissima: le fibre non sono mai ferme.
     float a = uTime * uSpin;
@@ -2168,9 +2167,7 @@ const EYE_VERT = /* glsl */ `
     pos.xy += aRnd.xy * n * uWobble;
     pos.z  += n * uWobble * 0.8;
 
-    // Sguardo. Il riflesso si sposta meno: sta sulla cornea, più vicino alla
-    // camera, e la parallasse lo trattiene.
-    pos.xy += uLook * mobile * mix(1.0, 0.5, isGlint);
+    pos.xy += uLook * mobile;
 
     /*
        Blink: le particelle collassano sulla mediana e ripartono. La palpebra
@@ -2190,27 +2187,19 @@ const EYE_VERT = /* glsl */ `
     pos = mix(spawn, pos, ease);
 
     /*
-       Colore e peso luminoso, entrambi continui: è ciò che tiene insieme
-       l'insieme. Il tessuto va dal blu profondo del centro al ciano acceso del
-       bordo palpebrale, senza che da nessuna parte ci sia un salto.
+       Due colori e nient'altro: il tessuto è ciano, l'anello va dal verde
+       interno al ciano esterno. La figura si legge per luminosità, che varia
+       con continuità — è questo a tenere insieme l'insieme.
     */
     float r = length(position.xy);
-    vec3 tessuto = mix(uColTissue, uColLid, aEdge * aEdge);
-    vec3 iride = mix(uColIrisInner, uColIris, smoothstep(uPupilR, uIrisR, r));
+    vec3 anello = mix(uColGreen, uColCyan, smoothstep(uPupilR, uIrisR, r));
+    vColor = mix(uColCyan, anello, isIris);
 
-    // Il bordo della pupilla non è un gruppo a parte: è l'iride che si accende
-    // dove sta per finire nel nero.
-    float orlo = smoothstep(uPupilR * 1.5, uPupilR, r);
-    vec3 col = mix(tessuto, iride, isIris);
-    col = mix(col, uColRim, max(isGlint, isIris * orlo * 0.55));
-    vColor = col;
+    float peso = (0.2 + aEdge * aEdge * 0.55) * (1.0 - isIris)
+               + isIris * 0.36;
 
-    float peso = (0.2 + aEdge * aEdge * 0.55) * (1.0 - isIris - isGlint)
-               + isIris * (0.34 + orlo * 0.3)
-               + isGlint * 0.5;
-
-    // A occhio chiuso iride e riflesso spariscono prima che la forma si sia
-    // richiusa: altrimenti resta una riga luminosa schiacciata al centro.
+    // A occhio chiuso l'anello sparisce prima che la forma si sia richiusa:
+    // altrimenti resta una riga luminosa schiacciata al centro.
     float lidFade = 1.0 - smoothstep(0.2, 0.7, uBlink) * mobile;
 
     vAlpha = peso * ease * lidFade;
@@ -2289,45 +2278,28 @@ const buildEyeGeometry = (total, config) => {
 
     let px = x;
     let py = y;
-    if (nelDisco) {
-      // Tessitura a raggiera: l'angolo viene tirato verso la fibra più vicina.
-      // Un tiro parziale lascia le fibre distinte senza farle diventare stecche.
+    const comeAnello = nelDisco && Math.random() > 0.4;
+    if (comeAnello) {
+      // Raggiera appena accennata: l'angolo viene tirato verso la fibra più
+      // vicina solo in parte. Tirato a fondo diventa un'iride disegnata, cioè
+      // proprio ciò che fa somigliare troppo la figura a un occhio.
       const ang = Math.atan2(y, x);
       const target = Math.round(ang / passo) * passo;
-      const nuovo = ang + (target - ang) * 0.72;
+      const nuovo = ang + (target - ang) * 0.38;
       px = Math.cos(nuovo) * r;
       py = Math.sin(nuovo) * r;
     }
 
     positions[i * 3] = px;
     positions[i * 3 + 1] = py;
-    positions[i * 3 + 2] = domeZ(px, py) * (nelDisco ? 1 : 0.55);
+    positions[i * 3 + 2] = domeZ(px, py) * (comeAnello ? 1 : 0.55);
     randoms[i * 3] = Math.random() - 0.5;
     randoms[i * 3 + 1] = Math.random() - 0.5;
     randoms[i * 3 + 2] = Math.random() - 0.5;
     seeds[i] = Math.random();
-    kinds[i] = nelDisco ? 1 : 0;
+    kinds[i] = comeAnello ? 1 : 0;   // 0 tessuto · 1 anello
     edges[i] = bordo;
     i++;
-  }
-
-  // ── Riflesso ──────────────────────────────────────────────────────────────
-  // In alto a sinistra, a cavallo del bordo della pupilla: è la luce che rende
-  // uno sguardo vivo invece che di vetro. Sostituisce le ultime particelle.
-  const nGlint = Math.max(24, Math.round(total * 0.006));
-  const gx = -irisRadius * 0.44;
-  const gy = irisRadius * 0.42;
-  for (let k = 0; k < nGlint && k < i; k++) {
-    const n = i - 1 - k;
-    const ang = Math.random() * Math.PI * 2;
-    const rad = Math.sqrt(Math.random()) * irisRadius * 0.15;
-    const x = gx + Math.cos(ang) * rad;
-    const y = gy + Math.sin(ang) * rad * 0.8;
-    positions[n * 3] = x;
-    positions[n * 3 + 1] = y;
-    positions[n * 3 + 2] = domeZ(x, y) * 1.1 + 0.02;
-    kinds[n] = 2;
-    edges[n] = 0;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -2352,7 +2324,7 @@ export const mountEye = (canvas, options = {}) => {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   // Densità piena, come le altre scene: l'occhio deve essere una massa, non
   // una manciata di granelli.
-  const count = Math.round(tier.count * (options.density ?? 1.15));
+  const count = Math.round(tier.count * (options.density ?? 2.1));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
@@ -2377,11 +2349,8 @@ export const mountEye = (canvas, options = {}) => {
     uLook: { value: new THREE.Vector2() },
     uOpacity: { value: config.opacity },
     uBrightness: { value: config.brightness },
-    uColIris: { value: hexToLinear(config.colorIris) },
-    uColIrisInner: { value: hexToLinear(config.colorIrisInner) },
-    uColRim: { value: hexToLinear(config.colorRim) },
-    uColTissue: { value: hexToLinear(config.colorTissue) },
-    uColLid: { value: hexToLinear(config.colorLid) },
+    uColCyan: { value: hexToLinear(config.colorCyan) },
+    uColGreen: { value: hexToLinear(config.colorGreen) },
   };
 
   const points = new THREE.Points(
