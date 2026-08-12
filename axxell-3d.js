@@ -1655,7 +1655,7 @@ export const SYSTEM_CONFIG = {
      manciata di punti grossi.
   */
   pointSize: 9,
-  brightness: 1.5,
+  brightness: 1.95,
   opacity: 1,
 
   /*
@@ -1845,7 +1845,7 @@ const BODY_VERT = /* glsl */ `
 
 const BODY_FRAG = /* glsl */ `
   uniform vec3  uColor;
-  uniform float uOpacity, uDim;
+  uniform float uOpacity, uDim, uBright;
   varying float vAlpha;
   varying float vEdge;
   void main(){
@@ -1853,7 +1853,7 @@ const BODY_FRAG = /* glsl */ `
     float r = length(d);
     if (r > 0.5) discard;
     float soft = 1.0 - smoothstep(0.28, 0.5, r);
-    gl_FragColor = vec4(uColor, soft * vAlpha * uOpacity * uDim * vEdge);
+    gl_FragColor = vec4(uColor * uBright, soft * vAlpha * uOpacity * uDim * vEdge);
   }`;
 
 /**
@@ -1997,6 +1997,8 @@ export const mountSystem = (canvas, options = {}) => {
           uSpin: { value: spec.spin ?? 0.8 },
           uOpacity: { value: tipo === "scia" ? 1 : 1 },
           uDim: { value: 1 },
+          // I corpi vanno più su delle scie: sono loro il fuoco della scena.
+          uBright: { value: tipo === "scia" ? 1.5 : 2.1 },
           uColor: { value: hexToLinear(tipo === "scia" ? config.colorBody : config.colorHot) },
         },
         vertexShader: BODY_VERT,
