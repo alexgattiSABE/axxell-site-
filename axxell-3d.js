@@ -1642,8 +1642,8 @@ export const SYSTEM_CONFIG = {
   /** Quanto restano visibili i punti sul lato lontano. */
   backFade: 0.46,
 
-  pointSize: 32,
-  brightness: 1.35,
+  pointSize: 19,
+  brightness: 1.45,
   opacity: 1,
 
   /*
@@ -1652,13 +1652,13 @@ export const SYSTEM_CONFIG = {
      veloce, e passa davanti alla sfera.
   */
   bodies: [
-    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.42, phase: 0.9, radius: 0.2, trailSpan: 2.2 },
-    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.42, phase: 4.04, radius: 0.155, trailSpan: 1.9 },
-    { a: 1.0, b: 0.95, tiltX: 0.58, tiltZ: -0.3, speed: 0.66, phase: 2.2, radius: 0.11, trailSpan: 1.5 },
+    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.72, phase: 0.9, radius: 0.2, trailSpan: 2.2 },
+    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.72, phase: 4.04, radius: 0.155, trailSpan: 1.9 },
+    { a: 1.0, b: 0.95, tiltX: 0.58, tiltZ: -0.3, speed: 1.05, phase: 2.2, radius: 0.11, trailSpan: 1.5 },
   ],
   /** Dimensione delle sprite dei corpi e delle scie. */
-  bodySize: 26,
-  trailSize: 20,
+  bodySize: 16,
+  trailSize: 12,
 };
 
 const SPHERE_VERT = /* glsl */ `
@@ -1670,6 +1670,7 @@ const SPHERE_VERT = /* glsl */ `
 
   varying vec3  vColor;
   varying float vAlpha;
+  varying float vEdge;
 
   ${SNOISE}
 
@@ -1687,7 +1688,7 @@ const SPHERE_VERT = /* glsl */ `
     float delay = (aRnd.z + 0.5) * 0.5;
     float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
     float ease = 1.0 - pow(1.0 - t, 3.0);
-    vec3 spawn = pos * 3.2 + aRnd * 1.6;
+    vec3 spawn = pos * 2.1 + aRnd * 0.9;
     pos = mix(spawn, pos, ease);
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -1711,18 +1712,25 @@ const SPHERE_VERT = /* glsl */ `
 
     gl_Position = projectionMatrix * mv;
     gl_PointSize = uSize * uPR * (0.45 + aMag * 0.75) * (1.0 / max(0.35, -mv.z));
+
+    // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
+    // particelle di netto e in pagina compare un riquadro.
+    vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
+    vEdge = (1.0 - smoothstep(0.34, 0.96, abs(ndc.x)))
+          * (1.0 - smoothstep(0.34, 0.96, abs(ndc.y)));
   }`;
 
 const SPHERE_FRAG = /* glsl */ `
   uniform float uOpacity, uBrightness;
   varying vec3  vColor;
   varying float vAlpha;
+  varying float vEdge;
   void main(){
     vec2 d = gl_PointCoord - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
-    float soft = smoothstep(0.5, 0.06, r);
-    gl_FragColor = vec4(vColor * uBrightness, soft * soft * vAlpha * uOpacity);
+    float soft = 1.0 - smoothstep(0.3, 0.5, r);
+    gl_FragColor = vec4(vColor * uBrightness, soft * vAlpha * uOpacity * vEdge);
   }`;
 
 /** Guscio di Fibonacci: distribuzione uniforme, senza le file ai poli che
@@ -1772,6 +1780,7 @@ const BODY_VERT = /* glsl */ `
   attribute float aDelta;   // quanto sta indietro rispetto al corpo, in radianti
 
   varying float vAlpha;
+  varying float vEdge;
 
   void main(){
     // Il corpo sta sull'ellisse, la scia lungo l'arco che lo precede.
@@ -1793,18 +1802,25 @@ const BODY_VERT = /* glsl */ `
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
     gl_PointSize = uSize * uPR * (0.5 + aMag * 0.7) * (1.0 / max(0.35, -mv.z));
+
+    // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
+    // particelle di netto e in pagina compare un riquadro.
+    vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
+    vEdge = (1.0 - smoothstep(0.34, 0.96, abs(ndc.x)))
+          * (1.0 - smoothstep(0.34, 0.96, abs(ndc.y)));
   }`;
 
 const BODY_FRAG = /* glsl */ `
   uniform vec3  uColor;
   uniform float uOpacity, uDim;
   varying float vAlpha;
+  varying float vEdge;
   void main(){
     vec2 d = gl_PointCoord - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
-    float soft = smoothstep(0.5, 0.04, r);
-    gl_FragColor = vec4(uColor, soft * soft * vAlpha * uOpacity * uDim);
+    float soft = 1.0 - smoothstep(0.28, 0.5, r);
+    gl_FragColor = vec4(uColor, soft * vAlpha * uOpacity * uDim * vEdge);
   }`;
 
 /** Nuvola per un corpo o per la sua scia. `span` a 0 = corpo compatto. */
@@ -2082,149 +2098,143 @@ export const mountSystem = (canvas, options = {}) => {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   OCCHIO — pagina Visione
+   VISIONE — la forma a mandorla
 
-   Una sola nuvola di particelle, densa come la sfera di SABE e il cervello di
-   ATLAS. La forma non nasce da parti montate insieme — un contorno disegnato
-   più un disco al centro si leggevano come due oggetti distinti — ma da come
-   la densità varia dentro un unico insieme: le particelle si addensano verso
-   il bordo delle palpebre e sull'anello dell'iride, e il resto della mandorla
-   resta un tessuto continuo che tiene insieme le due cose.
+   Non un occhio disegnato: due archi di particelle che si incontrano agli
+   angoli, un velo leggero nel mezzo, e polvere che si muove tutt'intorno.
+   L'iride non c'è — era ciò che rendeva la figura immediatamente riconoscibile
+   come un occhio; qui resta un segno che allude allo sguardo senza dichiararlo.
 
-   Il movimento segue le altre scene: ondulazione lenta da rumore, sguardo che
-   insegue il puntatore con molta inerzia, blink ampio. Niente scatti.
+   Ogni particella è un punto piccolo e netto, non un alone: la forma si legge
+   dalla densità, e per questo i punti devono restare distinguibili.
    ═══════════════════════════════════════════════════════════════════════════*/
 
 export const EYE_CONFIG = {
-  /*
-     Due colori soli, i token del sito: il ciano di --cyan e il verde di
-     --green. Tutto il resto è luminosità — niente bianchi, niente azzurri
-     intermedi, che erano ciò che faceva sembrare la figura un bulbo dipinto.
-  */
+  /* Due colori, i token del sito: --cyan e --green. Nient'altro. */
   colorCyan: "#00d4ff",
   colorGreen: "#00e8a2",
 
   width: 1.32,
   height: 0.6,
-  /** Quanto la palpebra inferiore è meno curva della superiore. Vicino a 1 la
-      mandorla è quasi simmetrica: si legge come un segno, non come un occhio. */
+  /** Vicino a 1 la mandorla è quasi simmetrica: un segno, non un occhio. */
   lowerRatio: 0.86,
-  irisRadius: 0.44,
-  pupilRadius: 0.16,
-  fibres: 108,
-  /** Bombatura verso la camera: appena accennata, dà spessore senza fare bulbo. */
+  /** Spessore verso la camera: appena accennato. */
   bulge: 0.16,
 
-  pointSize: 5.6,
+  /** Quota di particelle che vive FUORI dalla forma, nella polvere intorno. */
+  dustShare: 0.42,
+  /** Estensione della polvere, in multipli della mandorla. */
+  dustSpread: 2.6,
+
+  pointSize: 4.6,
   brightness: 1.15,
   opacity: 1,
-  /** Escursione massima dello sguardo, in unità di scena. */
-  lookAmount: 0.14,
-  /** Inerzia dello sguardo: più basso, più lento e fluido. */
-  lookEase: 0.028,
-  /** Rotazione dell'iride su sé stessa, radianti al secondo. */
-  spin: 0.035,
-  /** Ondulazione del tessuto e sua velocità. */
-  wobble: 0.022,
-  wobbleSpeed: 0.14,
-  /** Secondi fra un blink e il successivo, minimo e massimo. */
-  blinkEvery: [4.2, 9.5],
-  /** Durata di una chiusura completa: ampia, non uno sfarfallio. */
-  blinkMs: 420,
+  /** Escursione della parallasse col puntatore. */
+  lookAmount: 0.1,
+  /** Inerzia dello sguardo: basso = lento e fluido. */
+  lookEase: 0.026,
+  /** Ondulazione del velo e sua velocità. */
+  wobble: 0.05,
+  wobbleSpeed: 0.13,
+  /** Deriva della polvere: più ampia e più lenta di quella del velo. */
+  dustDrift: 0.19,
+  dustSpeed: 0.055,
+  /** Secondi fra un respiro e il successivo, e sua durata. */
+  breathEvery: [5.5, 11],
+  breathMs: 900,
 };
 
 const EYE_VERT = /* glsl */ `
-  uniform float uTime, uSize, uPR, uAssemble, uBlink, uSpin, uWobble, uWobbleSpeed;
-  uniform float uIrisR, uPupilR;
+  uniform float uTime, uSize, uPR, uAssemble, uBreath, uWobble, uWobbleSpeed;
+  uniform float uDustDrift, uDustSpeed;
   uniform vec2  uLook;
   uniform vec3  uColCyan, uColGreen;
 
   attribute vec3  aRnd;
   attribute float aSeed;
-  attribute float aKind;   // 0 tessuto · 1 anello
-  attribute float aEdge;   // 0 al centro della mandorla, 1 sul bordo palpebrale
+  attribute float aKind;   // 0 forma · 1 polvere intorno
+  attribute float aEdge;   // 0 al centro della mandorla, 1 sul bordo
 
   varying vec3  vColor;
   varying float vAlpha;
+  varying float vEdge;
 
   ${SNOISE}
 
   void main(){
     vec3 pos = position;
-
-    // L'anello segue lo sguardo; il tessuto resta fermo ed è ciò che tiene
-    // la forma.
-    float isIris = step(0.5, aKind);
-    float mobile = isIris;
-
-    // L'iride ruota su sé stessa, lentissima: le fibre non sono mai ferme.
-    float a = uTime * uSpin;
-    vec2 spun = vec2(pos.x * cos(a) - pos.y * sin(a), pos.x * sin(a) + pos.y * cos(a));
-    pos.xy = mix(pos.xy, spun, isIris);
-
-    // Respiro del tessuto: un solo strato di rumore, lento, come la sfera.
-    float n = snoise(vec3(position.xy * 1.9, uTime * uWobbleSpeed + aSeed * 2.0));
-    pos.xy += aRnd.xy * n * uWobble;
-    pos.z  += n * uWobble * 0.8;
-
-    pos.xy += uLook * mobile;
+    float polvere = step(0.5, aKind);
 
     /*
-       Blink: le particelle collassano sulla mediana e ripartono. La palpebra
-       superiore fa quasi tutta la corsa, come nell'occhio vero, quindi il
-       fattore dipende dal segno di y.
+       Due movimenti diversi. Il velo ondeggia sul posto, piano. La polvere
+       deriva molto più largo e molto più lento, e per questo si legge come
+       spazio intorno alla forma invece che come parte di essa.
+    */
+    float n1 = snoise(vec3(position.xy * 1.9, uTime * uWobbleSpeed + aSeed * 2.0));
+    float n2 = snoise(vec3(position.xy * 0.7 + 9.3, uTime * uDustSpeed + aSeed * 3.0));
+    float n3 = snoise(vec3(position.yx * 0.6 - 4.1, uTime * uDustSpeed * 1.3 + aSeed));
+
+    pos.xy += aRnd.xy * n1 * uWobble * (1.0 - polvere);
+    pos.z  += n1 * uWobble * 0.8 * (1.0 - polvere);
+    pos.xy += vec2(n2, n3) * uDustDrift * polvere;
+
+    // Parallasse: la forma segue appena il puntatore, la polvere va al
+    // contrario. È quel poco che dà profondità senza che nulla "guardi".
+    pos.xy += uLook * mix(1.0, -0.45, polvere);
+
+    /*
+       Respiro: la forma si schiaccia dolcemente sulla mediana e si riapre.
+       Discende dal blink, ma con un'ampiezza molto minore e su quasi un
+       secondo — non deve leggersi come una palpebra che sbatte.
     */
     float upper = step(0.0, position.y);
-    pos.y *= 1.0 - uBlink * mix(0.88, 0.97, upper);
-    pos.z *= 1.0 - uBlink * 0.7;
+    pos.y *= 1.0 - uBreath * mix(0.3, 0.42, upper) * (1.0 - polvere);
 
-    // Ingresso: le particelle arrivano dal buio davanti alla camera e si
-    // posano, scaglionate per seme — la formazione si legge come una scia.
+    // Ingresso: le particelle arrivano dal buio e si posano, scaglionate.
     float delay = aSeed * 0.45;
     float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
     float ease = 1.0 - pow(1.0 - t, 3.0);
-    vec3 spawn = pos + aRnd * 2.2 + vec3(0.0, 0.0, 2.4 + aRnd.z * 1.5);
+    vec3 spawn = pos * 1.5 + aRnd * 1.3 + vec3(0.0, 0.0, 1.8 + aRnd.z);
     pos = mix(spawn, pos, ease);
 
     /*
-       Due colori e nient'altro: il tessuto è ciano, l'anello va dal verde
-       interno al ciano esterno. La figura si legge per luminosità, che varia
-       con continuità — è questo a tenere insieme l'insieme.
+       Due colori e nient'altro: verde al centro, ciano verso il bordo e nella
+       polvere. La figura si legge per densità e luminosità, non per tinta.
     */
-    float r = length(position.xy);
-    vec3 anello = mix(uColGreen, uColCyan, smoothstep(uPupilR, uIrisR, r));
-    vColor = mix(uColCyan, anello, isIris);
+    vColor = mix(uColGreen, uColCyan, clamp(aEdge * 1.4 + polvere, 0.0, 1.0));
 
-    float peso = (0.2 + aEdge * aEdge * 0.55) * (1.0 - isIris)
-               + isIris * 0.36;
-
-    // A occhio chiuso l'anello sparisce prima che la forma si sia richiusa:
-    // altrimenti resta una riga luminosa schiacciata al centro.
-    float lidFade = 1.0 - smoothstep(0.2, 0.7, uBlink) * mobile;
-
-    vAlpha = peso * ease * lidFade;
+    // Il bordo pesa, il centro è un velo, la polvere quasi nulla.
+    float peso = (0.1 + aEdge * aEdge * 0.34) * (1.0 - polvere) + polvere * 0.14;
+    vAlpha = peso * ease;
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * uPR * (0.62 + peso * 0.9) * (1.0 / max(0.4, -mv.z));
+    gl_PointSize = uSize * uPR * (0.75 + peso * 0.5) * (1.0 / max(0.4, -mv.z));
+
+    // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
+    // particelle di netto e in pagina compare un riquadro.
+    vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
+    vEdge = (1.0 - smoothstep(0.4, 0.98, abs(ndc.x)))
+          * (1.0 - smoothstep(0.4, 0.98, abs(ndc.y)));
   }`;
 
 const EYE_FRAG = /* glsl */ `
   uniform float uOpacity, uBrightness;
   varying vec3  vColor;
   varying float vAlpha;
+  varying float vEdge;
   void main(){
     vec2 d = gl_PointCoord - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
-    float soft = smoothstep(0.5, 0.05, r);
-    gl_FragColor = vec4(vColor * uBrightness, soft * soft * vAlpha * uOpacity);
+    // Punto pieno con il solo bordo ammorbidito: definito, non un alone.
+    float soft = 1.0 - smoothstep(0.28, 0.5, r);
+    gl_FragColor = vec4(vColor * uBrightness, soft * vAlpha * uOpacity * vEdge);
   }`;
 
 /**
  * La mandorla: due archi che si incontrano agli angoli. Il superiore è più
- * alto e più tondo, l'inferiore più teso — è quell'asimmetria a far leggere la
- * forma come un occhio invece che come una lente.
+ * alto e più tondo, l'inferiore più teso.
  */
 const eyeLids = (u, config) => {
   const k = Math.max(0, 1 - u * u);
@@ -2235,7 +2245,7 @@ const eyeLids = (u, config) => {
 };
 
 const buildEyeGeometry = (total, config) => {
-  const { width, height, irisRadius, pupilRadius, fibres, bulge } = config;
+  const { width, height, bulge, dustShare, dustSpread } = config;
 
   const positions = new Float32Array(total * 3);
   const randoms = new Float32Array(total * 3);
@@ -2243,63 +2253,58 @@ const buildEyeGeometry = (total, config) => {
   const kinds = new Float32Array(total);
   const edges = new Float32Array(total);
 
-  const passo = (Math.PI * 2) / fibres;
-  /** Bombatura: massima al centro, nulla agli angoli. */
   const domeZ = (x, y) => {
     const k = 1 - Math.min(1, (x / width) ** 2 + (y / height) ** 2);
     return bulge * Math.max(0, k) ** 0.7;
   };
 
   let i = 0;
-  let guardia = 0;
-  while (i < total && guardia < total * 60) {
-    guardia++;
-    const u = Math.random() * 2 - 1;
-    const x = u * width;
-    const lids = eyeLids(u, config);
-    let y = lids.down + Math.random() * (lids.up - lids.down);
-
-    // Vicinanza al bordo palpebrale, 0 al centro e 1 sulla linea di chiusura.
-    const dentro = Math.min(lids.up - y, y - lids.down) / Math.max(1e-4, lids.up - lids.down);
-    const bordo = Math.pow(1 - Math.min(1, dentro / 0.34), 1.7);
-
-    let r = Math.hypot(x, y);
-    const nelDisco = r <= irisRadius && r >= pupilRadius;
-    const nellaPupilla = r < pupilRadius;
-
-    /*
-       Densità disomogenea: è questa a disegnare la figura. Il bordo delle
-       palpebre e l'anello dell'iride ne prendono la maggior parte, il resto
-       della mandorla resta un velo — ma un velo dello stesso insieme, e per
-       questo la forma si legge come un corpo solo.
-    */
-    const peso = 1.0 + bordo * bordo * 1.7 + (nelDisco ? 1.5 : 0) - (nellaPupilla ? 0.85 : 0);
-    if (Math.random() * 3.2 > peso) continue;
-
-    let px = x;
-    let py = y;
-    const comeAnello = nelDisco && Math.random() > 0.4;
-    if (comeAnello) {
-      // Raggiera appena accennata: l'angolo viene tirato verso la fibra più
-      // vicina solo in parte. Tirato a fondo diventa un'iride disegnata, cioè
-      // proprio ciò che fa somigliare troppo la figura a un occhio.
-      const ang = Math.atan2(y, x);
-      const target = Math.round(ang / passo) * passo;
-      const nuovo = ang + (target - ang) * 0.38;
-      px = Math.cos(nuovo) * r;
-      py = Math.sin(nuovo) * r;
-    }
-
-    positions[i * 3] = px;
-    positions[i * 3 + 1] = py;
-    positions[i * 3 + 2] = domeZ(px, py) * (comeAnello ? 1 : 0.55);
+  const scrivi = (x, y, z, kind, edge) => {
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
     randoms[i * 3] = Math.random() - 0.5;
     randoms[i * 3 + 1] = Math.random() - 0.5;
     randoms[i * 3 + 2] = Math.random() - 0.5;
     seeds[i] = Math.random();
-    kinds[i] = comeAnello ? 1 : 0;   // 0 tessuto · 1 anello
-    edges[i] = bordo;
+    kinds[i] = kind;
+    edges[i] = edge;
     i++;
+  };
+
+  // ── La forma ──────────────────────────────────────────────────────────────
+  const nForma = Math.round(total * (1 - dustShare));
+  let guardia = 0;
+  while (i < nForma && guardia < nForma * 40) {
+    guardia++;
+    const u = Math.random() * 2 - 1;
+    const x = u * width;
+    const lids = eyeLids(u, config);
+    const y = lids.down + Math.random() * (lids.up - lids.down);
+
+    // Vicinanza al bordo, 0 al centro e 1 sulla linea di chiusura.
+    const dentro = Math.min(lids.up - y, y - lids.down) / Math.max(1e-4, lids.up - lids.down);
+    const bordo = Math.pow(1 - Math.min(1, dentro / 0.34), 1.7);
+
+    /*
+       Densità disomogenea: è questa a disegnare la figura. Le palpebre si
+       addensano, il mezzo resta un velo — ma un velo dello stesso insieme, e
+       per questo la forma si legge come un corpo solo.
+    */
+    if (Math.random() * 2.5 > 0.3 + bordo * bordo * 2.2) continue;
+    scrivi(x, y, domeZ(x, y) * 0.55, 0, bordo);
+  }
+
+  // ── La polvere intorno ────────────────────────────────────────────────────
+  // Un alone ellittico molto più largo della mandorla, rado: dà aria alla
+  // scena e, muovendosi, la tiene viva anche dove non c'è la forma.
+  while (i < total) {
+    const ang = Math.random() * Math.PI * 2;
+    // Radice: distribuzione uniforme sull'area, non addensata al centro.
+    const rad = Math.sqrt(Math.random());
+    const x = Math.cos(ang) * rad * width * dustSpread;
+    const y = Math.sin(ang) * rad * height * dustSpread * 0.85;
+    scrivi(x, y, (Math.random() - 0.5) * 0.5, 1, 0);
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -2312,7 +2317,7 @@ const buildEyeGeometry = (total, config) => {
 };
 
 /**
- * Monta l'occhio su una canvas.
+ * Monta la forma a mandorla su una canvas (pagina Visione).
  *
  * @param {HTMLCanvasElement} canvas
  * @param {{ config?: object, cameraZ?: number, density?: number }} [options]
@@ -2322,9 +2327,8 @@ export const mountEye = (canvas, options = {}) => {
   const config = { ...EYE_CONFIG, ...(options.config || {}) };
   const tier = paramsFor(window.innerWidth);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  // Densità piena, come le altre scene: l'occhio deve essere una massa, non
-  // una manciata di granelli.
-  const count = Math.round(tier.count * (options.density ?? 2.1));
+  // Densità alta: con sprite così piccole la massa si fa con il numero.
+  const count = Math.round(tier.count * (options.density ?? 2.0));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
@@ -2340,12 +2344,11 @@ export const mountEye = (canvas, options = {}) => {
     uPR: { value: renderer.getPixelRatio() },
     uSize: { value: config.pointSize },
     uAssemble: { value: 0 },
-    uBlink: { value: 0 },
-    uSpin: { value: config.spin },
+    uBreath: { value: 0 },
     uWobble: { value: config.wobble },
     uWobbleSpeed: { value: config.wobbleSpeed },
-    uIrisR: { value: config.irisRadius },
-    uPupilR: { value: config.pupilRadius },
+    uDustDrift: { value: config.dustDrift },
+    uDustSpeed: { value: config.dustSpeed },
     uLook: { value: new THREE.Vector2() },
     uOpacity: { value: config.opacity },
     uBrightness: { value: config.brightness },
@@ -2372,7 +2375,7 @@ export const mountEye = (canvas, options = {}) => {
   let hasPointer = false;
   const onPointerMove = (event) => {
     const rect = canvas.getBoundingClientRect();
-    // Riferito alla canvas, non alla finestra: l'occhio deve guardare il
+    // Riferito alla canvas, non alla finestra: la parallasse deve seguire il
     // puntatore anche quando la scena non è al centro dello schermo.
     pointerNdc.set(
       ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
@@ -2384,13 +2387,13 @@ export const mountEye = (canvas, options = {}) => {
 
   const detachResize = attachResize(canvas, (width, parentHeight) => {
     /*
-       L'occhio è largo il doppio di quanto è alto: un quadrato lo lascerebbe
-       piccolo fra due fasce vuote. La canvas prende tutto il riquadro.
+       La forma è larga il doppio di quanto è alta: un quadrato la lascerebbe
+       piccola fra due fasce vuote. La canvas prende tutto il riquadro.
 
        Le misure si rileggono dalla canvas e non dal contenitore: quello ha un
        padding che `clientWidth` comprende, e dimensionare il buffer sul
        contenitore darebbe un'immagine più larga dell'elemento — che il CSS poi
-       stira, ovalizzando l'occhio.
+       stira, deformando la mandorla.
     */
     const stimata = parentHeight > 80 ? parentHeight : Math.round(width * 0.42);
     canvas.style.width = "100%";
@@ -2401,8 +2404,7 @@ export const mountEye = (canvas, options = {}) => {
     camera.aspect = w / Math.max(1, h);
     uniforms.uPR.value = renderer.getPixelRatio();
 
-    // Inquadratura: due vincoli, si prende il più stringente — la mandorla
-    // deve starci in larghezza, l'arco delle palpebre in altezza.
+    // Inquadratura: due vincoli, si prende il più stringente.
     const halfFov = Math.tan((camera.fov * Math.PI) / 360);
     const perLarghezza = (config.width * 1.55) / (halfFov * Math.max(0.35, camera.aspect));
     const perAltezza = (config.height * 1.32) / halfFov;
@@ -2437,8 +2439,8 @@ export const mountEye = (canvas, options = {}) => {
   const clock = new THREE.Clock();
   const look = new THREE.Vector2();
   const lookTarget = new THREE.Vector2();
-  let nextBlink = 3.2;
-  let blinkStart = null;
+  let nextBreath = 4;
+  let breathStart = null;
 
   const frame = (now) => {
     raf = requestAnimationFrame(frame);
@@ -2446,7 +2448,7 @@ export const mountEye = (canvas, options = {}) => {
 
     if (introStart === null) {
       introStart = now;
-      nextBlink = clock.getElapsedTime() + 3.2;
+      nextBreath = clock.getElapsedTime() + 4;
     }
     const t = Math.min(1, (now - introStart) / INTRO_MS);
     uniforms.uAssemble.value = reduceMotion.matches ? 1 : t * t * (3 - 2 * t);
@@ -2454,22 +2456,14 @@ export const mountEye = (canvas, options = {}) => {
     const time = clock.getElapsedTime();
     uniforms.uTime.value = reduceMotion.matches ? 0 : time;
 
-    /*
-       Sguardo. Il puntatore in NDC va portato in unità di scena e trattenuto
-       dentro un'ellisse: l'iride non deve mai uscire dalla mandorla, e in
-       verticale ha molto meno spazio che in orizzontale.
-    */
+    // Parallasse col puntatore; senza puntatore la scena deriva da sola su due
+    // seni di periodo diverso, così il giro non si chiude mai uguale.
     if (tier.pointer && hasPointer && !reduceMotion.matches) {
-      lookTarget.set(pointerNdc.x * config.lookAmount * 1.5, pointerNdc.y * config.lookAmount * 0.6);
-      const norma = (lookTarget.x / (config.lookAmount * 1.5)) ** 2 + (lookTarget.y / (config.lookAmount * 0.6)) ** 2;
-      if (norma > 1) lookTarget.multiplyScalar(1 / Math.sqrt(norma));
+      lookTarget.set(pointerNdc.x * config.lookAmount, pointerNdc.y * config.lookAmount * 0.5);
     } else if (!reduceMotion.matches) {
-      // Senza puntatore — mobile, o prima che il mouse si muova — l'occhio si
-      // guarda intorno da solo. Due seni di periodo diverso: il giro non si
-      // chiude mai uguale e non si legge come un ciclo.
       lookTarget.set(
-        Math.sin(time * 0.27) * config.lookAmount * 0.6,
-        Math.sin(time * 0.19 + 1.7) * config.lookAmount * 0.28,
+        Math.sin(time * 0.23) * config.lookAmount * 0.55,
+        Math.sin(time * 0.17 + 1.7) * config.lookAmount * 0.26,
       );
     } else {
       lookTarget.set(0, 0);
@@ -2477,25 +2471,22 @@ export const mountEye = (canvas, options = {}) => {
     look.lerp(lookTarget, config.lookEase);
     uniforms.uLook.value.copy(look);
 
-    /*
-       Blink: chiusura rapida, riapertura più lenta — è così che si muove una
-       palpebra; simmetrico sembrava uno sfarfallio.
-    */
+    // Respiro: contrazione lenta e riapertura, su una campana asimmetrica.
     if (reduceMotion.matches) {
-      uniforms.uBlink.value = 0;
+      uniforms.uBreath.value = 0;
     } else {
-      if (blinkStart === null && time > nextBlink) blinkStart = time;
-      if (blinkStart !== null) {
-        const u = (time - blinkStart) / (config.blinkMs / 1000);
+      if (breathStart === null && time > nextBreath) breathStart = time;
+      if (breathStart !== null) {
+        const u = (time - breathStart) / (config.breathMs / 1000);
         if (u >= 1) {
-          uniforms.uBlink.value = 0;
-          blinkStart = null;
-          const [min, max] = config.blinkEvery;
-          nextBlink = time + min + Math.random() * (max - min);
+          uniforms.uBreath.value = 0;
+          breathStart = null;
+          const [min, max] = config.breathEvery;
+          nextBreath = time + min + Math.random() * (max - min);
         } else {
-          uniforms.uBlink.value = u < 0.36
-            ? Math.sin((u / 0.36) * Math.PI * 0.5)
-            : Math.cos(((u - 0.36) / 0.64) * Math.PI * 0.5);
+          uniforms.uBreath.value = u < 0.42
+            ? Math.sin((u / 0.42) * Math.PI * 0.5)
+            : Math.cos(((u - 0.42) / 0.58) * Math.PI * 0.5);
         }
       }
     }
