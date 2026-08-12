@@ -196,3 +196,73 @@ body.wc-locked{overflow:hidden;}
 .wc-part.-static .wc-part-pin{height:auto;padding:0;display:block;overflow:visible;}
 .wc-part.-static #wcPartCanvas{display:none;}
 .wc-part.-static .wc-part-pin::after{display:none;}
+
+/* ---- CAP 07 — PROCESSO ORIZZONTALE ---- */
+.wc-process{padding:0;height:340svh;}
+.wc-process-pin{height:100svh;display:flex;flex-direction:column;
+  justify-content:center;gap:2.5rem;overflow:hidden;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+.wc-process-head{display:flex;flex-direction:column;gap:.8rem;}
+.wc-progress{width:min(320px,60vw);height:1px;background:var(--border2);position:relative;}
+.wc-progress span{position:absolute;inset:0;width:0%;background:var(--cyan);display:block;}
+.wc-process-row{display:flex;gap:2rem;will-change:transform;}
+.wc-step{flex:0 0 min(78vw,460px);border-left:1px solid var(--border2);
+  padding-left:1.5rem;display:flex;flex-direction:column;gap:.7rem;}
+.wc-step-n{font-family:var(--mono);font-size:.72rem;color:var(--cyan);letter-spacing:.14em;}
+.wc-step h3{font-size:1.6rem;font-weight:600;}
+.wc-step p{color:var(--muted);}
+/* Sotto i 900px il pin si disattiva (vedi horizontal.js): la fila
+   diventa una colonna leggibile senza scroll orizzontale. */
+@media (max-width:899px){
+  .wc-process{height:auto;}
+  .wc-process-pin{height:auto;padding-top:5rem;padding-bottom:5rem;}
+  .wc-process-row{flex-direction:column;transform:none!important;}
+  .wc-step{flex:0 0 auto;}
+}
+
+/* ---- CAP 08 — CTA + FORM ---- */
+.wc-cta{display:flex;flex-direction:column;gap:1.4rem;min-height:90svh;
+  justify-content:center;}
+.wc-form{margin-top:2rem;display:flex;flex-direction:column;gap:1.6rem;
+  max-width:34rem;width:100%;}
+.wc-field{position:relative;}
+.wc-field input,.wc-field textarea{width:100%;background:transparent;
+  border:0;border-bottom:1px solid var(--border2);color:var(--white);
+  font-family:var(--font);font-size:1rem;padding:.9rem 0 .5rem;resize:vertical;}
+.wc-field input:focus,.wc-field textarea:focus{outline:none;border-color:var(--cyan);}
+.wc-field label{position:absolute;left:0;top:.9rem;color:var(--dim);
+  font-size:1rem;pointer-events:none;
+  transition:transform .25s ease,font-size .25s ease,color .25s ease;
+  transform-origin:left top;}
+.wc-field input:focus + label,.wc-field input:not(:placeholder-shown) + label,
+.wc-field textarea:focus + label,.wc-field textarea:not(:placeholder-shown) + label{
+  transform:translateY(-1.35rem) scale(.75);color:var(--cyan);}
+.wc-submit{align-self:flex-start;background:var(--cyan);color:#060609;
+  border:0;border-radius:2px;padding:.9rem 2rem;font-family:var(--font);
+  font-weight:600;font-size:.92rem;cursor:pointer;}
+.wc-submit[disabled]{opacity:.5;cursor:progress;}
+.wc-form-err{color:#ff5c5c;font-size:.85rem;}
+.wc-form-ok{margin-top:2rem;display:flex;align-items:center;gap:1rem;
+  color:var(--green);}
+.wc-form-ok-lottie{width:56px;height:56px;flex:0 0 56px;}
+/* Il campo in focus non deve perdere l'anello: il :focus qui sopra toglie
+   l'outline, quindi il segnale per chi naviga da tastiera lo rimette la
+   regola globale di base.css. Questa lo ripristina esplicitamente perche'
+   la specificita' del selettore qui sopra la batteva. */
+.wc-field input:focus-visible,.wc-field textarea:focus-visible{
+  outline:2px solid var(--cyan);outline-offset:3px;}
+
+/* Rotta verso i contatti sempre raggiungibile: il pulsante dell'hero ora
+   entra nel tunnel e non porta piu' ai contatti. */
+.nav-cta{color:var(--cyan);border:1px solid var(--border2);border-radius:2px;
+  padding:.55rem .9rem;}
+.nav-cta:hover{border-color:var(--cyan);}
+
+/* Senza pin la sezione non ha niente da far scorrere: alta 340svh sarebbe
+   scroll morto. Vale per reduced-motion su viewport larga, dove la media
+   query dei 900px non scatta (vedi horizontal.js). */
+.wc-process.-static{height:auto;}
+.wc-process.-static .wc-process-pin{height:auto;overflow:visible;
+  padding-top:5rem;padding-bottom:5rem;}
+.wc-process.-static .wc-process-row{flex-direction:column;transform:none!important;}
+.wc-process.-static .wc-step{flex:0 0 auto;}

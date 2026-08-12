@@ -93,15 +93,20 @@ guidato dal progresso, e conversione da verticale a orizzontale — dimostra
 più che mostrarlo una volta. Il costo (due punti in cui lo scroll si
 aggancia) è accettato.
 
-### D15 — sei animazioni Lottie
+### D15 — CHIUSA: i Lottie sono due, non sei
 
-D15 tiene i Lottie fuori dallo scope di default: servono per motion di
-personaggi o illustrazione articolata, mai dove CSS o SVG bastano. I nostri
-sei (logo del loader, quattro icone bento, spunta di conferma) rientrano
-tutti nella seconda categoria.
+> Chiusa il 2026-08-12. Non serviva più derogare: il conto è sceso da solo.
 
-**Perché si deroga:** richiesta esplicita dell'utente. Costo accettato:
-~150KB di player più i sei JSON.
+La deroga esisteva per sei Lottie — logo del loader, quattro icone della
+griglia bento, spunta di conferma. La griglia bento non esiste più: il
+cap. 05 è diventato il modello Spline, e con lei sono spariti i quattro
+Lottie che portava.
+
+Ne restano **due**, ed entrambi fanno una cosa che CSS e SVG da soli non
+fanno bene: il logo che si scrive nel loader, e la spunta che si disegna
+alla conferma dell'invio. D15 tollera i Lottie dove servono davvero; a
+questo numero non c'è più niente da derogare. Il costo scende da ~150KB
++ sei JSON a ~150KB + due JSON piccoli.
 
 ## Applicati invece di derogati
 

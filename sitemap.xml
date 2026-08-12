@@ -4,4 +4,8 @@
     <loc>https://axxell.ai/</loc>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://axxell.ai/website-creation/</loc>
+    <priority>0.8</priority>
+  </url>
 </urlset>
