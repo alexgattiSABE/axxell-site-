@@ -531,6 +531,15 @@ export const mountOrb = (canvas, options = {}) => {
   points.frustumCulled = false;
   scene.add(points);
 
+  /*
+     Livello opzionale dei corpi orbitanti (pagina Servizi, vedi `mountSystem`).
+     Vive nella stessa scena della sfera perché una canvas regge un solo
+     contesto WebGL: due montaggi separati sullo stesso riquadro vorrebbero dire
+     due renderer, e il secondo non otterrebbe il contesto.
+  */
+  const orbiters = options.orbiters ? createOrbiters(options.orbiters, tier, renderer.getPixelRatio()) : null;
+  if (orbiters) scene.add(orbiters.group);
+
   const oil = createOilPointer(config.radius);
   const centre = new THREE.Vector3();
   const camLocal = new THREE.Vector3();
@@ -559,7 +568,31 @@ export const mountOrb = (canvas, options = {}) => {
     uniforms.uPR.value = renderer.getPixelRatio();
     // 900 px è il lato per cui la dimensione originale era pensata: sotto,
     // le sprite rimpiccioliscono in proporzione e la sfera resta granulosa.
-    uniforms.uSize.value = baseSize * Math.min(1, side / 900);
+    const scale = Math.min(1, side / 900);
+    uniforms.uSize.value = baseSize * scale;
+    if (orbiters) {
+      /*
+         Su schermo stretto il riquadro è un terzo di quello desktop: alla
+         stessa distanza il sistema diventava un francobollo di puntini. La
+         camera si avvicina — come fa la galassia della home — e le sprite non
+         scendono sotto un minimo, altrimenti la scena si dirada fino a
+         sparire invece di rimpicciolire.
+      */
+      const stretto = side < 420;
+      camera.position.z = stretto
+        ? (options.cameraZMobile ?? 5.2)
+        : (options.cameraZ ?? 3.8);
+      camera.updateProjectionMatrix();
+      /*
+         Le orbite si stringono invece di allontanare ancora la camera: a
+         questa distanza l'orbita esterna sborda di lato, e allontanarsi
+         rimpicciolirebbe anche la sfera. La scala del gruppo non tocca le
+         sprite — gl_PointSize non passa per la matrice del modello — quindi i
+         pianeti restano leggibili e si avvicinano soltanto fra loro.
+      */
+      orbiters.group.scale.setScalar(stretto ? 0.84 : 1);
+      orbiters.resize(Math.max(0.6, scale));
+    }
   });
 
   // Ingresso: rampa 0→1 in 2900 ms, easeOutCubic. Nell'originale è una molla di
@@ -651,6 +684,8 @@ export const mountOrb = (canvas, options = {}) => {
     uniforms.uCursorVel.value.copy(oil.velocity);
     uniforms.uEnergy.value = oil.energy;
 
+    if (orbiters) orbiters.step(time, camera, uniforms.uAssemble.value);
+
     renderer.render(scene, camera);
   };
   raf = requestAnimationFrame(frame);
@@ -665,6 +700,7 @@ export const mountOrb = (canvas, options = {}) => {
       window.removeEventListener("pointermove", onPointerMove);
       points.geometry.dispose();
       points.material.dispose();
+      if (orbiters) orbiters.dispose();
       renderer.dispose();
     },
   };
@@ -1610,6 +1646,782 @@ export const mountGalaxy = (canvas, options = {}) => {
       points.material.dispose();
       starGeometry.dispose();
       stars.material.dispose();
+      renderer.dispose();
+    },
+  };
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SISTEMA — sfera con pianeti orbitanti (pagina Servizi)
+
+   La sfera centrale è l'orb di SABE: stessa geometria, stesso shader a olio.
+   Qui si aggiunge soltanto ciò che le gira intorno, come livello separato.
+
+   Perché non un unico buffer con tutto dentro: i pianeti sono quattro corpi
+   rigidi che si spostano su un'ellisse, non una nuvola deformata da rumore.
+   Muoverli in JS costa quattro `position.set` per frame — dentro lo shader
+   servirebbe un array di uniform per orbita e il calcolo ripetuto su ogni
+   particella per ricavare sempre gli stessi quattro centri.
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+export const SYSTEM_CONFIG = {
+  colorPlanet: "#00e8a2",
+  colorTrail: "#00d4ff",
+  /** Dimensione base delle sprite, riscalata sul lato della canvas. */
+  planetSize: 62,
+  trailSize: 30,
+  /** Quanto si spegne un pianeta quando passa DIETRO la sfera. */
+  dimBehind: 0.42,
+  /*
+     Orbite: `a` e `b` sono i semiassi (in raggi della sfera, che vale 1),
+     `tiltX`/`tiltZ` l'inclinazione del piano, `speed` i radianti al secondo.
+     Le velocità non sono multipli l'una dell'altra: se lo fossero i pianeti
+     tornerebbero periodicamente nella stessa configurazione e il sistema si
+     leggerebbe come un ingranaggio invece che come un moto.
+  */
+  orbits: [
+    { a: 1.62, b: 1.62, tiltX: 0.46, tiltZ: 0.16, speed: 0.52, phase: 0.0, radius: 0.1 },
+    { a: 1.98, b: 1.88, tiltX: -0.32, tiltZ: -0.28, speed: 0.37, phase: 2.1, radius: 0.115 },
+    { a: 2.34, b: 2.24, tiltX: 0.62, tiltZ: 0.34, speed: 0.26, phase: 4.0, radius: 0.085 },
+    { a: 2.72, b: 2.56, tiltX: -0.18, tiltZ: 0.52, speed: 0.19, phase: 5.4, radius: 0.125 },
+  ],
+};
+
+const PLANET_VERT = /* glsl */ `
+  attribute float aMag;
+  attribute float aPhase;
+  uniform float uTime, uSize, uPR, uAppear;
+  varying float vMag;
+  void main(){
+    float twinkle = 0.74 + 0.26 * sin(uTime * 1.6 + aPhase * 6.2831);
+    vMag = aMag * twinkle;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    // Stessa legge della sfera — uSize · pixelRatio / distanza. Il pixel ratio
+    // non è cosmetico: gl_PointSize è in pixel del BUFFER, che su schermo
+    // retina è il doppio di quelli CSS. Senza, le sprite escono dimezzate.
+    gl_PointSize = uSize * uPR * aMag * uAppear * (1.0 / max(0.35, -mv.z));
+  }`;
+
+const PLANET_FRAG = /* glsl */ `
+  // Niente 'precision mediump': uAppear vive anche nel vertex, dove three
+  // dichiara highp di default, e due precisioni diverse per la stessa uniform
+  // fanno fallire il link del programma.
+  uniform vec3 uColor;
+  uniform float uOpacity, uAppear, uDim;
+  varying float vMag;
+  void main(){
+    vec2 d = gl_PointCoord - 0.5;
+    float r = length(d);
+    if (r > 0.5) discard;
+    float soft = smoothstep(0.5, 0.05, r);
+    gl_FragColor = vec4(uColor, soft * soft * vMag * uOpacity * uAppear * uDim);
+  }`;
+
+/** Nuvola sferica: densa al centro, sfrangiata sul bordo. */
+const buildPlanetGeometry = (count, radius) => {
+  const positions = new Float32Array(count * 3);
+  const mags = new Float32Array(count);
+  const phases = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const u = Math.random() * 2 - 1;
+    const theta = Math.random() * Math.PI * 2;
+    const sr = Math.sqrt(Math.max(0, 1 - u * u));
+    // Radice cubica = volume uniforme; l'esponente più alto concentra al
+    // centro, che è ciò che fa leggere un corpo invece di una bolla vuota.
+    const dist = radius * Math.pow(Math.random(), 0.62);
+    positions[i * 3] = Math.cos(theta) * sr * dist;
+    positions[i * 3 + 1] = u * dist;
+    positions[i * 3 + 2] = Math.sin(theta) * sr * dist;
+    mags[i] = 0.28 + Math.pow(Math.random(), 1.8) * 0.42;
+    phases[i] = Math.random();
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aMag", new THREE.BufferAttribute(mags, 1));
+  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
+  return geometry;
+};
+
+/** La traccia dell'orbita: polvere rada sull'ellisse, senza la quale il moto
+    del pianeta non si legge come un'orbita ma come una deriva. */
+const buildTrailGeometry = (count, a, b) => {
+  const positions = new Float32Array(count * 3);
+  const mags = new Float32Array(count);
+  const phases = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const jitter = 1 + (Math.random() - 0.5) * 0.02;
+    positions[i * 3] = Math.cos(ang) * a * jitter;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 0.03;
+    positions[i * 3 + 2] = Math.sin(ang) * b * jitter;
+    mags[i] = 0.22 + Math.pow(Math.random(), 1.6) * 0.5;
+    phases[i] = Math.random();
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aMag", new THREE.BufferAttribute(mags, 1));
+  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
+  return geometry;
+};
+
+/**
+ * Costruisce i corpi orbitanti attorno all'origine.
+ *
+ * @returns {{ group: THREE.Group, step: Function, resize: Function, dispose: Function }}
+ */
+const createOrbiters = (config, tier, pixelRatio) => {
+  const group = new THREE.Group();
+  const bodies = [];
+  const materials = [];
+  const geometries = [];
+  // Il budget di particelle è quello della sfera: i pianeti sono un contorno,
+  // non il soggetto, e prendono una frazione del conteggio della fascia.
+  const planetCount = Math.max(140, Math.round(tier.count * 0.016));
+  const trailCount = Math.max(420, Math.round(tier.count * 0.07));
+  const colorPlanet = hexToLinear(config.colorPlanet);
+  const colorTrail = hexToLinear(config.colorTrail);
+
+  for (const [indice, orbit] of config.orbits.entries()) {
+    const lontananza = config.orbits.length > 1 ? indice / (config.orbits.length - 1) : 0;
+    const colorBody = colorPlanet.clone().lerp(colorTrail, lontananza * 0.85);
+    const plane = new THREE.Group();
+    plane.rotation.x = orbit.tiltX;
+    plane.rotation.z = orbit.tiltZ;
+
+    const trailGeometry = buildTrailGeometry(trailCount, orbit.a, orbit.b);
+    const trailMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uSize: { value: config.trailSize },
+        uPR: { value: pixelRatio },
+        uAppear: { value: 0 },
+        uOpacity: { value: 1 },
+        uDim: { value: 1 },
+        uColor: { value: colorTrail },
+      },
+      vertexShader: PLANET_VERT,
+      fragmentShader: PLANET_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const trail = new THREE.Points(trailGeometry, trailMaterial);
+    trail.frustumCulled = false;
+    plane.add(trail);
+
+    const planetGeometry = buildPlanetGeometry(planetCount, orbit.radius);
+    const planetMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uSize: { value: config.planetSize },
+        uPR: { value: pixelRatio },
+        uAppear: { value: 0 },
+        uOpacity: { value: 1 },
+        uDim: { value: 1 },
+        uColor: { value: colorBody },
+      },
+      vertexShader: PLANET_VERT,
+      fragmentShader: PLANET_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const planet = new THREE.Points(planetGeometry, planetMaterial);
+    planet.frustumCulled = false;
+    plane.add(planet);
+
+    group.add(plane);
+    bodies.push({ orbit, planet, trailMaterial, planetMaterial });
+    materials.push(trailMaterial, planetMaterial);
+    geometries.push(trailGeometry, planetGeometry);
+  }
+
+  const world = new THREE.Vector3();
+
+  return {
+    group,
+
+    /**
+     * @param {number} time   secondi dall'avvio
+     * @param {THREE.Camera} camera
+     * @param {number} appear 0→1, la stessa rampa d'ingresso della sfera
+     */
+    step(time, camera, appear) {
+      for (const body of bodies) {
+        const { orbit, planet } = body;
+        const angle = orbit.phase + time * orbit.speed;
+        planet.position.set(Math.cos(angle) * orbit.a, 0, Math.sin(angle) * orbit.b);
+
+        /*
+           Davanti o dietro la sfera. Le sprite sono additive e senza test di
+           profondità — come tutto il resto della scena — quindi un pianeta
+           dietro sarebbe indistinguibile da uno davanti. Qui si confronta la
+           distanza dalla camera con quella del centro: più lontano = dietro, e
+           lo si attenua.
+        */
+        planet.getWorldPosition(world);
+        const dietro = world.distanceTo(camera.position) > camera.position.length();
+        const target = dietro ? config.dimBehind : 1;
+        const dim = body.planetMaterial.uniforms.uDim;
+        dim.value += (target - dim.value) * 0.12;
+
+        body.planetMaterial.uniforms.uTime.value = time;
+        body.trailMaterial.uniforms.uTime.value = time;
+        // Le tracce entrano DOPO i pianeti: prima si vedono i corpi arrivare,
+        // poi la scia dell'orbita si accende sotto di loro.
+        body.planetMaterial.uniforms.uAppear.value = appear;
+        body.trailMaterial.uniforms.uAppear.value = Math.max(0, appear * 1.6 - 0.6);
+      }
+    },
+
+    /** Le sprite seguono il lato della canvas, come quelle della sfera. */
+    resize(scale) {
+      for (const body of bodies) {
+        body.planetMaterial.uniforms.uSize.value = config.planetSize * scale;
+        body.trailMaterial.uniforms.uSize.value = config.trailSize * scale;
+      }
+    },
+
+    dispose() {
+      for (const material of materials) material.dispose();
+      for (const geometry of geometries) geometry.dispose();
+    },
+  };
+};
+
+/**
+ * Monta la sfera con i pianeti orbitanti (pagina Servizi).
+ *
+ * È `mountOrb` con il livello degli orbitanti acceso: la sfera al centro è la
+ * stessa di SABE, e deve restare tale.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @returns {{ destroy: () => void }}
+ */
+export const mountSystem = (canvas, options = {}) =>
+  mountOrb(canvas, {
+    // La camera va indietro rispetto alla sfera da sola: l'orbita più esterna
+    // sta a tre raggi dal centro e a 3.8 uscirebbe dal riquadro.
+    cameraZ: options.cameraZ ?? 7.4,
+    ...options,
+    orbiters: { ...SYSTEM_CONFIG, ...(options.orbiters || {}) },
+  });
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OCCHIO — pagina Visione
+
+   Un occhio di particelle: contorno a mandorla, iride a fibre radiali, bordo
+   della pupilla, un velo di sclera e il riflesso. L'iride segue il puntatore,
+   l'occhio sbatte ogni tanto.
+
+   Tutto in un buffer solo, le parti distinte da `aPart`: sono cinque nuvole
+   che condividono lo stesso ingresso, lo stesso rumore ambientale e lo stesso
+   blink — separarle in cinque oggetti vorrebbe dire ripetere cinque volte lo
+   stesso shader per poi doverli tenere in fase a mano.
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+export const EYE_CONFIG = {
+  /** Fibre dell'iride: ciano fuori, verde verso la pupilla — il gradiente `.hl`. */
+  colorIris: "#00d4ff",
+  colorIrisInner: "#00e8a2",
+  /** Bordo pupilla e riflesso: quasi bianchi, sono le uniche luci dure. */
+  colorRim: "#bff2ff",
+  colorLid: "#0092d8",
+  colorSclera: "#0077b3",
+
+  /** Semi-larghezza della mandorla; il resto della forma è in proporzione. */
+  width: 1.32,
+  /** Semi-altezza dell'arco superiore. */
+  height: 0.6,
+  /** Quanto la palpebra inferiore è meno curva di quella superiore. */
+  lowerRatio: 0.74,
+  irisRadius: 0.42,
+  pupilRadius: 0.155,
+  /** Numero di fibre radiali dell'iride. */
+  fibres: 104,
+  /** Bombatura: la cornea sporge verso la camera. */
+  bulge: 0.34,
+
+  pointSize: 13,
+  brightness: 1.0,
+  opacity: 1,
+  /** Escursione massima dello sguardo, in unità di scena. */
+  lookAmount: 0.135,
+  /** Rotazione dell'iride su sé stessa, radianti al secondo. */
+  spin: 0.075,
+  /** Secondi fra un blink e il successivo, minimo e massimo. */
+  blinkEvery: [3.6, 8.4],
+  /** Durata di una chiusura completa. */
+  blinkMs: 260,
+};
+
+const EYE_VERT = /* glsl */ `
+  uniform float uTime, uSize, uPR, uAssemble, uBlink, uSpin, uBulge;
+  uniform float uIrisR, uPupilR;
+  uniform vec2  uLook;
+  uniform vec3  uColIris, uColIrisInner, uColRim, uColLid, uColSclera;
+
+  attribute float aPart;   // 0 contorno · 1 iride · 2 bordo pupilla · 3 sclera · 4 riflesso
+  attribute vec3  aRnd;
+  attribute float aSeed;
+
+  varying vec3  vColor;
+  varying float vAlpha;
+
+  ${SNOISE}
+
+  void main(){
+    vec3 pos = position;
+
+    // Maschere delle parti. Niente rami: un if verrebbe eseguito comunque su
+    // tutta l'onda, e le maschere servono anche a interpolare i colori.
+    float isLid    = 1.0 - step(0.5, aPart);
+    float isIris   = step(0.5, aPart) * (1.0 - step(1.5, aPart));
+    float isPupil  = step(1.5, aPart) * (1.0 - step(2.5, aPart));
+    float isSclera = step(2.5, aPart) * (1.0 - step(3.5, aPart));
+    float isGlint  = step(3.5, aPart);
+
+    // Ciò che sta nell'occhio e si muove con lo sguardo: iride, pupilla e
+    // riflesso. Contorno e sclera restano dove sono — è l'occhio che guarda,
+    // non la testa che si gira.
+    float mobile = max(max(isIris, isPupil), isGlint);
+
+    // L'iride ruota lentamente su sé stessa: le fibre non sono mai ferme in un
+    // occhio vivo, e senza questa deriva la raggiera si legge come una texture.
+    float a = uTime * uSpin;
+    vec2 spun = vec2(pos.x * cos(a) - pos.y * sin(a), pos.x * sin(a) + pos.y * cos(a));
+    pos.xy = mix(pos.xy, spun, isIris);
+
+    // Respiro ambientale: sposta ogni particella di poco, sfasata per seme.
+    float n = snoise(vec3(position.xy * 2.3, uTime * 0.32 + aSeed * 4.0));
+    pos.xy += aRnd.xy * n * 0.016;
+    pos.z  += n * 0.012;
+
+    // Sguardo. Il riflesso si sposta MENO dell'iride: sta sulla cornea, che è
+    // più vicina alla camera, e la parallasse lo trattiene.
+    pos.xy += uLook * mobile * mix(1.0, 0.55, isGlint);
+
+    /*
+       Blink. Non una palpebra disegnata: le particelle collassano sulla linea
+       mediana e ripartono. La chiusura è più rapida in alto (la palpebra
+       superiore fa quasi tutta la corsa, come nell'occhio vero), quindi il
+       fattore dipende dal segno di y.
+    */
+    float upper = step(0.0, position.y);
+    float squash = 1.0 - uBlink * mix(0.86, 0.97, upper);
+    pos.y *= squash;
+    pos.z *= 1.0 - uBlink * 0.7;
+
+    // Ingresso: le particelle arrivano dal buio davanti alla camera e si
+    // radunano. Scaglionato per seme, così si forma a scia e non tutto insieme.
+    float delay = aSeed * 0.42;
+    float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
+    float ease = 1.0 - pow(1.0 - t, 3.0);
+    vec3 spawn = pos + aRnd * 2.4 + vec3(0.0, 0.0, 2.6 + aRnd.z * 1.6);
+    pos = mix(spawn, pos, ease);
+
+    // Colore per parte. Nell'iride il gradiente va dal verde della pupilla al
+    // ciano del bordo esterno.
+    float r = length(position.xy);
+    vec3 iris = mix(uColIrisInner, uColIris, smoothstep(uPupilR, uIrisR, r));
+    vec3 col = uColLid * isLid
+             + iris * isIris
+             + uColRim * (isPupil + isGlint)
+             + uColSclera * isSclera;
+    vColor = col;
+
+    // Peso luminoso: il bordo della pupilla e il riflesso sono le luci dure,
+    // la sclera è quasi solo un velo.
+    float weight = isLid * 0.58
+                 + isIris * 0.4
+                 + isPupil * 0.3
+                 + isSclera * 0.16
+                 + isGlint * 0.5;
+
+    // A occhio chiuso resta solo il contorno: iride e pupilla spariscono prima
+    // che la forma si sia richiusa, altrimenti si vede una riga luminosa
+    // schiacciata al centro.
+    float lidFade = 1.0 - smoothstep(0.2, 0.7, uBlink) * mobile;
+
+    vAlpha = weight * ease * lidFade;
+
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = uSize * uPR * (0.55 + weight * 0.5) * (1.0 / max(0.4, -mv.z));
+  }`;
+
+const EYE_FRAG = /* glsl */ `
+  precision mediump float;
+  uniform float uOpacity, uBrightness;
+  varying vec3  vColor;
+  varying float vAlpha;
+  void main(){
+    vec2 d = gl_PointCoord - 0.5;
+    float r = length(d);
+    if (r > 0.5) discard;
+    float soft = smoothstep(0.5, 0.08, r);
+    gl_FragColor = vec4(vColor * uBrightness, soft * soft * vAlpha * uOpacity);
+  }`;
+
+/**
+ * La mandorla: due archi che si incontrano agli angoli. L'arco superiore è più
+ * alto e più tondo, l'inferiore più teso — è quella asimmetria a far leggere
+ * la forma come un occhio invece che come una lente.
+ *
+ * @param {number} u  posizione lungo l'asse, da -1 (angolo interno) a 1
+ * @returns {{ up: number, down: number }} le due quote, in unità di scena
+ */
+const eyeLids = (u, config) => {
+  const k = Math.max(0, 1 - u * u);
+  return {
+    up: config.height * Math.pow(k, 0.58),
+    down: -config.height * config.lowerRatio * Math.pow(k, 0.86),
+  };
+};
+
+const buildEyeGeometry = (total, config) => {
+  // Ripartizione: l'iride è il soggetto e si prende quasi metà delle
+  // particelle; la sclera è un velo e ne basta un quinto.
+  const nIris = Math.round(total * 0.4);
+  const nLid = Math.round(total * 0.22);
+  const nPupil = Math.round(total * 0.04);
+  const nGlint = Math.max(24, Math.round(total * 0.007));
+  const nSclera = Math.max(0, total - nIris - nLid - nPupil - nGlint);
+  const count = nIris + nLid + nSclera + nPupil + nGlint;
+
+  const positions = new Float32Array(count * 3);
+  const parts = new Float32Array(count);
+  const randoms = new Float32Array(count * 3);
+  const seeds = new Float32Array(count);
+
+  const { width, height, irisRadius, pupilRadius, fibres, bulge } = config;
+  let i = 0;
+
+  const push = (x, y, z, part) => {
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    parts[i] = part;
+    randoms[i * 3] = Math.random() - 0.5;
+    randoms[i * 3 + 1] = Math.random() - 0.5;
+    randoms[i * 3 + 2] = Math.random() - 0.5;
+    seeds[i] = Math.random();
+    i++;
+  };
+
+  /** Bombatura della cornea: massima al centro, nulla agli angoli. */
+  const domeZ = (x, y) => {
+    const k = 1 - Math.min(1, (x / width) ** 2 + (y / height) ** 2);
+    return bulge * Math.max(0, k) ** 0.7;
+  };
+
+  // ── Contorno ──────────────────────────────────────────────────────────────
+  for (let n = 0; n < nLid; n++) {
+    // sin(π/2 · u) addensa verso gli angoli, dove le due curve si incontrano:
+    // è lì che la forma si riconosce, e una distribuzione piatta in x li
+    // lasciava spogli.
+    const u = Math.sin(((Math.random() * 2 - 1) * Math.PI) / 2);
+    const x = u * width;
+    const lids = eyeLids(u, config);
+    const sopra = Math.random() < 0.54;
+    const base = sopra ? lids.up : lids.down;
+    // Spessore del tratto: più marcato al centro, sottile agli angoli.
+    const thick = (0.028 + 0.03 * Math.max(0, 1 - u * u)) * (sopra ? 1 : 0.85);
+    const y = base + (Math.random() - 0.5) * 2 * thick;
+    push(x, y, domeZ(x, y) * 0.35 + (Math.random() - 0.5) * 0.02, 0);
+  }
+
+  // ── Iride ─────────────────────────────────────────────────────────────────
+  for (let n = 0; n < nIris; n++) {
+    // Un quinto delle particelle va sul limbus, l'anello esterno: è il bordo
+    // netto che chiude l'iride e le dà un contorno invece di una sfumatura.
+    const limbus = Math.random() < 0.2;
+    const fibre = Math.floor(Math.random() * fibres);
+    // Jitter quasi pieno sul settore: le fibre devono leggersi come raggiera,
+    // non come una griglia di stecche separate.
+    const ang = ((fibre + (Math.random() - 0.5) * 0.5) / fibres) * Math.PI * 2;
+    const rad = limbus
+      ? irisRadius * (0.955 + Math.random() * 0.045)
+      : pupilRadius + (irisRadius - pupilRadius) * Math.pow(Math.random(), 0.72);
+    const x = Math.cos(ang) * rad;
+    const y = Math.sin(ang) * rad;
+    push(x, y, domeZ(x, y), 1);
+  }
+
+  // ── Bordo della pupilla ───────────────────────────────────────────────────
+  for (let n = 0; n < nPupil; n++) {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = pupilRadius * (1 + (Math.random() - 0.5) * 0.3);
+    const x = Math.cos(ang) * rad;
+    const y = Math.sin(ang) * rad;
+    push(x, y, domeZ(x, y) * 1.04, 2);
+  }
+
+  // ── Sclera ────────────────────────────────────────────────────────────────
+  // Riempimento per rifiuto: dentro la mandorla, fuori dall'iride.
+  for (let n = 0, guard = 0; n < nSclera && guard < nSclera * 40; guard++) {
+    const u = Math.random() * 2 - 1;
+    const x = u * width;
+    const lids = eyeLids(u, config);
+    const y = lids.down + Math.random() * (lids.up - lids.down);
+    if (x * x + y * y < (irisRadius * 1.06) ** 2) continue;
+    push(x, y, domeZ(x, y) * 0.5, 3);
+    n++;
+  }
+  // Il rifiuto può fermarsi prima della quota: i posti rimasti vanno riempiti
+  // comunque, altrimenti il buffer resta con code di zeri in mezzo alla scena.
+  while (i < nLid + nIris + nPupil + nSclera) push(0, 0, 0, 3);
+
+  // ── Riflesso ──────────────────────────────────────────────────────────────
+  // In alto a sinistra, mezzo dentro e mezzo fuori dalla pupilla: è la
+  // posizione della luce che rende uno sguardo vivo invece che di vetro.
+  const gx = -irisRadius * 0.42;
+  const gy = irisRadius * 0.44;
+  for (let n = 0; n < nGlint; n++) {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = Math.pow(Math.random(), 0.5) * irisRadius * 0.14;
+    const x = gx + Math.cos(ang) * rad;
+    const y = gy + Math.sin(ang) * rad * 0.78;
+    push(x, y, domeZ(x, y) * 1.1 + 0.02, 4);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aPart", new THREE.BufferAttribute(parts, 1));
+  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms, 3));
+  geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
+  return geometry;
+};
+
+/**
+ * Monta l'occhio su una canvas.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @param {{ config?: object, cameraZ?: number, density?: number, maxSize?: number }} [options]
+ * @returns {{ destroy: () => void }}
+ */
+export const mountEye = (canvas, options = {}) => {
+  const config = { ...EYE_CONFIG, ...(options.config || {}) };
+  const tier = paramsFor(window.innerWidth);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // L'occhio è una figura piatta: a parità di conteggio le particelle si
+  // affollano su un'area molto minore di quella della sfera, e la forma si
+  // impasta. Metà del budget di fascia.
+  const count = Math.round(tier.count * (options.density ?? 0.42));
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.z = options.cameraZ ?? 3.5;
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uPR: { value: renderer.getPixelRatio() },
+    uSize: { value: config.pointSize },
+    uAssemble: { value: 0 },
+    uBlink: { value: 0 },
+    uSpin: { value: config.spin },
+    uBulge: { value: config.bulge },
+    uIrisR: { value: config.irisRadius },
+    uPupilR: { value: config.pupilRadius },
+    uLook: { value: new THREE.Vector2() },
+    uOpacity: { value: config.opacity },
+    uBrightness: { value: config.brightness },
+    uColIris: { value: hexToLinear(config.colorIris) },
+    uColIrisInner: { value: hexToLinear(config.colorIrisInner) },
+    uColRim: { value: hexToLinear(config.colorRim) },
+    uColLid: { value: hexToLinear(config.colorLid) },
+    uColSclera: { value: hexToLinear(config.colorSclera) },
+  };
+
+  const points = new THREE.Points(
+    buildEyeGeometry(count, config),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: EYE_VERT,
+      fragmentShader: EYE_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }),
+  );
+  points.frustumCulled = false;
+  scene.add(points);
+
+  const pointerNdc = new THREE.Vector2();
+  let hasPointer = false;
+  const onPointerMove = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    // Riferito alla canvas, non alla finestra: l'occhio deve guardare il
+    // puntatore anche quando la scena non è al centro dello schermo.
+    pointerNdc.set(
+      ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
+      -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1,
+    );
+    hasPointer = true;
+  };
+  if (tier.pointer) window.addEventListener("pointermove", onPointerMove, { passive: true });
+
+  const detachResize = attachResize(canvas, (width, parentHeight) => {
+    /*
+       L'occhio è largo il doppio di quanto è alto: un quadrato lo lascerebbe
+       piccolo in mezzo a due fasce vuote. La canvas prende tutto il riquadro e
+       la camera si adatta all'aspetto.
+    */
+    const stimata = parentHeight > 80 ? parentHeight : Math.round(width * 0.42);
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    /*
+       Le misure vanno RIlette dalla canvas, non prese dal contenitore: il
+       contenitore ha un padding e `clientWidth` lo comprende. Dimensionare il
+       buffer sul contenitore darebbe un'immagine più larga dell'elemento, che
+       il CSS poi stira — l'occhio verrebbe leggermente ovalizzato.
+    */
+    const w = canvas.clientWidth || width;
+    const height = canvas.clientHeight || stimata;
+    renderer.setSize(w, height, false);
+    camera.aspect = w / Math.max(1, height);
+    camera.updateProjectionMatrix();
+    uniforms.uPR.value = renderer.getPixelRatio();
+
+    /*
+       Inquadratura sulla LARGHEZZA. Con una camera prospettica il campo
+       verticale è fisso: in un riquadro basso e largo l'occhio resterebbe
+       tarato sull'altezza e sborderebbe di lato. Si allontana la camera quel
+       tanto che serve perché la mandorla ci stia in orizzontale.
+    */
+    const halfFov = Math.tan((camera.fov * Math.PI) / 360);
+    // Due vincoli, si prende il più stringente: la mandorla deve starci in
+    // larghezza con un margine, e l'arco delle palpebre in altezza.
+    const perLarghezza = (config.width * 1.6) / (halfFov * Math.max(0.35, camera.aspect));
+    const perAltezza = (config.height * 1.3) / halfFov;
+    camera.position.z = options.cameraZ ?? Math.max(perLarghezza, perAltezza);
+    camera.updateProjectionMatrix();
+
+    // 900 px è il lato per cui la dimensione base è tarata, come per la sfera.
+    // Il minimo vale come per gli orbitanti: sotto, l'occhio si legge come
+    // una manciata di granelli invece che come una figura.
+    uniforms.uSize.value = config.pointSize * Math.max(0.78, Math.min(1, Math.max(w, 1) / 900));
+  });
+
+  let onScreen = true;
+  const observer = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; }, { threshold: 0 });
+  observer.observe(canvas);
+
+  const INTRO_MS = 2300;
+  let introStart = null;
+  let raf = null;
+  let stopped = false;
+
+  // Vedi mountGalaxy: WebKit scarta il livello di composizione della canvas
+  // quando un antenato va in display:none, e va forzato a ricrearlo.
+  const detachPage = onPageEnter(canvas, () => {
+    onScreen = true;
+    canvas.style.display = "none";
+    void canvas.offsetHeight;
+    canvas.style.display = "block";
+    requestAnimationFrame(() => detachResize.measure());
+    introStart = null;
+  }, options.pageSelector);
+
+  const clock = new THREE.Clock();
+  const look = new THREE.Vector2();
+  const lookTarget = new THREE.Vector2();
+  // Il primo blink non parte subito: l'occhio deve prima finire di formarsi.
+  let nextBlink = 2.6;
+  let blinkStart = null;
+
+  const frame = (now) => {
+    raf = requestAnimationFrame(frame);
+    if (stopped || !onScreen || document.hidden) return;
+
+    if (introStart === null) {
+      introStart = now;
+      nextBlink = clock.getElapsedTime() + 2.6;
+    }
+    const t = Math.min(1, (now - introStart) / INTRO_MS);
+    uniforms.uAssemble.value = reduceMotion.matches ? 1 : t * t * (3 - 2 * t);
+
+    const time = clock.getElapsedTime();
+    uniforms.uTime.value = reduceMotion.matches ? 0 : time;
+
+    /*
+       Sguardo. Il puntatore in NDC va portato in unità di scena e trattenuto
+       dentro un'ellisse: l'iride non deve mai uscire dalla mandorla, e sull'asse
+       verticale ha molto meno spazio che su quello orizzontale.
+    */
+    if (tier.pointer && hasPointer && !reduceMotion.matches) {
+      lookTarget.set(pointerNdc.x * config.lookAmount * 1.5, pointerNdc.y * config.lookAmount * 0.62);
+      const norm = (lookTarget.x / (config.lookAmount * 1.5)) ** 2 + (lookTarget.y / (config.lookAmount * 0.62)) ** 2;
+      if (norm > 1) lookTarget.multiplyScalar(1 / Math.sqrt(norm));
+    } else if (!reduceMotion.matches) {
+      /*
+         Senza puntatore — mobile, o prima che il mouse si muova — l'occhio non
+         resta fisso: si guarda intorno da solo. Due seni di periodo diverso,
+         così il giro non si chiude mai uguale e non si legge come un ciclo.
+      */
+      lookTarget.set(
+        Math.sin(time * 0.31) * config.lookAmount * 0.62,
+        Math.sin(time * 0.23 + 1.7) * config.lookAmount * 0.3,
+      );
+    } else {
+      lookTarget.set(0, 0);
+    }
+    look.lerp(lookTarget, 0.075);
+    uniforms.uLook.value.copy(look);
+
+    /*
+       Blink. Un impulso su una campana: chiude e riapre nello stesso gesto,
+       con l'apertura leggermente più lenta della chiusura — è così che si
+       muove una palpebra, e simmetrico sembrava uno sfarfallio.
+    */
+    if (reduceMotion.matches) {
+      uniforms.uBlink.value = 0;
+    } else {
+      if (blinkStart === null && time > nextBlink) blinkStart = time;
+      if (blinkStart !== null) {
+        const u = (time - blinkStart) / (config.blinkMs / 1000);
+        if (u >= 1) {
+          uniforms.uBlink.value = 0;
+          blinkStart = null;
+          const [min, max] = config.blinkEvery;
+          nextBlink = time + min + Math.random() * (max - min);
+        } else {
+          // Chiusura in 4/10 del tempo, riapertura nei restanti 6/10.
+          uniforms.uBlink.value = u < 0.4
+            ? Math.sin((u / 0.4) * Math.PI * 0.5)
+            : Math.cos(((u - 0.4) / 0.6) * Math.PI * 0.5);
+        }
+      }
+    }
+
+    renderer.render(scene, camera);
+  };
+  raf = requestAnimationFrame(frame);
+
+  return {
+    destroy() {
+      stopped = true;
+      if (raf) cancelAnimationFrame(raf);
+      observer.disconnect();
+      detachPage();
+      detachResize();
+      window.removeEventListener("pointermove", onPointerMove);
+      points.geometry.dispose();
+      points.material.dispose();
       renderer.dispose();
     },
   };
