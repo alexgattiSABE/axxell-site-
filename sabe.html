@@ -277,15 +277,13 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 .scene-3d-brain{max-width:900px;height:min(58vh,560px);}
 .scene-3d-orb{max-width:900px;height:min(62vh,620px);}
 .scene-3d-system{max-width:960px;height:min(64vh,640px);}
-/* L'occhio è largo e basso: un riquadro quadrato lo lascerebbe minuscolo in
-   mezzo a due fasce vuote. Qui la canvas riempie il contenitore. */
-.scene-3d-eye{max-width:1040px;width:100%;height:min(40vh,400px);}
+.scene-3d-globe{max-width:900px;height:min(62vh,620px);}
 @media(max-width:700px){
   .scene-3d{padding:1rem 1.2rem 0;}
   .scene-3d-brain{height:min(38vh,340px);}
   .scene-3d-orb{height:min(34vh,300px);}
   .scene-3d-system{height:min(42vh,380px);}
-  .scene-3d-eye{height:min(24vh,220px);}
+  .scene-3d-globe{height:min(34vh,300px);}
 }
 .ss-i{padding:2.2rem 3rem;text-align:center;border-right:1px solid var(--border);transition:background .25s;position:relative;overflow:hidden;}
 .ss-i:last-child{border-right:none;}
@@ -2687,9 +2685,9 @@ overflow-y:auto;
 
 <!-- ══ VISIONE ══ -->
 <div id="p-visione" class="page">
-  <!-- ══ OCCHIO 3D — in cima, prima dei titoli ══ -->
-  <div class="scene-3d scene-3d-eye">
-    <canvas id="eyeCanvas" data-orb="new"></canvas>
+  <!-- ══ GLOBO 3D — in cima, prima dei titoli ══ -->
+  <div class="scene-3d scene-3d-globe">
+    <canvas id="globeCanvas" data-orb="new"></canvas>
   </div>
 
   <div class="pg-hero">
@@ -4030,7 +4028,7 @@ function setLang(lang){
 }
 </script>
 <script type="module">
-  import { mountOrb, mountBrain, mountGalaxy, mountSystem, mountEye } from './axxell-3d.js';
+  import { mountOrb, mountBrain, mountGalaxy, mountSystem, mountGlobe } from './axxell-3d.js';
 
   // HOME — la galassia. Copre l'intera sezione hero (fill) ma resta inquadrata
   // sulla destra (offsetXFrac), così le particelle arrivano da sinistra
@@ -4093,10 +4091,10 @@ function setLang(lang){
     mountSystem(systemCanvas, { maxSize: 760 });
   }
 
-  // VISIONE — l'occhio: guarda il puntatore e sbatte ogni tanto.
-  const eyeCanvas = document.getElementById('eyeCanvas');
-  if (eyeCanvas && eyeCanvas.dataset.orb === 'new') {
-    mountEye(eyeCanvas);
+  // VISIONE — il globo: la stessa sfera dei Servizi, senza corpi in orbita.
+  const globeCanvas = document.getElementById('globeCanvas');
+  if (globeCanvas && globeCanvas.dataset.orb === 'new') {
+    mountGlobe(globeCanvas, { maxSize: 760 });
   }
 </script>
 </body>

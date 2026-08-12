@@ -1631,6 +1631,10 @@ export const SYSTEM_CONFIG = {
   colorRim: "#00e8a2",
 
   radius: 1,
+  /** Distanza di camera: la stessa scala dei render di SABE e ATLAS, dove la
+      forma riempie il riquadro invece di starci in mezzo. */
+  cameraZ: 3.5,
+  cameraZMobile: 3.2,
   /** Spessore del guscio: senza, la sfera si legge come una griglia. */
   shellJitter: 0.045,
   /** Rotazione su sé stessa, radianti al secondo. Lenta: la scena deve
@@ -1642,8 +1646,13 @@ export const SYSTEM_CONFIG = {
   /** Quanto restano visibili i punti sul lato lontano. */
   backFade: 0.46,
 
-  pointSize: 19,
-  brightness: 1.45,
+  /*
+     Taratura presa dal cervello di ATLAS: tantissime particelle, ciascuna
+     minuta. È quella densità a dare una superficie continua invece di una
+     manciata di punti grossi.
+  */
+  pointSize: 9,
+  brightness: 1.5,
   opacity: 1,
 
   /*
@@ -1652,13 +1661,13 @@ export const SYSTEM_CONFIG = {
      veloce, e passa davanti alla sfera.
   */
   bodies: [
-    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.72, phase: 0.9, radius: 0.2, trailSpan: 2.2 },
-    { a: 1.42, b: 1.42, tiltX: -0.46, tiltZ: 0.5, speed: 0.72, phase: 4.04, radius: 0.155, trailSpan: 1.9 },
-    { a: 1.0, b: 0.95, tiltX: 0.58, tiltZ: -0.3, speed: 1.05, phase: 2.2, radius: 0.11, trailSpan: 1.5 },
+    { a: 1.3, b: 1.3, tiltX: -0.32, tiltZ: 0.5, speed: 0.72, phase: 0.9, radius: 0.14, trailSpan: 2.4 },
+    { a: 1.3, b: 1.3, tiltX: -0.32, tiltZ: 0.5, speed: 0.72, phase: 4.04, radius: 0.11, trailSpan: 2.1 },
+    { a: 1.13, b: 1.08, tiltX: 0.5, tiltZ: -0.3, speed: 1.05, phase: 2.2, radius: 0.08, trailSpan: 1.7 },
   ],
   /** Dimensione delle sprite dei corpi e delle scie. */
-  bodySize: 16,
-  trailSize: 12,
+  bodySize: 10,
+  trailSize: 7,
 };
 
 const SPHERE_VERT = /* glsl */ `
@@ -1716,8 +1725,11 @@ const SPHERE_VERT = /* glsl */ `
     // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
     // particelle di netto e in pagina compare un riquadro.
     vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
-    vEdge = (1.0 - smoothstep(0.34, 0.96, abs(ndc.x)))
-          * (1.0 - smoothstep(0.34, 0.96, abs(ndc.y)));
+    float largo = (1.0 - smoothstep(0.3, 0.95, abs(ndc.x)))
+                * (1.0 - smoothstep(0.3, 0.95, abs(ndc.y)));
+    float stretto = (1.0 - smoothstep(0.82, 1.0, abs(ndc.x)))
+                  * (1.0 - smoothstep(0.82, 1.0, abs(ndc.y)));
+    vEdge = mix(largo, stretto, smoothstep(0.72, 1.0, uAssemble));
   }`;
 
 const SPHERE_FRAG = /* glsl */ `
@@ -1806,8 +1818,11 @@ const BODY_VERT = /* glsl */ `
     // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
     // particelle di netto e in pagina compare un riquadro.
     vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
-    vEdge = (1.0 - smoothstep(0.34, 0.96, abs(ndc.x)))
-          * (1.0 - smoothstep(0.34, 0.96, abs(ndc.y)));
+    float largo = (1.0 - smoothstep(0.3, 0.95, abs(ndc.x)))
+                * (1.0 - smoothstep(0.3, 0.95, abs(ndc.y)));
+    float stretto = (1.0 - smoothstep(0.82, 1.0, abs(ndc.x)))
+                  * (1.0 - smoothstep(0.82, 1.0, abs(ndc.y)));
+    vEdge = mix(largo, stretto, smoothstep(0.72, 1.0, uAppear));
   }`;
 
 const BODY_FRAG = /* glsl */ `
@@ -1861,7 +1876,9 @@ export const mountSystem = (canvas, options = {}) => {
   const config = { ...SYSTEM_CONFIG, ...(options.config || {}) };
   const tier = paramsFor(window.innerWidth);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const count = Math.round(tier.count * (options.density ?? 1));
+  // `tier.brain` è il budget del cervello: cinque volte quello della sfera di
+  // SABE, ed è ciò che serve perché il guscio si legga come una superficie.
+  const count = Math.round(tier.brain * (options.density ?? 1));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
@@ -1908,8 +1925,10 @@ export const mountSystem = (canvas, options = {}) => {
   scene.add(sistema);
   const corpi = [];
   const risorse = [];
-  const bodyCount = Math.max(420, Math.round(count * 0.042));
-  const trailCount = Math.max(700, Math.round(count * 0.11));
+  // I corpi NON scalano col guscio: sono oggetti piccoli, e legarli a un
+  // conteggio cinque volte più alto li farebbe diventare palle solide.
+  const bodyCount = Math.max(420, Math.round(tier.count * 0.05));
+  const trailCount = Math.max(700, Math.round(tier.count * 0.12));
 
   for (const spec of config.bodies) {
     const piano = new THREE.Group();
@@ -1958,50 +1977,19 @@ export const mountSystem = (canvas, options = {}) => {
 
   const world = new THREE.Vector3();
 
-  /*
-     Distanza di camera che tiene i corpi dentro il quadro.
-
-     Non basta il semiasse dell'orbita: in prospettiva un corpo che passa dal
-     lato vicino alla camera si allontana dall'asse ottico molto più del suo
-     raggio geometrico — con le prime tarature usciva dal riquadro per metà
-     giro, e in scena restava solo la scia che entrava e spariva. Qui si
-     campiona l'orbita vera, si proietta ogni posizione e si cerca la distanza
-     minima che le contiene tutte.
-  */
-  const campione = new THREE.Vector3();
-  const distanzaCheTieneTutto = (riempimento) => {
-    const halfFov = Math.tan((camera.fov * Math.PI) / 360);
-    const orbite = corpi.map(({ spec, piano }) => {
-      piano.updateMatrixWorld();
-      const punti = [];
-      for (let k = 0; k < 48; k++) {
-        const ang = (k / 48) * Math.PI * 2;
-        campione.set(Math.cos(ang) * spec.a, 0, Math.sin(ang) * spec.b);
-        piano.localToWorld(campione);
-        punti.push({ lat: Math.hypot(campione.x, campione.y) + spec.radius * 3.2, z: campione.z });
-      }
-      return punti;
-    }).flat();
-
-    let z = 3.5;
-    for (let passo = 0; passo < 60; passo++) {
-      const limite = halfFov * z * riempimento;
-      // Un corpo dietro la camera non esiste: la guardia evita che il fattore
-      // prospettico esploda mentre la ricerca attraversa quel caso.
-      const sfora = orbite.some((p) => p.z >= z - 0.5 || (p.lat * z) / (z - p.z) > limite);
-      if (!sfora) return z;
-      z += 0.25;
-    }
-    return z;
-  };
-
   const detachResize = attachResize(canvas, (width, parentHeight) => {
     const side = Math.min(width, parentHeight || width, options.maxSize ?? 720);
     canvas.style.width = side + "px";
     canvas.style.height = side + "px";
     renderer.setSize(side, side, false);
     camera.aspect = 1;
-    camera.position.z = options.cameraZ ?? distanzaCheTieneTutto(side < 420 ? 1.02 : 0.98);
+    /*
+       Distanza fissa, non più calcolata sulle orbite: la sfera deve avere la
+       stessa presenza che hanno l'orb di SABE e il cervello di ATLAS nel loro
+       riquadro. I corpi possono sfiorare il bordo — la dissolvenza li
+       accompagna fuori senza tagli.
+    */
+    camera.position.z = options.cameraZ ?? (side < 420 ? config.cameraZMobile : config.cameraZ);
     camera.updateProjectionMatrix();
 
     // Le sprite seguono il lato della canvas, con un minimo: sotto, la scena
@@ -2098,414 +2086,33 @@ export const mountSystem = (canvas, options = {}) => {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   VISIONE — la forma a mandorla
+   VISIONE — il globo
 
-   Non un occhio disegnato: due archi di particelle che si incontrano agli
-   angoli, un velo leggero nel mezzo, e polvere che si muove tutt'intorno.
-   L'iride non c'è — era ciò che rendeva la figura immediatamente riconoscibile
-   come un occhio; qui resta un segno che allude allo sguardo senza dichiararlo.
-
-   Ogni particella è un punto piccolo e netto, non un alone: la forma si legge
-   dalla densità, e per questo i punti devono restare distinguibili.
+   La stessa sfera dei Servizi, senza nulla che le giri intorno: un globo di
+   particelle fini, con lo stesso budget e la stessa finezza del cervello di
+   ATLAS. Vive di rotazione lenta e ondulazione — non ha bisogno d'altro.
    ═══════════════════════════════════════════════════════════════════════════*/
 
-export const EYE_CONFIG = {
-  /* Due colori, i token del sito: --cyan e --green. Nient'altro. */
-  colorCyan: "#00d4ff",
-  colorGreen: "#00e8a2",
-
-  width: 1.32,
-  height: 0.6,
-  /** Vicino a 1 la mandorla è quasi simmetrica: un segno, non un occhio. */
-  lowerRatio: 0.86,
-  /** Spessore verso la camera: appena accennato. */
-  bulge: 0.16,
-
-  /** Quota di particelle che vive FUORI dalla forma, nella polvere intorno. */
-  dustShare: 0.42,
-  /** Estensione della polvere, in multipli della mandorla. */
-  dustSpread: 2.6,
-
-  pointSize: 4.6,
-  brightness: 1.15,
-  opacity: 1,
-  /** Escursione della parallasse col puntatore. */
-  lookAmount: 0.1,
-  /** Inerzia dello sguardo: basso = lento e fluido. */
-  lookEase: 0.026,
-  /** Ondulazione del velo e sua velocità. */
-  wobble: 0.05,
-  wobbleSpeed: 0.13,
-  /** Deriva della polvere: più ampia e più lenta di quella del velo. */
-  dustDrift: 0.19,
-  dustSpeed: 0.055,
-  /** Secondi fra un respiro e il successivo, e sua durata. */
-  breathEvery: [5.5, 11],
-  breathMs: 900,
-};
-
-const EYE_VERT = /* glsl */ `
-  uniform float uTime, uSize, uPR, uAssemble, uBreath, uWobble, uWobbleSpeed;
-  uniform float uDustDrift, uDustSpeed;
-  uniform vec2  uLook;
-  uniform vec3  uColCyan, uColGreen;
-
-  attribute vec3  aRnd;
-  attribute float aSeed;
-  attribute float aKind;   // 0 forma · 1 polvere intorno
-  attribute float aEdge;   // 0 al centro della mandorla, 1 sul bordo
-
-  varying vec3  vColor;
-  varying float vAlpha;
-  varying float vEdge;
-
-  ${SNOISE}
-
-  void main(){
-    vec3 pos = position;
-    float polvere = step(0.5, aKind);
-
-    /*
-       Due movimenti diversi. Il velo ondeggia sul posto, piano. La polvere
-       deriva molto più largo e molto più lento, e per questo si legge come
-       spazio intorno alla forma invece che come parte di essa.
-    */
-    float n1 = snoise(vec3(position.xy * 1.9, uTime * uWobbleSpeed + aSeed * 2.0));
-    float n2 = snoise(vec3(position.xy * 0.7 + 9.3, uTime * uDustSpeed + aSeed * 3.0));
-    float n3 = snoise(vec3(position.yx * 0.6 - 4.1, uTime * uDustSpeed * 1.3 + aSeed));
-
-    pos.xy += aRnd.xy * n1 * uWobble * (1.0 - polvere);
-    pos.z  += n1 * uWobble * 0.8 * (1.0 - polvere);
-    pos.xy += vec2(n2, n3) * uDustDrift * polvere;
-
-    // Parallasse: la forma segue appena il puntatore, la polvere va al
-    // contrario. È quel poco che dà profondità senza che nulla "guardi".
-    pos.xy += uLook * mix(1.0, -0.45, polvere);
-
-    /*
-       Respiro: la forma si schiaccia dolcemente sulla mediana e si riapre.
-       Discende dal blink, ma con un'ampiezza molto minore e su quasi un
-       secondo — non deve leggersi come una palpebra che sbatte.
-    */
-    float upper = step(0.0, position.y);
-    pos.y *= 1.0 - uBreath * mix(0.3, 0.42, upper) * (1.0 - polvere);
-
-    // Ingresso: le particelle arrivano dal buio e si posano, scaglionate.
-    float delay = aSeed * 0.45;
-    float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
-    float ease = 1.0 - pow(1.0 - t, 3.0);
-    vec3 spawn = pos * 1.5 + aRnd * 1.3 + vec3(0.0, 0.0, 1.8 + aRnd.z);
-    pos = mix(spawn, pos, ease);
-
-    /*
-       Due colori e nient'altro: verde al centro, ciano verso il bordo e nella
-       polvere. La figura si legge per densità e luminosità, non per tinta.
-    */
-    vColor = mix(uColGreen, uColCyan, clamp(aEdge * 1.4 + polvere, 0.0, 1.0));
-
-    // Il bordo pesa, il centro è un velo, la polvere quasi nulla.
-    float peso = (0.1 + aEdge * aEdge * 0.34) * (1.0 - polvere) + polvere * 0.14;
-    vAlpha = peso * ease;
-
-    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * uPR * (0.75 + peso * 0.5) * (1.0 / max(0.4, -mv.z));
-
-    // Dissolvenza sui quattro lati: senza, il bordo del buffer taglia le
-    // particelle di netto e in pagina compare un riquadro.
-    vec2 ndc = gl_Position.xy / max(0.0001, gl_Position.w);
-    vEdge = (1.0 - smoothstep(0.4, 0.98, abs(ndc.x)))
-          * (1.0 - smoothstep(0.4, 0.98, abs(ndc.y)));
-  }`;
-
-const EYE_FRAG = /* glsl */ `
-  uniform float uOpacity, uBrightness;
-  varying vec3  vColor;
-  varying float vAlpha;
-  varying float vEdge;
-  void main(){
-    vec2 d = gl_PointCoord - 0.5;
-    float r = length(d);
-    if (r > 0.5) discard;
-    // Punto pieno con il solo bordo ammorbidito: definito, non un alone.
-    float soft = 1.0 - smoothstep(0.28, 0.5, r);
-    gl_FragColor = vec4(vColor * uBrightness, soft * vAlpha * uOpacity * vEdge);
-  }`;
-
 /**
- * La mandorla: due archi che si incontrano agli angoli. Il superiore è più
- * alto e più tondo, l'inferiore più teso.
- */
-const eyeLids = (u, config) => {
-  const k = Math.max(0, 1 - u * u);
-  return {
-    up: config.height * Math.pow(k, 0.58),
-    down: -config.height * config.lowerRatio * Math.pow(k, 0.86),
-  };
-};
-
-const buildEyeGeometry = (total, config) => {
-  const { width, height, bulge, dustShare, dustSpread } = config;
-
-  const positions = new Float32Array(total * 3);
-  const randoms = new Float32Array(total * 3);
-  const seeds = new Float32Array(total);
-  const kinds = new Float32Array(total);
-  const edges = new Float32Array(total);
-
-  const domeZ = (x, y) => {
-    const k = 1 - Math.min(1, (x / width) ** 2 + (y / height) ** 2);
-    return bulge * Math.max(0, k) ** 0.7;
-  };
-
-  let i = 0;
-  const scrivi = (x, y, z, kind, edge) => {
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = y;
-    positions[i * 3 + 2] = z;
-    randoms[i * 3] = Math.random() - 0.5;
-    randoms[i * 3 + 1] = Math.random() - 0.5;
-    randoms[i * 3 + 2] = Math.random() - 0.5;
-    seeds[i] = Math.random();
-    kinds[i] = kind;
-    edges[i] = edge;
-    i++;
-  };
-
-  // ── La forma ──────────────────────────────────────────────────────────────
-  const nForma = Math.round(total * (1 - dustShare));
-  let guardia = 0;
-  while (i < nForma && guardia < nForma * 40) {
-    guardia++;
-    const u = Math.random() * 2 - 1;
-    const x = u * width;
-    const lids = eyeLids(u, config);
-    const y = lids.down + Math.random() * (lids.up - lids.down);
-
-    // Vicinanza al bordo, 0 al centro e 1 sulla linea di chiusura.
-    const dentro = Math.min(lids.up - y, y - lids.down) / Math.max(1e-4, lids.up - lids.down);
-    const bordo = Math.pow(1 - Math.min(1, dentro / 0.34), 1.7);
-
-    /*
-       Densità disomogenea: è questa a disegnare la figura. Le palpebre si
-       addensano, il mezzo resta un velo — ma un velo dello stesso insieme, e
-       per questo la forma si legge come un corpo solo.
-    */
-    if (Math.random() * 2.5 > 0.3 + bordo * bordo * 2.2) continue;
-    scrivi(x, y, domeZ(x, y) * 0.55, 0, bordo);
-  }
-
-  // ── La polvere intorno ────────────────────────────────────────────────────
-  // Un alone ellittico molto più largo della mandorla, rado: dà aria alla
-  // scena e, muovendosi, la tiene viva anche dove non c'è la forma.
-  while (i < total) {
-    const ang = Math.random() * Math.PI * 2;
-    // Radice: distribuzione uniforme sull'area, non addensata al centro.
-    const rad = Math.sqrt(Math.random());
-    const x = Math.cos(ang) * rad * width * dustSpread;
-    const y = Math.sin(ang) * rad * height * dustSpread * 0.85;
-    scrivi(x, y, (Math.random() - 0.5) * 0.5, 1, 0);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions.subarray(0, i * 3), 3));
-  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms.subarray(0, i * 3), 3));
-  geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds.subarray(0, i), 1));
-  geometry.setAttribute("aKind", new THREE.BufferAttribute(kinds.subarray(0, i), 1));
-  geometry.setAttribute("aEdge", new THREE.BufferAttribute(edges.subarray(0, i), 1));
-  return geometry;
-};
-
-/**
- * Monta la forma a mandorla su una canvas (pagina Visione).
+ * Monta il globo su una canvas (pagina Visione).
+ *
+ * È `mountSystem` senza corpi in orbita: stessa geometria, stesso shader,
+ * stessa taratura. Tenerne una sola implementazione significa che una
+ * correzione al guscio vale per entrambe le pagine.
  *
  * @param {HTMLCanvasElement} canvas
- * @param {{ config?: object, cameraZ?: number, density?: number }} [options]
  * @returns {{ destroy: () => void }}
  */
-export const mountEye = (canvas, options = {}) => {
-  const config = { ...EYE_CONFIG, ...(options.config || {}) };
-  const tier = paramsFor(window.innerWidth);
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  // Densità alta: con sprite così piccole la massa si fa con il numero.
-  const count = Math.round(tier.count * (options.density ?? 2.0));
-
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.z = options.cameraZ ?? 3;
-
-  const uniforms = {
-    uTime: { value: 0 },
-    uPR: { value: renderer.getPixelRatio() },
-    uSize: { value: config.pointSize },
-    uAssemble: { value: 0 },
-    uBreath: { value: 0 },
-    uWobble: { value: config.wobble },
-    uWobbleSpeed: { value: config.wobbleSpeed },
-    uDustDrift: { value: config.dustDrift },
-    uDustSpeed: { value: config.dustSpeed },
-    uLook: { value: new THREE.Vector2() },
-    uOpacity: { value: config.opacity },
-    uBrightness: { value: config.brightness },
-    uColCyan: { value: hexToLinear(config.colorCyan) },
-    uColGreen: { value: hexToLinear(config.colorGreen) },
-  };
-
-  const points = new THREE.Points(
-    buildEyeGeometry(count, config),
-    new THREE.ShaderMaterial({
-      uniforms,
-      vertexShader: EYE_VERT,
-      fragmentShader: EYE_FRAG,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
-  points.frustumCulled = false;
-  scene.add(points);
-
-  const pointerNdc = new THREE.Vector2();
-  let hasPointer = false;
-  const onPointerMove = (event) => {
-    const rect = canvas.getBoundingClientRect();
-    // Riferito alla canvas, non alla finestra: la parallasse deve seguire il
-    // puntatore anche quando la scena non è al centro dello schermo.
-    pointerNdc.set(
-      ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
-      -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1,
-    );
-    hasPointer = true;
-  };
-  if (tier.pointer) window.addEventListener("pointermove", onPointerMove, { passive: true });
-
-  const detachResize = attachResize(canvas, (width, parentHeight) => {
-    /*
-       La forma è larga il doppio di quanto è alta: un quadrato la lascerebbe
-       piccola fra due fasce vuote. La canvas prende tutto il riquadro.
-
-       Le misure si rileggono dalla canvas e non dal contenitore: quello ha un
-       padding che `clientWidth` comprende, e dimensionare il buffer sul
-       contenitore darebbe un'immagine più larga dell'elemento — che il CSS poi
-       stira, deformando la mandorla.
-    */
-    const stimata = parentHeight > 80 ? parentHeight : Math.round(width * 0.42);
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    const w = canvas.clientWidth || width;
-    const h = canvas.clientHeight || stimata;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / Math.max(1, h);
-    uniforms.uPR.value = renderer.getPixelRatio();
-
-    // Inquadratura: due vincoli, si prende il più stringente.
-    const halfFov = Math.tan((camera.fov * Math.PI) / 360);
-    const perLarghezza = (config.width * 1.55) / (halfFov * Math.max(0.35, camera.aspect));
-    const perAltezza = (config.height * 1.32) / halfFov;
-    camera.position.z = options.cameraZ ?? Math.max(perLarghezza, perAltezza);
-    camera.updateProjectionMatrix();
-
-    // 900 px è il lato per cui la dimensione base è tarata; sotto un minimo la
-    // scena si dirada invece di rimpicciolire.
-    uniforms.uSize.value = config.pointSize * Math.max(0.8, Math.min(1, Math.max(w, 1) / 900));
-  });
-
-  let onScreen = true;
-  const observer = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; }, { threshold: 0 });
-  observer.observe(canvas);
-
-  const INTRO_MS = 2800;
-  let introStart = null;
-  let raf = null;
-  let stopped = false;
-
-  // Vedi mountGalaxy: WebKit scarta il livello di composizione della canvas
-  // quando un antenato va in display:none, e va forzato a ricrearlo.
-  const detachPage = onPageEnter(canvas, () => {
-    onScreen = true;
-    canvas.style.display = "none";
-    void canvas.offsetHeight;
-    canvas.style.display = "block";
-    requestAnimationFrame(() => detachResize.measure());
-    introStart = null;
-  }, options.pageSelector);
-
-  const clock = new THREE.Clock();
-  const look = new THREE.Vector2();
-  const lookTarget = new THREE.Vector2();
-  let nextBreath = 4;
-  let breathStart = null;
-
-  const frame = (now) => {
-    raf = requestAnimationFrame(frame);
-    if (stopped || !onScreen || document.hidden) return;
-
-    if (introStart === null) {
-      introStart = now;
-      nextBreath = clock.getElapsedTime() + 4;
-    }
-    const t = Math.min(1, (now - introStart) / INTRO_MS);
-    uniforms.uAssemble.value = reduceMotion.matches ? 1 : t * t * (3 - 2 * t);
-
-    const time = clock.getElapsedTime();
-    uniforms.uTime.value = reduceMotion.matches ? 0 : time;
-
-    // Parallasse col puntatore; senza puntatore la scena deriva da sola su due
-    // seni di periodo diverso, così il giro non si chiude mai uguale.
-    if (tier.pointer && hasPointer && !reduceMotion.matches) {
-      lookTarget.set(pointerNdc.x * config.lookAmount, pointerNdc.y * config.lookAmount * 0.5);
-    } else if (!reduceMotion.matches) {
-      lookTarget.set(
-        Math.sin(time * 0.23) * config.lookAmount * 0.55,
-        Math.sin(time * 0.17 + 1.7) * config.lookAmount * 0.26,
-      );
-    } else {
-      lookTarget.set(0, 0);
-    }
-    look.lerp(lookTarget, config.lookEase);
-    uniforms.uLook.value.copy(look);
-
-    // Respiro: contrazione lenta e riapertura, su una campana asimmetrica.
-    if (reduceMotion.matches) {
-      uniforms.uBreath.value = 0;
-    } else {
-      if (breathStart === null && time > nextBreath) breathStart = time;
-      if (breathStart !== null) {
-        const u = (time - breathStart) / (config.breathMs / 1000);
-        if (u >= 1) {
-          uniforms.uBreath.value = 0;
-          breathStart = null;
-          const [min, max] = config.breathEvery;
-          nextBreath = time + min + Math.random() * (max - min);
-        } else {
-          uniforms.uBreath.value = u < 0.42
-            ? Math.sin((u / 0.42) * Math.PI * 0.5)
-            : Math.cos(((u - 0.42) / 0.58) * Math.PI * 0.5);
-        }
-      }
-    }
-
-    renderer.render(scene, camera);
-  };
-  raf = requestAnimationFrame(frame);
-
-  return {
-    destroy() {
-      stopped = true;
-      if (raf) cancelAnimationFrame(raf);
-      observer.disconnect();
-      detachPage();
-      detachResize();
-      window.removeEventListener("pointermove", onPointerMove);
-      points.geometry.dispose();
-      points.material.dispose();
-      renderer.dispose();
+export const mountGlobe = (canvas, options = {}) =>
+  mountSystem(canvas, {
+    ...options,
+    config: {
+      bodies: [],
+      // Un filo più fine e più lento della sfera dei Servizi: là il moto lo
+      // danno i corpi, qui deve bastare il globo.
+      pointSize: 8,
+      spin: 0.045,
+      wobble: 0.042,
+      ...(options.config || {}),
     },
-  };
-};
+  });
