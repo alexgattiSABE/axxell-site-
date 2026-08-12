@@ -1664,11 +1664,13 @@ export const SYSTEM_CONFIG = {
      veloce, e passa davanti alla sfera.
   */
   bodies: [
-    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 0.66, phase: 0.9, radius: 0.13, trailSpan: 3.9 },
-    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 0.66, phase: 4.04, radius: 0.1, trailSpan: 3.4 },
-    { a: 1.95, b: 1.88, tiltX: 0.46, tiltZ: -0.26, speed: 0.45, phase: 2.2, radius: 0.145, trailSpan: 3.6 },
-    { a: 2.42, b: 2.34, tiltX: -0.58, tiltZ: 0.14, speed: 0.33, phase: 5.1, radius: 0.11, trailSpan: 3.1 },
-    { a: 2.86, b: 2.72, tiltX: 0.22, tiltZ: 0.62, speed: 0.25, phase: 3.3, radius: 0.16, trailSpan: 2.8 },
+    { a: 1.15, b: 1.15, tiltX: 0.34, tiltZ: -0.44, speed: 1.35, phase: 1.8, radius: 0.17, trailSpan: 3.6, spin: 1.4 },
+    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 1.05, phase: 0.9, radius: 0.22, trailSpan: 3.9, spin: 0.9 },
+    { a: 1.45, b: 1.45, tiltX: -0.3, tiltZ: 0.5, speed: 1.05, phase: 4.04, radius: 0.16, trailSpan: 3.4, spin: 1.15 },
+    { a: 1.95, b: 1.88, tiltX: 0.46, tiltZ: -0.26, speed: 0.78, phase: 2.2, radius: 0.24, trailSpan: 3.6, spin: 0.75 },
+    { a: 2.42, b: 2.34, tiltX: -0.58, tiltZ: 0.14, speed: 0.58, phase: 5.1, radius: 0.18, trailSpan: 3.1, spin: 1.0 },
+    { a: 2.86, b: 2.72, tiltX: 0.22, tiltZ: 0.62, speed: 0.45, phase: 3.3, radius: 0.26, trailSpan: 2.8, spin: 0.62 },
+    { a: 3.3, b: 3.16, tiltX: -0.16, tiltZ: -0.6, speed: 0.36, phase: 0.2, radius: 0.2, trailSpan: 2.6, spin: 0.85 },
   ],
   /** Dimensione delle sprite dei corpi e delle scie. */
   bodySize: 10,
@@ -1790,7 +1792,7 @@ const buildShellGeometry = (count, radius, jitter) => {
 
 const BODY_VERT = /* glsl */ `
   uniform float uTime, uSize, uPR, uAppear, uAngle, uA, uB, uSpan, uBodyR;
-  uniform float uIsTrail;
+  uniform float uIsTrail, uSpin;
 
   attribute vec3  aRnd;
   attribute float aMag;
@@ -1809,7 +1811,18 @@ const BODY_VERT = /* glsl */ `
     // Sottile: la scia deve leggersi come una traccia sul percorso, non come
     // una nuvola che si sfilaccia. Si allarga appena verso la coda.
     vec3 sparso = aRnd * uBodyR * mix(0.3, 0.75, coda);
-    vec3 pos = centro + mix(aRnd * uBodyR, sparso, uIsTrail);
+
+    /*
+       Il corpo gira su sé stesso. Si vede perché è un guscio con particelle di
+       luminosità diversa: una nuvola isotropa e uniforme, ruotando, resterebbe
+       identica a sé stessa e la rotazione non si leggerebbe.
+    */
+    float sp = uTime * uSpin;
+    vec3 locale = aRnd * uBodyR;
+    locale.xz = vec2(locale.x * cos(sp) - locale.z * sin(sp),
+                     locale.x * sin(sp) + locale.z * cos(sp));
+
+    vec3 pos = centro + mix(locale, sparso, uIsTrail);
 
     // La coda si spegne allontanandosi. Il corpo no: uIsTrail lo esclude.
     float fade = mix(1.0, pow(1.0 - coda, 1.05), uIsTrail);
@@ -1843,20 +1856,37 @@ const BODY_FRAG = /* glsl */ `
     gl_FragColor = vec4(uColor, soft * vAlpha * uOpacity * uDim * vEdge);
   }`;
 
-/** Nuvola per un corpo o per la sua scia. `span` a 0 = corpo compatto. */
+/**
+ * Nuvola per un corpo o per la sua scia. `span` a 0 = corpo.
+ *
+ * Il corpo è un GUSCIO (distribuzione di Fibonacci con un po' di spessore),
+ * non una nuvola piena: girando su sé stesso, un guscio con particelle di
+ * luminosità diversa mostra il movimento, una palla piena e uniforme no.
+ * La scia invece resta una nuvola: deve solo sfilacciarsi.
+ */
 const buildBodyGeometry = (count, span) => {
   const randoms = new Float32Array(count * 3);
   const mags = new Float32Array(count);
   const deltas = new Float32Array(count);
   const positions = new Float32Array(count * 3); // richiesto da three, non usato
+  const golden = Math.PI * (3 - Math.sqrt(5));
 
   for (let i = 0; i < count; i++) {
-    // Gaussiana grezza (somma di uniformi): concentra al centro, e per il
-    // corpo è ciò che lo fa leggere come una sfera invece che come un dado.
-    const g = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
-    randoms[i * 3] = g();
-    randoms[i * 3 + 1] = g();
-    randoms[i * 3 + 2] = g();
+    if (span > 0) {
+      // Gaussiana grezza (somma di uniformi): concentra verso il percorso.
+      const g = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
+      randoms[i * 3] = g();
+      randoms[i * 3 + 1] = g();
+      randoms[i * 3 + 2] = g();
+    } else {
+      const y = 1 - (i / Math.max(1, count - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = golden * i;
+      const spessore = 0.78 + Math.random() * 0.22;
+      randoms[i * 3] = Math.cos(th) * r * spessore;
+      randoms[i * 3 + 1] = y * spessore;
+      randoms[i * 3 + 2] = Math.sin(th) * r * spessore;
+    }
     mags[i] = Math.pow(Math.random(), 1.7) * 0.8 + 0.2;
     // Più particelle vicino al corpo che in fondo alla coda.
     deltas[i] = span > 0 ? Math.pow(Math.random(), 1.6) * span : 0;
@@ -1963,6 +1993,8 @@ export const mountSystem = (canvas, options = {}) => {
           uSpan: { value: span },
           uBodyR: { value: spec.radius },
           uIsTrail: { value: tipo === "scia" ? 1 : 0 },
+          // Rotazione propria: ogni corpo la sua, così non girano all'unisono.
+          uSpin: { value: spec.spin ?? 0.8 },
           uOpacity: { value: tipo === "scia" ? 1 : 1 },
           uDim: { value: 1 },
           uColor: { value: hexToLinear(tipo === "scia" ? config.colorBody : config.colorHot) },
@@ -2117,13 +2149,12 @@ export const mountSystem = (canvas, options = {}) => {
 export const mountGlobe = (canvas, options = {}) =>
   mountSystem(canvas, {
     ...options,
-    // Particelle finissime e in gran numero: è così che il guscio si legge
-    // come una superficie e non come una nuvola.
-    density: 1.4,
+    density: 0.7,
     config: {
       bodies: [],
       pointSize: 5,
-      spin: 0.045,
+      // Un giro ogni ~24 s: si vede girare senza diventare una trottola.
+      spin: 0.26,
       /*
          Ondulazione quasi azzerata e guscio più sottile: qui deve leggersi una
          SFERA, e ogni increspatura in più la fa somigliare a una nuvola

@@ -4092,10 +4092,8 @@ function setLang(lang){
       maxSize: 760,
       // Niente guscio: il soggetto sono le orbite. La camera arretra quanto
       // basta a tenere in quadro quella più esterna.
-      // Il guscio resta, ma stretto a un quarto di raggio: un nucleo, non la
-      // sfera grande — le orbite hanno bisogno di un fulcro visibile.
-      density: 0.06,
-      config: { radius: 0.24, shellJitter: 0.2, cameraZ: 8.2, cameraZMobile: 9.2 },
+      // Niente sfera al centro: la scena è fatta solo di orbite.
+      config: { shell: false, cameraZ: 9.2, cameraZMobile: 10.4 },
     });
   }
 
