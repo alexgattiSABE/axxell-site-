@@ -4090,14 +4090,7 @@ function setLang(lang){
   // l'orbita più esterna, non solo la sfera.
   const systemCanvas = document.getElementById('systemCanvas');
   if (systemCanvas && systemCanvas.dataset.orb === 'new') {
-    mountSystem(systemCanvas, {
-      density: 0.85,
-      maxSize: 780,
-      // Più vicina del default di mountSystem: con l'orbita esterna raccolta a
-      // 2,7 raggi il sistema ci sta lo stesso, e la sfera non resta un bottone.
-      cameraZ: 6.4,
-      config: { deform: 0.15, spin: 0.2, tilt: 0.42, oilBulge: 0.5, iridescence: 0.66 },
-    });
+    mountSystem(systemCanvas, { maxSize: 760 });
   }
 
   // VISIONE — l'occhio: guarda il puntatore e sbatte ogni tanto.

@@ -531,15 +531,6 @@ export const mountOrb = (canvas, options = {}) => {
   points.frustumCulled = false;
   scene.add(points);
 
-  /*
-     Livello opzionale dei corpi orbitanti (pagina Servizi, vedi `mountSystem`).
-     Vive nella stessa scena della sfera perché una canvas regge un solo
-     contesto WebGL: due montaggi separati sullo stesso riquadro vorrebbero dire
-     due renderer, e il secondo non otterrebbe il contesto.
-  */
-  const orbiters = options.orbiters ? createOrbiters(options.orbiters, tier, renderer.getPixelRatio()) : null;
-  if (orbiters) scene.add(orbiters.group);
-
   const oil = createOilPointer(config.radius);
   const centre = new THREE.Vector3();
   const camLocal = new THREE.Vector3();
@@ -568,31 +559,7 @@ export const mountOrb = (canvas, options = {}) => {
     uniforms.uPR.value = renderer.getPixelRatio();
     // 900 px è il lato per cui la dimensione originale era pensata: sotto,
     // le sprite rimpiccioliscono in proporzione e la sfera resta granulosa.
-    const scale = Math.min(1, side / 900);
-    uniforms.uSize.value = baseSize * scale;
-    if (orbiters) {
-      /*
-         Su schermo stretto il riquadro è un terzo di quello desktop: alla
-         stessa distanza il sistema diventava un francobollo di puntini. La
-         camera si avvicina — come fa la galassia della home — e le sprite non
-         scendono sotto un minimo, altrimenti la scena si dirada fino a
-         sparire invece di rimpicciolire.
-      */
-      const stretto = side < 420;
-      camera.position.z = stretto
-        ? (options.cameraZMobile ?? 5.2)
-        : (options.cameraZ ?? 3.8);
-      camera.updateProjectionMatrix();
-      /*
-         Le orbite si stringono invece di allontanare ancora la camera: a
-         questa distanza l'orbita esterna sborda di lato, e allontanarsi
-         rimpicciolirebbe anche la sfera. La scala del gruppo non tocca le
-         sprite — gl_PointSize non passa per la matrice del modello — quindi i
-         pianeti restano leggibili e si avvicinano soltanto fra loro.
-      */
-      orbiters.group.scale.setScalar(stretto ? 0.84 : 1);
-      orbiters.resize(Math.max(0.6, scale));
-    }
+    uniforms.uSize.value = baseSize * Math.min(1, side / 900);
   });
 
   // Ingresso: rampa 0→1 in 2900 ms, easeOutCubic. Nell'originale è una molla di
@@ -684,8 +651,6 @@ export const mountOrb = (canvas, options = {}) => {
     uniforms.uCursorVel.value.copy(oil.velocity);
     uniforms.uEnergy.value = oil.energy;
 
-    if (orbiters) orbiters.step(time, camera, uniforms.uAssemble.value);
-
     renderer.render(scene, camera);
   };
   raf = requestAnimationFrame(frame);
@@ -700,7 +665,6 @@ export const mountOrb = (canvas, options = {}) => {
       window.removeEventListener("pointermove", onPointerMove);
       points.geometry.dispose();
       points.material.dispose();
-      if (orbiters) orbiters.dispose();
       renderer.dispose();
     },
   };
@@ -1652,326 +1616,533 @@ export const mountGalaxy = (canvas, options = {}) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SISTEMA — sfera con pianeti orbitanti (pagina Servizi)
+   SISTEMA — sfera di particelle con lune in orbita (pagina Servizi)
 
-   La sfera centrale è l'orb di SABE: stessa geometria, stesso shader a olio.
-   Qui si aggiunge soltanto ciò che le gira intorno, come livello separato.
-
-   Perché non un unico buffer con tutto dentro: i pianeti sono quattro corpi
-   rigidi che si spostano su un'ellisse, non una nuvola deformata da rumore.
-   Muoverli in JS costa quattro `position.set` per frame — dentro lo shader
-   servirebbe un array di uniform per orbita e il calcolo ripetuto su ogni
-   particella per ricavare sempre gli stessi quattro centri.
+   Non è l'orb di SABE: quello è una superficie a olio, deformata dal rumore e
+   forata lungo l'asse della camera. Qui serve un GUSCIO di punti — una sfera
+   piena e granulosa che si legge tutta, con il lato lontano più fioco — e dei
+   corpi che le girano intorno lasciando una scia sull'orbita.
    ═══════════════════════════════════════════════════════════════════════════*/
 
 export const SYSTEM_CONFIG = {
-  colorPlanet: "#00e8a2",
-  colorTrail: "#00d4ff",
-  /** Dimensione base delle sprite, riscalata sul lato della canvas. */
-  planetSize: 62,
-  trailSize: 30,
-  /** Quanto si spegne un pianeta quando passa DIETRO la sfera. */
-  dimBehind: 0.42,
+  /** Punte luminose, corpo del guscio, lembo: dal bianco al verde del sito. */
+  colorHot: "#dcf7ff",
+  colorBody: "#00d4ff",
+  colorRim: "#00e8a2",
+
+  radius: 1,
+  /** Spessore del guscio: senza, la sfera si legge come una griglia. */
+  shellJitter: 0.045,
+  /** Rotazione su sé stessa, radianti al secondo. Lenta: la scena deve
+      respirare, non girare. */
+  spin: 0.055,
+  /** Ondulazione della superficie e sua velocità — il "vivo" della sfera. */
+  wobble: 0.05,
+  wobbleSpeed: 0.1,
+  /** Quanto restano visibili i punti sul lato lontano. */
+  backFade: 0.46,
+
+  pointSize: 32,
+  brightness: 1.35,
+  opacity: 1,
+
   /*
-     Orbite: `a` e `b` sono i semiassi (in raggi della sfera, che vale 1),
-     `tiltX`/`tiltZ` l'inclinazione del piano, `speed` i radianti al secondo.
-     Le velocità non sono multipli l'una dell'altra: se lo fossero i pianeti
-     tornerebbero periodicamente nella stessa configurazione e il sistema si
-     leggerebbe come un ingranaggio invece che come un moto.
+     Corpi in orbita. I primi due condividono il piano e stanno agli antipodi:
+     è la diagonale che attraversa la scena. Il terzo gira più stretto e più
+     veloce, e passa davanti alla sfera.
   */
-  orbits: [
-    { a: 1.62, b: 1.62, tiltX: 0.46, tiltZ: 0.16, speed: 0.52, phase: 0.0, radius: 0.1 },
-    { a: 1.98, b: 1.88, tiltX: -0.32, tiltZ: -0.28, speed: 0.37, phase: 2.1, radius: 0.115 },
-    { a: 2.34, b: 2.24, tiltX: 0.62, tiltZ: 0.34, speed: 0.26, phase: 4.0, radius: 0.085 },
-    { a: 2.72, b: 2.56, tiltX: -0.18, tiltZ: 0.52, speed: 0.19, phase: 5.4, radius: 0.125 },
+  bodies: [
+    { a: 1.92, b: 1.92, tiltX: -0.46, tiltZ: 0.5, speed: 0.15, phase: 0.9, radius: 0.22, trailSpan: 2.2 },
+    { a: 1.92, b: 1.92, tiltX: -0.46, tiltZ: 0.5, speed: 0.15, phase: 4.04, radius: 0.17, trailSpan: 1.9 },
+    { a: 1.34, b: 1.28, tiltX: 0.58, tiltZ: -0.3, speed: 0.26, phase: 2.2, radius: 0.12, trailSpan: 1.5 },
   ],
+  /** Dimensione delle sprite dei corpi e delle scie. */
+  bodySize: 26,
+  trailSize: 20,
 };
 
-const PLANET_VERT = /* glsl */ `
+const SPHERE_VERT = /* glsl */ `
+  uniform float uTime, uSize, uPR, uAssemble, uWobble, uWobbleSpeed, uBackFade, uRadius;
+  uniform vec3  uColHot, uColBody, uColRim;
+
+  attribute vec3  aRnd;
   attribute float aMag;
-  attribute float aPhase;
-  uniform float uTime, uSize, uPR, uAppear;
-  varying float vMag;
+
+  varying vec3  vColor;
+  varying float vAlpha;
+
+  ${SNOISE}
+
   void main(){
-    float twinkle = 0.74 + 0.26 * sin(uTime * 1.6 + aPhase * 6.2831);
-    vMag = aMag * twinkle;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec3 p = position;
+
+    // Respiro della superficie: un solo strato di rumore, lento. Due strati
+    // come sull'orb di SABE farebbero increspature — qui serve una sfera che
+    // ondeggia appena, non un liquido.
+    float n = snoise(p * 1.7 + vec3(0.0, uTime * uWobbleSpeed, 0.0));
+    vec3 pos = p * (1.0 + uWobble * n);
+
+    // Ingresso: i punti arrivano da fuori campo lungo la loro direzione
+    // radiale e si posano sul guscio, scaglionati.
+    float delay = (aRnd.z + 0.5) * 0.5;
+    float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
+    float ease = 1.0 - pow(1.0 - t, 3.0);
+    vec3 spawn = pos * 3.2 + aRnd * 1.6;
+    pos = mix(spawn, pos, ease);
+
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    vec4 centro = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+
+    /*
+       Profondità dentro il guscio. In spazio vista la camera guarda lungo -z,
+       quindi un punto con z maggiore del centro sta davanti. Il lato lontano
+       resta visibile ma si spegne: è ciò che fa leggere il volume invece di un
+       disco pieno di puntini.
+    */
+    float rel = (mv.z - centro.z) / uRadius;
+    float fronte = smoothstep(-1.0, 1.0, rel);
+    vAlpha = mix(uBackFade, 1.0, fronte) * ease * aMag;
+
+    // Tinta: verde sul lembo, ciano sul corpo, punte quasi bianche dove le
+    // particelle sono più luminose. Stesso gradiente delle altre scene.
+    float lembo = 1.0 - abs(rel);
+    vec3 col = mix(uColBody, uColRim, lembo * 0.78);
+    vColor = mix(col, uColHot, smoothstep(0.72, 1.0, aMag));
+
     gl_Position = projectionMatrix * mv;
-    // Stessa legge della sfera — uSize · pixelRatio / distanza. Il pixel ratio
-    // non è cosmetico: gl_PointSize è in pixel del BUFFER, che su schermo
-    // retina è il doppio di quelli CSS. Senza, le sprite escono dimezzate.
-    gl_PointSize = uSize * uPR * aMag * uAppear * (1.0 / max(0.35, -mv.z));
+    gl_PointSize = uSize * uPR * (0.45 + aMag * 0.75) * (1.0 / max(0.35, -mv.z));
   }`;
 
-const PLANET_FRAG = /* glsl */ `
-  // Niente 'precision mediump': uAppear vive anche nel vertex, dove three
-  // dichiara highp di default, e due precisioni diverse per la stessa uniform
-  // fanno fallire il link del programma.
-  uniform vec3 uColor;
-  uniform float uOpacity, uAppear, uDim;
-  varying float vMag;
+const SPHERE_FRAG = /* glsl */ `
+  uniform float uOpacity, uBrightness;
+  varying vec3  vColor;
+  varying float vAlpha;
   void main(){
     vec2 d = gl_PointCoord - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
-    float soft = smoothstep(0.5, 0.05, r);
-    gl_FragColor = vec4(uColor, soft * soft * vMag * uOpacity * uAppear * uDim);
+    float soft = smoothstep(0.5, 0.06, r);
+    gl_FragColor = vec4(vColor * uBrightness, soft * soft * vAlpha * uOpacity);
   }`;
 
-/** Nuvola sferica: densa al centro, sfrangiata sul bordo. */
-const buildPlanetGeometry = (count, radius) => {
+/** Guscio di Fibonacci: distribuzione uniforme, senza le file ai poli che
+    darebbe una griglia sferica. */
+const buildShellGeometry = (count, radius, jitter) => {
   const positions = new Float32Array(count * 3);
+  const randoms = new Float32Array(count * 3);
   const mags = new Float32Array(count);
-  const phases = new Float32Array(count);
+  const golden = Math.PI * (3 - Math.sqrt(5));
 
   for (let i = 0; i < count; i++) {
-    const u = Math.random() * 2 - 1;
-    const theta = Math.random() * Math.PI * 2;
-    const sr = Math.sqrt(Math.max(0, 1 - u * u));
-    // Radice cubica = volume uniforme; l'esponente più alto concentra al
-    // centro, che è ciò che fa leggere un corpo invece di una bolla vuota.
-    const dist = radius * Math.pow(Math.random(), 0.62);
-    positions[i * 3] = Math.cos(theta) * sr * dist;
-    positions[i * 3 + 1] = u * dist;
-    positions[i * 3 + 2] = Math.sin(theta) * sr * dist;
-    mags[i] = 0.28 + Math.pow(Math.random(), 1.8) * 0.42;
-    phases[i] = Math.random();
+    const y = 1 - (i / (count - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = golden * i;
+    // Spessore: il guscio non è una buccia matematica, ha una profondità.
+    const dist = radius * (1 + (Math.random() - 0.5) * 2 * jitter);
+    positions[i * 3] = Math.cos(th) * r * dist;
+    positions[i * 3 + 1] = y * dist;
+    positions[i * 3 + 2] = Math.sin(th) * r * dist;
+    randoms[i * 3] = Math.random() - 0.5;
+    randoms[i * 3 + 1] = Math.random() - 0.5;
+    randoms[i * 3 + 2] = Math.random() - 0.5;
+    // Poche particelle molto luminose, molte deboli: una distribuzione piatta
+    // dà una palla uniforme, senza il brillio della polvere.
+    mags[i] = Math.pow(Math.random(), 1.5) * 0.78 + 0.22;
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms, 3));
   geometry.setAttribute("aMag", new THREE.BufferAttribute(mags, 1));
-  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
   return geometry;
 };
 
-/** La traccia dell'orbita: polvere rada sull'ellisse, senza la quale il moto
-    del pianeta non si legge come un'orbita ma come una deriva. */
-const buildTrailGeometry = (count, a, b) => {
-  const positions = new Float32Array(count * 3);
+/* ─── Corpi in orbita e loro scia ───────────────────────────────────────────
+   La scia non è l'anello dell'orbita: è la porzione di percorso appena
+   attraversata, che sfuma dietro il corpo. Vive nello shader — l'angolo del
+   corpo è una uniform e ogni particella sta indietro di un suo delta — così
+   non c'è nulla da riscrivere sulla CPU a ogni frame. */
+
+const BODY_VERT = /* glsl */ `
+  uniform float uTime, uSize, uPR, uAppear, uAngle, uA, uB, uSpan, uBodyR;
+  uniform float uIsTrail;
+
+  attribute vec3  aRnd;
+  attribute float aMag;
+  attribute float aDelta;   // quanto sta indietro rispetto al corpo, in radianti
+
+  varying float vAlpha;
+
+  void main(){
+    // Il corpo sta sull'ellisse, la scia lungo l'arco che lo precede.
+    float ang = uAngle - aDelta;
+    vec3 centro = vec3(cos(ang) * uA, 0.0, sin(ang) * uB);
+
+    // La scia si allarga allontanandosi dal corpo: si sfilaccia, non è un tubo.
+    float coda = uSpan > 0.0 ? aDelta / uSpan : 0.0;
+    // Sottile: la scia deve leggersi come una traccia sul percorso, non come
+    // una nuvola che si sfilaccia. Si allarga appena verso la coda.
+    vec3 sparso = aRnd * uBodyR * mix(0.3, 0.75, coda);
+    vec3 pos = centro + mix(aRnd * uBodyR, sparso, uIsTrail);
+
+    // La coda si spegne allontanandosi. Il corpo no: uIsTrail lo esclude.
+    float fade = mix(1.0, pow(1.0 - coda, 1.05), uIsTrail);
+    float twinkle = 0.78 + 0.22 * sin(uTime * 1.3 + aMag * 21.0);
+    vAlpha = aMag * fade * twinkle * uAppear;
+
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = uSize * uPR * (0.5 + aMag * 0.7) * (1.0 / max(0.35, -mv.z));
+  }`;
+
+const BODY_FRAG = /* glsl */ `
+  uniform vec3  uColor;
+  uniform float uOpacity, uDim;
+  varying float vAlpha;
+  void main(){
+    vec2 d = gl_PointCoord - 0.5;
+    float r = length(d);
+    if (r > 0.5) discard;
+    float soft = smoothstep(0.5, 0.04, r);
+    gl_FragColor = vec4(uColor, soft * soft * vAlpha * uOpacity * uDim);
+  }`;
+
+/** Nuvola per un corpo o per la sua scia. `span` a 0 = corpo compatto. */
+const buildBodyGeometry = (count, span) => {
+  const randoms = new Float32Array(count * 3);
   const mags = new Float32Array(count);
-  const phases = new Float32Array(count);
+  const deltas = new Float32Array(count);
+  const positions = new Float32Array(count * 3); // richiesto da three, non usato
 
   for (let i = 0; i < count; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const jitter = 1 + (Math.random() - 0.5) * 0.02;
-    positions[i * 3] = Math.cos(ang) * a * jitter;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 0.03;
-    positions[i * 3 + 2] = Math.sin(ang) * b * jitter;
-    mags[i] = 0.22 + Math.pow(Math.random(), 1.6) * 0.5;
-    phases[i] = Math.random();
+    // Gaussiana grezza (somma di uniformi): concentra al centro, e per il
+    // corpo è ciò che lo fa leggere come una sfera invece che come un dado.
+    const g = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
+    randoms[i * 3] = g();
+    randoms[i * 3 + 1] = g();
+    randoms[i * 3 + 2] = g();
+    mags[i] = Math.pow(Math.random(), 1.7) * 0.8 + 0.2;
+    // Più particelle vicino al corpo che in fondo alla coda.
+    deltas[i] = span > 0 ? Math.pow(Math.random(), 1.6) * span : 0;
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms, 3));
   geometry.setAttribute("aMag", new THREE.BufferAttribute(mags, 1));
-  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
+  geometry.setAttribute("aDelta", new THREE.BufferAttribute(deltas, 1));
   return geometry;
 };
 
 /**
- * Costruisce i corpi orbitanti attorno all'origine.
+ * Monta la sfera di particelle con i corpi in orbita (pagina Servizi).
  *
- * @returns {{ group: THREE.Group, step: Function, resize: Function, dispose: Function }}
+ * @param {HTMLCanvasElement} canvas
+ * @param {{ config?: object, cameraZ?: number, density?: number }} [options]
+ * @returns {{ destroy: () => void }}
  */
-const createOrbiters = (config, tier, pixelRatio) => {
-  const group = new THREE.Group();
-  const bodies = [];
-  const materials = [];
-  const geometries = [];
-  // Il budget di particelle è quello della sfera: i pianeti sono un contorno,
-  // non il soggetto, e prendono una frazione del conteggio della fascia.
-  const planetCount = Math.max(140, Math.round(tier.count * 0.016));
-  const trailCount = Math.max(420, Math.round(tier.count * 0.07));
-  const colorPlanet = hexToLinear(config.colorPlanet);
-  const colorTrail = hexToLinear(config.colorTrail);
+export const mountSystem = (canvas, options = {}) => {
+  const config = { ...SYSTEM_CONFIG, ...(options.config || {}) };
+  const tier = paramsFor(window.innerWidth);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const count = Math.round(tier.count * (options.density ?? 1));
 
-  for (const [indice, orbit] of config.orbits.entries()) {
-    const lontananza = config.orbits.length > 1 ? indice / (config.orbits.length - 1) : 0;
-    const colorBody = colorPlanet.clone().lerp(colorTrail, lontananza * 0.85);
-    const plane = new THREE.Group();
-    plane.rotation.x = orbit.tiltX;
-    plane.rotation.z = orbit.tiltZ;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const pixelRatio = renderer.getPixelRatio();
 
-    const trailGeometry = buildTrailGeometry(trailCount, orbit.a, orbit.b);
-    const trailMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uSize: { value: config.trailSize },
-        uPR: { value: pixelRatio },
-        uAppear: { value: 0 },
-        uOpacity: { value: 1 },
-        uDim: { value: 1 },
-        uColor: { value: colorTrail },
-      },
-      vertexShader: PLANET_VERT,
-      fragmentShader: PLANET_FRAG,
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uPR: { value: pixelRatio },
+    uSize: { value: config.pointSize },
+    uAssemble: { value: 0 },
+    uWobble: { value: config.wobble },
+    uWobbleSpeed: { value: config.wobbleSpeed },
+    uBackFade: { value: config.backFade },
+    uRadius: { value: config.radius },
+    uOpacity: { value: config.opacity },
+    uBrightness: { value: config.brightness },
+    uColHot: { value: hexToLinear(config.colorHot) },
+    uColBody: { value: hexToLinear(config.colorBody) },
+    uColRim: { value: hexToLinear(config.colorRim) },
+  };
+
+  const shell = new THREE.Points(
+    buildShellGeometry(count, config.radius, config.shellJitter),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: SPHERE_VERT,
+      fragmentShader: SPHERE_FRAG,
       transparent: true,
       depthWrite: false,
       depthTest: false,
       blending: THREE.AdditiveBlending,
-    });
-    const trail = new THREE.Points(trailGeometry, trailMaterial);
-    trail.frustumCulled = false;
-    plane.add(trail);
+    }),
+  );
+  shell.frustumCulled = false;
+  scene.add(shell);
 
-    const planetGeometry = buildPlanetGeometry(planetCount, orbit.radius);
-    const planetMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-        uSize: { value: config.planetSize },
-        uPR: { value: pixelRatio },
-        uAppear: { value: 0 },
-        uOpacity: { value: 1 },
-        uDim: { value: 1 },
-        uColor: { value: colorBody },
-      },
-      vertexShader: PLANET_VERT,
-      fragmentShader: PLANET_FRAG,
-      transparent: true,
-      depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const planet = new THREE.Points(planetGeometry, planetMaterial);
-    planet.frustumCulled = false;
-    plane.add(planet);
+  // ── Corpi in orbita ────────────────────────────────────────────────────────
+  const sistema = new THREE.Group();
+  scene.add(sistema);
+  const corpi = [];
+  const risorse = [];
+  const bodyCount = Math.max(420, Math.round(count * 0.042));
+  const trailCount = Math.max(700, Math.round(count * 0.11));
 
-    group.add(plane);
-    bodies.push({ orbit, planet, trailMaterial, planetMaterial });
-    materials.push(trailMaterial, planetMaterial);
-    geometries.push(trailGeometry, planetGeometry);
+  for (const spec of config.bodies) {
+    const piano = new THREE.Group();
+    piano.rotation.x = spec.tiltX;
+    piano.rotation.z = spec.tiltZ;
+    sistema.add(piano);
+
+    const parti = [];
+    for (const [tipo, conteggio, span, size] of [
+      ["scia", trailCount, spec.trailSpan, config.trailSize],
+      ["corpo", bodyCount, 0, config.bodySize],
+    ]) {
+      const geometry = buildBodyGeometry(conteggio, span);
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uPR: { value: pixelRatio },
+          uSize: { value: size },
+          uAppear: { value: 0 },
+          uAngle: { value: spec.phase },
+          uA: { value: spec.a },
+          uB: { value: spec.b },
+          uSpan: { value: span },
+          uBodyR: { value: spec.radius },
+          uIsTrail: { value: tipo === "scia" ? 1 : 0 },
+          uOpacity: { value: tipo === "scia" ? 1 : 1 },
+          uDim: { value: 1 },
+          uColor: { value: hexToLinear(tipo === "scia" ? config.colorBody : config.colorHot) },
+        },
+        vertexShader: BODY_VERT,
+        fragmentShader: BODY_FRAG,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const punti = new THREE.Points(geometry, material);
+      punti.frustumCulled = false;
+      piano.add(punti);
+      parti.push(material);
+      risorse.push(geometry, material);
+    }
+
+    corpi.push({ spec, piano, materiali: parti });
   }
 
   const world = new THREE.Vector3();
 
+  /*
+     Distanza di camera che tiene i corpi dentro il quadro.
+
+     Non basta il semiasse dell'orbita: in prospettiva un corpo che passa dal
+     lato vicino alla camera si allontana dall'asse ottico molto più del suo
+     raggio geometrico — con le prime tarature usciva dal riquadro per metà
+     giro, e in scena restava solo la scia che entrava e spariva. Qui si
+     campiona l'orbita vera, si proietta ogni posizione e si cerca la distanza
+     minima che le contiene tutte.
+  */
+  const campione = new THREE.Vector3();
+  const distanzaCheTieneTutto = (riempimento) => {
+    const halfFov = Math.tan((camera.fov * Math.PI) / 360);
+    const orbite = corpi.map(({ spec, piano }) => {
+      piano.updateMatrixWorld();
+      const punti = [];
+      for (let k = 0; k < 48; k++) {
+        const ang = (k / 48) * Math.PI * 2;
+        campione.set(Math.cos(ang) * spec.a, 0, Math.sin(ang) * spec.b);
+        piano.localToWorld(campione);
+        punti.push({ lat: Math.hypot(campione.x, campione.y) + spec.radius * 3.2, z: campione.z });
+      }
+      return punti;
+    }).flat();
+
+    let z = 3.5;
+    for (let passo = 0; passo < 60; passo++) {
+      const limite = halfFov * z * riempimento;
+      // Un corpo dietro la camera non esiste: la guardia evita che il fattore
+      // prospettico esploda mentre la ricerca attraversa quel caso.
+      const sfora = orbite.some((p) => p.z >= z - 0.5 || (p.lat * z) / (z - p.z) > limite);
+      if (!sfora) return z;
+      z += 0.25;
+    }
+    return z;
+  };
+
+  const detachResize = attachResize(canvas, (width, parentHeight) => {
+    const side = Math.min(width, parentHeight || width, options.maxSize ?? 720);
+    canvas.style.width = side + "px";
+    canvas.style.height = side + "px";
+    renderer.setSize(side, side, false);
+    camera.aspect = 1;
+    camera.position.z = options.cameraZ ?? distanzaCheTieneTutto(side < 420 ? 0.94 : 0.88);
+    camera.updateProjectionMatrix();
+
+    // Le sprite seguono il lato della canvas, con un minimo: sotto, la scena
+    // si dirada invece di rimpicciolire.
+    const scale = Math.max(0.62, Math.min(1, side / 900));
+    uniforms.uSize.value = config.pointSize * scale;
+    uniforms.uPR.value = renderer.getPixelRatio();
+    for (const corpo of corpi) {
+      corpo.materiali[0].uniforms.uSize.value = config.trailSize * scale;
+      corpo.materiali[1].uniforms.uSize.value = config.bodySize * scale;
+    }
+  });
+
+  let onScreen = true;
+  const observer = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; }, { threshold: 0 });
+  observer.observe(canvas);
+
+  const INTRO_MS = 2600;
+  let introStart = null;
+  let raf = null;
+  let stopped = false;
+
+  // Vedi mountGalaxy: WebKit scarta il livello di composizione quando un
+  // antenato va in display:none, e va forzato a ricrearlo.
+  const detachPage = onPageEnter(canvas, () => {
+    onScreen = true;
+    canvas.style.display = "none";
+    void canvas.offsetHeight;
+    canvas.style.display = "block";
+    requestAnimationFrame(() => detachResize.measure());
+    introStart = null;
+  }, options.pageSelector);
+
+  const clock = new THREE.Clock();
+
+  const frame = (now) => {
+    raf = requestAnimationFrame(frame);
+    if (stopped || !onScreen || document.hidden) return;
+
+    if (introStart === null) introStart = now;
+    const t = Math.min(1, (now - introStart) / INTRO_MS);
+    const eased = t * t * (3 - 2 * t);
+    uniforms.uAssemble.value = reduceMotion.matches ? 1 : eased;
+
+    const time = clock.getElapsedTime();
+    uniforms.uTime.value = reduceMotion.matches ? 0 : time;
+    if (!reduceMotion.matches) {
+      shell.rotation.y = time * config.spin;
+      // Oscillazione dell'asse: mezzo grado avanti e indietro, lentissima.
+      // Senza, il guscio ruotando resta identico a sé stesso.
+      shell.rotation.x = Math.sin(time * 0.07) * 0.12;
+    }
+
+    for (const corpo of corpi) {
+      const angolo = corpo.spec.phase + (reduceMotion.matches ? 0 : time * corpo.spec.speed);
+      for (const materiale of corpo.materiali) {
+        materiale.uniforms.uAngle.value = angolo;
+        materiale.uniforms.uTime.value = uniforms.uTime.value;
+        materiale.uniforms.uAppear.value = reduceMotion.matches ? 1 : eased;
+      }
+      /*
+         Un corpo dietro la sfera va attenuato a mano: le sprite sono additive
+         e senza test di profondità, quindi passerebbe sopra il guscio come se
+         gli stesse davanti.
+      */
+      world.set(Math.cos(angolo) * corpo.spec.a, 0, Math.sin(angolo) * corpo.spec.b);
+      corpo.piano.localToWorld(world);
+      const dietro = world.distanceTo(camera.position) > camera.position.length();
+      const target = dietro ? 0.58 : 1;
+      for (const materiale of corpo.materiali) {
+        const dim = materiale.uniforms.uDim;
+        dim.value += (target - dim.value) * 0.09;
+      }
+    }
+
+    renderer.render(scene, camera);
+  };
+  raf = requestAnimationFrame(frame);
+
   return {
-    group,
-
-    /**
-     * @param {number} time   secondi dall'avvio
-     * @param {THREE.Camera} camera
-     * @param {number} appear 0→1, la stessa rampa d'ingresso della sfera
-     */
-    step(time, camera, appear) {
-      for (const body of bodies) {
-        const { orbit, planet } = body;
-        const angle = orbit.phase + time * orbit.speed;
-        planet.position.set(Math.cos(angle) * orbit.a, 0, Math.sin(angle) * orbit.b);
-
-        /*
-           Davanti o dietro la sfera. Le sprite sono additive e senza test di
-           profondità — come tutto il resto della scena — quindi un pianeta
-           dietro sarebbe indistinguibile da uno davanti. Qui si confronta la
-           distanza dalla camera con quella del centro: più lontano = dietro, e
-           lo si attenua.
-        */
-        planet.getWorldPosition(world);
-        const dietro = world.distanceTo(camera.position) > camera.position.length();
-        const target = dietro ? config.dimBehind : 1;
-        const dim = body.planetMaterial.uniforms.uDim;
-        dim.value += (target - dim.value) * 0.12;
-
-        body.planetMaterial.uniforms.uTime.value = time;
-        body.trailMaterial.uniforms.uTime.value = time;
-        // Le tracce entrano DOPO i pianeti: prima si vedono i corpi arrivare,
-        // poi la scia dell'orbita si accende sotto di loro.
-        body.planetMaterial.uniforms.uAppear.value = appear;
-        body.trailMaterial.uniforms.uAppear.value = Math.max(0, appear * 1.6 - 0.6);
-      }
-    },
-
-    /** Le sprite seguono il lato della canvas, come quelle della sfera. */
-    resize(scale) {
-      for (const body of bodies) {
-        body.planetMaterial.uniforms.uSize.value = config.planetSize * scale;
-        body.trailMaterial.uniforms.uSize.value = config.trailSize * scale;
-      }
-    },
-
-    dispose() {
-      for (const material of materials) material.dispose();
-      for (const geometry of geometries) geometry.dispose();
+    destroy() {
+      stopped = true;
+      if (raf) cancelAnimationFrame(raf);
+      observer.disconnect();
+      detachPage();
+      detachResize();
+      shell.geometry.dispose();
+      shell.material.dispose();
+      for (const risorsa of risorse) risorsa.dispose();
+      renderer.dispose();
     },
   };
 };
-
-/**
- * Monta la sfera con i pianeti orbitanti (pagina Servizi).
- *
- * È `mountOrb` con il livello degli orbitanti acceso: la sfera al centro è la
- * stessa di SABE, e deve restare tale.
- *
- * @param {HTMLCanvasElement} canvas
- * @returns {{ destroy: () => void }}
- */
-export const mountSystem = (canvas, options = {}) =>
-  mountOrb(canvas, {
-    // La camera va indietro rispetto alla sfera da sola: l'orbita più esterna
-    // sta a tre raggi dal centro e a 3.8 uscirebbe dal riquadro.
-    cameraZ: options.cameraZ ?? 7.4,
-    ...options,
-    orbiters: { ...SYSTEM_CONFIG, ...(options.orbiters || {}) },
-  });
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OCCHIO — pagina Visione
 
-   Un occhio di particelle: contorno a mandorla, iride a fibre radiali, bordo
-   della pupilla, un velo di sclera e il riflesso. L'iride segue il puntatore,
-   l'occhio sbatte ogni tanto.
+   Una sola nuvola di particelle, densa come la sfera di SABE e il cervello di
+   ATLAS. La forma non nasce da parti montate insieme — un contorno disegnato
+   più un disco al centro si leggevano come due oggetti distinti — ma da come
+   la densità varia dentro un unico insieme: le particelle si addensano verso
+   il bordo delle palpebre e sull'anello dell'iride, e il resto della mandorla
+   resta un tessuto continuo che tiene insieme le due cose.
 
-   Tutto in un buffer solo, le parti distinte da `aPart`: sono cinque nuvole
-   che condividono lo stesso ingresso, lo stesso rumore ambientale e lo stesso
-   blink — separarle in cinque oggetti vorrebbe dire ripetere cinque volte lo
-   stesso shader per poi doverli tenere in fase a mano.
+   Il movimento segue le altre scene: ondulazione lenta da rumore, sguardo che
+   insegue il puntatore con molta inerzia, blink ampio. Niente scatti.
    ═══════════════════════════════════════════════════════════════════════════*/
 
 export const EYE_CONFIG = {
-  /** Fibre dell'iride: ciano fuori, verde verso la pupilla — il gradiente `.hl`. */
+  /** Iride: verde verso la pupilla, ciano sul bordo esterno — gradiente `.hl`. */
   colorIris: "#00d4ff",
   colorIrisInner: "#00e8a2",
-  /** Bordo pupilla e riflesso: quasi bianchi, sono le uniche luci dure. */
-  colorRim: "#bff2ff",
-  colorLid: "#0092d8",
-  colorSclera: "#0077b3",
+  /** Riflesso e bordo della pupilla: le uniche luci chiare. */
+  colorRim: "#cdf6ff",
+  /** Tessuto: profondo al centro della sclera, acceso sul bordo palpebrale. */
+  colorTissue: "#0d5f96",
+  colorLid: "#00b6ee",
 
-  /** Semi-larghezza della mandorla; il resto della forma è in proporzione. */
   width: 1.32,
-  /** Semi-altezza dell'arco superiore. */
   height: 0.6,
-  /** Quanto la palpebra inferiore è meno curva di quella superiore. */
+  /** Quanto la palpebra inferiore è meno curva della superiore. */
   lowerRatio: 0.74,
-  irisRadius: 0.42,
-  pupilRadius: 0.155,
-  /** Numero di fibre radiali dell'iride. */
-  fibres: 104,
-  /** Bombatura: la cornea sporge verso la camera. */
-  bulge: 0.34,
+  irisRadius: 0.44,
+  pupilRadius: 0.16,
+  fibres: 108,
+  /** Bombatura della cornea verso la camera. */
+  bulge: 0.32,
 
-  pointSize: 13,
-  brightness: 1.0,
+  pointSize: 7,
+  brightness: 1.15,
   opacity: 1,
   /** Escursione massima dello sguardo, in unità di scena. */
-  lookAmount: 0.135,
+  lookAmount: 0.14,
+  /** Inerzia dello sguardo: più basso, più lento e fluido. */
+  lookEase: 0.028,
   /** Rotazione dell'iride su sé stessa, radianti al secondo. */
-  spin: 0.075,
+  spin: 0.035,
+  /** Ondulazione del tessuto e sua velocità. */
+  wobble: 0.022,
+  wobbleSpeed: 0.14,
   /** Secondi fra un blink e il successivo, minimo e massimo. */
-  blinkEvery: [3.6, 8.4],
-  /** Durata di una chiusura completa. */
-  blinkMs: 260,
+  blinkEvery: [4.2, 9.5],
+  /** Durata di una chiusura completa: ampia, non uno sfarfallio. */
+  blinkMs: 420,
 };
 
 const EYE_VERT = /* glsl */ `
-  uniform float uTime, uSize, uPR, uAssemble, uBlink, uSpin, uBulge;
+  uniform float uTime, uSize, uPR, uAssemble, uBlink, uSpin, uWobble, uWobbleSpeed;
   uniform float uIrisR, uPupilR;
   uniform vec2  uLook;
-  uniform vec3  uColIris, uColIrisInner, uColRim, uColLid, uColSclera;
+  uniform vec3  uColIris, uColIrisInner, uColRim, uColTissue, uColLid;
 
-  attribute float aPart;   // 0 contorno · 1 iride · 2 bordo pupilla · 3 sclera · 4 riflesso
   attribute vec3  aRnd;
   attribute float aSeed;
+  attribute float aKind;   // 0 tessuto · 1 iride · 2 riflesso
+  attribute float aEdge;   // 0 al centro della mandorla, 1 sul bordo palpebrale
 
   varying vec3  vColor;
   varying float vAlpha;
@@ -1981,85 +2152,75 @@ const EYE_VERT = /* glsl */ `
   void main(){
     vec3 pos = position;
 
-    // Maschere delle parti. Niente rami: un if verrebbe eseguito comunque su
-    // tutta l'onda, e le maschere servono anche a interpolare i colori.
-    float isLid    = 1.0 - step(0.5, aPart);
-    float isIris   = step(0.5, aPart) * (1.0 - step(1.5, aPart));
-    float isPupil  = step(1.5, aPart) * (1.0 - step(2.5, aPart));
-    float isSclera = step(2.5, aPart) * (1.0 - step(3.5, aPart));
-    float isGlint  = step(3.5, aPart);
+    float isIris  = step(0.5, aKind) * (1.0 - step(1.5, aKind));
+    float isGlint = step(1.5, aKind);
+    // Ciò che segue lo sguardo: l'iride e il riflesso. Il tessuto resta fermo,
+    // è la parte che tiene la forma dell'occhio.
+    float mobile = max(isIris, isGlint);
 
-    // Ciò che sta nell'occhio e si muove con lo sguardo: iride, pupilla e
-    // riflesso. Contorno e sclera restano dove sono — è l'occhio che guarda,
-    // non la testa che si gira.
-    float mobile = max(max(isIris, isPupil), isGlint);
-
-    // L'iride ruota lentamente su sé stessa: le fibre non sono mai ferme in un
-    // occhio vivo, e senza questa deriva la raggiera si legge come una texture.
+    // L'iride ruota su sé stessa, lentissima: le fibre non sono mai ferme.
     float a = uTime * uSpin;
     vec2 spun = vec2(pos.x * cos(a) - pos.y * sin(a), pos.x * sin(a) + pos.y * cos(a));
     pos.xy = mix(pos.xy, spun, isIris);
 
-    // Respiro ambientale: sposta ogni particella di poco, sfasata per seme.
-    float n = snoise(vec3(position.xy * 2.3, uTime * 0.32 + aSeed * 4.0));
-    pos.xy += aRnd.xy * n * 0.016;
-    pos.z  += n * 0.012;
+    // Respiro del tessuto: un solo strato di rumore, lento, come la sfera.
+    float n = snoise(vec3(position.xy * 1.9, uTime * uWobbleSpeed + aSeed * 2.0));
+    pos.xy += aRnd.xy * n * uWobble;
+    pos.z  += n * uWobble * 0.8;
 
-    // Sguardo. Il riflesso si sposta MENO dell'iride: sta sulla cornea, che è
-    // più vicina alla camera, e la parallasse lo trattiene.
-    pos.xy += uLook * mobile * mix(1.0, 0.55, isGlint);
+    // Sguardo. Il riflesso si sposta meno: sta sulla cornea, più vicino alla
+    // camera, e la parallasse lo trattiene.
+    pos.xy += uLook * mobile * mix(1.0, 0.5, isGlint);
 
     /*
-       Blink. Non una palpebra disegnata: le particelle collassano sulla linea
-       mediana e ripartono. La chiusura è più rapida in alto (la palpebra
-       superiore fa quasi tutta la corsa, come nell'occhio vero), quindi il
+       Blink: le particelle collassano sulla mediana e ripartono. La palpebra
+       superiore fa quasi tutta la corsa, come nell'occhio vero, quindi il
        fattore dipende dal segno di y.
     */
     float upper = step(0.0, position.y);
-    float squash = 1.0 - uBlink * mix(0.86, 0.97, upper);
-    pos.y *= squash;
+    pos.y *= 1.0 - uBlink * mix(0.88, 0.97, upper);
     pos.z *= 1.0 - uBlink * 0.7;
 
     // Ingresso: le particelle arrivano dal buio davanti alla camera e si
-    // radunano. Scaglionato per seme, così si forma a scia e non tutto insieme.
-    float delay = aSeed * 0.42;
+    // posano, scaglionate per seme — la formazione si legge come una scia.
+    float delay = aSeed * 0.45;
     float t = clamp((uAssemble - delay) / max(0.0001, 1.0 - delay), 0.0, 1.0);
     float ease = 1.0 - pow(1.0 - t, 3.0);
-    vec3 spawn = pos + aRnd * 2.4 + vec3(0.0, 0.0, 2.6 + aRnd.z * 1.6);
+    vec3 spawn = pos + aRnd * 2.2 + vec3(0.0, 0.0, 2.4 + aRnd.z * 1.5);
     pos = mix(spawn, pos, ease);
 
-    // Colore per parte. Nell'iride il gradiente va dal verde della pupilla al
-    // ciano del bordo esterno.
+    /*
+       Colore e peso luminoso, entrambi continui: è ciò che tiene insieme
+       l'insieme. Il tessuto va dal blu profondo del centro al ciano acceso del
+       bordo palpebrale, senza che da nessuna parte ci sia un salto.
+    */
     float r = length(position.xy);
-    vec3 iris = mix(uColIrisInner, uColIris, smoothstep(uPupilR, uIrisR, r));
-    vec3 col = uColLid * isLid
-             + iris * isIris
-             + uColRim * (isPupil + isGlint)
-             + uColSclera * isSclera;
+    vec3 tessuto = mix(uColTissue, uColLid, aEdge * aEdge);
+    vec3 iride = mix(uColIrisInner, uColIris, smoothstep(uPupilR, uIrisR, r));
+
+    // Il bordo della pupilla non è un gruppo a parte: è l'iride che si accende
+    // dove sta per finire nel nero.
+    float orlo = smoothstep(uPupilR * 1.5, uPupilR, r);
+    vec3 col = mix(tessuto, iride, isIris);
+    col = mix(col, uColRim, max(isGlint, isIris * orlo * 0.55));
     vColor = col;
 
-    // Peso luminoso: il bordo della pupilla e il riflesso sono le luci dure,
-    // la sclera è quasi solo un velo.
-    float weight = isLid * 0.58
-                 + isIris * 0.4
-                 + isPupil * 0.3
-                 + isSclera * 0.16
-                 + isGlint * 0.5;
+    float peso = (0.2 + aEdge * aEdge * 0.55) * (1.0 - isIris - isGlint)
+               + isIris * (0.34 + orlo * 0.3)
+               + isGlint * 0.5;
 
-    // A occhio chiuso resta solo il contorno: iride e pupilla spariscono prima
-    // che la forma si sia richiusa, altrimenti si vede una riga luminosa
-    // schiacciata al centro.
+    // A occhio chiuso iride e riflesso spariscono prima che la forma si sia
+    // richiusa: altrimenti resta una riga luminosa schiacciata al centro.
     float lidFade = 1.0 - smoothstep(0.2, 0.7, uBlink) * mobile;
 
-    vAlpha = weight * ease * lidFade;
+    vAlpha = peso * ease * lidFade;
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * uPR * (0.55 + weight * 0.5) * (1.0 / max(0.4, -mv.z));
+    gl_PointSize = uSize * uPR * (0.62 + peso * 0.9) * (1.0 / max(0.4, -mv.z));
   }`;
 
 const EYE_FRAG = /* glsl */ `
-  precision mediump float;
   uniform float uOpacity, uBrightness;
   varying vec3  vColor;
   varying float vAlpha;
@@ -2067,17 +2228,14 @@ const EYE_FRAG = /* glsl */ `
     vec2 d = gl_PointCoord - 0.5;
     float r = length(d);
     if (r > 0.5) discard;
-    float soft = smoothstep(0.5, 0.08, r);
+    float soft = smoothstep(0.5, 0.05, r);
     gl_FragColor = vec4(vColor * uBrightness, soft * soft * vAlpha * uOpacity);
   }`;
 
 /**
- * La mandorla: due archi che si incontrano agli angoli. L'arco superiore è più
- * alto e più tondo, l'inferiore più teso — è quella asimmetria a far leggere
- * la forma come un occhio invece che come una lente.
- *
- * @param {number} u  posizione lungo l'asse, da -1 (angolo interno) a 1
- * @returns {{ up: number, down: number }} le due quote, in unità di scena
+ * La mandorla: due archi che si incontrano agli angoli. Il superiore è più
+ * alto e più tondo, l'inferiore più teso — è quell'asimmetria a far leggere la
+ * forma come un occhio invece che come una lente.
  */
 const eyeLids = (u, config) => {
   const k = Math.max(0, 1 - u * u);
@@ -2088,116 +2246,96 @@ const eyeLids = (u, config) => {
 };
 
 const buildEyeGeometry = (total, config) => {
-  // Ripartizione: l'iride è il soggetto e si prende quasi metà delle
-  // particelle; la sclera è un velo e ne basta un quinto.
-  const nIris = Math.round(total * 0.4);
-  const nLid = Math.round(total * 0.22);
-  const nPupil = Math.round(total * 0.04);
-  const nGlint = Math.max(24, Math.round(total * 0.007));
-  const nSclera = Math.max(0, total - nIris - nLid - nPupil - nGlint);
-  const count = nIris + nLid + nSclera + nPupil + nGlint;
-
-  const positions = new Float32Array(count * 3);
-  const parts = new Float32Array(count);
-  const randoms = new Float32Array(count * 3);
-  const seeds = new Float32Array(count);
-
   const { width, height, irisRadius, pupilRadius, fibres, bulge } = config;
-  let i = 0;
 
-  const push = (x, y, z, part) => {
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = y;
-    positions[i * 3 + 2] = z;
-    parts[i] = part;
-    randoms[i * 3] = Math.random() - 0.5;
-    randoms[i * 3 + 1] = Math.random() - 0.5;
-    randoms[i * 3 + 2] = Math.random() - 0.5;
-    seeds[i] = Math.random();
-    i++;
-  };
+  const positions = new Float32Array(total * 3);
+  const randoms = new Float32Array(total * 3);
+  const seeds = new Float32Array(total);
+  const kinds = new Float32Array(total);
+  const edges = new Float32Array(total);
 
-  /** Bombatura della cornea: massima al centro, nulla agli angoli. */
+  const passo = (Math.PI * 2) / fibres;
+  /** Bombatura: massima al centro, nulla agli angoli. */
   const domeZ = (x, y) => {
     const k = 1 - Math.min(1, (x / width) ** 2 + (y / height) ** 2);
     return bulge * Math.max(0, k) ** 0.7;
   };
 
-  // ── Contorno ──────────────────────────────────────────────────────────────
-  for (let n = 0; n < nLid; n++) {
-    // sin(π/2 · u) addensa verso gli angoli, dove le due curve si incontrano:
-    // è lì che la forma si riconosce, e una distribuzione piatta in x li
-    // lasciava spogli.
-    const u = Math.sin(((Math.random() * 2 - 1) * Math.PI) / 2);
-    const x = u * width;
-    const lids = eyeLids(u, config);
-    const sopra = Math.random() < 0.54;
-    const base = sopra ? lids.up : lids.down;
-    // Spessore del tratto: più marcato al centro, sottile agli angoli.
-    const thick = (0.028 + 0.03 * Math.max(0, 1 - u * u)) * (sopra ? 1 : 0.85);
-    const y = base + (Math.random() - 0.5) * 2 * thick;
-    push(x, y, domeZ(x, y) * 0.35 + (Math.random() - 0.5) * 0.02, 0);
-  }
-
-  // ── Iride ─────────────────────────────────────────────────────────────────
-  for (let n = 0; n < nIris; n++) {
-    // Un quinto delle particelle va sul limbus, l'anello esterno: è il bordo
-    // netto che chiude l'iride e le dà un contorno invece di una sfumatura.
-    const limbus = Math.random() < 0.2;
-    const fibre = Math.floor(Math.random() * fibres);
-    // Jitter quasi pieno sul settore: le fibre devono leggersi come raggiera,
-    // non come una griglia di stecche separate.
-    const ang = ((fibre + (Math.random() - 0.5) * 0.5) / fibres) * Math.PI * 2;
-    const rad = limbus
-      ? irisRadius * (0.955 + Math.random() * 0.045)
-      : pupilRadius + (irisRadius - pupilRadius) * Math.pow(Math.random(), 0.72);
-    const x = Math.cos(ang) * rad;
-    const y = Math.sin(ang) * rad;
-    push(x, y, domeZ(x, y), 1);
-  }
-
-  // ── Bordo della pupilla ───────────────────────────────────────────────────
-  for (let n = 0; n < nPupil; n++) {
-    const ang = Math.random() * Math.PI * 2;
-    const rad = pupilRadius * (1 + (Math.random() - 0.5) * 0.3);
-    const x = Math.cos(ang) * rad;
-    const y = Math.sin(ang) * rad;
-    push(x, y, domeZ(x, y) * 1.04, 2);
-  }
-
-  // ── Sclera ────────────────────────────────────────────────────────────────
-  // Riempimento per rifiuto: dentro la mandorla, fuori dall'iride.
-  for (let n = 0, guard = 0; n < nSclera && guard < nSclera * 40; guard++) {
+  let i = 0;
+  let guardia = 0;
+  while (i < total && guardia < total * 60) {
+    guardia++;
     const u = Math.random() * 2 - 1;
     const x = u * width;
     const lids = eyeLids(u, config);
-    const y = lids.down + Math.random() * (lids.up - lids.down);
-    if (x * x + y * y < (irisRadius * 1.06) ** 2) continue;
-    push(x, y, domeZ(x, y) * 0.5, 3);
-    n++;
+    let y = lids.down + Math.random() * (lids.up - lids.down);
+
+    // Vicinanza al bordo palpebrale, 0 al centro e 1 sulla linea di chiusura.
+    const dentro = Math.min(lids.up - y, y - lids.down) / Math.max(1e-4, lids.up - lids.down);
+    const bordo = Math.pow(1 - Math.min(1, dentro / 0.34), 1.7);
+
+    let r = Math.hypot(x, y);
+    const nelDisco = r <= irisRadius && r >= pupilRadius;
+    const nellaPupilla = r < pupilRadius;
+
+    /*
+       Densità disomogenea: è questa a disegnare la figura. Il bordo delle
+       palpebre e l'anello dell'iride ne prendono la maggior parte, il resto
+       della mandorla resta un velo — ma un velo dello stesso insieme, e per
+       questo la forma si legge come un corpo solo.
+    */
+    const peso = 1.0 + bordo * bordo * 1.7 + (nelDisco ? 1.5 : 0) - (nellaPupilla ? 0.85 : 0);
+    if (Math.random() * 3.2 > peso) continue;
+
+    let px = x;
+    let py = y;
+    if (nelDisco) {
+      // Tessitura a raggiera: l'angolo viene tirato verso la fibra più vicina.
+      // Un tiro parziale lascia le fibre distinte senza farle diventare stecche.
+      const ang = Math.atan2(y, x);
+      const target = Math.round(ang / passo) * passo;
+      const nuovo = ang + (target - ang) * 0.72;
+      px = Math.cos(nuovo) * r;
+      py = Math.sin(nuovo) * r;
+    }
+
+    positions[i * 3] = px;
+    positions[i * 3 + 1] = py;
+    positions[i * 3 + 2] = domeZ(px, py) * (nelDisco ? 1 : 0.55);
+    randoms[i * 3] = Math.random() - 0.5;
+    randoms[i * 3 + 1] = Math.random() - 0.5;
+    randoms[i * 3 + 2] = Math.random() - 0.5;
+    seeds[i] = Math.random();
+    kinds[i] = nelDisco ? 1 : 0;
+    edges[i] = bordo;
+    i++;
   }
-  // Il rifiuto può fermarsi prima della quota: i posti rimasti vanno riempiti
-  // comunque, altrimenti il buffer resta con code di zeri in mezzo alla scena.
-  while (i < nLid + nIris + nPupil + nSclera) push(0, 0, 0, 3);
 
   // ── Riflesso ──────────────────────────────────────────────────────────────
-  // In alto a sinistra, mezzo dentro e mezzo fuori dalla pupilla: è la
-  // posizione della luce che rende uno sguardo vivo invece che di vetro.
-  const gx = -irisRadius * 0.42;
-  const gy = irisRadius * 0.44;
-  for (let n = 0; n < nGlint; n++) {
+  // In alto a sinistra, a cavallo del bordo della pupilla: è la luce che rende
+  // uno sguardo vivo invece che di vetro. Sostituisce le ultime particelle.
+  const nGlint = Math.max(24, Math.round(total * 0.006));
+  const gx = -irisRadius * 0.44;
+  const gy = irisRadius * 0.42;
+  for (let k = 0; k < nGlint && k < i; k++) {
+    const n = i - 1 - k;
     const ang = Math.random() * Math.PI * 2;
-    const rad = Math.pow(Math.random(), 0.5) * irisRadius * 0.14;
+    const rad = Math.sqrt(Math.random()) * irisRadius * 0.15;
     const x = gx + Math.cos(ang) * rad;
-    const y = gy + Math.sin(ang) * rad * 0.78;
-    push(x, y, domeZ(x, y) * 1.1 + 0.02, 4);
+    const y = gy + Math.sin(ang) * rad * 0.8;
+    positions[n * 3] = x;
+    positions[n * 3 + 1] = y;
+    positions[n * 3 + 2] = domeZ(x, y) * 1.1 + 0.02;
+    kinds[n] = 2;
+    edges[n] = 0;
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("aPart", new THREE.BufferAttribute(parts, 1));
-  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms, 3));
-  geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions.subarray(0, i * 3), 3));
+  geometry.setAttribute("aRnd", new THREE.BufferAttribute(randoms.subarray(0, i * 3), 3));
+  geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds.subarray(0, i), 1));
+  geometry.setAttribute("aKind", new THREE.BufferAttribute(kinds.subarray(0, i), 1));
+  geometry.setAttribute("aEdge", new THREE.BufferAttribute(edges.subarray(0, i), 1));
   return geometry;
 };
 
@@ -2205,17 +2343,16 @@ const buildEyeGeometry = (total, config) => {
  * Monta l'occhio su una canvas.
  *
  * @param {HTMLCanvasElement} canvas
- * @param {{ config?: object, cameraZ?: number, density?: number, maxSize?: number }} [options]
+ * @param {{ config?: object, cameraZ?: number, density?: number }} [options]
  * @returns {{ destroy: () => void }}
  */
 export const mountEye = (canvas, options = {}) => {
   const config = { ...EYE_CONFIG, ...(options.config || {}) };
   const tier = paramsFor(window.innerWidth);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  // L'occhio è una figura piatta: a parità di conteggio le particelle si
-  // affollano su un'area molto minore di quella della sfera, e la forma si
-  // impasta. Metà del budget di fascia.
-  const count = Math.round(tier.count * (options.density ?? 0.42));
+  // Densità piena, come le altre scene: l'occhio deve essere una massa, non
+  // una manciata di granelli.
+  const count = Math.round(tier.count * (options.density ?? 1.15));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.dpr));
@@ -2224,7 +2361,7 @@ export const mountEye = (canvas, options = {}) => {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.z = options.cameraZ ?? 3.5;
+  camera.position.z = options.cameraZ ?? 3;
 
   const uniforms = {
     uTime: { value: 0 },
@@ -2233,7 +2370,8 @@ export const mountEye = (canvas, options = {}) => {
     uAssemble: { value: 0 },
     uBlink: { value: 0 },
     uSpin: { value: config.spin },
-    uBulge: { value: config.bulge },
+    uWobble: { value: config.wobble },
+    uWobbleSpeed: { value: config.wobbleSpeed },
     uIrisR: { value: config.irisRadius },
     uPupilR: { value: config.pupilRadius },
     uLook: { value: new THREE.Vector2() },
@@ -2242,8 +2380,8 @@ export const mountEye = (canvas, options = {}) => {
     uColIris: { value: hexToLinear(config.colorIris) },
     uColIrisInner: { value: hexToLinear(config.colorIrisInner) },
     uColRim: { value: hexToLinear(config.colorRim) },
+    uColTissue: { value: hexToLinear(config.colorTissue) },
     uColLid: { value: hexToLinear(config.colorLid) },
-    uColSclera: { value: hexToLinear(config.colorSclera) },
   };
 
   const points = new THREE.Points(
@@ -2278,50 +2416,40 @@ export const mountEye = (canvas, options = {}) => {
   const detachResize = attachResize(canvas, (width, parentHeight) => {
     /*
        L'occhio è largo il doppio di quanto è alto: un quadrato lo lascerebbe
-       piccolo in mezzo a due fasce vuote. La canvas prende tutto il riquadro e
-       la camera si adatta all'aspetto.
+       piccolo fra due fasce vuote. La canvas prende tutto il riquadro.
+
+       Le misure si rileggono dalla canvas e non dal contenitore: quello ha un
+       padding che `clientWidth` comprende, e dimensionare il buffer sul
+       contenitore darebbe un'immagine più larga dell'elemento — che il CSS poi
+       stira, ovalizzando l'occhio.
     */
     const stimata = parentHeight > 80 ? parentHeight : Math.round(width * 0.42);
     canvas.style.width = "100%";
     canvas.style.height = "100%";
-    /*
-       Le misure vanno RIlette dalla canvas, non prese dal contenitore: il
-       contenitore ha un padding e `clientWidth` lo comprende. Dimensionare il
-       buffer sul contenitore darebbe un'immagine più larga dell'elemento, che
-       il CSS poi stira — l'occhio verrebbe leggermente ovalizzato.
-    */
     const w = canvas.clientWidth || width;
-    const height = canvas.clientHeight || stimata;
-    renderer.setSize(w, height, false);
-    camera.aspect = w / Math.max(1, height);
-    camera.updateProjectionMatrix();
+    const h = canvas.clientHeight || stimata;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
     uniforms.uPR.value = renderer.getPixelRatio();
 
-    /*
-       Inquadratura sulla LARGHEZZA. Con una camera prospettica il campo
-       verticale è fisso: in un riquadro basso e largo l'occhio resterebbe
-       tarato sull'altezza e sborderebbe di lato. Si allontana la camera quel
-       tanto che serve perché la mandorla ci stia in orizzontale.
-    */
+    // Inquadratura: due vincoli, si prende il più stringente — la mandorla
+    // deve starci in larghezza, l'arco delle palpebre in altezza.
     const halfFov = Math.tan((camera.fov * Math.PI) / 360);
-    // Due vincoli, si prende il più stringente: la mandorla deve starci in
-    // larghezza con un margine, e l'arco delle palpebre in altezza.
-    const perLarghezza = (config.width * 1.6) / (halfFov * Math.max(0.35, camera.aspect));
-    const perAltezza = (config.height * 1.3) / halfFov;
+    const perLarghezza = (config.width * 1.55) / (halfFov * Math.max(0.35, camera.aspect));
+    const perAltezza = (config.height * 1.32) / halfFov;
     camera.position.z = options.cameraZ ?? Math.max(perLarghezza, perAltezza);
     camera.updateProjectionMatrix();
 
-    // 900 px è il lato per cui la dimensione base è tarata, come per la sfera.
-    // Il minimo vale come per gli orbitanti: sotto, l'occhio si legge come
-    // una manciata di granelli invece che come una figura.
-    uniforms.uSize.value = config.pointSize * Math.max(0.78, Math.min(1, Math.max(w, 1) / 900));
+    // 900 px è il lato per cui la dimensione base è tarata; sotto un minimo la
+    // scena si dirada invece di rimpicciolire.
+    uniforms.uSize.value = config.pointSize * Math.max(0.8, Math.min(1, Math.max(w, 1) / 900));
   });
 
   let onScreen = true;
   const observer = new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; }, { threshold: 0 });
   observer.observe(canvas);
 
-  const INTRO_MS = 2300;
+  const INTRO_MS = 2800;
   let introStart = null;
   let raf = null;
   let stopped = false;
@@ -2340,8 +2468,7 @@ export const mountEye = (canvas, options = {}) => {
   const clock = new THREE.Clock();
   const look = new THREE.Vector2();
   const lookTarget = new THREE.Vector2();
-  // Il primo blink non parte subito: l'occhio deve prima finire di formarsi.
-  let nextBlink = 2.6;
+  let nextBlink = 3.2;
   let blinkStart = null;
 
   const frame = (now) => {
@@ -2350,7 +2477,7 @@ export const mountEye = (canvas, options = {}) => {
 
     if (introStart === null) {
       introStart = now;
-      nextBlink = clock.getElapsedTime() + 2.6;
+      nextBlink = clock.getElapsedTime() + 3.2;
     }
     const t = Math.min(1, (now - introStart) / INTRO_MS);
     uniforms.uAssemble.value = reduceMotion.matches ? 1 : t * t * (3 - 2 * t);
@@ -2360,33 +2487,30 @@ export const mountEye = (canvas, options = {}) => {
 
     /*
        Sguardo. Il puntatore in NDC va portato in unità di scena e trattenuto
-       dentro un'ellisse: l'iride non deve mai uscire dalla mandorla, e sull'asse
-       verticale ha molto meno spazio che su quello orizzontale.
+       dentro un'ellisse: l'iride non deve mai uscire dalla mandorla, e in
+       verticale ha molto meno spazio che in orizzontale.
     */
     if (tier.pointer && hasPointer && !reduceMotion.matches) {
-      lookTarget.set(pointerNdc.x * config.lookAmount * 1.5, pointerNdc.y * config.lookAmount * 0.62);
-      const norm = (lookTarget.x / (config.lookAmount * 1.5)) ** 2 + (lookTarget.y / (config.lookAmount * 0.62)) ** 2;
-      if (norm > 1) lookTarget.multiplyScalar(1 / Math.sqrt(norm));
+      lookTarget.set(pointerNdc.x * config.lookAmount * 1.5, pointerNdc.y * config.lookAmount * 0.6);
+      const norma = (lookTarget.x / (config.lookAmount * 1.5)) ** 2 + (lookTarget.y / (config.lookAmount * 0.6)) ** 2;
+      if (norma > 1) lookTarget.multiplyScalar(1 / Math.sqrt(norma));
     } else if (!reduceMotion.matches) {
-      /*
-         Senza puntatore — mobile, o prima che il mouse si muova — l'occhio non
-         resta fisso: si guarda intorno da solo. Due seni di periodo diverso,
-         così il giro non si chiude mai uguale e non si legge come un ciclo.
-      */
+      // Senza puntatore — mobile, o prima che il mouse si muova — l'occhio si
+      // guarda intorno da solo. Due seni di periodo diverso: il giro non si
+      // chiude mai uguale e non si legge come un ciclo.
       lookTarget.set(
-        Math.sin(time * 0.31) * config.lookAmount * 0.62,
-        Math.sin(time * 0.23 + 1.7) * config.lookAmount * 0.3,
+        Math.sin(time * 0.27) * config.lookAmount * 0.6,
+        Math.sin(time * 0.19 + 1.7) * config.lookAmount * 0.28,
       );
     } else {
       lookTarget.set(0, 0);
     }
-    look.lerp(lookTarget, 0.075);
+    look.lerp(lookTarget, config.lookEase);
     uniforms.uLook.value.copy(look);
 
     /*
-       Blink. Un impulso su una campana: chiude e riapre nello stesso gesto,
-       con l'apertura leggermente più lenta della chiusura — è così che si
-       muove una palpebra, e simmetrico sembrava uno sfarfallio.
+       Blink: chiusura rapida, riapertura più lenta — è così che si muove una
+       palpebra; simmetrico sembrava uno sfarfallio.
     */
     if (reduceMotion.matches) {
       uniforms.uBlink.value = 0;
@@ -2400,10 +2524,9 @@ export const mountEye = (canvas, options = {}) => {
           const [min, max] = config.blinkEvery;
           nextBlink = time + min + Math.random() * (max - min);
         } else {
-          // Chiusura in 4/10 del tempo, riapertura nei restanti 6/10.
-          uniforms.uBlink.value = u < 0.4
-            ? Math.sin((u / 0.4) * Math.PI * 0.5)
-            : Math.cos(((u - 0.4) / 0.6) * Math.PI * 0.5);
+          uniforms.uBlink.value = u < 0.36
+            ? Math.sin((u / 0.36) * Math.PI * 0.5)
+            : Math.cos(((u - 0.36) / 0.64) * Math.PI * 0.5);
         }
       }
     }
