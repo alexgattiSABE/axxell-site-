@@ -179,6 +179,38 @@ piano gratuito e nasconderla via CSS violerebbe i termini di Spline. Le due
 strade per toglierlo sono un piano Spline a pagamento, oppure rifare la scena
 e ospitarla in proprio.
 
+### La spina del cap. 03 è un'immagine (sessione 2026-08-13)
+
+Il piano dice «asset procedurali soltanto». La spina non lo è più: è
+`assets/spine.webp` (100 KB), il render fornito dall'utente come riferimento
+visivo vincolante — «do not interpret the reference creatively». La versione
+procedurale a 24 vertebre esisteva ed è stata scartata da lui.
+
+**Contenimento, e sono vincoli per chi tocca la sezione:**
+
+1. **Non è un `<img>` sopra la pagina.** È una texture su un piano dentro la
+   scena three.js, quindi le lastre e le bolle le passano davanti e dietro
+   davvero. Il piano scrive profondità e il fragment scarta i pixel ad alpha
+   quasi zero: è quello che rende possibile l'occlusione senza rettangoli.
+2. **L'alone dell'immagine sorgente è stato tolto in fase di asset**, non a
+   runtime: si stima lo sfondo con un blur grosso, lo si sottrae, si chiude
+   la maschera con due passate morfologiche (i corpi vertebrali scuri
+   facevano buchi) e si ritaglia sul bbox. Se un giorno si rifà l'asset,
+   questa è la ricetta — non ritagliare a mano.
+3. **La spina è ferma.** Rotazione zero sui tre assi, nessuna rotazione idle
+   né da scroll, nessuna scala mentre si scende. Il volume lo raccontano
+   quattro effetti nello shader (rifrazione UV, bordo dal gradiente
+   dell'alpha, banda di luce che scende, bagliore a due tap) più le bolle che
+   le passano davanti e dietro. È una scelta del brief, non una scorciatoia.
+4. **Costo per fragment.** La prima versione usava il simplex noise di
+   `WC.glsl` per la rifrazione: due chiamate per pixel su un piano che copre
+   mezzo schermo facevano scendere la sezione da 61 a 38 fps. Sostituito con
+   due seni sfasati — a quest'ampiezza è indistinguibile. Se qualcuno rimette
+   il noise lì dentro, ricontrolli gli fps.
+
+Se la texture non carica la sezione ricade su `-static`: senza la spina non
+avrebbe più un centro.
+
 ### Il cursore fluido del cap. 03 (sessione 2026-08-13)
 
 Simulazione di fluido (Navier-Stokes, porting della WebGL Fluid Simulation di

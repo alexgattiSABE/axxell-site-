@@ -1,24 +1,31 @@
 /* CAP 03 — colonna di vetro sospesa in un fluido invisibile.
  *
- * Sostituisce la doppia elica. Tre sistemi in una scena sola:
+ * La spina NON è più procedurale: è l'immagine di riferimento data
+ * dall'utente (assets/spine.webp), montata come piano trasparente dentro la
+ * scena three.js. Ed è FERMA: rotazione zero sui tre assi, nessuna rotazione
+ * idle, nessuna rotazione sullo scroll, nessuna scala sullo scroll. È l'ancora
+ * visiva del capitolo; a muoversi è tutto il resto.
  *
- * 1. SPINA — 24 vertebre procedurali (corpo a lathe, arco, processi laterali e
- *    spinoso), fuse in UNA sola geometria. La fusione è a mano: r128 tiene
- *    BufferGeometryUtils negli examples, che qui non sono caricati, e senza
- *    merge sarebbero ~120 draw call per strato. Due strati sovrapposti fanno
- *    il vetro: dentro un MeshPhysicalMaterial che raccoglie i riflessi delle
- *    luci colorate, fuori un guscio Fresnel additivo che accende solo i bordi.
- *    Niente `transmission`: in r128 il render target della trasmissione non
- *    c'è, e su questa pagina girano già altri tre contesti WebGL.
- * 2. CARD — 6 lastre in orbita ellittica vera (non un carosello CSS): la
- *    profondità la decide la posizione z, non una scala finta. Ogni lastra è
- *    un piano con shader proprio: angoli arrotondati per SDF, bordo luminoso,
- *    riflesso diagonale, Fresnel sul taglio e il testo da CanvasTexture.
- * 3. BOLLE — Points animati interamente nel vertex shader (posizione da tempo
- *    e seme): la CPU non tocca mai il buffer.
+ * Come si tiene insieme:
  *
- * Lo scroll pinna la sezione e guida orbita, camera, torsione delle vertebre e
- * quale lastra arriva davanti. Senza scroll la scena resta viva lo stesso.
+ * 1. SPINA — un piano con la texture già ritagliata (l'alone viola
+ *    dell'immagine sorgente è stato tolto in fase di asset sottraendo una
+ *    stima low-frequency dello sfondo: qui non arriva nessun rettangolo nero).
+ *    Il fragment scarta i pixel ad alpha ~0, quindi il piano non ha bordi e
+ *    SCRIVE PROFONDITÀ: è così che bolle e lastre passano davvero dietro alla
+ *    spina invece di limitarsi a sembrarlo.
+ *    L'illusione di volume su un piano fermo la fanno quattro cose, tutte
+ *    nello shader: distorsione UV lentissima (rifrazione), bordo acceso
+ *    ricavato dal gradiente dell'alpha (il Fresnel su un piano non esiste, la
+ *    silhouette sì), una banda di luce che scende, e un bagliore a quattro tap
+ *    (bloom finto, senza composer).
+ * 2. CARD — 6 lastre in orbita ellittica vera: la profondità la decide la z,
+ *    non una scala finta. Passano davanti e dietro alla spina.
+ * 3. BOLLE — Points animati interamente nel vertex shader: la CPU non tocca
+ *    mai il buffer. Alcune salgono davanti al piano della spina, altre dietro.
+ *
+ * Niente luci nella scena: non c'è più niente di PBR da illuminare. Il colore
+ * sta nella texture, nello shader e nei gradienti CSS sotto al canvas.
  */
 WC.register('spine', function(ctx){
   var section = document.getElementById('cap03');
@@ -39,7 +46,9 @@ WC.register('spine', function(ctx){
   ];
 
   var CONFIG = {
-    vertebrae: 24,
+    spineSrc: 'assets/spine.webp',
+    spineAspect: 229 / 1200,   // dimensioni reali del ritaglio
+    spineH: 4.95,              // ~74% dell'altezza inquadrata a z = 8
     orbitX: 3.40,
     orbitZ: 2.90,
     cardW: 1.62,
@@ -47,14 +56,12 @@ WC.register('spine', function(ctx){
     // La lastra frontale scivola di lato mentre si accende: se restasse
     // centrata coprirebbe la colonna, che deve rimanere il punto focale.
     frontShift: 0.85,
-    turns: 1.75,          // giri d'orbita sull'intero scroll
-    idleSpin: 0.045,      // rad/s dell'orbita senza scroll
-    spineSpin: 0.075,
-    scrollSpin: 0.85,
+    turns: 1.75,               // giri d'orbita sull'intero scroll
+    idleSpin: 0.045,           // rad/s dell'orbita senza scroll
     bubbles: 280,
-    camZ: 8.0,
-    camZEnd: 6.8,
-    parallax: 0.34
+    camZ: 8.0,   camZEnd: 6.8, // la camera si muove pochissimo, e mai in modo
+    camY: -0.15, camYEnd: 0.20,// da far sembrare che la spina ruoti
+    camX: 0,     camXEnd: 0.15
   };
 
   var reduced = !ctx.motionOk || typeof THREE === 'undefined';
@@ -75,212 +82,110 @@ WC.register('spine', function(ctx){
   renderer.setClearColor(0x000000, 0);
   var scene  = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, CONFIG.camZ);
+  camera.position.set(CONFIG.camX, CONFIG.camY, CONFIG.camZ);
 
-  // Uniform condivisi da spina interna e guscio: un oggetto solo, aggiornato
-  // una volta per frame.
-  var uTime   = { value: 0 };
-  var uScroll = { value: 0 };
+  var uTime = { value: 0 };
 
   var rig = new THREE.Group();
   scene.add(rig);
 
   // --------------------------------------------------------------- spina
-  // Torsione delle vertebre: la stessa funzione nei due materiali, iniettata
-  // nel MeshPhysicalMaterial con onBeforeCompile e concatenata a mano nel
-  // guscio. Vive nel vertex shader perché è per-vertebra, non per-oggetto.
-  var WOBBLE = [
-    'attribute float aSeg;',
-    'uniform float uTime; uniform float uScroll;',
-    'vec3 wcWobble(vec3 p, float s){',
-    '  float ang = sin(uTime * 0.55 + s * 5.5) * 0.05 + uScroll * (s - 0.5) * 0.42;',
-    '  float c = cos(ang), n = sin(ang);',
-    '  p.xz = mat2(c, -n, n, c) * p.xz;',
-    '  p.x += sin(uTime * 0.40 + s * 4.0) * 0.05;',
-    '  p.z += cos(uTime * 0.33 + s * 3.2) * 0.04;',
-    '  return p;',
-    '}'
-  ].join('\n');
-
-  // Le vertebre non sono una pila di primitive uguali: cervicali piccole in
-  // alto, lombari larghe in basso, ognuna ruotata di suo.
-  function buildVertebraParts(){
-    var parts = [];
-    var N = CONFIG.vertebrae;
-    var q = new THREE.Matrix4();   // scratch: makeX() muta e ritorna sé stessa,
-                                   // e la multiply avviene subito dopo
-
-    // profilo a clessidra del corpo vertebrale: i fianchi rientrano
-    var profile = [
-      new THREE.Vector2(0.001, -0.185),
-      new THREE.Vector2(0.300, -0.180),
-      new THREE.Vector2(0.232, -0.115),
-      new THREE.Vector2(0.198,  0.000),
-      new THREE.Vector2(0.232,  0.115),
-      new THREE.Vector2(0.300,  0.180),
-      new THREE.Vector2(0.001,  0.186)
-    ];
-    var body  = new THREE.LatheGeometry(profile, mobile ? 14 : 20).toNonIndexed();
-    var arch  = new THREE.TorusGeometry(0.20, 0.040, 6, mobile ? 12 : 18, Math.PI * 1.25).toNonIndexed();
-    var spike = new THREE.ConeGeometry(0.062, 0.26, 6).toNonIndexed();
-    var wing  = new THREE.ConeGeometry(0.050, 0.26, 5).toNonIndexed();
-
-    // L'altezza totale è un vincolo, non un risultato: 24 vertebre a passo
-    // libero fanno una colonna lunga il doppio del viewport e si vedono solo
-    // le dieci centrali. Il passo si ricava dalla scala della vertebra, così
-    // le cervicali stanno strette e le lombari respirano, ma il totale resta
-    // intorno alle 5.3 unità — cioè ~70% dell'altezza inquadrata.
-    var y = 2.62;
-    for (var i = 0; i < N; i++) {
-      var t = i / (N - 1);                       // 0 = cervicale, 1 = lombare
-      var s = 0.42 + t * t * 0.42;               // le lombari crescono più in fretta
-      var step = 0.115 + 0.185 * s;
-      var tilt = Math.sin(t * Math.PI * 1.6) * 0.10;   // curva sagittale
-      var seg = t;
-      var spin = (i * 0.37) % (Math.PI * 2);
-
-      var base = new THREE.Matrix4()
-        .makeTranslation(Math.sin(t * Math.PI) * 0.10, y, tilt * 0.9)
-        .multiply(q.makeRotationY(spin * 0.55 + Math.sin(i * 2.3) * 0.12))
-        .multiply(q.makeRotationX(tilt * 0.35))
-        .multiply(q.makeScale(s, s, s));
-
-      parts.push({ geo: body, seg: seg, mat: base.clone() });
-
-      parts.push({ geo: arch, seg: seg, mat: base.clone()
-        .multiply(q.makeTranslation(0, 0, -0.30))
-        .multiply(q.makeRotationX(Math.PI / 2)) });
-
-      parts.push({ geo: spike, seg: seg, mat: base.clone()
-        .multiply(q.makeTranslation(0, -0.05, -0.46))
-        .multiply(q.makeRotationX(-Math.PI / 2 - 0.45)) });
-
-      parts.push({ geo: wing, seg: seg, mat: base.clone()
-        .multiply(q.makeTranslation(-0.34, 0, -0.16))
-        .multiply(q.makeRotationZ(Math.PI / 2 + 0.35)) });
-
-      parts.push({ geo: wing, seg: seg, mat: base.clone()
-        .multiply(q.makeTranslation(0.34, 0, -0.16))
-        .multiply(q.makeRotationZ(-Math.PI / 2 - 0.35)) });
-
-      y -= step;
-    }
-
-    var merged = mergeParts(parts);
-    body.dispose(); arch.dispose(); spike.dispose(); wing.dispose();
-    return merged;
-  }
-
-  // Fusione a mano di geometrie NON indicizzate: posizione trasformata dalla
-  // matrice, normale dalla sua normal matrix, più l'indice di vertebra.
-  function mergeParts(parts){
-    var total = 0, i, j;
-    for (i = 0; i < parts.length; i++) total += parts[i].geo.attributes.position.count;
-
-    var pos = new Float32Array(total * 3),
-        nor = new Float32Array(total * 3),
-        seg = new Float32Array(total);
-    var v = new THREE.Vector3(), nm = new THREE.Matrix3(), off = 0;
-
-    for (i = 0; i < parts.length; i++) {
-      var g = parts[i].geo, mat = parts[i].mat;
-      var gp = g.attributes.position.array, gn = g.attributes.normal.array;
-      var n = g.attributes.position.count;
-      nm.getNormalMatrix(mat);
-      for (j = 0; j < n; j++) {
-        v.set(gp[j*3], gp[j*3+1], gp[j*3+2]).applyMatrix4(mat);
-        pos[(off+j)*3] = v.x; pos[(off+j)*3+1] = v.y; pos[(off+j)*3+2] = v.z;
-        v.set(gn[j*3], gn[j*3+1], gn[j*3+2]).applyMatrix3(nm).normalize();
-        nor[(off+j)*3] = v.x; nor[(off+j)*3+1] = v.y; nor[(off+j)*3+2] = v.z;
-        seg[off+j] = parts[i].seg;
-      }
-      off += n;
-    }
-
-    var out = new THREE.BufferGeometry();
-    out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    out.setAttribute('normal',   new THREE.BufferAttribute(nor, 3));
-    out.setAttribute('aSeg',     new THREE.BufferAttribute(seg, 1));
-    return out;
-  }
-
-  var spineGeo = buildVertebraParts();
-
-  // Colore quasi neutro e scuro apposta: il bianco pieno mangia le luci
-  // colorate e la colonna esce grigia. Così a tingerla sono viola, blu e
-  // fucsia, che è il punto.
-  var glassMat = new THREE.MeshPhysicalMaterial({
-    color: 0x7d92cc, roughness: 0.10, metalness: 0.18, clearcoat: 1.0,
-    clearcoatRoughness: 0.08, transparent: true, opacity: 0.42,
-    side: THREE.DoubleSide, depthWrite: true
-  });
-  glassMat.onBeforeCompile = function(shader){
-    shader.uniforms.uTime = uTime;
-    shader.uniforms.uScroll = uScroll;
-    shader.vertexShader = WOBBLE + '\n' + shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      '#include <begin_vertex>\n  transformed = wcWobble(transformed, aSeg);'
-    );
-  };
-
-  // Guscio Fresnel: il centro resta trasparente, i bordi catturano viola,
-  // blu e fucsia. È additivo, quindi non scrive profondità.
-  var shellMat = new THREE.ShaderMaterial({
+  var spineGeo = new THREE.PlaneGeometry(CONFIG.spineH * CONFIG.spineAspect, CONFIG.spineH, 1, 1);
+  var spineMat = new THREE.ShaderMaterial({
     uniforms: {
-      uTime: uTime, uScroll: uScroll,
-      uEdgeA: { value: G.hexToVec3('#B99CFF') },
-      uEdgeB: { value: G.hexToVec3('#7A8CFF') },
-      uEdgeC: { value: G.hexToVec3('#F0C6FF') },
-      uAppear: { value: 0 }
+      uMap:    { value: null },
+      uTime:   uTime,
+      uAppear: { value: 0 },
+      uTexel:  { value: new THREE.Vector2(1 / 229, 1 / 1200) },
+      uViolet: { value: G.hexToVec3('#7A20FF') },
+      uBlue:   { value: G.hexToVec3('#146BFF') },
+      uPink:   { value: G.hexToVec3('#FF2BD6') }
     },
     vertexShader: [
-      WOBBLE,
-      'varying vec3 vN; varying vec3 vV; varying float vY;',
+      'varying vec2 vUv;',
       'void main(){',
-      '  vec3 p = wcWobble(position, aSeg);',
-      '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
-      '  vN = normalize(normalMatrix * normal);',
-      '  vV = normalize(-mv.xyz);',
-      '  vY = aSeg;',
-      '  gl_Position = projectionMatrix * mv;',
+      '  vUv = uv;',
+      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
       '}'
     ].join('\n'),
     fragmentShader: [
-      'uniform vec3 uEdgeA; uniform vec3 uEdgeB; uniform vec3 uEdgeC;',
-      'uniform float uAppear; uniform float uTime;',
-      'varying vec3 vN; varying vec3 vV; varying float vY;',
+      'uniform sampler2D uMap; uniform float uTime; uniform float uAppear;',
+      'uniform vec2 uTexel; uniform vec3 uViolet; uniform vec3 uBlue; uniform vec3 uPink;',
+      'varying vec2 vUv;',
       'void main(){',
-      '  float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.6);',
-      '  vec3 col = mix(uEdgeB, uEdgeA, smoothstep(0.0, 0.6, vY));',
-      '  col = mix(col, uEdgeC, smoothstep(0.55, 1.0, vY) * 0.7);',
-      '  float breathe = 0.86 + sin(uTime * 0.5) * 0.14;',
-      '  gl_FragColor = vec4(col * f * 1.05 * breathe, f * 0.95 * uAppear);',
+      // 1. rifrazione: due onde sfasate, ampiezza sotto il mezzo pixel di
+      //    texture. Deve leggersi come vetro che respira.
+      //    Qui c'era il simplex noise di WC.glsl: due chiamate per fragment,
+      //    su un piano che copre mezzo schermo, costavano ~20 fps. Due seni
+      //    fanno la stessa cosa a questa ampiezza e costano niente.
+      '  vec2 uv = vUv;',
+      '  uv.x += sin(uv.y * 21.0 + uTime * 0.55) * 0.0016 + sin(uv.y * 6.5 - uTime * 0.31) * 0.0013;',
+      '  uv.y += sin(uv.x * 17.0 + uTime * 0.42) * 0.0011;',
+      '  vec4 tex = texture2D(uMap, uv);',
+      '  if (tex.a < 0.012) discard;',   // niente rettangolo, e la profondità
+                                         // la scrivono solo i pixel pieni
+      '  vec3 col = tex.rgb;',
+      '  float lum = dot(col, vec3(0.299, 0.587, 0.114));',
+      // 2. grading verso la palette del capitolo, senza sbiancare il cromo
+      '  col = mix(col, uViolet * (0.6 + lum * 1.5), 0.10);',
+      // 3. banda di luce che scende: gli highlight si spostano anche se la
+      //    spina è ferma, ed è metà dell'illusione di volume
+      '  float travel = fract(uv.y * 0.6 - uTime * 0.035);',
+      '  float band = smoothstep(0.22, 0.0, abs(travel - 0.5));',
+      '  col += mix(uBlue, uPink, uv.y) * band * lum * 0.55;',
+      // 4. Fresnel finto: il bordo della silhouette è dove l'alpha cambia
+      //    in fretta, e lì la luce si attacca come sul vetro
+      '  float ax = texture2D(uMap, uv + vec2(uTexel.x, 0.0)).a - texture2D(uMap, uv - vec2(uTexel.x, 0.0)).a;',
+      '  float ay = texture2D(uMap, uv + vec2(0.0, uTexel.y)).a - texture2D(uMap, uv - vec2(0.0, uTexel.y)).a;',
+      '  float edge = clamp(length(vec2(ax, ay)) * 2.2, 0.0, 1.0);',
+      '  float edgeMix = 0.5 + 0.5 * sin(uv.y * 7.0 + uTime * 0.35);',
+      '  col += mix(uBlue, uPink, edgeMix) * edge * 0.55;',
+      // 5. bloom finto a due tap in diagonale: allarga la luce di qualche
+      //    pixel senza montare un EffectComposer (su questa pagina girano
+      //    altri contesti WebGL). Due tap invece di quattro: la differenza
+      //    non si vede, il costo per fragment sì.
+      '  float g = texture2D(uMap, uv + vec2(0.009, 0.006)).a',
+      '          + texture2D(uMap, uv - vec2(0.009, 0.006)).a;',
+      '  g *= 0.5;',
+      '  col += uViolet * g * 0.22;',
+      '  float alpha = clamp(tex.a + g * 0.16, 0.0, 1.0) * uAppear;',
+      '  gl_FragColor = vec4(col, alpha);',
       '}'
     ].join('\n'),
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    transparent: true, depthWrite: true, depthTest: true, side: THREE.FrontSide
   });
 
-  var spineGroup = new THREE.Group();
-  var glassMesh = new THREE.Mesh(spineGeo, glassMat);
-  var shellMesh = new THREE.Mesh(spineGeo, shellMat);
-  shellMesh.scale.setScalar(1.015);
-  glassMesh.renderOrder = 0;
-  shellMesh.renderOrder = 1;
-  spineGroup.add(glassMesh);
-  spineGroup.add(shellMesh);
-  rig.add(spineGroup);
+  var spine = new THREE.Mesh(spineGeo, spineMat);
+  spine.visible = false;                 // finché la texture non c'è
+  spine.rotation.set(0, 0, 0);           // e resta così: è il vincolo del brief
+  spine.renderOrder = 1;
+  rig.add(spine);
 
-  // --------------------------------------------------------------- luci
-  var lightPurple = new THREE.PointLight(0x7a20ff, 24, 11);
-  lightPurple.position.set(0, -2.7, 1.5);
-  var lightBlue = new THREE.PointLight(0x245bff, 14, 10);
-  lightBlue.position.set(-3.3, 0.7, 2.3);
-  var lightPink = new THREE.PointLight(0xff2bd6, 14, 10);
-  lightPink.position.set(3.3, -0.5, 2.1);
-  var lightRim = new THREE.PointLight(0xbbd7ff, 3.5, 13);
-  lightRim.position.set(0, 2.3, -3.5);
-  var ambient = new THREE.AmbientLight(0x0e0e20, 0.35);
-  rig.add(lightPurple, lightBlue, lightPink, lightRim, ambient);
+  var spineTex = null, texState = 'idle';
+
+  function loadSpine(){
+    if (texState !== 'idle') return;
+    texState = 'loading';
+    new THREE.TextureLoader().load(CONFIG.spineSrc, function(tex){
+      // NPOT: senza queste quattro righe WebGL1 restituisce nero.
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.generateMipmaps = false;
+      spineTex = tex;
+      spineMat.uniforms.uMap.value = tex;
+      spine.visible = true;
+      texState = 'ready';
+    }, undefined, function(){
+      // Senza la spina la sezione non ha più un centro: meglio la versione
+      // statica, che almeno dice le stesse sei cose.
+      texState = 'failed';
+      console.error('[WC] spine texture non caricata: ' + CONFIG.spineSrc);
+      section.classList.remove('-live');
+      section.classList.add('-static');
+      stop();
+    });
+  }
 
   // --------------------------------------------------------------- card
   function wordTexture(word){
@@ -407,7 +312,9 @@ WC.register('spine', function(ctx){
 
   // -------------------------------------------------------------- bolle
   // Salgono da sotto la spina come in un fluido che non si vede. Tutto il
-  // moto è nel vertex shader: nessun buffer riscritto a runtime.
+  // moto è nel vertex shader: nessun buffer riscritto a runtime. Nascono su
+  // tutto il cerchio, quindi metà passano davanti al piano della spina e metà
+  // dietro: con la spina ferma, la profondità la raccontano loro.
   function makeBubbles(count){
     var pos = new Float32Array(count * 3),
         seed = new Float32Array(count * 3),
@@ -427,7 +334,7 @@ WC.register('spine', function(ctx){
       var rad = 0.35 + Math.pow(Math.random(), 0.65) * 2.5;
       pos[i*3]   = Math.cos(a) * rad;
       pos[i*3+1] = 0;
-      pos[i*3+2] = Math.sin(a) * rad * 0.8;
+      pos[i*3+2] = Math.sin(a) * rad * 0.9;
 
       var life = Math.random();
       seed[i*3]   = life;                               // fase nel ciclo
@@ -495,14 +402,11 @@ WC.register('spine', function(ctx){
   var bubbles = makeBubbles(mobile ? 130 : (wide > 1024 ? CONFIG.bubbles : 190));
   rig.add(bubbles.points);
 
-  var pointer = G.makePointer();
-
   // -------------------------------------------------------------- stato
-  var scrollTarget = 0, scroll = 0, orbitPhase = 0, spinPhase = 0, appear = 0;
+  var scrollTarget = 0, scroll = 0, orbitPhase = 0, appear = 0;
   var rect = { w: 1, h: 1 }, dpr = 1;
   var running = false, raf = 0, last = performance.now();
   var activeCard = -1;
-  var _v = new THREE.Vector3();
 
   // La spina sta a destra e la copy a sinistra. Su viewport strette la copy le
   // sta sopra, quindi la scena torna al centro.
@@ -522,10 +426,15 @@ WC.register('spine', function(ctx){
     camera.updateProjectionMatrix();
     rig.position.x = rigOffset();
     bubbles.mat.uniforms.uPx.value = rect.h * 0.9;
-    // La spina deve restare ~70% dell'altezza anche quando la finestra è bassa
-    // e larga: lì il campo verticale è quello che stringe.
+    // Adattamento alla finestra, non allo scroll: la spina non cambia mai
+    // scala mentre si scende.
+    // Su viewport strette la copy non sta più di fianco alla scena ma sopra,
+    // e col velo verticale copriva mezza colonna. La scena scende e rimpicci-
+    // olisce per andarle sotto: la spina resta intera e leggibile.
+    var narrow = window.innerWidth <= 900;
     var fit = Math.min(1, rect.h / 760);
-    rig.scale.setScalar(0.86 + fit * 0.14);
+    rig.position.y = narrow ? -0.85 : 0;
+    rig.scale.setScalar((0.86 + fit * 0.14) * (narrow ? 0.78 : 1));
   }
 
   function frame(){
@@ -538,28 +447,18 @@ WC.register('spine', function(ctx){
     appear = Math.min(1, appear + dt / 1.4);
 
     uTime.value = t;
-    uScroll.value = scroll;
-    shellMat.uniforms.uAppear.value = appear;
+    spineMat.uniforms.uAppear.value = appear;
     bubbles.mat.uniforms.uAppear.value = appear;
 
-    // camera: quasi ferma, un filo di parallasse e un avvicinamento sullo scroll
-    pointer.step(camera, dt, rig.position.x, 0, 0);
+    // Camera: si muove pochissimo e su una retta. Nessuna orbita, nessuna
+    // parallasse col mouse — su un piano fermo si leggerebbe come una
+    // rotazione della spina, che il brief vieta.
     camera.position.set(
-      pointer.ndc.x * CONFIG.parallax,
-      pointer.ndc.y * CONFIG.parallax * 0.6 - 0.3 + scroll * 0.6,
-      CONFIG.camZ - scroll * (CONFIG.camZ - CONFIG.camZEnd)
+      CONFIG.camX + scroll * (CONFIG.camXEnd - CONFIG.camX),
+      CONFIG.camY + scroll * (CONFIG.camYEnd - CONFIG.camY),
+      CONFIG.camZ + scroll * (CONFIG.camZEnd - CONFIG.camZ)
     );
-    camera.lookAt(rig.position.x, scroll * 0.25, 0);
-
-    // spina: rotazione lentissima, oscillazione appena percettibile
-    spinPhase += dt * (CONFIG.spineSpin + scroll * CONFIG.scrollSpin * 0.25);
-    spineGroup.rotation.y = spinPhase;
-    spineGroup.rotation.z = Math.sin(t * 0.22) * 0.035;
-
-    // luci che respirano
-    lightPurple.intensity = 24 + Math.sin(t * 0.5) * 2.8;
-    lightBlue.intensity   = 14 + Math.sin(t * 0.37 + 1.2) * 1.8;
-    lightPink.intensity   = 14 + Math.sin(t * 0.41 + 2.4) * 1.8;
+    camera.lookAt(rig.position.x, 0, 0);
 
     layoutCards(t, dt);
     renderer.render(scene, camera);
@@ -601,7 +500,13 @@ WC.register('spine', function(ctx){
     }
   }
 
-  function start(){ if (running || document.hidden) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
+  function start(){
+    if (running || document.hidden || texState === 'failed') return;
+    loadSpine();                       // la texture arriva alla prima entrata
+    running = true;                    // nella sezione, non al load della pagina
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
   function stop(){ if (!running) return; running = false; cancelAnimationFrame(raf); }
 
   section.classList.add('-live');
@@ -630,10 +535,9 @@ WC.register('spine', function(ctx){
     stPin.kill(); stLife.kill();
     window.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVis);
-    pointer.dispose();
     cards.forEach(function(c){ c.mat.dispose(); c.tex.dispose(); });
-    cardGeo.dispose(); spineGeo.dispose();
-    glassMat.dispose(); shellMat.dispose();
+    cardGeo.dispose(); spineGeo.dispose(); spineMat.dispose();
+    if (spineTex) spineTex.dispose();
     bubbles.geo.dispose(); bubbles.mat.dispose();
     renderer.dispose();
     section.classList.remove('-live');
