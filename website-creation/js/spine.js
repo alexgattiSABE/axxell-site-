@@ -27,19 +27,18 @@
  * un gradiente CSS: quello che sta fuori dal WebGL non è campionabile, e
  * l'interno della colonna uscirebbe nero.
  *
- * Il fluido del cursore vive in un altro contesto WebGL (js/fluid.js) e da
- * solo saprebbe solo dipingere sopra a tutto. Qui il suo canvas viene ripreso
- * come texture e disegnato su DUE piani, uno dietro e uno davanti alla spina,
- * con una maschera che decide di volta in volta quanta scia passa da che
- * parte: è così che la macchia gira intorno alla colonna invece di
- * schiacciarcisi sopra.
+ * La camera non si muove affatto. Il brief concedeva un avvicinamento minimo,
+ * ma su un piano fermo avvicinarsi È uno zoom: la colonna cambiava dimensione
+ * mentre si scendeva. A raccontare la discesa restano l'anello e la schiuma.
+ *
+ * Il fluido del cursore resta fuori da questa scena: è un canvas DOM sopra al
+ * nostro, in `mix-blend-mode: screen` (js/fluid.js + sections.css).
  */
 WC.register('spine', function(ctx){
   var section = document.getElementById('cap03');
   var pin     = document.getElementById('wcSpinePin');
   var canvas  = document.getElementById('wcSpineCanvas');
   var indexEl = document.getElementById('wcSpineIndex');
-  var fluidEl = document.getElementById('wcFluid');
   if (!section || !pin || !canvas) return;
 
   var G = WC.glsl;
@@ -67,10 +66,10 @@ WC.register('spine', function(ctx){
                                  // che avevi davanti all'inizio torna davanti
                                  // proprio quando la sezione lascia il posto
     idleSpin: 0.05,              // rad/s senza scroll
-    bubbleGroups: 8,
-    bubblesPerGroup: 19,
-    camZ: 8.0, camZEnd: 7.0,
-    camY: -0.10, camYEnd: 0.15,
+    bubbleGroups: 18,            // schiuma: gruppi fitti di bolle minuscole
+    bubblesPerGroup: 80,
+    camZ: 8.0,                   // fissa: nessun avvicinamento sullo scroll,
+    camY: -0.05,                 // che su un piano si leggerebbe come zoom
     rtScale: 0.55                // il render target della rifrazione è a metà
   };
 
@@ -91,6 +90,7 @@ WC.register('spine', function(ctx){
   var scene  = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
   camera.position.set(0, CONFIG.camY, CONFIG.camZ);
+  camera.lookAt(0, 0, 0);   // e non si tocca piu': vedi frame()
 
   var FOV_T = Math.tan((45 * Math.PI / 180) / 2);
   var VIS_H = 2 * FOV_T * CONFIG.camZ;              // 6.63 unità inquadrate
@@ -276,11 +276,13 @@ WC.register('spine', function(ctx){
   // frame, contando che la scena si disegna due volte.
   var BUBBLE_TINTS = ['#8A3FFC', '#C43CFF', '#FF4BCB', '#3C8DFF', '#6B5CFF',
                       '#FF2BD6', '#A64DFF', '#157BFF'];
-  var GROUPS = mobile ? 5 : CONFIG.bubbleGroups;
-  var PER    = mobile ? 11 : CONFIG.bubblesPerGroup;
+  var GROUPS = mobile ? 9 : CONFIG.bubbleGroups;
+  var PER    = mobile ? 40 : CONFIG.bubblesPerGroup;
   var BCOUNT = GROUPS * PER;
 
-  var bubbleGeo = new THREE.SphereGeometry(1, mobile ? 8 : 12, mobile ? 6 : 8);
+  // Poligoni al minimo: a queste dimensioni una bolla copre pochi pixel, e
+  // di sfere ce ne sono novecento — disegnate due volte per frame.
+  var bubbleGeo = new THREE.SphereGeometry(1, 6, 4);
   var bTint  = new Float32Array(BCOUNT * 3);
   var bAlpha = new Float32Array(BCOUNT);
   var bubbleData = [];
@@ -301,16 +303,16 @@ WC.register('spine', function(ctx){
       bAlpha[idx] = 0;
       bubbleData.push({
         gx: gx, gz: gz,
-        ox: (Math.random() - 0.5) * 0.42,      // il gruppo resta compatto
-        oz: (Math.random() - 0.5) * 0.42,
+        ox: (Math.random() - 0.5) * 0.22,      // il gruppo resta fitto
+        oz: (Math.random() - 0.5) * 0.22,
         life: (gLife + (Math.random() - 0.5) * 0.10 + 1) % 1,
         speed: 0.20 + Math.random() * 0.22,    // molto più veloci di prima
         drift: (Math.random() - 0.5) * 1.1,
         curve: 0.12 + Math.random() * 0.35,
         phase: Math.random() * Math.PI * 2,
-        size: Math.random() < 0.14 ? 0.075 + Math.random() * 0.045
-                                   : 0.022 + Math.random() * 0.038,
-        base: 0.45 + Math.random() * 0.5
+        size: Math.random() < 0.06 ? 0.030 + Math.random() * 0.022
+                                   : 0.006 + Math.random() * 0.013,
+        base: 0.55 + Math.random() * 0.45
       });
     }
   }
@@ -339,8 +341,8 @@ WC.register('spine', function(ctx){
       '  vec3 N = normalize(vN); vec3 V = normalize(vV);',
       '  float fres = pow(1.0 - max(dot(N, V), 0.0), 2.2);',
       '  vec2 suv = gl_FragCoord.xy / uRes;',
-      '  vec3 refr = texture2D(uScene, suv + N.xy * 0.03).rgb;',   // rifrazione
-      '  vec3 col = refr * 1.05 + vTint * fres * 1.7;',
+      '  vec3 refr = texture2D(uScene, suv + N.xy * 0.012).rgb;',  // rifrazione
+      '  vec3 col = refr * 1.05 + vTint * fres * 1.5 + vec3(0.35, 0.36, 0.5) * fres * 0.45;',
       '  vec3 L = normalize(vec3(-0.4, 0.8, 0.6));',
       '  col += vec3(0.9, 0.92, 1.0) * pow(max(dot(N, L), 0.0), 22.0) * 0.85;',
       '  gl_FragColor = vec4(col, clamp(fres * 1.15 + 0.08, 0.0, 1.0) * vA * uAppear);',
@@ -460,55 +462,13 @@ WC.register('spine', function(ctx){
     });
   }
 
-  // ------------------------------------------------------- fluido in 3D
-  // Il fluido gira in un altro contesto WebGL: le due texture non si possono
-  // condividere, ma il canvas sì — si carica come CanvasTexture una volta per
-  // frame. Poi lo si disegna su due piani, uno dietro e uno davanti alla
-  // spina, spartendosi la scia con una maschera morbida che si muove piano.
-  // Risultato: la macchia gira attorno alla colonna e la colonna la occlude
-  // dove deve, invece di stare tutta appiccicata sopra.
-  var fluidTex = null, fluidFront = null, fluidBack = null;
-
-  if (fluidEl) {
-    fluidTex = new THREE.CanvasTexture(fluidEl);
-    fluidTex.minFilter = THREE.LinearFilter;
-    fluidTex.magFilter = THREE.LinearFilter;
-    fluidTex.generateMipmaps = false;
-
-    var fluidFrag = [
-      'uniform sampler2D uFluid; uniform vec2 uRes; uniform float uTime;',
-      'uniform float uSide;',                   // +1 davanti, -1 dietro
-      'void main(){',
-      '  vec2 suv = gl_FragCoord.xy / uRes;',
-      '  vec4 f = texture2D(uFluid, suv);',
-      '  float a = max(f.r, max(f.g, f.b));',
-      '  if (a < 0.004) discard;',
-      // maschera lenta: decide quanta scia passa davanti e quanta dietro
-      '  float m = 0.5 + 0.5 * sin(suv.x * 5.0 + uTime * 0.31)',
-      '                * cos(suv.y * 4.0 - uTime * 0.23);',
-      '  float k = (uSide > 0.0 ? m : 1.0 - m) * 0.62;',   // additiva: a piena
-      '  gl_FragColor = vec4(f.rgb * k, a * k);',          // forza mangia la scena
-      '}'
-    ].join('\n');
-    var fluidVert = 'void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-
-    var mkFluid = function(side, z, order){
-      var m = new THREE.ShaderMaterial({
-        uniforms: { uFluid: { value: fluidTex }, uRes: uRes, uTime: uTime,
-                    uSide: { value: side } },
-        vertexShader: fluidVert, fragmentShader: fluidFrag,
-        transparent: true, depthWrite: false, depthTest: true,
-        blending: THREE.AdditiveBlending
-      });
-      var mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), m);
-      mesh.position.z = z;
-      mesh.renderOrder = order;
-      scene.add(mesh);
-      return mesh;
-    };
-    fluidBack  = mkFluid(-1, -2.6, 0);   // dietro alla spina: la spina lo copre
-    fluidFront = mkFluid( 1,  2.6, 4);   // davanti: passa sopra
-  }
+  // Il fluido del cursore NON entra in questa scena: vive nel suo canvas DOM
+  // sopra al nostro, in mix-blend-mode screen (js/fluid.js + sections.css).
+  // C'e' stata una versione che lo rileggeva come texture e lo spartiva su due
+  // piani, uno dietro e uno davanti alla colonna: funzionava, ma l'utente ha
+  // chiesto di tornare alla scia semplice sopra a tutto. Se serve rimetterla,
+  // sta nel commit 94f8f31 — e ricordarsi `preserveDrawingBuffer` sul
+  // contesto del fluido, senza il quale il frame riletto e' nero un giro su due.
 
   // -------------------------------------------------------------- stato
   var scrollTarget = 0, scroll = 0, orbitPhase = 0, appear = 0;
@@ -520,13 +480,6 @@ WC.register('spine', function(ctx){
   function orbitScale(){
     var w = window.innerWidth;
     return w > 1200 ? 1 : w > 900 ? 0.9 : w > 640 ? 0.78 : 0.64;
-  }
-
-  function fitPlane(mesh){
-    if (!mesh) return;
-    var dist = CONFIG.camZ - mesh.position.z;
-    var h = 2 * FOV_T * dist * 1.08;              // 8% di margine
-    mesh.scale.set(h * (rect.w / rect.h), h, 1);
   }
 
   function resize(){
@@ -541,7 +494,6 @@ WC.register('spine', function(ctx){
     rt.setSize(Math.max(2, Math.round(rect.w * dpr * CONFIG.rtScale)),
                Math.max(2, Math.round(rect.h * dpr * CONFIG.rtScale)));
     sizeSpine();
-    fitPlane(fluidBack); fitPlane(fluidFront);
     orbit.scale.setScalar(orbitScale());
     // Su viewport strette la copy sta sopra la scena: l'anello scende per
     // andarle sotto. La spina no — quella resta dov'è, centrata.
@@ -559,23 +511,16 @@ WC.register('spine', function(ctx){
     uTime.value = t;
     uAppear.value = appear;
 
-    // Camera quasi frontale: solo avvicinamento e un filo di quota.
-    camera.position.set(
-      0,
-      CONFIG.camY + scroll * (CONFIG.camYEnd - CONFIG.camY),
-      CONFIG.camZ + scroll * (CONFIG.camZEnd - CONFIG.camZ)
-    );
-    camera.lookAt(0, 0, 0);
-
+    // La camera NON si muove. Il brief permetteva un avvicinamento minimo
+    // (z 8 -> 7), ma su un piano fermo l'avvicinamento È uno zoom: la spina
+    // cambiava dimensione mentre si scendeva, ed è esattamente quello che non
+    // deve fare. A raccontare la discesa restano l'anello e le bolle.
     layoutCards(t, dt);
     stepBubbles(dt);
-    // Il canvas del fluido è cambiato dall'ultimo frame: va ricaricato.
-    if (fluidTex && fluidEl && fluidEl.width > 0) fluidTex.needsUpdate = true;
 
     // Passata 1: la scena senza la spina e senza quello che le sta davanti.
     // È quello che il vetro rifrange.
     spine.visible = false;
-    if (fluidFront) fluidFront.visible = false;
     var i;
     for (i = 0; i < cards.length; i++) {
       var front = cards[i].mesh.position.z >= 0;
@@ -588,7 +533,6 @@ WC.register('spine', function(ctx){
 
     // Passata 2: tutto, con la spina che campiona il render target.
     if (texState === 'ready') spine.visible = true;
-    if (fluidFront) fluidFront.visible = true;
     for (i = 0; i < cards.length; i++) {
       cards[i].mesh.visible = true;
       cards[i].label.visible = true;
@@ -650,7 +594,7 @@ WC.register('spine', function(ctx){
       var b = bubbleData[i];
       b.life += dt * b.speed;
       if (b.life > 1) b.life -= 1;
-      var spread = 0.5 + b.life * 1.15;                 // più su, più larghi
+      var spread = 0.5 + b.life * 0.75;                 // più su, più larghi
       var x = (b.gx + b.ox) * spread + Math.sin(b.life * 7.0 + b.phase) * b.curve
               + b.drift * b.life;
       var y = -3.1 + b.life * 6.4;
@@ -702,9 +646,6 @@ WC.register('spine', function(ctx){
     bubbleGeo.dispose(); bubbleMat.dispose();
     spineGeo.dispose(); spineMat.dispose();
     bg.geometry.dispose(); bgMat.dispose();
-    if (fluidBack) { fluidBack.geometry.dispose(); fluidBack.material.dispose(); }
-    if (fluidFront) { fluidFront.geometry.dispose(); fluidFront.material.dispose(); }
-    if (fluidTex) fluidTex.dispose();
     if (spineTex) spineTex.dispose();
     rt.dispose();
     renderer.dispose();

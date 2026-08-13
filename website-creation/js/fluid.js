@@ -50,12 +50,7 @@ WC.register('fluid', function(ctx){
 
   // ------------------------------------------------------------- contesto
   var params = { alpha: true, depth: false, stencil: false, antialias: false,
-                 // Il canvas non si vede: lo rilegge js/spine.js come texture
-                 // per portare la scia dentro la scena 3D. Senza
-                 // preserveDrawingBuffer il buffer può già essere stato
-                 // svuotato quando l'altro contesto va a caricarlo, e si
-                 // ottiene un frame nero sì e uno no.
-                 preserveDrawingBuffer: true };
+                 preserveDrawingBuffer: false };
   var gl = canvas.getContext('webgl2', params);
   var isWebGL2 = !!gl;
   if (!isWebGL2) gl = canvas.getContext('webgl', params) || canvas.getContext('experimental-webgl', params);

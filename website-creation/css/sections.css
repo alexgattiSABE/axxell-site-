@@ -95,13 +95,12 @@ body.wc-locked{overflow:hidden;}
    è il cursore della colonna. In `screen` non può scurire: dove il capitolo è
    nero non fa nulla, e la scia sparisce da sé in mezzo secondo. Sta sotto la
    copy (z-index 2, più avanti nel markup) perché il testo non va sporcato. */
-/* Il canvas del fluido NON si vede: e' solo la sorgente. La scia la disegna
-   la scena 3D (js/spine.js la rilegge come texture e la mette su due piani,
-   uno dietro e uno davanti alla colonna). Resta pero' in pagina, con la sua
-   geometria: e' da li' che si ricavano le coordinate del puntatore, e un
-   canvas display:none non ha rettangolo. */
+/* Lo splash di fluido è confinato a questo capitolo: non è un fondo di pagina,
+   è il cursore della colonna. In `screen` non può scurire: dove il capitolo è
+   nero non fa nulla, e la scia sparisce da sé in mezzo secondo. Sta sotto la
+   copy (z-index 2, più avanti nel markup) perché il testo non va sporcato. */
 .wc-fluid{position:absolute;inset:0;width:100%;height:100%;z-index:2;
-  pointer-events:none;opacity:0;}
+  pointer-events:none;mix-blend-mode:screen;opacity:.9;}
 @media (prefers-reduced-motion:reduce){.wc-fluid{display:none;}}
 /* La copy sta a sinistra sopra la scena: senza velo il lead cade sotto il
    contrasto leggibile appena una lastra accesa gli passa dietro. */
