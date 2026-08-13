@@ -157,11 +157,13 @@ vincolanti per chiunque tocchi queste sezioni:
 
 ### Il canvas resta trasparente, il fondo è CSS
 
-Non è solo una scelta di costo. Nel cap. 03 il colore ambientale — le tre
-sorgenti radiali che fanno nascere il viola dal basso — è un gradiente CSS
-sotto al canvas, e sopra al canvas passa il fluido del cursore in
-`mix-blend-mode: screen`. Con un fondo opaco in WebGL il fluido dipingerebbe
-su un rettangolo nero e la stratificazione non esisterebbe.
+Vale per il cap. 01 e il cap. 06. **Il cap. 03 è l'eccezione, ed è voluta:** lì
+il fondo (nero + bagliore viola dal basso) è un piano dentro la scena, non un
+gradiente CSS. Il motivo è la rifrazione — la spina di vetro campiona quello
+che ha dietro, e quello che sta fuori dal WebGL non è campionabile: con il
+fondo in CSS l'interno della colonna usciva nero. Il fluido del cursore
+continua a passare sopra in `mix-blend-mode: screen`, perché è un canvas DOM
+a parte, sopra a questo.
 
 ### Asset di terze parti nel cap. 05
 
@@ -197,16 +199,43 @@ procedurale a 24 vertebre esisteva ed è stata scartata da lui.
    la maschera con due passate morfologiche (i corpi vertebrali scuri
    facevano buchi) e si ritaglia sul bbox. Se un giorno si rifà l'asset,
    questa è la ricetta — non ritagliare a mano.
-3. **La spina è ferma.** Rotazione zero sui tre assi, nessuna rotazione idle
-   né da scroll, nessuna scala mentre si scende. Il volume lo raccontano
-   quattro effetti nello shader (rifrazione UV, bordo dal gradiente
-   dell'alpha, banda di luce che scende, bagliore a due tap) più le bolle che
-   le passano davanti e dietro. È una scelta del brief, non una scorciatoia.
-4. **Costo per fragment.** La prima versione usava il simplex noise di
-   `WC.glsl` per la rifrazione: due chiamate per pixel su un piano che copre
-   mezzo schermo facevano scendere la sezione da 61 a 38 fps. Sostituito con
-   due seni sfasati — a quest'ampiezza è indistinguibile. Se qualcuno rimette
-   il noise lì dentro, ricontrolli gli fps.
+3. **La spina è ferma e centrata.** Rotazione zero sui tre assi, nessuna
+   traslazione, nessuna scala mentre si scende, nessun galleggiamento. A
+   muoversi sono l'anello delle card, le bolle e una camera che fa pochissimo.
+   È il concetto del brief — «fake descent»: sembra di scendere dentro una
+   struttura enorme, ma il centro non si sposta di un pixel.
+4. **È più lunga della sezione.** Il piano è alto 1.42 volte l'inquadratura
+   (1.18 su viewport strette): cima e fondo restano fuori dal viewport a
+   qualunque altezza di finestra, così la colonna sembra continuare oltre la
+   pagina. Non è un ritaglio: l'altezza si ricava dal campo visivo, quindi non
+   va toccata a mano quando si cambia la fov o la distanza della camera.
+5. **È vetro vero, non un PNG.** La scena si disegna due volte per frame: la
+   prima passata va in un render target a metà risoluzione SENZA la spina e
+   senza le card che le stanno davanti; la seconda disegna tutto, e lo shader
+   della spina campiona quel render target spostando le UV lungo la normale
+   ricavata dal gradiente della silhouette. Da lì vengono rifrazione,
+   aberrazione cromatica (i tre canali campionati a offset diversi) e
+   trasmissione colorata. I riflessi non sono inventati: sono quelli
+   dell'immagine di riferimento, pesati sulla luminanza.
+   ⚠️ Il costo è una seconda passata di scena. Se qualcuno aggiunge oggetti
+   pesanti a questa sezione, li paga due volte.
+6. **Materiali opposti, di proposito.** Spina: trasparente, rifrattiva,
+   riflettente. Card: scure, opache, riflettenti — attraverso non si guarda.
+   È il contrasto che rende leggibile la composizione, ed è esplicito nel
+   brief.
+7. **Le bolle sono sfere, non particelle.** Il brief vieta i point sprite: le
+   bolle hanno centro trasparente che lascia passare la scena rifratta, bordo
+   di Fresnel e un riflesso stretto. Sono poche (34 desktop, 18 mobile) perché
+   la composizione deve restare vuota.
+8. **Le sei card stanno su UN anello inclinato.** Le quote diverse escono
+   dall'inclinazione (`orbitTilt`), non da offset verticali messi a mano: la
+   scala a gradini è la proiezione di un cerchio storto, non una spirale.
+   Chi rimette gli offset a mano rompe la lettura.
+9. **Costo per fragment.** Una versione usava il simplex noise di `WC.glsl`
+   per la distorsione: due chiamate per pixel su un piano che copre mezzo
+   schermo facevano scendere la sezione da 61 a 38 fps. Sostituito con due
+   seni sfasati — a quest'ampiezza è indistinguibile. Se qualcuno rimette il
+   noise lì dentro, ricontrolli gli fps.
 
 Se la texture non carica la sezione ricade su `-static`: senza la spina non
 avrebbe più un centro.
