@@ -76,52 +76,67 @@ body.wc-locked{overflow:hidden;}
   font-weight:500;letter-spacing:-.015em;max-width:22ch;}
 .wc-manifesto-text .wi{color:var(--dim);transition:none;}
 
-/* ---- CAP 03 — DOPPIA ELICA WEBGL ---- */
-.wc-dna{padding:0;height:320svh;}
-.wc-dna-pin{height:100svh;position:relative;overflow:hidden;
+/* ---- CAP 03 — COLONNA DI VETRO IN ORBITA ---- */
+.wc-spine{padding:0;height:520svh;}
+.wc-spine-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;align-items:center;padding:0 clamp(1.5rem,5vw,4rem);}
-/* Il fondo del pass finale della scene sorgente (gradiente + fiamme d'angolo)
-   vive qui, in CSS: così il canvas resta trasparente e metà orbita delle
-   parole può passargli dietro. */
-.wc-dna-pin::before{content:'';position:absolute;inset:0;z-index:0;
+/* Il viola nasce dal basso e la parte alta resta quasi nera: sono quattro
+   sorgenti radiali molto sfumate, non un fondo viola. Il canvas sopra è
+   trasparente, quindi il colore ambientale è tutto qui. */
+.wc-spine-pin::before{content:'';position:absolute;inset:0;z-index:0;
   background:
-    radial-gradient(70% 55% at 72% 45%, rgba(0,212,255,.10), transparent 70%),
-    radial-gradient(60% 60% at 20% 85%, rgba(0,232,162,.07), transparent 70%),
-    var(--bg);}
-#wcDnaCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;}
-.wc-dna-layer{position:absolute;inset:0;pointer-events:none;}
-.wc-dna-layer.-back{z-index:1;}
-.wc-dna-layer.-front{z-index:3;}
-.wc-dna-word{position:absolute;top:0;left:0;white-space:nowrap;
-  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;
-  color:var(--white);will-change:transform,opacity;}
-.wc-dna-layer.-back .wc-dna-word{color:var(--muted);filter:blur(1.5px);}
-.wc-dna-copy{position:relative;z-index:4;max-width:40ch;
+    radial-gradient(62% 46% at 50% 108%, rgba(110,20,255,.20), transparent 72%),
+    radial-gradient(56% 40% at 10% 102%, rgba(40,40,255,.12), transparent 74%),
+    radial-gradient(56% 42% at 90% 104%, rgba(255,30,210,.10), transparent 72%),
+    radial-gradient(70% 62% at 68% 52%, rgba(58,12,120,.13), transparent 70%),
+    #020208;}
+#wcSpineCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* Lo splash di fluido è confinato a questo capitolo: non è un fondo di pagina,
+   è il cursore della colonna. In `screen` non può scurire: dove il capitolo è
+   nero non fa nulla, e la scia sparisce da sé in mezzo secondo. Sta sotto la
+   copy (z-index 2, più avanti nel markup) perché il testo non va sporcato. */
+.wc-fluid{position:absolute;inset:0;width:100%;height:100%;z-index:2;
+  pointer-events:none;mix-blend-mode:screen;opacity:.9;}
+@media (prefers-reduced-motion:reduce){.wc-fluid{display:none;}}
+/* La copy sta a sinistra sopra la scena: senza velo il lead cade sotto il
+   contrasto leggibile appena una lastra accesa gli passa dietro. */
+.wc-spine-pin::after{content:'';position:absolute;inset:0;z-index:1;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(2,2,8,.88),rgba(2,2,8,.46) 36%,transparent 62%);}
+.wc-spine-copy{position:relative;z-index:2;max-width:38ch;
   display:flex;flex-direction:column;gap:1.2rem;}
+.wc-spine .eyebrow{color:var(--iris);}
+.wc-spine-list{list-style:none;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;
+  margin-top:.4rem;font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim);}
+.wc-spine-index{position:absolute;right:clamp(1.5rem,5vw,4rem);bottom:2.4rem;
+  z-index:2;font-family:var(--mono);font-size:.7rem;letter-spacing:.22em;
+  color:var(--iris);opacity:.6;}
+/* Con la scena viva le sei parole sono sulle lastre, che sono pixel in un
+   canvas: nel DOM restano solo per chi non le può vedere. */
+.wc-spine.-live .wc-spine-list{position:absolute;width:1px;height:1px;margin:-1px;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.wc-spine:not(.-live) .wc-spine-index{display:none;}
 
-/* Senza WebGL la sezione smette di essere alta 320svh: non c'è nulla da
-   scorrere, e lasciarla alta darebbe tre schermate vuote. */
-.wc-dna.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
-/* Le parole stanno prima della copy nel markup perché lì sono posizionate in
-   assoluto e l'ordine non conta. Rimesse nel flusso conta eccome: senza
-   questo `order` la fila di etichette precede il titolo del capitolo. */
-.wc-dna.-static .wc-dna-pin{height:auto;padding:0;overflow:visible;
-  display:flex;flex-direction:column;align-items:stretch;}
-.wc-dna.-static .wc-dna-copy{order:1;}
-.wc-dna.-static .wc-dna-orbit{order:2;}
-.wc-dna.-static #wcDnaCanvas{display:none;}
+/* Senza WebGL la sezione smette di essere alta 520svh: non c'è nulla da
+   scorrere, e lasciarla alta darebbe quattro schermate vuote. */
+.wc-spine.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-spine.-static .wc-spine-pin{height:auto;padding:0;overflow:visible;}
+.wc-spine.-static #wcSpineCanvas{display:none;}
+/* Senza scena i due fondi non velano più niente: restano solo come rettangolo
+   visibile, perché il pin non è più alto quanto lo schermo. */
+.wc-spine.-static .wc-spine-pin::after,
+.wc-spine.-static .wc-spine-pin::before{display:none;}
 /* Senza orbita la frase che la descrive non è più vera. */
 .-static .wc-only-motion{display:none;}
-.wc-dna-orbit.-static{position:static;display:flex;flex-wrap:wrap;gap:.8rem 1.6rem;
-  margin-top:2.5rem;}
-.wc-dna-orbit.-static .wc-dna-layer{position:static;display:contents;}
-.wc-dna-orbit.-static .wc-dna-layer.-back{display:none;}
-.wc-dna-orbit.-static .wc-dna-word{position:static;transform:none;opacity:1;
-  color:var(--muted);}
 
 @media (max-width:900px){
-  .wc-dna-copy{max-width:none;}
-  .wc-dna-word{font-size:.62rem;letter-spacing:.16em;}
+  /* La copy non sta più di fianco alla scena ma sopra: il velo diventa
+     verticale, altrimenti il testo finisce sulla parte scoperta. */
+  .wc-spine-copy{max-width:none;}
+  .wc-spine-pin{align-items:flex-start;padding-top:calc(var(--nav-h) + 2rem);}
+  .wc-spine-pin::after{background:linear-gradient(180deg,rgba(2,2,8,.92) 0 34%,rgba(2,2,8,.42) 58%,rgba(2,2,8,.72));}
+  .wc-spine-list{font-size:.62rem;letter-spacing:.14em;}
 }
 
 /* ---- CAP 04 — CAROSELLO ---- */

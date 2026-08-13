@@ -17,8 +17,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260812b">
-<link rel="stylesheet" href="css/sections.css?v=20260812b">
+<link rel="stylesheet" href="css/base.css?v=20260813a">
+<link rel="stylesheet" href="css/sections.css?v=20260813a">
 </head>
 <body>
 
@@ -73,15 +73,30 @@
     <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
   </section>
 
-  <section class="wc-dna" id="cap03" data-cursor="orbit">
-    <div class="wc-dna-pin" id="wcDnaPin">
-      <div class="wc-dna-orbit" id="wcDnaOrbit" aria-hidden="true"></div>
-      <canvas id="wcDnaCanvas"></canvas>
-      <div class="wc-dna-copy">
+  <section class="wc-spine" id="cap03" data-cursor="orbit">
+    <div class="wc-spine-pin" id="wcSpinePin">
+      <canvas id="wcSpineCanvas"></canvas>
+      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto in cui
+           il cursore lo accende. Sta dopo la scena 3D e prima della copy, così
+           passa sopra la colonna e sotto il testo. -->
+      <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
+      <div class="wc-spine-copy">
         <p class="eyebrow">// 03 — Tridimensionale</p>
         <h2>Profondità vera,<br>non un'ombra finta.</h2>
-        <p class="lead">Geometria in WebGL guidata dallo scroll. Nessun video, nessuna GIF: il fotogramma lo calcola il browser mentre scendi<span class="wc-only-motion">, e le parole gli girano intorno passandogli davanti e dietro</span>.</p>
+        <p class="lead">Una colonna di vetro sospesa in un fluido che non si vede: le bolle salgono, sei lastre le orbitano intorno<span class="wc-only-motion">, e lo scroll decide quale ti arriva davanti</span>. Nessun video e nessuna GIF: il fotogramma lo calcola il browser mentre scendi.</p>
+        <!-- Le sei voci sono anche il testo delle lastre. Con la scena viva
+             restano nel DOM ma solo per gli screen reader: dentro il canvas
+             sono pixel. Senza WebGL tornano visibili e sono la sezione. -->
+        <ul class="wc-spine-list">
+          <li>Tipografia</li>
+          <li>Motion</li>
+          <li>Interazione</li>
+          <li>Scroll</li>
+          <li>Performance</li>
+          <li>Shader</li>
+        </ul>
       </div>
+      <p class="wc-spine-index" id="wcSpineIndex" aria-hidden="true">01 / 06</p>
     </div>
   </section>
 
@@ -183,18 +198,19 @@
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260812b"></script>
-<script src="js/glsl.js?v=20260812b"></script>
-<script src="js/cursor.js?v=20260812b"></script>
-<script src="js/loader.js?v=20260812b"></script>
-<script src="js/tunnel.js?v=20260812b"></script>
-<script src="js/manifesto.js?v=20260812b"></script>
-<script src="js/dna.js?v=20260812b"></script>
-<script src="js/carousel.js?v=20260812b"></script>
-<script src="js/robot.js?v=20260812b"></script>
-<script src="js/particles.js?v=20260812b"></script>
-<script src="js/horizontal.js?v=20260812b"></script>
+<script src="js/core.js?v=20260813a"></script>
+<script src="js/glsl.js?v=20260813a"></script>
+<script src="js/cursor.js?v=20260813a"></script>
+<script src="js/fluid.js?v=20260813a"></script>
+<script src="js/loader.js?v=20260813a"></script>
+<script src="js/tunnel.js?v=20260813a"></script>
+<script src="js/manifesto.js?v=20260813a"></script>
+<script src="js/spine.js?v=20260813a"></script>
+<script src="js/carousel.js?v=20260813a"></script>
+<script src="js/robot.js?v=20260813a"></script>
+<script src="js/particles.js?v=20260813a"></script>
+<script src="js/horizontal.js?v=20260813a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
-<script src="js/form.js?v=20260812b"></script>
+<script src="js/form.js?v=20260813a"></script>
 </body>
 </html>

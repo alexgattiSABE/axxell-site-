@@ -3,6 +3,8 @@
   --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
   --white:#f0f0f6;--muted:rgba(240,240,246,.72);--dim:rgba(240,240,246,.38);
   --cyan:#00d4ff;--green:#00e8a2;
+  /* Palette del cap. 03 (colonna di vetro) e del cursore fluido. */
+  --violet:#7a20ff;--iris:#8c7cff;--fuchsia:#ff2bd6;
   --font:'Space Grotesk',sans-serif;--mono:'DM Mono',monospace;
   --nav-h:72px;
 }
@@ -44,10 +46,10 @@ body.cur-read .cursor{width:2px;height:26px;border-radius:1px;
   background:rgba(240,240,246,.55);}
 body.cur-read .cursor-ring{opacity:0;}
 
-/* --- 03 orbit: quadrato verde in rotazione --- */
+/* --- 03 orbit: rombo iris in rotazione, sulla palette della colonna --- */
 body.cur-orbit .cursor{opacity:0;}
 body.cur-orbit .cursor-ring{width:42px;height:42px;border-radius:2px;
-  border-color:var(--green);rotate:45deg;}
+  border-color:var(--iris);rotate:45deg;}
 
 /* --- 04 grab: disco pieno con etichetta --- */
 body.cur-grab .cursor{opacity:0;}
@@ -84,6 +86,7 @@ body.cur-caret .cursor-ring{opacity:0;}
   .cursor-trail{display:none;}
 }
 @media (pointer:coarse){.cursor,.cursor-ring,.cursor-trail{display:none;}}
+
 
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--nav-h);

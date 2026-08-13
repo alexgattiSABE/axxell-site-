@@ -132,8 +132,15 @@ Tutte e tre decise dall'utente, che ha chiesto esplicitamente questi effetti.
 
 Le regole di composizione dicono «una scena sopra la piega, al massimo» e
 «più di ~2 scene su una pagina è quasi sempre sbagliato». Qui ce ne sono
-quattro: il tunnel (cap. 01), la doppia elica (cap. 03), la scena Spline
-(cap. 05) e la sfera→galassia (cap. 06).
+cinque: il tunnel (cap. 01), la colonna di vetro (cap. 03), il fluido del
+cursore (sempre nel cap. 03, contesto suo), la scena Spline (cap. 05) e la
+sfera→galassia (cap. 06).
+
+> Aggiornata il 2026-08-13: la doppia elica del cap. 03 è stata sostituita
+> dalla colonna di vetro con le sei lastre in orbita, e nello stesso capitolo
+> è entrato il quinto contesto, il fluido. Non c'è mai più di un capitolo
+> acceso alla volta, ma i due del cap. 03 girano insieme: è l'unico punto
+> della pagina che paga due simulazioni contemporanee.
 
 **Perché si deroga:** la pagina *è* la vetrina di questa capacità; mostrarla
 una volta sola direbbe meno. Il costo è contenuto in tre modi, e sono
@@ -150,11 +157,11 @@ vincolanti per chiunque tocchi queste sezioni:
 
 ### Il canvas resta trasparente, il fondo è CSS
 
-Non è solo una scelta di costo. Nel cap. 03 le parole in orbita devono
-passare **dietro** all'elica: il DOM non si interlaccia con un canvas, quindi
-ogni parola vive in due strati — uno sotto e uno sopra il canvas — che si
-scambiano l'opacità sulla silhouette. Con un fondo opaco in WebGL non
-funzionerebbe.
+Non è solo una scelta di costo. Nel cap. 03 il colore ambientale — le tre
+sorgenti radiali che fanno nascere il viola dal basso — è un gradiente CSS
+sotto al canvas, e sopra al canvas passa il fluido del cursore in
+`mix-blend-mode: screen`. Con un fondo opaco in WebGL il fluido dipingerebbe
+su un rettangolo nero e la stratificazione non esisterebbe.
 
 ### Asset di terze parti nel cap. 05
 
@@ -171,6 +178,32 @@ viewport, quindi sopra la piega la pagina non paga un byte.
 piano gratuito e nasconderla via CSS violerebbe i termini di Spline. Le due
 strade per toglierlo sono un piano Spline a pagamento, oppure rifare la scena
 e ospitarla in proprio.
+
+### Il cursore fluido del cap. 03 (sessione 2026-08-13)
+
+Simulazione di fluido (Navier-Stokes, porting della WebGL Fluid Simulation di
+Pavel Dobryakov, MIT) agganciata al puntatore. Chiesta dall'utente, con tre
+vincoli suoi: sempre attiva senza premere niente, niente giallo/arancione/
+verde, vorticità e raggio bassi.
+
+Cosa comporta, e come è contenuto:
+
+1. **Solo nel cap. 03.** Il canvas sta dentro al pin del capitolo e il loop
+   parte e si ferma con la sezione. Sono venti passaggi di pressione per
+   frame: tenerli accesi su tutta la pagina non ha senso, e all'uscita la
+   simulazione viene anche svuotata, altrimenti al rientro riapparirebbe la
+   scia congelata.
+2. **Palette chiusa.** `generateColor` del sorgente pesca su tutto il cerchio
+   delle tinte. Qui pesca su quattro fasce — ciano, blu, viola, fucsia/rosa —
+   che sono quelle della colonna. Il vincolo dell'utente è anche il modo di
+   tenere il capitolo coerente.
+3. **Niente bloom né sunrays.** Sono ~400 righe e due catene di framebuffer, e
+   i sunrays sono proprio il passaggio che tira fuori il giallo.
+4. **CURL 2 e SPLAT_RADIUS 0.09** contro i 30 e 0.25 del sorgente, con
+   dissipazione alta: una scia che segue il cursore, non uno spruzzo. Il testo
+   della copy sta sopra al canvas nel markup, quindi non lo sporca mai.
+
+Con `prefers-reduced-motion` il modulo non parte e il canvas è `display:none`.
 
 ### Colore: r128 non ha color management
 
