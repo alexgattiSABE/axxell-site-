@@ -143,30 +143,44 @@ WC.register('spine', function(ctx){
   scene.add(orbit);                   // finestra. La spina no.
 
   // ---------------------------------------------------------------- card
-  // Colore uniforme, senza filo di luce sul taglio: il bordo non deve
-  // staccarsi dal resto. Resta solo un velo di Fresnel, appena percettibile.
+  // Oggetti fisici, non pannelli: hanno spessore vero e uno smusso sul bordo.
+  // La faccia resta uniforme — nessun filo di luce lungo il perimetro — ma lo
+  // smusso, che è una superficie a sé con la sua normale, prende la luce e
+  // racconta lo spessore. Il colore vive nei riflessi, non nella base: la base
+  // è quasi nera, come vetro nero lucido.
   var cardVert = [
-    'varying vec2 vUv; varying vec3 vN; varying vec3 vV;',
+    'varying vec3 vN; varying vec3 vV; varying vec3 vLocalN;',
     'void main(){',
-    '  vUv = uv;',
     '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
     '  vN = normalize(normalMatrix * normal);',
-    '  vV = normalize(-mv.xyz);',
+    '  vLocalN = normal;',                 // per riconoscere lo smusso: le facce
+    '  vV = normalize(-mv.xyz);',          // piatte hanno |z| = 1, il bordo no
     '  gl_Position = projectionMatrix * mv;',
     '}'
   ].join('\n');
 
   var cardFrag = [
-    'uniform vec3 uColor; uniform vec2 uSize; uniform float uActive; uniform float uFade;',
-    'varying vec2 vUv; varying vec3 vN; varying vec3 vV;',
-    'float sdBox(vec2 p, vec2 b, float r){ vec2 d = abs(p) - b + r; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r; }',
+    'uniform vec3 uColor; uniform float uActive; uniform float uFade;',
+    'uniform vec3 uViolet; uniform vec3 uBlue; uniform vec3 uPink;',
+    'varying vec3 vN; varying vec3 vV; varying vec3 vLocalN;',
     'void main(){',
-    '  vec2 p = (vUv - 0.5) * uSize;',
-    '  if (sdBox(p, uSize * 0.5, 0.085) > 0.0) discard;',   // angoli tondi
     '  vec3 N = normalize(vN); vec3 V = normalize(vV);',
     '  float fres = pow(1.0 - abs(dot(N, V)), 3.0);',
-    '  vec3 col = uColor * (0.30 + 0.26 * uActive);',
-    '  col += uColor * fres * 0.10;',                        // velo, non bordo
+    // base: nero lucido appena tinto. Non è un blocco colorato.
+    '  vec3 col = vec3(0.014, 0.014, 0.022) + uColor * 0.07;',
+    // riflessi dell'ambiente al neon: seguono l'orientamento della card, non
+    // sono un gradiente stampato sopra
+    '  vec3 R = reflect(-V, N);',
+    '  vec3 env = uViolet * smoothstep(0.15, -0.9, R.y) * 0.95',
+    '           + uBlue   * smoothstep(0.0, -0.9, R.x) * 0.50',
+    '           + uPink   * smoothstep(0.0,  0.9, R.x) * 0.45;',
+    '  col += env * (0.18 + fres * 1.7) * (0.60 + 0.40 * uActive);',
+    // specular della luce viola che sta sotto la spina, più un colpo bianco
+    '  col += uViolet * pow(max(dot(N, normalize(vec3(0.1, -1.0, 0.55))), 0.0), 30.0) * 1.3;',
+    '  col += vec3(0.9, 0.92, 1.0) * pow(max(dot(N, normalize(vec3(-0.5, 0.7, 0.6))), 0.0), 48.0) * 0.55;',
+    // lo smusso: sulle facce piatte |vLocalN.z| = 1, sul bordo scende
+    '  float bevel = 1.0 - abs(vLocalN.z);',
+    '  col += mix(uColor, vec3(0.9, 0.92, 1.0), 0.45) * bevel * (0.22 + fres * 0.55);',
     '  gl_FragColor = vec4(col * uFade, 1.0);',
     '}'
   ].join('\n');
@@ -228,7 +242,25 @@ WC.register('spine', function(ctx){
 
   var cardW = CONFIG.cardW * (mobile ? 0.85 : 1);
   var cardH = CONFIG.cardH * (mobile ? 0.85 : 1);
-  var cardGeo  = new THREE.PlaneGeometry(cardW, cardH, 1, 1);
+
+  // Rettangolo ad angoli tondi estruso: spessore vero e smusso sul giro.
+  // THREE.Shape ed ExtrudeGeometry stanno nel core di r128 — RoundedBoxGeometry
+  // no, sta negli examples, che qui non sono caricati.
+  function roundedRect(w, h, r){
+    var s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y);
+    s.lineTo(x + w - r, y);  s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h);  s.quadraticCurveTo(x, y + h, x, y + h - r);
+    s.lineTo(x, y + r);      s.quadraticCurveTo(x, y, x + r, y);
+    return s;
+  }
+  var cardGeo = new THREE.ExtrudeGeometry(roundedRect(cardW, cardH, 0.085), {
+    depth: 0.045, curveSegments: 6,
+    bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2
+  });
+  cardGeo.center();
+
   var labelW   = cardW * 0.86;
   var labelGeo = new THREE.PlaneGeometry(labelW, labelW / 4, 1, 1);
 
@@ -237,15 +269,18 @@ WC.register('spine', function(ctx){
     var mat = new THREE.ShaderMaterial({
       uniforms: {
         uColor:  { value: col },
-        uSize:   { value: new THREE.Vector2(cardW, cardH) },
         uActive: { value: 0 },
-        uFade:   { value: 0 }
+        uFade:   { value: 0 },
+        uViolet: { value: VIOLET },
+        uBlue:   { value: BLUE },
+        uPink:   { value: PINK }
       },
       vertexShader: cardVert, fragmentShader: cardFrag,
-      side: THREE.DoubleSide,
-      // Opache e con depth write: è così che la spina può occluderle e loro
-      // possono occludere la spina, senza trucchi CSS.
-      transparent: true, depthWrite: true, depthTest: true
+      side: THREE.FrontSide,
+      // Del tutto opache: ora sono solidi chiusi, quindi entrano nella passata
+      // opaca e la profondità la gestisce il depth buffer da solo. È così che
+      // la spina le occlude e loro occludono la spina, senza trucchi CSS.
+      transparent: false, depthWrite: true, depthTest: true
     });
     var mesh = new THREE.Mesh(cardGeo, mat);
     mesh.renderOrder = 0;
@@ -271,54 +306,58 @@ WC.register('spine', function(ctx){
   });
 
   // --------------------------------------------------------------- bolle
-  // Sfere vere, in gruppi compatti che salgono in fretta. Sono tante, quindi
-  // una InstancedMesh sola: 150 mesh separate volevano dire 300 draw call al
-  // frame, contando che la scena si disegna due volte.
+  // Sfere vere, non sprite. Sono tante, quindi InstancedMesh: 1400 mesh
+  // separate volevano dire 2800 draw call al frame, contando che la scena si
+  // disegna due volte.
+  //
+  // Ma le istanze sono DUE, non una: la schiuma minuscola sta bene con una
+  // sfera a 6x4 segmenti, mentre a 0.10 unita' quella stessa sfera si vede che
+  // e' un esagono. Le grandi hanno una geometria loro, piu' fitta, e sono
+  // poche — il costo sta tutto nelle piccole.
   var BUBBLE_TINTS = ['#8A3FFC', '#C43CFF', '#FF4BCB', '#3C8DFF', '#6B5CFF',
                       '#FF2BD6', '#A64DFF', '#157BFF'];
   var GROUPS = mobile ? 9 : CONFIG.bubbleGroups;
   var PER    = mobile ? 40 : CONFIG.bubblesPerGroup;
-  var BCOUNT = GROUPS * PER;
 
-  // Poligoni al minimo: a queste dimensioni una bolla copre pochi pixel, e
-  // di sfere ce ne sono novecento — disegnate due volte per frame.
-  var bubbleGeo = new THREE.SphereGeometry(1, 6, 4);
-  var bTint  = new Float32Array(BCOUNT * 3);
-  var bAlpha = new Float32Array(BCOUNT);
-  var bubbleData = [];
+  var foamData = [], bigData = [], foamTint = [], bigTint = [];
   var c3 = new THREE.Vector3();
 
   for (var gi = 0; gi < GROUPS; gi++) {
-    // ogni gruppo parte da un punto suo nella zona sotto la spina
+    // ogni gruppo nasce da un punto suo nella zona sotto la spina
     var gx = -0.8 + Math.random() * 1.6;
     var gz = -0.5 + Math.random() * 1.0;
     var gLife = Math.random();
     var gTint = BUBBLE_TINTS[gi % BUBBLE_TINTS.length];
     for (var k = 0; k < PER; k++) {
-      var idx = gi * PER + k;
       c3.copy(G.hexToVec3(Math.random() < 0.25
         ? BUBBLE_TINTS[(Math.random() * BUBBLE_TINTS.length) | 0]   // qualche
         : gTint));                                                  // intrusa
-      bTint[idx*3] = c3.x; bTint[idx*3+1] = c3.y; bTint[idx*3+2] = c3.z;
-      bAlpha[idx] = 0;
-      bubbleData.push({
+      // Tre tagli: schiuma fitta, qualche bolla media, poche grandi che si
+      // leggono una per una. Le grandi salgono piu' lente — sono quelle che
+      // fanno capire che le altre sono schiuma e non rumore.
+      var roll = Math.random(), size, speed;
+      if (roll < 0.07)      { size = 0.060 + Math.random() * 0.085; speed = 0.10 + Math.random() * 0.09; }
+      else if (roll < 0.28) { size = 0.020 + Math.random() * 0.028; speed = 0.16 + Math.random() * 0.16; }
+      else                  { size = 0.005 + Math.random() * 0.012; speed = 0.20 + Math.random() * 0.24; }
+      var b = {
         gx: gx, gz: gz,
-        ox: (Math.random() - 0.5) * 0.22,      // il gruppo resta fitto
+        ox: (Math.random() - 0.5) * 0.22,      // il gruppo parte fitto
         oz: (Math.random() - 0.5) * 0.22,
         life: (gLife + (Math.random() - 0.5) * 0.10 + 1) % 1,
-        speed: 0.20 + Math.random() * 0.22,    // molto più veloci di prima
-        drift: (Math.random() - 0.5) * 1.1,
-        curve: 0.12 + Math.random() * 0.35,
+        speed: speed,
+        // Asimmetrica di proposito: la deriva e' centrata su 0.42, non su 0.5,
+        // quindi a destra ne finiscono di piu'. Una distribuzione simmetrica si
+        // legge subito come generata.
+        drift: (Math.random() - 0.42) * 2.6,
+        curve: 0.12 + Math.random() * 0.40,
         phase: Math.random() * Math.PI * 2,
-        size: Math.random() < 0.06 ? 0.030 + Math.random() * 0.022
-                                   : 0.006 + Math.random() * 0.013,
+        size: size,
         base: 0.55 + Math.random() * 0.45
-      });
+      };
+      if (size >= 0.020) { b.slot = bigData.length;  bigData.push(b);  bigTint.push(c3.x, c3.y, c3.z); }
+      else               { b.slot = foamData.length; foamData.push(b); foamTint.push(c3.x, c3.y, c3.z); }
     }
   }
-  bubbleGeo.setAttribute('aTint',  new THREE.InstancedBufferAttribute(bTint, 3));
-  var alphaAttr = new THREE.InstancedBufferAttribute(bAlpha, 1);
-  bubbleGeo.setAttribute('aAlpha', alphaAttr);
 
   var bubbleMat = new THREE.ShaderMaterial({
     uniforms: { uScene: { value: rt.texture }, uRes: uRes, uAppear: uAppear },
@@ -340,8 +379,10 @@ WC.register('spine', function(ctx){
       'void main(){',
       '  vec3 N = normalize(vN); vec3 V = normalize(vV);',
       '  float fres = pow(1.0 - max(dot(N, V), 0.0), 2.2);',
+      // il centro lascia passare la scena, il bordo la raccoglie: e' quel
+      // contrasto a farle leggere come bolle e non come palline colorate
       '  vec2 suv = gl_FragCoord.xy / uRes;',
-      '  vec3 refr = texture2D(uScene, suv + N.xy * 0.012).rgb;',  // rifrazione
+      '  vec3 refr = texture2D(uScene, suv + N.xy * 0.012).rgb;',
       '  vec3 col = refr * 1.05 + vTint * fres * 1.5 + vec3(0.35, 0.36, 0.5) * fres * 0.45;',
       '  vec3 L = normalize(vec3(-0.4, 0.8, 0.6));',
       '  col += vec3(0.9, 0.92, 1.0) * pow(max(dot(N, L), 0.0), 22.0) * 0.85;',
@@ -351,11 +392,23 @@ WC.register('spine', function(ctx){
     transparent: true, depthWrite: false, depthTest: true
   });
 
-  var bubbles = new THREE.InstancedMesh(bubbleGeo, bubbleMat, BCOUNT);
-  bubbles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  bubbles.frustumCulled = false;
-  bubbles.renderOrder = 2;
-  orbit.add(bubbles);
+  function makeSwarm(list, tints, segW, segH){
+    var n = Math.max(1, list.length);
+    var geo = new THREE.SphereGeometry(1, segW, segH);
+    var alpha = new Float32Array(n);
+    geo.setAttribute('aTint',  new THREE.InstancedBufferAttribute(new Float32Array(tints), 3));
+    var attr = new THREE.InstancedBufferAttribute(alpha, 1);
+    geo.setAttribute('aAlpha', attr);
+    var mesh = new THREE.InstancedMesh(geo, bubbleMat, n);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 2;
+    orbit.add(mesh);
+    return { mesh: mesh, geo: geo, alpha: alpha, attr: attr, data: list };
+  }
+  var foam = makeSwarm(foamData, foamTint, 6, 4);
+  var big  = makeSwarm(bigData,  bigTint, mobile ? 12 : 18, mobile ? 8 : 12);
+  var swarms = [foam, big];
   var _bm = new THREE.Matrix4();
 
   // --------------------------------------------------------------- spina
@@ -590,22 +643,28 @@ WC.register('spine', function(ctx){
 
   // I gruppi salgono compatti e in fretta, e si allargano mentre salgono.
   function stepBubbles(dt){
-    for (var i = 0; i < bubbleData.length; i++) {
-      var b = bubbleData[i];
-      b.life += dt * b.speed;
-      if (b.life > 1) b.life -= 1;
-      var spread = 0.5 + b.life * 0.75;                 // più su, più larghi
-      var x = (b.gx + b.ox) * spread + Math.sin(b.life * 7.0 + b.phase) * b.curve
-              + b.drift * b.life;
-      var y = -3.1 + b.life * 6.4;
-      var z = (b.gz + b.oz) * spread + Math.cos(b.life * 5.2 + b.phase) * b.curve * 0.6;
-      _bm.makeScale(b.size, b.size, b.size);
-      _bm.setPosition(x, y, z);
-      bubbles.setMatrixAt(i, _bm);
-      bAlpha[i] = b.base * Math.min(1, b.life / 0.10) * Math.min(1, (1 - b.life) / 0.16);
+    for (var w = 0; w < swarms.length; w++) {
+      var sw = swarms[w], list = sw.data;
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
+        b.life += dt * b.speed;
+        if (b.life > 1) b.life -= 1;
+        // Nascono strette sotto la spina e si aprono salendo, fino a coprire
+        // circa tre quarti della sezione: e' il brief a chiederlo, e senza
+        // l'apertura la schiuma restava una colonna incollata al centro.
+        var spread = 0.45 + b.life * 2.6;
+        var x = (b.gx + b.ox) * spread + Math.sin(b.life * 7.0 + b.phase) * b.curve
+                + b.drift * b.life;
+        var y = -3.1 + b.life * 6.4;
+        var z = (b.gz + b.oz) * spread + Math.cos(b.life * 5.2 + b.phase) * b.curve * 0.6;
+        _bm.makeScale(b.size, b.size, b.size);
+        _bm.setPosition(x, y, z);
+        sw.mesh.setMatrixAt(i, _bm);
+        sw.alpha[i] = b.base * Math.min(1, b.life / 0.10) * Math.min(1, (1 - b.life) / 0.16);
+      }
+      sw.mesh.instanceMatrix.needsUpdate = true;
+      sw.attr.needsUpdate = true;
     }
-    bubbles.instanceMatrix.needsUpdate = true;
-    alphaAttr.needsUpdate = true;
   }
 
   function start(){
@@ -643,7 +702,8 @@ WC.register('spine', function(ctx){
     document.removeEventListener('visibilitychange', onVis);
     cards.forEach(function(c){ c.mat.dispose(); c.lmat.dispose(); c.tex.dispose(); });
     cardGeo.dispose(); labelGeo.dispose();
-    bubbleGeo.dispose(); bubbleMat.dispose();
+    swarms.forEach(function(sw){ sw.geo.dispose(); });
+    bubbleMat.dispose();
     spineGeo.dispose(); spineMat.dispose();
     bg.geometry.dispose(); bgMat.dispose();
     if (spineTex) spineTex.dispose();
