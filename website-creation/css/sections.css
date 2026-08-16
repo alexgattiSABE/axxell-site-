@@ -126,9 +126,16 @@ body.wc-locked{overflow:hidden;}
 .wc-warp.-static .wc-warp-pin{height:auto;padding:0;overflow:visible;}
 .wc-warp.-static #wcWarpCanvas{display:none;}
 
-/* ---- CAP 02 — MANIFESTO ---- */
-.wc-manifesto{min-height:100svh;display:flex;flex-direction:column;
-  justify-content:center;gap:2.5rem;position:relative;overflow:hidden;}
+/* ---- CAP 02 — MANIFESTO ----
+   260svh, e la schermata dentro sta FERMA: il pin la tiene inchiodata e i
+   160svh di corsa diventano il tempo del capitolo. Non è una sosta imposta —
+   in quei 160svh il testo si accende parola per parola, l'elica stringe le
+   spire e le parole scendono in spirale. Chi scorre non aspetta: guida.
+   Era `min-height:100svh` senza pin, e allora la sezione passava e basta. */
+.wc-manifesto{padding:0;height:260svh;position:relative;}
+.wc-manifesto-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;gap:2.5rem;
+  padding:0 clamp(1.5rem,5vw,4rem);}
 /* Qui c'erano il poster di sfondo, il suo velo di contrasto e la deriva lenta
    che lo animava. Tolti tutti e tre: prima di questa sezione ora c'è una scena
    3D vera, e un'immagine ferma subito dopo si leggeva come un passo indietro.
@@ -141,19 +148,62 @@ body.wc-locked{overflow:hidden;}
    Il testo è largo 22ch, quindi la metà destra è libera ed è lì che l'elica
    sta: nessun velo di contrasto, perché non le passa sotto niente da leggere. */
 .wc-dna{position:absolute;inset:0;width:100%;height:100%;
-  z-index:0;pointer-events:none;}
-.wc-manifesto > .eyebrow,
-.wc-manifesto > .wc-manifesto-text{position:relative;z-index:1;}
+  z-index:1;pointer-events:none;}
 
-/* ---- CAP 03 — SEZIONE VUOTA, IN ATTESA ----
-   Era 520svh perché la colonna di vetro aveva 4,2 schermate di scroll in cui
-   scendere. Senza scena quelle schermate sarebbero 4,2 schermate di nero, e
-   nero muto: chi scorre penserebbe che la pagina si è rotta. Torna a una
-   schermata sola finché non arriva il contenuto nuovo — e quando arriva, se ha
-   bisogno di scroll, questo è il numero da rialzare. */
-.wc-spine{padding:0;height:100svh;}
+/* LE PAROLE IN SPIRALE, in due strati attorno al canvas.
+   Il contenitore non porta z-index: se lo portasse aprirebbe un contesto di
+   impilamento e i due strati finirebbero tutti e due dallo stesso lato del
+   canvas — che è esattamente la cosa da evitare. 0 dietro, 1 il canvas, 2
+   davanti, 3 il testo. */
+.wc-dna-orbit{position:absolute;inset:0;pointer-events:none;}
+.wc-dna-layer{position:absolute;inset:0;pointer-events:none;}
+.wc-dna-layer.-back{z-index:0;}
+.wc-dna-layer.-front{z-index:2;}
+.wc-dna-word{position:absolute;top:0;left:0;white-space:nowrap;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;
+  color:var(--white);will-change:transform,opacity;}
+/* La copia di dietro è sfocata e spenta: non è un effetto, è quello che dice
+   all'occhio da che parte dell'elica sta passando. */
+.wc-dna-layer.-back .wc-dna-word{color:var(--muted);filter:blur(1.5px);}
+.wc-manifesto-pin > .eyebrow,
+.wc-manifesto-pin > .wc-manifesto-text{position:relative;z-index:3;}
+
+/* Senza WebGL le parole smettono di orbitare e diventano una riga di termini
+   sotto il manifesto: è il solo punto in cui il capitolo elenca di cosa è
+   fatto, e perderlo insieme all'animazione sarebbe perdere del contenuto. */
+.wc-dna-orbit.-static{position:relative;z-index:3;display:flex;flex-wrap:wrap;
+  gap:.8rem 1.6rem;margin-top:.6rem;}
+.wc-dna-orbit.-static .wc-dna-word{position:static;transform:none;opacity:1;
+  color:var(--muted);filter:none;}
+
+/* Sotto i 900 px le parole spariscono. Non è una resa: l'orbita gira attorno
+   all'elica, che sta a ~220 px dal centro, e su una finestra stretta quel giro
+   entra nella colonna del testo. Il capitolo è prima di tutto un manifesto da
+   leggere, e delle parole che ci passano sopra lo rendono illeggibile per
+   guadagnare una decorazione. Il canvas resta. */
+@media (max-width:900px){
+  .wc-dna-orbit:not(.-static){display:none;}
+}
+
+/* ---- CAP 03 — IL FLUIDO ----
+   Era 520svh con la colonna di vetro, che aveva 4,2 schermate in cui scendere.
+   Resta una schermata sola: il fluido non ha una coreografia di scroll, ha uno
+   splash che parte quando arrivi e poi il cursore. Dare scroll a una scena che
+   non se ne fa niente vuol dire chiedere di scendere davanti a un fermo
+   immagine.
+   AGGIORNATO: adesso 420svh e la schermata inchiodata. Il capitolo ha una
+   sequenza, e i 320svh di corsa sono il suo tempo — si guarda il fluido,
+   partono i fuochi, testo e inchiostro se ne vanno, resta il nero, e alla fine
+   compare l'invito. Le quote stanno in js/fluid.js, blocco `SEQ`.
+   Erano 300svh: l'invito arrivava e un attimo dopo eri già nel capitolo dopo,
+   senza spazio per muovere il cursore — che è la cosa che la scritta chiede.
+   Le 120svh in più sono tutte coda, dopo l'invito.
+   Impaginazione presa dall'hero di flowstate: colonna al centro, testo
+   centrato, riga di chiusura appoggiata in basso. */
+.wc-spine{padding:0;height:420svh;}
 .wc-spine-pin{height:100svh;position:relative;overflow:hidden;
-  display:flex;align-items:center;padding:0 clamp(1.5rem,5vw,4rem);}
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:var(--nav-h) clamp(1.5rem,5vw,4rem) clamp(3rem,7vh,5rem);}
 /* Il fondo della pagina, e basta. Qui c'era il teal #0A1414 della stanza in cui
    stava la colonna di vetro: senza la colonna era solo una banda verdastra in
    mezzo a un sito nero, cioè una giuntura visibile invece di una sezione
@@ -161,34 +211,78 @@ body.wc-locked{overflow:hidden;}
 .wc-spine-pin::before{content:'';position:absolute;inset:0;z-index:0;
   background:var(--bg);}
 #wcSpineCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
-/* Lo splash di fluido è confinato a questo capitolo: non è un fondo di pagina,
-   è il cursore della colonna. In `screen` non può scurire: dove il capitolo è
-   nero non fa nulla, e la scia sparisce da sé in mezzo secondo. */
+/* Lo splash di fluido è confinato a questo capitolo: non è un fondo di pagina.
+   In `screen` non può scurire: dove il capitolo è nero non fa nulla.
+   Opacità piena (era .9): il fluido qui non vela più una colonna di vetro
+   illuminata, è l'unica cosa in quadro. */
 .wc-fluid{position:absolute;inset:0;width:100%;height:100%;z-index:2;
-  pointer-events:none;mix-blend-mode:screen;opacity:.9;}
+  pointer-events:none;mix-blend-mode:screen;}
 @media (prefers-reduced-motion:reduce){.wc-fluid{display:none;}}
-.wc-spine-copy{position:relative;z-index:2;max-width:38ch;
-  display:flex;flex-direction:column;gap:1.2rem;}
-.wc-spine .eyebrow{color:var(--iris);}
-.wc-spine-list{list-style:none;display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;
-  margin-top:.4rem;font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--dim);}
-/* Il testo resta nel DOM ma non a schermo: la sezione è vuota per richiesta.
-   Prima la nascondeva la classe `-live`, che la metteva la scena; ora la scena
-   non c'è più e quella classe non arriva mai, quindi la regola deve valere
-   sempre.
-   ⚠️ DEBITO, da saldare col contenuto nuovo: così il capitolo non ha più
-   nessun testo visibile, e per uno screen reader resta solo questo blocco
-   fuori schermo. Appena arriva il sostituto, o la copy torna visibile o il
-   contenuto nuovo si porta il proprio testo. */
-.wc-spine .wc-spine-copy{position:absolute;width:1px;height:1px;margin:-1px;
-  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 
-/* Senza WebGL la sezione smette di essere alta 520svh: non c'è nulla da
-   scorrere, e lasciarla alta darebbe quattro schermate vuote. */
+/* VELO RADIALE sopra il fluido — è di flowstate, non un'aggiunta: nel sorgente
+   sta nell'hero come `<div aria-hidden>` sopra il canvas, e senza di lui il
+   fluido a piena forza è una parete di inchiostro saturo che brucia a bianco.
+   Verificato a schermo prima di aggiungerlo, non dedotto.
+   Colori, forma e quote sono i suoi (`--raw-color-scrim*`, 4/5/12).
+   UNO scostamento, dichiarato: nel file il centro è .68 e il token si chiama
+   `--raw-color-scrim-strong`, commentato «center — behind hero text». Qui non
+   c'è nessun testo dietro cui stare: il capitolo è vuoto e il nastro d'inchiostro
+   è l'unica cosa in quadro, quindi lo stop forte è caduto e resta il .46 di
+   mezzo. È applicare l'intenzione del file, non scavalcarla — la vignettatura
+   che dà profondità al campo resta tutta. */
+.wc-spine-pin::after{content:'';position:absolute;inset:0;z-index:3;
+  pointer-events:none;
+  background:radial-gradient(115% 95% at 50% 46%,
+    rgba(4,5,12,.46) 0%, rgba(4,5,12,.46) 52%, rgba(4,5,12,.12) 100%);}
+@media (prefers-reduced-motion:reduce){.wc-spine-pin::after{display:none;}}
+/* z-index 4: SOPRA il velo radiale (3), non sotto. Il velo serve al fluido, non
+   al testo — passandogli sotto, la copy prenderebbe il 46% di nero al centro
+   proprio dove è più fitta. */
+/* 52rem è la larghezza della colonna dell'hero di flowstate. In `ch` non si può
+   scrivere: `ch` si misura sul font-size di CHI la porta, e qui dentro c'è un
+   h2 grande tre volte il testo — a 46ch il titolo andava a capo da solo in
+   mezzo alla riga, sopra il <br> voluto. */
+.wc-spine-copy{position:relative;z-index:4;max-width:min(52rem,92vw);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* L'occhiello diventa la pillola dell'hero di flowstate: bordo tenue, fondo di
+   vetro, sfocatura dietro. Non è decorazione — è quello che lo stacca dal
+   fluido, che sotto si muove e altrimenti se lo mangia. */
+.wc-spine .eyebrow{color:var(--iris);align-self:center;
+  display:inline-flex;align-items:center;
+  padding:.42rem .9rem;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+/* Il titolo prende tutta la colonna: gli a capo li decide il <br> nel markup,
+   non il browser. Il sottotitolo invece si stringe — una riga lunga il doppio
+   del titolo si legge peggio, anche se lo spazio c'è. */
+.wc-spine-copy h2{max-width:none;}
+.wc-spine-copy .lead{max-width:46ch;}
+/* La riga di chiusura, appoggiata in basso come il copyright di flowstate. */
+.wc-spine-foot{position:absolute;left:0;right:0;bottom:clamp(1.2rem,3vh,2rem);
+  z-index:4;margin:0;text-align:center;
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;color:var(--dim);}
+
+/* L'INVITO, in fondo alla sequenza. Parte invisibile e ci resta finché non
+   arriva il suo momento: l'opacità la scrive js/fluid.js sullo scroll. Se il
+   modulo non parte (reduced-motion, niente WebGL) non la scrive nessuno e
+   l'invito non compare mai — che è giusto, perché senza fluido non c'è niente
+   da muovere. */
+.wc-spine-invite{position:absolute;left:0;right:0;top:50%;z-index:5;
+  margin:0;translate:0 -50%;text-align:center;opacity:0;
+  font-size:clamp(1.6rem,4vw,3rem);font-weight:500;letter-spacing:-.01em;
+  color:var(--white);pointer-events:none;}
+/* Qui c'era la regola che teneva la copy fuori schermo: il capitolo era vuoto e
+   il testo restava nel DOM solo per i lettori di schermo. Adesso il capitolo ha
+   di nuovo un contenuto suo, e il debito è saldato. */
+
+/* Senza WebGL (o con reduced-motion) il capitolo non è alto una schermata: non
+   c'è più niente da guardare mentre si sta fermi, resta il testo. La riga di
+   chiusura smette di essere appoggiata in basso e torna in fila con le altre —
+   in un blocco alto quanto il suo contenuto, «in basso» non vuol dire niente. */
 .wc-spine.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
-.wc-spine.-static .wc-spine-pin{height:auto;padding:0;overflow:visible;}
+.wc-spine.-static .wc-spine-pin{height:auto;padding:0;overflow:visible;gap:1.6rem;}
 .wc-spine.-static #wcSpineCanvas{display:none;}
+.wc-spine.-static .wc-spine-foot{position:static;}
 /* Senza scena il fondo non vela più niente: resterebbe solo come rettangolo
    nero, perché il pin non è più alto quanto lo schermo. */
 .wc-spine.-static .wc-spine-pin::before{display:none;}
@@ -196,27 +290,41 @@ body.wc-locked{overflow:hidden;}
 .-static .wc-only-motion{display:none;}
 
 @media (max-width:900px){
+  /* Niente `align-items:flex-start` qui: adesso la colonna è verticale, e su
+     quell'asse `flex-start` vuol dire "a sinistra" — spaccherebbe il centrato.
+     Resta solo lo stacco dalla barra di navigazione. */
+  .wc-spine-pin{justify-content:flex-start;padding-top:calc(var(--nav-h) + 4rem);}
   .wc-spine-copy{max-width:none;}
-  .wc-spine-pin{align-items:flex-start;padding-top:calc(var(--nav-h) + 2rem);}
-  .wc-spine-list{font-size:.62rem;letter-spacing:.14em;}
+  .wc-spine-copy h2,
+  .wc-spine-copy .lead{max-width:none;}
+  .wc-spine-foot{font-size:.62rem;letter-spacing:.1em;}
 }
 
 /* ---- LUMINOUS SAUCER ----
-   Tre schermate: una per arrivarci, una per accendere il raggio, una per
-   restare. Il fondo lo disegna lo shader del cielo, non questo — qui c'è solo
-   il colore che si vede prima del primo fotogramma. */
-.wc-saucer{padding:0;height:320svh;}
+   Due schermate e mezza: una per arrivarci e accendere il raggio, il resto per
+   restare. Erano tre quando lo scroll portava avanti anche la camera; quella
+   carrellata è stata tolta (tagliava il disco in cima e mandava il prato sotto
+   l'inquadratura), e con lei è caduta la schermata che le serviva.
+   Il fondo lo disegna lo shader del cielo, non questo — qui c'è solo il colore
+   che si vede prima del primo fotogramma. */
+.wc-saucer{padding:0;height:240svh;}
 .wc-saucer-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;align-items:flex-end;
   padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
 .wc-saucer-pin::before{content:'';position:absolute;inset:0;z-index:0;
   background:#010301;}
 #wcSaucerCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
-/* Velo in basso: la copy sta sopra il prato acceso, che è la zona più chiara
-   del quadro. */
-.wc-saucer-pin::after{content:'';position:absolute;left:0;right:0;bottom:0;
-  height:52%;z-index:1;pointer-events:none;
-  background:linear-gradient(180deg,transparent,rgba(1,6,3,.72) 52%,rgba(1,6,3,.95));}
+/* Velo A SINISTRA, non in basso.
+   Prima era una banda orizzontale alta il 52% che arrivava al 95% di nero sul
+   fondo del quadro. Solo che il fondo del quadro è dove sta il prato acceso —
+   la cosa che la sezione dice di mostrare — e il velo se lo mangiava per intero:
+   è metà della ragione per cui l'erba non si vedeva (l'altra metà stava nello
+   shader, vedi js/saucer.js).
+   La copy però un fondo lo vuole, e sta a sinistra: il velo si è girato di 90°.
+   Copre la colonna del testo e lascia scoperti il raggio, la pozza e il prato. */
+.wc-saucer-pin::after{content:'';position:absolute;inset:0;
+  z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(1,6,3,.92),rgba(1,6,3,.74) 30%,rgba(1,6,3,.28) 48%,transparent 62%);}
 .wc-saucer-copy{position:relative;z-index:2;max-width:40ch;
   display:flex;flex-direction:column;gap:.9rem;}
 .wc-saucer .eyebrow{color:#4DFFAB;}
@@ -233,7 +341,14 @@ body.wc-locked{overflow:hidden;}
    si sfalda) e comprimerli fa sovrapporre letture che devono restare distinte.
    La copy sta a sinistra e in mezzo all'altezza, non in basso come nell'ufo:
    qui il soggetto è centrato e coprirlo dal basso lo taglierebbe a metà. */
-.wc-vesper{padding:0;height:340svh;}
+/* 400svh e non più 340: il capitolo non è più la sola sfera. L'orologio della
+   scena sorgente vale 0→4 e gira su tre tracce di scroll alte una schermata
+   (0→1, poi 1→3 a velocità doppia, poi 3→4): 300svh di corsa più i 100svh del
+   pin. L'uscita del cervello non sta qui dentro — vive nei 100svh dopo, mentre
+   il pin si sgancia e il capitolo dopo sale a coprire (vedi `stOutro` in
+   js/vesper.js). Cambiando questa altezza cambia la DURATA degli atti, non il
+   loro ordine. */
+.wc-vesper{padding:0;height:400svh;}
 .wc-vesper-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;align-items:center;
   padding:0 clamp(1.5rem,5vw,4rem);}

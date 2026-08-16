@@ -1,12 +1,22 @@
-/* CURSORE FLUIDO — capitolo 03, la colonna di vetro.
+/* FLOWSTATE — il fluido del capitolo 03.
  *
  * Vive solo dentro quel capitolo: il canvas sta nel pin e il loop parte e si
  * ferma con la sezione. Dentro non serve premere niente — basta muovere il
  * mouse — ma fuori non gira affatto.
  *
- * Porting della WebGL Fluid Simulation di Pavel Dobryakov (MIT, 2017,
- * github.com/PavelDoGreat/WebGL-Fluid-Simulation) adattato a questa pagina.
- * Cosa cambia rispetto al sorgente, e perché:
+ * Il motore è la WebGL Fluid Simulation di Pavel Dobryakov (MIT, 2017,
+ * github.com/PavelDoGreat/WebGL-Fluid-Simulation). La SCENA è quella di
+ * `Effetti webiste/flowstate`, che di quel motore è una versione con altri
+ * numeri e due aggiunte sue: la macchiata d'ingresso e il cursore automatico
+ * che orbita. Prima qui erano arrivati solo due dei suoi valori (CURL 42 e
+ * SPLAT_RADIUS 0.22); adesso c'è tutto — vedi i punti 4 e 6.
+ *
+ * Perché ci sta bene: il capitolo 03 è stato svuotato (la colonna di vetro è
+ * stata tolta, la copy è fuori schermo), quindi il fluido non è più un velo
+ * sopra una scena — è la scena. Che è esattamente quello che è in flowstate,
+ * dove sta a tutto schermo dietro l'hero.
+ *
+ * Cosa cambia rispetto ai due sorgenti, e perché:
  *
  * 1. NIENTE PRESS-AND-HOLD. Nell'originale il mousemove splatta solo se il
  *    pulsante è premuto. Qui il puntatore è sempre "giù": muovere il mouse
@@ -19,44 +29,116 @@
  *    tutto il cerchio: escono verdi, gialli e arancioni. Qui le tinte sono
  *    limitate a quattro fasce — ciano, blu, viola, fucsia/rosa — le stesse
  *    del cap. 03.
- * 4. VORTICITÀ E RAGGIO ALTI (CURL 42, SPLAT_RADIUS 0.22). Era il contrario —
- *    CURL 2 e raggio 0.09, una scia sottile — poi la taratura è passata a
- *    quella del fluido di "flowstate": inchiostro versato nell'acqua invece di
- *    un filo che segue il cursore. Stesso motore, altri numeri. Vedi il
- *    blocco `config` più sotto per il perché di ognuno.
- * 5. TRASPARENTE. Il canvas non ha fondo: si compone sopra la scena 3D del
- *    capitolo in mix-blend-mode screen (vedi sections.css).
+ * 4. I NUMERI SONO QUELLI DI FLOWSTATE — risoluzioni, dissipazioni, iterazioni
+ *    di pressione — TRANNE due, vorticità e raggio della macchia, abbassati
+ *    perché qui il capitolo regge quattordici salve di fuochi e con i suoi si
+ *    impastava. Vedi il blocco `config`.
+ * 5. TRASPARENTE. Il canvas non ha fondo e si compone in mix-blend-mode screen
+ *    (vedi sections.css). Il fondo opaco di flowstate (BACK_COLOR 4,5,12) NON
+ *    arriva: qui sotto c'è già il nero della pagina, e un secondo nero opaco
+ *    coprirebbe la giuntura fra le sezioni.
+ * 6. L'ENTRATA E IL CURSORE AUTOMATICO, i due "project tweak" di flowstate:
+ *    una macchiata densa quando il capitolo entra in quadro, e un puntatore
+ *    invisibile che orbita per sempre attorno al centro. Senza il secondo, la
+ *    sezione torna nera mezzo secondo dopo che smetti di muovere il mouse — e
+ *    su un capitolo vuoto quello è tutto quello che c'è da vedere.
  *
  * Con reduced-motion il modulo non parte affatto.
  */
 WC.register('fluid', function(ctx){
-  var canvas = document.getElementById('wcFluid');
-  if (!canvas || !ctx.motionOk) return;
+  var canvas  = document.getElementById('wcFluid');
+  var section = document.getElementById('cap03');
+  var pinEl   = document.getElementById('wcSpinePin');
+  var copyEl  = section && section.querySelector('.wc-spine-copy');
+  var footEl  = section && section.querySelector('.wc-spine-foot');
+  var invite  = document.getElementById('wcSpineInvite');
+  if (!canvas || !ctx.motionOk) {
+    // Senza fluido la sezione non ha più una sequenza da srotolare, e i suoi
+    // 300svh diventerebbero due schermate di nero sotto al testo.
+    if (section) section.classList.add('-static');
+    return;
+  }
 
   var mobile = window.innerWidth <= 640 || matchMedia('(pointer:coarse)').matches;
 
+  // Numeri di "flowstate", tutti. Prima ne erano arrivati due (CURL e raggio) e
+  // il resto era rimasto della taratura vecchia; ora il capitolo è nero e vuoto
+  // — la colonna di vetro è stata tolta — quindi non c'è più niente da non
+  // coprire, ed è caduto anche l'unico valore che era stato scostato.
   var config = {
-    SIM_RESOLUTION: mobile ? 96 : 128,
-    DYE_RESOLUTION: mobile ? 384 : 768,
-    // Taratura ripresa dal fluido di "flowstate" (che è lo stesso motore di
-    // Dobryakov con altri numeri): inchiostro nell'acqua, marmorizzato, invece
-    // della scia sottile di prima. Le sue tinte e il suo fondo opaco NON
-    // arrivano: la palette resta quella del capitolo e il canvas trasparente.
-    //
-    // La dissipazione è l'unico valore che non è quello di flowstate (0.958):
-    // la formula è `result / (1.0 + dissipation * dt)`, quindi più basso =
-    // scie più durature, e a 0.958 restano attaccate abbastanza da coprire il
-    // testo. 1.1 è il punto in cui i vortici fanno in tempo a formarsi e la
-    // copy sotto resta comunque leggibile.
-    DENSITY_DISSIPATION: 1.1,
-    VELOCITY_DISSIPATION: 0.98,   // la velocità sopravvive: senza, CURL 42 non arriccia niente
+    SIM_RESOLUTION: mobile ? 128 : 200,
+    DYE_RESOLUTION: mobile ? 384 : 512,
+    /* ⚠️ LE DISSIPAZIONI NON SI COPIANO DAL FILE: i due motori usano formule
+     * diverse, e lo stesso numero vuol dire due cose opposte.
+     *
+     *   flowstate (Dobryakov 2017):  gl_FragColor = dissipation * source
+     *   qui       (Dobryakov 2020):  gl_FragColor = source / (1.0 + dissipation * dt)
+     *
+     * Là 0.958 è il fattore che RESTA a ogni frame — 4,2% perso ogni frame,
+     * cioè il 92% perso in un secondo. Qui 0.958 dà 1/(1+0.958·0,0167) = 0,984
+     * per frame: il 62% perso in un secondo, cinque volte più lento. Messo
+     * pari pari, l'inchiostro si accumulava fino a saturare a bianco e il
+     * capitolo diventava una parete grigia — visto a schermo prima di fare i
+     * conti.
+     *
+     * La conversione è d = (1/k − 1)/dt con dt = 1/60:
+     *   densità   k=0.958 → 2.63
+     *   velocità  k=0.96  → 2.50
+     * Cambiando i valori del file, rifare questo passaggio. */
+    DENSITY_DISSIPATION: 2.63,
+    VELOCITY_DISSIPATION: 2.50,
     PRESSURE: 0.8,
-    PRESSURE_ITERATIONS: mobile ? 12 : 16,
-    CURL: 42,              // vorticità alta: è questa che marmorizza
-    SPLAT_RADIUS: 0.22,    // macchie grosse, non un filo
+    PRESSURE_ITERATIONS: mobile ? 12 : 20,
+    /* Vorticità e raggio sono gli unici due valori scostati da flowstate (che
+     * ha 42 e 0.22). Con i suoi, l'inchiostro è colato grosso e arricciato:
+     * bello da fermo, ma su un capitolo che deve reggere quattordici salve di
+     * fuochi si impasta in una parete. Più bassi, i getti restano filamenti
+     * distinti e i botti si contano. */
+    CURL: 16,              // vorticità: quanto si arriccia il flusso
+    SPLAT_RADIUS: 0.11,    // e quanto è grossa ogni macchia
     SPLAT_FORCE: 5000,
     SHADING: true,
-    COLOR_UPDATE_SPEED: 4
+    COLOR_UPDATE_SPEED: 4,
+    // ---- l'entrata e il cursore automatico, i due "project tweak" del file ----
+    BURST_SPLATS: 34,      // la macchiata densa all'ingresso
+    BURST_WAVES: 8,        // più le ondate che la seguono, una per frame
+    ORBIT_RADIUS: 300,     // px CSS: il cursore finto gira attorno al centro
+    ORBIT_SPEED: 0.026,    // rad/frame — un giro ogni ~4 s
+    ORBIT_DELAY: 700       // ms dopo l'ingresso: prima si vede la macchiata
+  };
+
+  /* LA SEQUENZA, in quote di scroll del pin (0 = la sezione si incastra,
+   * 1 = si sgancia). I quattro tempi del capitolo:
+   *
+   *   0 → FIRE      il fluido di flowstate come lo conosce il file: la
+   *                 macchiata d'ingresso, il cursore automatico che orbita, il
+   *                 testo a schermo.
+   *   FIRE → BOOM   i fuochi. Salve di scoppi radiali a quote regolari, mentre
+   *                 il testo si spegne. Quattordici e non una: un botto solo è
+   *                 un lampo, quattordici sono uno spettacolo che finisce.
+   *   BOOM → DARK   nessuno splatta più e l'orbita si ferma. L'inchiostro si
+   *                 dissolve da sé — non serve cancellarlo, ci pensa la
+   *                 dissipazione, ed è per quello che si legge come fumo che si
+   *                 posa invece che come un interruttore.
+   *   DARK → 1      nero, e poi l'invito.
+   *
+   * Scorrendo all'indietro tutto si riavvolge: le salve si riarmano (vedi
+   * `lastSalvo`) e il testo torna. */
+  var SEQ = {
+    fire: 0.28,          // quando parte il primo botto
+    boom: 0.48,          // quando finisce l'ultimo
+    dark: 0.58,          // da qui il campo è vuoto
+    /* 0.64, e non più 0.82. L'invito compariva a un sesto dalla fine: il tempo
+     * di leggerlo e la sezione era già finita, senza spazio per fare la cosa
+     * che chiede. Adesso gli resta oltre un TERZO della corsa — su 320svh sono
+     * più di cento schermate-punto di scroll in cui il capitolo è nero, la
+     * scritta è lì e il cursore disegna. È il tempo che serve alla battuta
+     * finale, non riempitivo. */
+    invite: 0.64,
+    salvos: 14,          // quante salve nella finestra dei fuochi
+    salvoArms: 18,       // scoppi per salva, disposti in cerchio
+    salvoForce: 2600,    // spinta verso l'esterno di ogni scoppio
+    salvoInk: 12         // e quanto è acceso il suo inchiostro
   };
 
   // ------------------------------------------------------------- contesto
@@ -435,9 +517,10 @@ WC.register('fluid', function(ctx){
   function generateColor(){
     var band = HUE_BANDS[(Math.random() * HUE_BANDS.length) | 0];
     var c = hsvToRgb(band[0] + Math.random() * (band[1] - band[0]), 0.86 + Math.random() * 0.14, 1);
-    // Il sorgente moltiplica per 0.15 su fondo nero pieno. Qui la scia si somma
-    // a una scena già illuminata: sotto 0.3 sparisce e sembra rotta.
-    c.r *= 0.34; c.g *= 0.34; c.b *= 0.34;
+    // 0.92, il valore di flowstate. Era 0.34 perché la scia si sommava alla
+    // colonna di vetro illuminata e sopra quella bruciava; il capitolo adesso è
+    // nero, e a 0.34 su nero l'inchiostro si legge spento.
+    c.r *= 0.92; c.g *= 0.92; c.b *= 0.92;
     return c;
   }
 
@@ -455,10 +538,9 @@ WC.register('fluid', function(ctx){
     var aspect = canvas.width / canvas.height;
     return aspect > 1 ? delta / aspect : delta;
   }
-  function correctRadius(radius){
-    var aspect = canvas.width / canvas.height;
-    return aspect > 1 ? radius * aspect : radius;
-  }
+  // Qui c'era `correctRadius`, che scalava il raggio della macchia per
+  // l'aspetto del riquadro. Tolta: la correzione la fa già lo shader, e
+  // applicarla due volte gonfiava ogni macchia. Vedi il commento in `splat`.
 
   // Le coordinate sono relative al CANVAS, non alla finestra: il canvas vive
   // dentro il capitolo 03 e per metà scroll è pinnato, quindi la sua origine
@@ -506,7 +588,12 @@ WC.register('fluid', function(ctx){
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, x, y);
     gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0);
-    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100));
+    // Raggio grezzo, come flowstate. Qui prima passava per `correctRadius`, che
+    // lo moltiplica per l'aspetto — ma la correzione dell'aspetto la fa GIÀ lo
+    // shader (`p.x *= aspectRatio`), quindi era doppia: su un riquadro 16:10
+    // ogni macchia usciva ~26% più larga, e con la persistenza di flowstate
+    // l'inchiostro si accumulava fino a saturare a bianco. Visto a schermo.
+    gl.uniform1f(splatProgram.uniforms.radius, config.SPLAT_RADIUS / 100);
     blit(velocity.write);
     velocity.swap();
 
@@ -514,6 +601,104 @@ WC.register('fluid', function(ctx){
     gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
     blit(dye.write);
     dye.swap();
+  }
+
+  /* ---- L'ENTRATA — `multipleSplats` di flowstate ----
+   * Macchie sparse su tutto il riquadro, ognuna con la sua spinta, con
+   * l'inchiostro moltiplicato per dieci: sono i nuclei che poi saturano a
+   * bianco e da cui si aprono i vortici. Nel file parte al caricamento della
+   * pagina; qui parte quando il capitolo entra in quadro, che è il momento in
+   * cui il fluido nasce (fuori dalla sezione il loop non gira nemmeno).
+   *
+   * Le coordinate del file sono in pixel di canvas, qui sono texcoord 0..1 —
+   * il nostro `splat` prende già lo spazio normalizzato. Le velocità invece
+   * restano nelle stesse unità: ±500, come nel file. */
+  function multipleSplats(amount){
+    for (var i = 0; i < amount; i++) {
+      var c = generateColor();
+      c.r *= 10.0; c.g *= 10.0; c.b *= 10.0;
+      splat(Math.random(), Math.random(),
+            1000 * (Math.random() - 0.5), 1000 * (Math.random() - 0.5), c);
+    }
+  }
+
+  // Rampa morbida fra due quote. Scritta qui e non presa da `WC.glsl` perché
+  // questo modulo non dipende da three: è WebGL a mano, e `glsl.js` tira dentro
+  // THREE per i suoi helper di colore e di pulviscolo.
+  function smoothstep(a, b, x){
+    var t = (x - a) / (b - a);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
+  }
+
+  /* ---- I FUOCHI ----
+   * Uno scoppio non è una manciata di macchie sparse come `multipleSplats`: è
+   * un punto da cui tutto parte VERSO L'ESTERNO. Le macchie stanno su un
+   * cerchietto attorno al centro e la loro spinta punta in fuori, quindi il
+   * fluido apre una corolla invece di fare una nuvola. Tutte dello stesso
+   * colore: un fuoco d'artificio è di un colore solo, e mescolandoli si
+   * ottiene la stessa poltiglia dell'ingresso. */
+  function firework(){
+    var cx = 0.18 + Math.random() * 0.64;
+    var cy = 0.22 + Math.random() * 0.56;
+    var c = generateColor();
+    c.r *= SEQ.salvoInk; c.g *= SEQ.salvoInk; c.b *= SEQ.salvoInk;
+    for (var i = 0; i < SEQ.salvoArms; i++) {
+      var a = (i / SEQ.salvoArms) * Math.PI * 2 + Math.random() * 0.25;
+      var r = 0.015 + Math.random() * 0.025;
+      splat(cx + Math.cos(a) * r, cy + Math.sin(a) * r,
+            Math.cos(a) * SEQ.salvoForce, Math.sin(a) * SEQ.salvoForce, c);
+    }
+  }
+
+  /* ---- IL CURSORE AUTOMATICO ----
+   * Un puntatore invisibile che gira attorno al centro per sempre, del tutto
+   * indipendente da quello vero: non si ferma quando muovi il mouse e il mouse
+   * non lo sposta — i due convivono nello stesso campo di fluido. È lui che fa
+   * la differenza fra "un effetto che risponde al cursore" e una scena che
+   * vive: senza, passato mezzo secondo dalla macchiata d'ingresso il capitolo
+   * torna nero finché non passi col mouse.
+   *
+   * Il raggio respira (0.72 → 1.0 del massimo) invece di essere fisso, così
+   * l'orbita spazza un disco e non un anello sottile.
+   *
+   * Splatta con inchiostro schiarito ×3.2 e non passando dal percorso del
+   * puntatore vero: quello depositerebbe una tinta ~6 volte più fioca, e a
+   * macchiata svanita sembrerebbe che non stia succedendo niente. */
+  var orbitAngle = 0, orbitSeeded = false, vPrevX = 0, vPrevY = 0;
+  var virtualColor = null, lastVColor = 0, awakeSince = 0;
+
+  function driveVirtualPointer(now){
+    if (now - awakeSince < config.ORBIT_DELAY) return;
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w < 1 || h < 1) return;
+    var cx = w / 2, cy = h / 2;
+    // Il raggio è in pixel, non in texcoord: in texcoord un cerchio su un
+    // riquadro largo diventerebbe un'ellisse schiacciata.
+    var base = Math.min(config.ORBIT_RADIUS, w * 0.35, h * 0.35);
+    var r = base * (0.72 + 0.28 * Math.sin(orbitAngle * 0.37));
+    orbitAngle += config.ORBIT_SPEED;
+    // Gira per sempre, come nel file. C'è stato un passaggio in cui si fermava
+    // dopo un giro solo: ma dopo quel giro l'inchiostro si posa in un paio di
+    // secondi, e il capitolo resta un rettangolo nero finché non ci passi sopra
+    // col mouse. Su una sezione la cui unica scena è questa, non regge.
+    var x = cx + Math.cos(orbitAngle) * r;
+    var y = cy + Math.sin(orbitAngle) * r;
+    if (!orbitSeeded) {
+      // Primo giro: si registra la posizione e basta, se no il primo frame
+      // tira una frustata dall'angolo.
+      orbitSeeded = true; vPrevX = x; vPrevY = y;
+      return;
+    }
+    if (!virtualColor || now - lastVColor > 120) {
+      virtualColor = generateColor();
+      virtualColor.r *= 3.2; virtualColor.g *= 3.2; virtualColor.b *= 3.2;
+      lastVColor = now;
+    }
+    var dx = (x - vPrevX) * 9.0, dy = (y - vPrevY) * 9.0;
+    vPrevX = x; vPrevY = y;
+    // In texcoord la Y è capovolta rispetto ai pixel dello schermo.
+    splat(x / w, 1 - y / h, dx, -dy, virtualColor);
   }
 
   function step(dt){
@@ -613,14 +798,29 @@ WC.register('fluid', function(ctx){
   // Svuota colore e velocità e disegna un frame vuoto. Serve all'uscita dalla
   // sezione: senza, rientrando si vedrebbe per un istante la scia congelata di
   // mezz'ora prima, e la velocità residua ripartirebbe da sola.
+  /* Svuotamento a `gl.clear`, non a shader.
+   *
+   * Qui prima si passava per `clearProgram` — lo stesso che in `step()` scala la
+   * pressione — con `value` a 0, cioè si moltiplicava il campo per zero, e poi
+   * si scambiavano i buffer. Non svuotava: verificato chiamandolo a mano dalla
+   * console con la scena piena, e il quadro restava tal quale. Che la
+   * moltiplicazione per zero non arrivasse a destinazione o che lo scambio la
+   * rimettesse indietro poco importa — la strada giusta è un altra: azzerare il
+   * framebuffer con la GL, che è quello che serve e non ha shader di mezzo.
+   *
+   * Si azzerano ENTRAMBI i buffer di ogni coppia, non uno solo: con la doppia
+   * bufferizzazione, svuotare solo quello di scrittura lascia l'altro pieno e
+   * il primo scambio lo rimette in quadro. */
+  function clearFbo(target){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    gl.viewport(0, 0, target.width, target.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
   function clearSim(){
-    clearProgram.bind();
-    gl.uniform1i(clearProgram.uniforms.uTexture, dye.read.attach(0));
-    gl.uniform1f(clearProgram.uniforms.value, 0);
-    blit(dye.write); dye.swap();
-    gl.uniform1i(clearProgram.uniforms.uTexture, velocity.read.attach(0));
-    gl.uniform1f(clearProgram.uniforms.value, 0);
-    blit(velocity.write); velocity.swap();
+    clearFbo(dye.read);      clearFbo(dye.write);
+    clearFbo(velocity.read); clearFbo(velocity.write);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     render();
   }
 
@@ -628,6 +828,12 @@ WC.register('fluid', function(ctx){
   initFramebuffers();
 
   var lastTime = Date.now(), colorTimer = 0, raf = 0, running = false;
+  // Stato della sequenza: la quota del pin, l'ultima salva sparata, e se
+  // l'orbita è ancora accesa.
+  var seqProgress = 0, lastSalvo = -1, orbitOn = true, cleared = false;
+  // Le ondate che seguono la macchiata d'ingresso: si svuotano una per frame,
+  // così l'entrata dura qualche decimo invece di essere un fotogramma solo.
+  var splatStack = [];
 
   function update(){
     if (!running) return;
@@ -639,6 +845,10 @@ WC.register('fluid', function(ctx){
 
     if (document.hidden) return;
     if (resizeCanvas()) initFramebuffers();
+
+    stepSequence();
+    if (splatStack.length) multipleSplats(splatStack.pop());
+    if (orbitOn) driveVirtualPointer(now);
 
     colorTimer += dt * config.COLOR_UPDATE_SPEED;
     if (colorTimer >= 1) { colorTimer = colorTimer % 1; pointer.color = generateColor(); }
@@ -654,9 +864,67 @@ WC.register('fluid', function(ctx){
     render();
   }
 
+  /* Il pilota della sequenza. Legge la quota di scroll e decide tre cose: se
+   * l'orbita gira, se è il momento di una salva, e quanto sono accesi i testi.
+   *
+   * Le salve non partono "quando u supera x": partirebbero a ogni frame finché
+   * u resta lì. Partono quando cambia il GRADINO — la finestra dei fuochi è
+   * divisa in `SEQ.salvos` scalini e il botto scatta al passaggio da uno al
+   * successivo. Tornando indietro `lastSalvo` si riazzera e si possono
+   * rivedere. */
+  function stepSequence(){
+    var u = seqProgress;
+
+    orbitOn = u < SEQ.boom;
+
+    if (u < SEQ.fire) {
+      lastSalvo = -1;
+    } else if (u < SEQ.boom) {
+      var stepIdx = Math.floor((u - SEQ.fire) / (SEQ.boom - SEQ.fire) * SEQ.salvos);
+      if (stepIdx > lastSalvo) { lastSalvo = stepIdx; firework(); }
+    }
+
+    /* IL NERO, garantito. Dopo l'ultima salva nessuno splatta più e la
+     * dissipazione porterebbe via l'inchiostro da sola — ma in quanto tempo lo
+     * decide chi scorre, non noi: passando in fretta da `boom` a `invite` sono
+     * tre decimi di secondo, e la scritta comparirebbe su una nuvola ancora
+     * accesa. Quindi il campo lo si spegne per davvero, in due mosse:
+     *   1. il canvas sfuma a zero fra `boom` e `dark` — è quello che si vede,
+     *      e sopra la dissipazione vera si legge come fumo che si posa;
+     *   2. arrivati a `dark` la simulazione viene SVUOTATA una volta sola, e
+     *      il canvas torna opaco: da lì il campo è vergine, e il primo colpo di
+     *      cursore disegna sul nero invece che sugli avanzi dei fuochi.
+     * Tornando indietro `cleared` si riarma e la sequenza si rigioca. */
+    if (u >= SEQ.dark) {
+      if (!cleared) { cleared = true; clearSim(); }
+      canvas.style.opacity = '1';
+    } else {
+      cleared = false;
+      canvas.style.opacity = (1 - smoothstep(SEQ.boom, SEQ.dark, u)).toFixed(3);
+    }
+
+    // I testi. Quello del capitolo si spegne mentre i fuochi lo coprono;
+    // l'invito arriva quando il campo è già vuoto.
+    var copyA = 1 - smoothstep(SEQ.fire, SEQ.boom, u);
+    var inviteA = smoothstep(SEQ.invite, Math.min(1, SEQ.invite + 0.12), u);
+    if (copyEl) copyEl.style.opacity = copyA.toFixed(3);
+    if (footEl) footEl.style.opacity = copyA.toFixed(3);
+    if (invite) invite.style.opacity = inviteA.toFixed(3);
+  }
+
   function start(){
     if (running || document.hidden) return;
     running = true; lastTime = Date.now();
+    // L'entrata si rigioca ogni volta che il capitolo torna in quadro, e non
+    // una volta sola al caricamento come nel file: uscendo dalla sezione la
+    // simulazione viene svuotata (vedi `stop`), quindi rientrando il campo è
+    // vuoto e senza la macchiata si tornerebbe su un rettangolo nero.
+    awakeSince = lastTime;
+    orbitSeeded = false; orbitAngle = 0;
+    resizeCanvas();
+    multipleSplats(config.BURST_SPLATS);
+    for (var i = 0; i < config.BURST_WAVES; i++)
+      splatStack.push(10 + ((Math.random() * 10) | 0));
     raf = requestAnimationFrame(update);
   }
   function stop(){
@@ -664,12 +932,21 @@ WC.register('fluid', function(ctx){
     running = false;
     cancelAnimationFrame(raf);
     pointer.seen = false; pointer.moved = false;
+    splatStack.length = 0;
     clearSim();
   }
 
-  // Il fluido esiste solo dove ha un senso: il capitolo della colonna. Fuori
-  // da lì non gira nemmeno il loop — sono venti passaggi di pressione per
-  // frame, non è roba da tenere accesa su tutta la pagina.
+  // Il pin: la schermata resta ferma e i 200svh di corsa diventano il tempo
+  // della sequenza. `pinSpacing: false` come negli altri capitoli — lo spazio
+  // di scroll ce l'ha già la sezione (300svh in sections.css).
+  var stPin = pinEl && ScrollTrigger.create({
+    trigger: '#cap03', start: 'top top', end: 'bottom bottom',
+    pin: pinEl, pinSpacing: false, anticipatePin: 1,
+    onUpdate: function(self){ seqProgress = self.progress; }
+  });
+  // Il fluido esiste solo dove ha un senso: dentro il capitolo. Fuori da lì non
+  // gira nemmeno il loop — sono venti passaggi di pressione per frame, non è
+  // roba da tenere accesa su tutta la pagina.
   var stLife = ScrollTrigger.create({
     trigger: '#cap03', start: 'top bottom', end: 'bottom top',
     onToggle: function(self){ self.isActive ? start() : stop(); }
@@ -680,6 +957,7 @@ WC.register('fluid', function(ctx){
 
   return function(){
     stop();
+    if (stPin) stPin.kill();
     stLife.kill();
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('mousemove', onMouseMove);

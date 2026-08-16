@@ -18,7 +18,7 @@
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css?v=20260816b">
-<link rel="stylesheet" href="css/sections.css?v=20260816b">
+<link rel="stylesheet" href="css/sections.css?v=20260817a">
 </head>
 <body>
 
@@ -104,44 +104,50 @@
          è un'immagine ferma ma una scena che scorre, e sta sulla destra, fuori
          dalla colonna del testo. Il canvas è trasparente: il nero resta quello
          della pagina. -->
-    <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
-    <p class="eyebrow">// 02 — Metodo</p>
-    <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
+    <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
+         l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
+         dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
+    <div class="wc-manifesto-pin" id="wcManifestoPin">
+      <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
+      <p class="eyebrow">// 02 — Metodo</p>
+      <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
+      <!-- Le parole che scendono in spirale attorno all'elica. Il contenitore
+           resta vuoto nel markup: js/dna.js ci mette DUE copie di ogni parola, una
+           sotto il canvas e una sopra, per farle passare dietro all'elica.
+           Senza WebGL (o con reduced-motion) diventano una lista in fila qui
+           sotto, e sono l'unico posto in cui il capitolo dice di cosa è fatto. -->
+      <div class="wc-dna-orbit" id="wcDnaOrbit"></div>
+    </div>
   </section>
 
+  <!-- CAP. 03 — IL FLUIDO.
+       Qui c'era la colonna vertebrale in vetro. È stata tolta, non rotta:
+       `js/spine.js`, `assets/spine.glb` e `scripts/pack-spine-glb.js` restano
+       sul disco e sono ripristinabili. Poi la sezione è rimasta vuota per un
+       po', col solo splash di fluido e la copy nascosta; adesso il capitolo È
+       il fluido, e ha di nuovo un testo a schermo.
+
+       L'impaginazione è quella dell'hero di "flowstate", da cui viene la scena:
+       tutto in colonna al centro — pillola, titolo, sottotitolo — con la riga
+       di chiusura appoggiata in basso. Il testo è nostro. -->
   <section class="wc-spine" id="cap03" data-cursor="orbit">
-    <!-- SEZIONE SVUOTATA, in attesa del contenuto che la sostituirà.
-         Qui c'era la colonna vertebrale in vetro: modello, shader e scena sono
-         stati tolti, non rotti. Restano sul disco e sono ripristinabili:
-           · js/spine.js        — la scena, intatta
-           · assets/spine.glb   — il modello ricompresso, 790 KB
-           · scripts/pack-spine-glb.js
-         Per riaccenderla servono tre righe: il <canvas id="wcSpineCanvas">
-         qui sotto, lo <script src="js/spine.js"> in fondo alla pagina, e
-         l'altezza della sezione riportata a 520svh in sections.css. -->
     <div class="wc-spine-pin" id="wcSpinePin">
-      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto in cui
-           il cursore lo accende. Sta dopo la scena 3D e prima della copy, così
-           passa sopra la colonna e sotto il testo. -->
+      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto della
+           pagina in cui il cursore lo accende. Sta prima della copy, così il
+           testo gli passa davanti. -->
       <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
-      <!-- Con la scena viva questo blocco NON si vede: il capitolo è la colonna
-           su nero, e basta. Resta nel DOM perché senza di lui la sezione non
-           avrebbe testo per gli screen reader, e perché senza WebGL torna
-           visibile ed È la sezione. Non è testo morto: è l'unica versione
-           leggibile del capitolo quando il canvas non c'è. -->
       <div class="wc-spine-copy">
-        <p class="eyebrow">// 03 — Tridimensionale</p>
-        <h2>Profondità vera,<br>non un'ombra finta.</h2>
-        <p class="lead">Una colonna di vetro che ruota su sé stessa mentre scendi lungo il suo corpo: vetro vero, che rifrange e disperde la luce come farebbe il vetro. Nessun video e nessuna GIF: il fotogramma lo calcola il browser mentre scendi.</p>
-        <ul class="wc-spine-list">
-          <li>Tipografia</li>
-          <li>Motion</li>
-          <li>Interazione</li>
-          <li>Scroll</li>
-          <li>Performance</li>
-          <li>Shader</li>
-        </ul>
+        <p class="eyebrow">// 03 — Fluido</p>
+        <h2>Venti passaggi di pressione,<br>sessanta volte al secondo.</h2>
+        <p class="lead">Non è un video di inchiostro. È un fluido che viene risolto mentre lo attraversi: il cursore non disegna la scia, spinge la velocità del campo — poi sono i vortici a decidere dove finisce il colore. Ti fermi, e continua da solo per un istante.</p>
       </div>
+      <p class="wc-spine-foot">WebGL grezzo, nessuna libreria. Il solutore sta tutto in questa pagina.</p>
+      <!-- L'invito compare in fondo alla sequenza, quando i fuochi hanno
+           spazzato via testo e inchiostro e resta il nero. Da lì in poi il
+           capitolo lo muovi tu. `aria-hidden` perché è l'etichetta di un
+           gesto su un canvas che è già aria-hidden: senza il fluido non
+           vuol dire niente, e con reduced-motion non compare mai. -->
+      <p class="wc-spine-invite" id="wcSpineInvite" aria-hidden="true">Muovi il cursore</p>
     </div>
   </section>
 
@@ -328,15 +334,15 @@
 <script src="js/core.js?v=20260816b"></script>
 <script src="js/glsl.js?v=20260816b"></script>
 <script src="js/cursor.js?v=20260816b"></script>
-<script src="js/fluid.js?v=20260816b"></script>
+<script src="js/fluid.js?v=20260817a"></script>
 <script src="js/loader.js?v=20260816b"></script>
 <script src="js/tunnel.js?v=20260816b"></script>
 <script src="js/warp.js?v=20260816b"></script>
-<script src="js/manifesto.js?v=20260816b"></script>
-<script src="js/dna.js?v=20260816b"></script>
+<script src="js/manifesto.js?v=20260816n"></script>
+<script src="js/dna.js?v=20260816p"></script>
 <script src="js/headings.js?v=20260816b"></script>
-<script src="js/vesper.js?v=20260816b"></script>
-<script src="js/saucer.js?v=20260816b"></script>
+<script src="js/vesper.js?v=20260816c"></script>
+<script src="js/saucer.js?v=20260816f"></script>
 <script src="js/robot.js?v=20260816b"></script>
 <script src="js/horizontal.js?v=20260816b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>

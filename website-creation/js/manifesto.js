@@ -9,11 +9,22 @@ WC.register('manifesto', function(ctx){
     return;
   }
 
+  /* Il riferimento è la SEZIONE, non il paragrafo, e comincia quando comincia
+   * il pin (`top top`).
+   *
+   * Prima era `trigger: el` con `top 75%` → `bottom 55%`: misure prese sulla
+   * posizione del testo nel flusso. Da quando il capitolo è pinnato (js/dna.js)
+   * quella posizione si congela appena il pin scatta, e tutto lo scrub finiva
+   * PRIMA che la sezione si fermasse: arrivavi sul capitolo e il testo era già
+   * tutto bianco. Visto a schermo.
+   *
+   * `+=100%` è una schermata di scroll: su 160svh di corsa, il testo finisce di
+   * accendersi a circa due terzi, e l'ultimo terzo resta all'elica. */
   var tl = gsap.timeline({
     scrollTrigger: {
-      trigger: el,
-      start: 'top 75%',
-      end: 'bottom 55%',
+      trigger: '#cap02',
+      start: 'top top',
+      end: '+=100%',
       scrub: .6
     }
   });
