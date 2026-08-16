@@ -3,6 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BASE OBBLIGATORIA, non una comodità.
+     `vercel.json` alla radice ha `trailingSlash: false`, quindi in produzione
+     questa pagina vive a `/website-creation` — SENZA la barra finale. Il
+     browser risolve gli indirizzi relativi rispetto all'ultimo segmento, che
+     lì non è una cartella: `css/base.css` diventa `/css/base.css` e va a
+     sbattere sulla radice del sito. Tutti i CSS, tutti i js e tutti gli asset
+     del capitolo danno 404 e resta lo scheletro HTML.
+     Verificato a schermo servendo la cartella come la serve Vercel, non
+     dedotto. Vale anche per le `fetch` dei modelli dentro js/. -->
+<base href="/website-creation/">
 <title>Website Creation | Axxell</title>
 <meta name="description" content="Siti web su misura progettati e costruiti da Axxell. Questa pagina è il portfolio: ogni sezione dimostra una capacità diversa.">
 <meta name="robots" content="index, follow">
