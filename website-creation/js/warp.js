@@ -53,11 +53,27 @@ WC.register('warp', function(ctx){
   var G = WC.glsl;
 
   var CONFIG = {
-    streaks: 1400,
+    // Il conteggio lo detta la TERZA forma, non la prima.
+    //
+    // Con 1400 le prime due fasi stavano benissimo — le strisce sono sparse per
+    // natura, e l'elica è una curva: 1400 punti su ~100 unità di filamento fanno
+    // 14 punti per unità, densissimi. Ma vesper è fatto di due SUPERFICI, e le
+    // stesse 1400 particelle spalmate su una sfera (266 unità²) più un disco
+    // (415 unità²) davano circa 2 punti per unità²: non una sfera e una
+    // galassia, una polvere sparsa in cui non si leggeva nessuna forma. Da qui
+    // il "vesper è sparito" — non mancava, era troppo rado per vedersi.
+    //
+    // 4200 (con le forme un po' più strette, sotto) portano vesper a ~12 punti
+    // per unità². Le altre due fasi ora ne hanno tre volte tanti, e vanno
+    // rimagrite di conseguenza: `width` e `dnaDot` qui sotto sono scesi per
+    // questo, non per gusto — a parità di spessore il tunnel diventava una
+    // lastra di luce e l'elica un tubo pieno.
+    streaks: 4200,
     far:  60,          // quanto lontano nasce una striscia, in unità
     near: 1.2,         // e quanto vicino arriva
     radius: 9,         // raggio della parete del tunnel a 1:1, scalato con l'aspect
-    width: 2.2,        // corpo della striscia in pixel CSS, costante a ogni DPI
+    width: 1.5,        // corpo della striscia in pixel CSS, costante a ogni DPI
+                       // (era 2.2 con 1400 strisce: a 4200 la parete si chiudeva)
     // Velocità: si PARTE dall'uscita del tunnel e si decade. È questo che salda
     // i due capitoli — vedi l'intestazione.
     speedFrom: 2.35,
@@ -73,15 +89,19 @@ WC.register('warp', function(ctx){
     dnaZ: -22,
     dnaRungs: 46,       // pioli fra un filamento e l'altro
     dnaRungFrac: 0.42,  // quota di particelle che fa i pioli invece dei filamenti
-    dnaDot: 3.4,        // lato del quadratino, in pixel CSS
+    dnaDot: 2.4,        // lato del quadratino, in pixel CSS (era 3.4: vedi `streaks`)
     // ---- terza forma: vesper ----
     // Sfera + galassia a spirale, i due oggetti della scena originale. Le
     // particelle ne compongono la FORMA, non il materiale: l'orbe era una mesh
     // con uno shader di vetro, e quello un punto non lo può essere. Era il
     // limite dichiarato prima di cominciare.
-    vesOrbR: 4.6,        // raggio della sfera
+    // Sfera e disco sono stretti rispetto a prima (4.6 e 11.5): la stessa
+    // quantità di particelle su una superficie più piccola è la seconda metà
+    // del perché vesper adesso si vede. Il disco resta molto più largo della
+    // sfera — è una galassia, deve debordare.
+    vesOrbR: 3.4,        // raggio della sfera
     vesOrbFrac: 0.42,    // quota di particelle che la compone
-    vesGalR: 11.5,       // raggio del disco
+    vesGalR: 8.5,        // raggio del disco
     vesGalArms: 3,
     vesGalTilt: -0.5,    // inclinazione del disco, come nella scena sorgente
     vesZ: -20,
@@ -131,7 +151,7 @@ WC.register('warp', function(ctx){
   var wide   = window.innerWidth;
   var mobile = wide <= 640;
   var maxDpr = wide > 1024 ? 1.75 : 1.4;
-  var nStreak = mobile ? 600 : CONFIG.streaks;
+  var nStreak = mobile ? 1600 : CONFIG.streaks;
   var nStar   = mobile ? 420 : CONFIG.stars;
   var nDust   = mobile ? 180 : CONFIG.dust;
 
