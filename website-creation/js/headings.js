@@ -35,10 +35,34 @@ WC.register('headings', function(ctx){
 
   var splits = [];
 
+  // Il titolo del disco volante non entra: si DECODIFICA. La sezione è l'unica
+  // notturna della pagina, il modello è un oggetto che sorvola un prato al
+  // buio, e il titolo parla di numeri ("Quarantamila fili d'erba, una sola
+  // chiamata di disegno") — un testo che si risolve da caratteri casuali gli
+  // sta addosso meglio di una riga che sale.
+  //
+  // Lo scramble gira comunque sulle righe di SplitText, non sull'h2 intero: il
+  // titolo porta un <br> voluto, e ScrambleText che riscrive il nodo se lo
+  // mangerebbe. Riga per riga il ritorno a capo resta dov'è.
+  var SCRAMBLE_IN = '#capSaucer';
+
+  function scramble(lines, h, onEnter){
+    return gsap.to(lines, {
+      duration: 1.3,
+      // "{original}" = il testo che la riga ha già: non va ripetuto qui, e
+      // continua a funzionare se la copy cambia.
+      scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 },
+      ease: 'none',
+      stagger: 0.22,
+      scrollTrigger: { trigger: h, start: 'top 85%', once: true, onEnter: onEnter }
+    });
+  }
+
   heads.forEach(function(h){
     // Una volta che il titolo è entrato resta entrato: al ritaglio successivo
     // (resize, font caricato) le righe nuove vanno messe a posto, non rianimate.
     var shown = false;
+    var scrambles = typeof ScrambleTextPlugin !== 'undefined' && !!h.closest(SCRAMBLE_IN);
 
     var split = new SplitText(h, {
       type: 'lines',
@@ -50,7 +74,14 @@ WC.register('headings', function(ctx){
       linesClass: 'wcline',
       autoSplit: true,
       onSplit: function(self){
-        if (shown) { gsap.set(self.lines, { yPercent: 0 }); return; }
+        if (shown) {
+          // Al ritaglio successivo il titolo è già stato letto: rimetterlo a
+          // posto, non rifarlo. Per lo scramble non c'è niente da rimettere —
+          // il testo è già quello giusto — quindi basta annullare lo scorrimento.
+          gsap.set(self.lines, { yPercent: 0 });
+          return;
+        }
+        if (scrambles) return scramble(self.lines, h, function(){ shown = true; });
         return gsap.from(self.lines, {
           yPercent: 110,
           duration: 0.9,

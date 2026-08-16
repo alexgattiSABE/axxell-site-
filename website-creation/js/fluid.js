@@ -19,10 +19,11 @@
  *    tutto il cerchio: escono verdi, gialli e arancioni. Qui le tinte sono
  *    limitate a quattro fasce — ciano, blu, viola, fucsia/rosa — le stesse
  *    del cap. 03.
- * 4. VORTICITÀ E RAGGIO BASSI. CURL 2 invece di 30, SPLAT_RADIUS 0.07 invece
- *    di 0.25: una scia che segue il cursore, non uno spruzzo che invade la
- *    pagina. La dissipazione è alta per lo stesso motivo — il testo sotto deve
- *    restare leggibile.
+ * 4. VORTICITÀ E RAGGIO ALTI (CURL 42, SPLAT_RADIUS 0.22). Era il contrario —
+ *    CURL 2 e raggio 0.09, una scia sottile — poi la taratura è passata a
+ *    quella del fluido di "flowstate": inchiostro versato nell'acqua invece di
+ *    un filo che segue il cursore. Stesso motore, altri numeri. Vedi il
+ *    blocco `config` più sotto per il perché di ognuno.
  * 5. TRASPARENTE. Il canvas non ha fondo: si compone sopra la scena 3D del
  *    capitolo in mix-blend-mode screen (vedi sections.css).
  *
@@ -37,12 +38,22 @@ WC.register('fluid', function(ctx){
   var config = {
     SIM_RESOLUTION: mobile ? 96 : 128,
     DYE_RESOLUTION: mobile ? 384 : 768,
-    DENSITY_DISSIPATION: 1.5,
-    VELOCITY_DISSIPATION: 1.1,
+    // Taratura ripresa dal fluido di "flowstate" (che è lo stesso motore di
+    // Dobryakov con altri numeri): inchiostro nell'acqua, marmorizzato, invece
+    // della scia sottile di prima. Le sue tinte e il suo fondo opaco NON
+    // arrivano: la palette resta quella del capitolo e il canvas trasparente.
+    //
+    // La dissipazione è l'unico valore che non è quello di flowstate (0.958):
+    // la formula è `result / (1.0 + dissipation * dt)`, quindi più basso =
+    // scie più durature, e a 0.958 restano attaccate abbastanza da coprire il
+    // testo. 1.1 è il punto in cui i vortici fanno in tempo a formarsi e la
+    // copy sotto resta comunque leggibile.
+    DENSITY_DISSIPATION: 1.1,
+    VELOCITY_DISSIPATION: 0.98,   // la velocità sopravvive: senza, CURL 42 non arriccia niente
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: mobile ? 12 : 16,
-    CURL: 2,               // vorticità bassa: niente riccioli isterici
-    SPLAT_RADIUS: 0.09,    // raggio piccolo: scia, non spruzzo
+    CURL: 42,              // vorticità alta: è questa che marmorizza
+    SPLAT_RADIUS: 0.22,    // macchie grosse, non un filo
     SPLAT_FORCE: 5000,
     SHADING: true,
     COLOR_UPDATE_SPEED: 4

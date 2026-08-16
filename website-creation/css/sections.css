@@ -136,6 +136,14 @@ body.wc-locked{overflow:hidden;}
 .wc-manifesto-text{font-size:clamp(1.5rem,3.4vw,2.8rem);line-height:1.35;
   font-weight:500;letter-spacing:-.015em;max-width:22ch;}
 .wc-manifesto-text .wi{color:var(--dim);transition:none;}
+/* L'elica sta DIETRO il testo (z-index 0 contro il resto in 1) e non prende
+   eventi: il cursore "read" della sezione deve continuare a valere sul testo.
+   Il testo è largo 22ch, quindi la metà destra è libera ed è lì che l'elica
+   sta: nessun velo di contrasto, perché non le passa sotto niente da leggere. */
+.wc-dna{position:absolute;inset:0;width:100%;height:100%;
+  z-index:0;pointer-events:none;}
+.wc-manifesto > .eyebrow,
+.wc-manifesto > .wc-manifesto-text{position:relative;z-index:1;}
 
 /* ---- CAP 03 — SEZIONE VUOTA, IN ATTESA ----
    Era 520svh perché la colonna di vetro aveva 4,2 schermate di scroll in cui
@@ -216,27 +224,11 @@ body.wc-locked{overflow:hidden;}
 .wc-saucer.-static .wc-saucer-pin{height:auto;padding:0;overflow:visible;}
 .wc-saucer.-static #wcSaucerCanvas{display:none;}
 
-/* ---- CAP 04 — CAROSELLO ---- */
-.wc-carousel{display:flex;flex-direction:column;gap:1.4rem;overflow:hidden;}
-.wc-track-wrap{margin-top:2rem;cursor:grab;user-select:none;}
-.wc-track-wrap.dragging{cursor:grabbing;}
-.wc-track{display:flex;gap:1.2rem;will-change:transform;}
-.wc-tile{flex:0 0 clamp(200px,24vw,320px);aspect-ratio:4/5;border-radius:4px;
-  border:1px solid var(--border2);position:relative;overflow:hidden;
-  display:flex;align-items:flex-end;padding:1.2rem;}
-.wc-tile span{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--white);position:relative;z-index:1;}
-.wc-tile::before{content:'';position:absolute;inset:0;opacity:.85;}
-.wc-tile[data-g="1"]::before{background:radial-gradient(120% 90% at 10% 10%,#00d4ff33,transparent 60%),linear-gradient(160deg,#0b0b12,#101019);}
-.wc-tile[data-g="2"]::before{background:repeating-linear-gradient(45deg,#0b0b12 0 12px,#101019 12px 24px);}
-.wc-tile[data-g="3"]::before{background:linear-gradient(180deg,#101019,#060609);}
-.wc-tile[data-g="4"]::before{background:conic-gradient(from 210deg at 60% 40%,#00d4ff22,#00e8a222,#0b0b12,#00d4ff22);}
-.wc-tile[data-g="5"]::before{background:radial-gradient(80% 60% at 50% 110%,#00e8a233,transparent 70%),#0b0b12;}
-.wc-tile[data-g="6"]::before{background:linear-gradient(90deg,#0b0b12 0 50%,#101019 50% 100%);}
-.wc-tile[data-g="7"]::before{background:radial-gradient(60% 60% at 30% 70%,#00d4ff26,transparent),radial-gradient(50% 50% at 80% 20%,#00e8a21f,transparent),#060609;}
-.wc-tile[data-g="8"]::before{background:#0b0b12;}
+/* Qui c'era il CSS del carosello (.wc-carousel/.wc-track/.wc-tile): otto
+   tessere con gradienti al posto delle immagini. Rimosso con la sezione,
+   commit d80a4ca. */
 
-/* ---- CAP 05 — MODELLO INTERATTIVO ---- */
+/* ---- MODELLO INTERATTIVO (id cap05, ora "// 04" a schermo) ---- */
 /* Il modello non sta più in metà di una card: prende tutta la sezione e sta
    al centro. La copy gli passa davanti in basso, su un velo. */
 .wc-robot{padding:0;}

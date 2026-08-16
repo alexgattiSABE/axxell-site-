@@ -74,6 +74,7 @@ window.WC = (function(){
     // resta in piedi, solo senza il reveal dei titoli.
     if (typeof SplitText !== 'undefined') gsap.registerPlugin(SplitText);
     if (typeof Flip !== 'undefined') gsap.registerPlugin(Flip);
+    if (typeof ScrambleTextPlugin !== 'undefined') gsap.registerPlugin(ScrambleTextPlugin);
     if (typeof CustomEase !== 'undefined') {
       gsap.registerPlugin(CustomEase);
       // Curve del sito, non preset. `wcOut` parte più decisa e frena più a
