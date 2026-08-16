@@ -228,6 +228,25 @@ body.wc-locked{overflow:hidden;}
    tessere con gradienti al posto delle immagini. Rimosso con la sezione,
    commit d80a4ca. */
 
+/* ---- CAP 04 — VESPER, la sfera che si tocca ----
+   Alta 340svh: la coreografia ha tre tempi in fila (si raduna, si apre il foro,
+   si sfalda) e comprimerli fa sovrapporre letture che devono restare distinte.
+   La copy sta a sinistra e in mezzo all'altezza, non in basso come nell'ufo:
+   qui il soggetto è centrato e coprirlo dal basso lo taglierebbe a metà. */
+.wc-vesper{padding:0;height:340svh;}
+.wc-vesper-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:center;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+#wcVesperCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+/* Nessun velo dietro la copy: la sfera sta al centro e il testo a sinistra, e
+   un velo su un fondo già nero servirebbe solo a sporcarlo. */
+.wc-vesper-copy{position:relative;z-index:1;max-width:34ch;
+  display:flex;flex-direction:column;gap:.9rem;}
+.wc-vesper .eyebrow{color:#52FFA5;}
+.wc-vesper.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-vesper.-static .wc-vesper-pin{height:auto;padding:0;overflow:visible;}
+.wc-vesper.-static #wcVesperCanvas{display:none;}
+
 /* ---- MODELLO INTERATTIVO (id cap05, ora "// 04" a schermo) ---- */
 /* Il modello non sta più in metà di una card: prende tutta la sezione e sta
    al centro. La copy gli passa davanti in basso, su un velo. */

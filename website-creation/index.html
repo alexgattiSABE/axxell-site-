@@ -17,8 +17,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260816a">
-<link rel="stylesheet" href="css/sections.css?v=20260816a">
+<link rel="stylesheet" href="css/base.css?v=20260816b">
+<link rel="stylesheet" href="css/sections.css?v=20260816b">
 </head>
 <body>
 
@@ -154,11 +154,28 @@
        Recuperabile dal commit d80a4ca (sezione, js/carousel.js e il CSS
        .wc-carousel/.wc-track/.wc-tile).
 
-       NUMERAZIONE: da qui in poi gli occhielli sono stati scalati di uno
-       (// 05 è diventato // 04, e così via) ma gli `id` NO: restano cap05,
-       cap06, cap07, cap08 perché sono agganciati alla voce di menu
-       "Parliamone" (#cap08) e ai trigger in js/. Il numero che si legge e
-       l'id non coincidono più, di proposito. -->
+       NUMERAZIONE: gli occhielli erano stati scalati di uno quando il carosello
+       è sparito, e sono tornati ai numeri di prima quando vesper ha preso il
+       posto libero — un capitolo tolto, uno aggiunto. Gli `id` non sono mai
+       stati toccati in nessuno dei due passaggi: restano cap05..cap08 perché ci
+       sono agganciati la voce di menu "Parliamone" (#cap08) e i trigger in js/.
+       Vesper, essendo nuovo, ha un id parlante (capVesper) come le altre
+       sezioni aggiunte dopo la numerazione originale. -->
+
+  <!-- VESPER — la sfera che si tocca. Sta PRIMA del disco volante: è l'ultima
+       delle scene fatte di particelle (tunnel → helion → elica → questa), e da
+       qui in poi la pagina passa ai modelli 3D veri. Mettendola dopo l'ufo si
+       sarebbe tornati indietro di un passo. -->
+  <section class="wc-vesper" id="capVesper" data-cursor="dot">
+    <div class="wc-vesper-pin" id="wcVesperPin">
+      <canvas id="wcVesperCanvas"></canvas>
+      <div class="wc-vesper-copy">
+        <p class="eyebrow">// 04 — Materia</p>
+        <h2>Ventitremila punti,<br>e li sposti col dito.</h2>
+        <p class="lead">Non è un video di una sfera: è una sfera. Passaci sopra il cursore e la superficie si gonfia dove sei, resta indietro di un istante — come farebbe un liquido — e si riposa da sola quando ti fermi.</p>
+      </div>
+    </div>
+  </section>
 
   <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
        con un modello 3D vero, e stando vicine si leggono come una coppia. -->
@@ -186,7 +203,7 @@
         <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
       </div>
       <div class="wc-robot-copy">
-        <p class="eyebrow">// 04 — Oggetti vivi</p>
+        <p class="eyebrow">// 05 — Oggetti vivi</p>
         <h2>Non un video.<br>Un modello che risponde.</h2>
         <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini.</p>
         <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
@@ -242,7 +259,7 @@
   <section class="wc-part" id="cap06" data-cursor="cross">
     <div class="wc-part-pin" id="wcPartPin">
       <div class="wc-part-copy">
-        <p class="eyebrow">// 05 — Una cosa che diventa un'altra</p>
+        <p class="eyebrow">// 06 — Una cosa che diventa un'altra</p>
         <h2>Non due scene.<br>Una sola, che cambia forma.</h2>
         <p class="lead">Migliaia di punti si tengono in una sfera, si sfaldano in lenzuola e si riordinano in una spirale. Nessun taglio, nessun video: è lo stesso sistema di particelle, e la posizione dello scroll decide a che punto della trasformazione sei.</p>
       </div>
@@ -252,7 +269,7 @@
   <section class="wc-process" id="cap07" data-cursor="arrow">
     <div class="wc-process-pin" id="wcProcessPin">
       <div class="wc-process-head">
-        <p class="eyebrow">// 06 — Processo</p>
+        <p class="eyebrow">// 07 — Processo</p>
         <h2>Quattro passaggi.</h2>
         <div class="wc-progress"><span id="wcProgressBar"></span></div>
       </div>
@@ -266,7 +283,7 @@
   </section>
 
   <section class="wc-cta" id="cap08" data-cursor="caret">
-    <p class="eyebrow">// 07 — Parliamone</p>
+    <p class="eyebrow">// 08 — Parliamone</p>
     <h2>Raccontaci cosa deve fare<br>il tuo sito.</h2>
     <form class="wc-form" id="wcForm" novalidate>
       <div class="wc-field">
@@ -308,22 +325,23 @@
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260816a"></script>
-<script src="js/glsl.js?v=20260816a"></script>
-<script src="js/cursor.js?v=20260816a"></script>
-<script src="js/fluid.js?v=20260816a"></script>
-<script src="js/loader.js?v=20260816a"></script>
-<script src="js/tunnel.js?v=20260816a"></script>
-<script src="js/warp.js?v=20260816a"></script>
-<script src="js/manifesto.js?v=20260816a"></script>
-<script src="js/dna.js?v=20260816a"></script>
-<script src="js/headings.js?v=20260816a"></script>
-<script src="js/saucer.js?v=20260816a"></script>
-<script src="js/robot.js?v=20260816a"></script>
-<script src="js/horizontal.js?v=20260816a"></script>
+<script src="js/core.js?v=20260816b"></script>
+<script src="js/glsl.js?v=20260816b"></script>
+<script src="js/cursor.js?v=20260816b"></script>
+<script src="js/fluid.js?v=20260816b"></script>
+<script src="js/loader.js?v=20260816b"></script>
+<script src="js/tunnel.js?v=20260816b"></script>
+<script src="js/warp.js?v=20260816b"></script>
+<script src="js/manifesto.js?v=20260816b"></script>
+<script src="js/dna.js?v=20260816b"></script>
+<script src="js/headings.js?v=20260816b"></script>
+<script src="js/vesper.js?v=20260816b"></script>
+<script src="js/saucer.js?v=20260816b"></script>
+<script src="js/robot.js?v=20260816b"></script>
+<script src="js/horizontal.js?v=20260816b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
-<script src="js/lithos.js?v=20260816a"></script>
-<script src="js/sneaker.js?v=20260816a"></script>
-<script src="js/form.js?v=20260816a"></script>
+<script src="js/lithos.js?v=20260816b"></script>
+<script src="js/sneaker.js?v=20260816b"></script>
+<script src="js/form.js?v=20260816b"></script>
 </body>
 </html>
