@@ -40,14 +40,17 @@ WC.register('particles', function(ctx){
         : wide > 640  ? { orb:  9000, orbSize: 24, camZ: 4.5, gseg: [95, 235],  dpr: 1.25 }
         :               { orb:  5500, orbSize: 21, camZ: 5.4, gseg: [65, 160],  dpr: 1.1 };
 
+  // Colori ORIGINALI del template "Vesper" di GetLayers (src/lib/scene/
+  // constants.ts): la sfera va da indaco a menta, la galassia ha il nucleo
+  // indaco e i bracci menta. Erano stati ritinti sui token del sito.
   var ORB = {
-    colorTop: '#00e8a2', colorBottom: '#0077b8', colorEdge: '#005c8f',
+    colorTop: '#52ffa5', colorBottom: '#582eff', colorEdge: '#582eff',
     deform: 0.135, brightness: 1.24, opacity: 1, spin: 0.17, tilt: 0.39,
     pointerRadius: 1.76, oilBulge: 0.46, oilRipple: 0.34, oilDrag: 0.95,
     rippleFreq: 11, rippleSpeed: 4, iridescence: 0.6, radius: 1
   };
   var GAL = {
-    colorEdge: '#00e8a2', colorCore: '#00d4ff',
+    colorEdge: '#52ffa5', colorCore: '#582eff',
     opacity: 0.55, pointSize: 6, brightness: 1.02, armSpin: 0.4,
     tilt: -0.5, scale: 0.18, cameraZ: 48, dive: 30, diveTilt: 0.5,
     parallax: 4, pointerRadius: 5, pointerStrength: 2

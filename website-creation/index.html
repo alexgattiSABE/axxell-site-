@@ -16,9 +16,9 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260813f">
-<link rel="stylesheet" href="css/sections.css?v=20260813f">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css?v=20260816a">
+<link rel="stylesheet" href="css/sections.css?v=20260816a">
 </head>
 <body>
 
@@ -68,25 +68,65 @@
     </div>
   </section>
 
+  <!-- HELION — il volo continua. Sta QUI, fra il tunnel e il manifesto, perché
+       è la prosecuzione del tunnel: apre alla velocità con cui quello chiude
+       (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
+       fra due scene, decelera dentro una sola. -->
+  <section class="wc-warp" id="capWarp" data-cursor="dot">
+    <div class="wc-warp-pin" id="wcWarpPin">
+      <canvas id="wcWarpCanvas"></canvas>
+      <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
+           cambia forma, quindi il testo cambia con lei invece di scorrere via.
+           L'opacità la guida lo stesso valore che guida il riordino. -->
+      <div class="wc-warp-copy" id="wcWarpCopyA">
+        <p class="eyebrow">// Fuori dal tubo</p>
+        <h2>Poi si apre.</h2>
+      </div>
+      <div class="wc-warp-copy" id="wcWarpCopyB">
+        <p class="eyebrow">// La stessa materia</p>
+        <h2>E si riordina.</h2>
+        <p class="lead">Nessuna dissolvenza fra due scene: sono le stesse particelle del volo, ognuna con la sua destinazione già assegnata, che vanno a comporre l'elica.</p>
+      </div>
+      <div class="wc-warp-copy" id="wcWarpCopyC">
+        <p class="eyebrow">// E ancora</p>
+        <h2>Poi diventa altro.</h2>
+        <p class="lead">Terza forma, stesse particelle: una sfera e una galassia. Nessuna scena viene ricostruita, nessuna viene sostituita — quello che scorre è sempre lo stesso pugno di materia.</p>
+      </div>
+    </div>
+  </section>
+
   <section class="wc-manifesto" id="cap02" data-cursor="read">
+    <!-- Qui c'era il poster "Blue Swirl" come sfondo. Tolto: il capitolo prima
+         è ora una scena 3D vera, e un'immagine ferma subito dopo si leggeva
+         come un passo indietro. Il manifesto torna a essere testo su nero. -->
     <p class="eyebrow">// 02 — Metodo</p>
     <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
   </section>
 
   <section class="wc-spine" id="cap03" data-cursor="orbit">
+    <!-- SEZIONE SVUOTATA, in attesa del contenuto che la sostituirà.
+         Qui c'era la colonna vertebrale in vetro: modello, shader e scena sono
+         stati tolti, non rotti. Restano sul disco e sono ripristinabili:
+           · js/spine.js        — la scena, intatta
+           · assets/spine.glb   — il modello ricompresso, 790 KB
+           · scripts/pack-spine-glb.js
+         Per riaccenderla servono tre righe: il <canvas id="wcSpineCanvas">
+         qui sotto, lo <script src="js/spine.js"> in fondo alla pagina, e
+         l'altezza della sezione riportata a 520svh in sections.css. -->
     <div class="wc-spine-pin" id="wcSpinePin">
-      <canvas id="wcSpineCanvas"></canvas>
       <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto in cui
            il cursore lo accende. Sta dopo la scena 3D e prima della copy, così
            passa sopra la colonna e sotto il testo. -->
       <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
+      <!-- Con la scena viva questo blocco NON si vede: il capitolo è la colonna
+           su nero, e basta. Resta nel DOM perché senza di lui la sezione non
+           avrebbe testo per gli screen reader, e perché senza WebGL torna
+           visibile ed È la sezione. Non è testo morto: è l'unica versione
+           leggibile del capitolo quando il canvas non c'è. -->
       <div class="wc-spine-copy">
         <p class="eyebrow">// 03 — Tridimensionale</p>
         <h2>Profondità vera,<br>non un'ombra finta.</h2>
-        <p class="lead">Una colonna di vetro sospesa in un fluido che non si vede: le bolle salgono, sei lastre le orbitano intorno<span class="wc-only-motion">, e lo scroll decide quale ti arriva davanti</span>. Nessun video e nessuna GIF: il fotogramma lo calcola il browser mentre scendi.</p>
-        <!-- Le sei voci sono anche il testo delle lastre. Con la scena viva
-             restano nel DOM ma solo per gli screen reader: dentro il canvas
-             sono pixel. Senza WebGL tornano visibili e sono la sezione. -->
+        <p class="lead">Una colonna di vetro che ruota su sé stessa mentre scendi lungo il suo corpo: vetro vero, che rifrange e disperde la luce come farebbe il vetro. Nessun video e nessuna GIF: il fotogramma lo calcola il browser mentre scendi.</p>
         <ul class="wc-spine-list">
           <li>Tipografia</li>
           <li>Motion</li>
@@ -96,7 +136,6 @@
           <li>Shader</li>
         </ul>
       </div>
-      <p class="wc-spine-index" id="wcSpineIndex" aria-hidden="true">01 / 06</p>
     </div>
   </section>
 
@@ -117,24 +156,87 @@
     </div>
   </section>
 
-  <section class="wc-robot" id="cap05" data-cursor="invert" data-cursor-label="TOCCA">
-    <div class="wc-robot-card" id="wcRobotCard">
-      <div class="wc-spot" id="wcRobotSpot" aria-hidden="true"></div>
-      <div class="wc-robot-copy">
-        <p class="eyebrow">// 05 — Oggetti vivi</p>
-        <h2>Non un video.<br>Un modello che risponde.</h2>
-        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, e il faro che vedi muoversi sulla card segue lo stesso cursore.</p>
-        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
-      </div>
-      <div class="wc-robot-stage" id="wcRobotStage">
-        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
+  <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
+       con un modello 3D vero, e stando vicine si leggono come una coppia. -->
+  <section class="wc-saucer" id="capSaucer" data-cursor="dot">
+    <div class="wc-saucer-pin" id="wcSaucerPin">
+      <canvas id="wcSaucerCanvas"></canvas>
+      <div class="wc-saucer-copy">
+        <p class="eyebrow">// Notte</p>
+        <h2>Quarantamila fili d'erba,<br>una sola chiamata di disegno.</h2>
+        <p class="lead">Il prato non è una texture: sono fili veri, ognuno col suo vento e la sua inclinazione. Si accendono solo dove il raggio li tocca.</p>
       </div>
     </div>
   </section>
 
+  <!-- Cursore 'dot' e non più 'invert': quello faceva della sezione un disco
+       da 110 px che inseguiva il mouse sopra il modello. Via la palla, resta il
+       cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
+       quindi non si resta comunque senza. -->
+  <section class="wc-robot" id="cap05" data-cursor="dot">
+    <div class="wc-robot-card" id="wcRobotCard">
+      <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
+           davanti in basso, sopra un velo, invece di dividere lo spazio a metà
+           come faceva la griglia di prima. -->
+      <div class="wc-robot-stage" id="wcRobotStage">
+        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
+      </div>
+      <div class="wc-robot-copy">
+        <p class="eyebrow">// 05 — Oggetti vivi</p>
+        <h2>Non un video.<br>Un modello che risponde.</h2>
+        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini.</p>
+        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LITHOS — il faro che scopre una seconda immagine.
+       Il meccanismo viene dalla specifica `Lithos.txt`; il testo NO. Quella
+       specifica descrive l'hero di un marchio di geologia inventato, con la
+       sua headline e il suo pulsante arancione: metterlo qui vorrebbe dire
+       mettere il marchio di un altro sul sito del cliente, in una pagina dove
+       ogni sezione dimostra invece una tecnica nostra. Qui la copy dice cosa
+       fa l'effetto, come fanno tutte le altre.
+       Le due immagini stavano su un CDN di terzi: scaricate in locale. -->
+  <section class="wc-lithos" id="capLithos" data-cursor="dot">
+    <div class="wc-lithos-base" aria-hidden="true"></div>
+    <div class="wc-lithos-reveal" id="wcLithosReveal" aria-hidden="true"></div>
+    <div class="wc-lithos-copy">
+      <p class="eyebrow">// Due immagini, una sola</p>
+      <h2><span class="wc-serif">Sotto</span> ce n'è un'altra.</h2>
+      <p class="lead">Il puntatore non illumina: scopre. Sotto la prima immagine ce n'è una seconda, e il faro decide quanta se ne vede — con un ritardo, perché una lampada che segue il dito senza inerzia sembra un ritaglio.</p>
+    </div>
+  </section>
+
+  <!-- SNEAKER — sfondo video in loop.
+       I due <source> hanno data-src e non src: senza, il browser comincia a
+       scaricare appena incontra il tag, e `preload="none"` non lo ferma —
+       quell'attributo governa il buffering, non la scelta della sorgente.
+       È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
+       sezione scendono solo gli 83 KB del poster. -->
+  <section class="wc-sneaker" id="capSneaker" data-cursor="dot">
+    <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
+           preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
+      <source data-src="assets/sneaker.webm" type="video/webm">
+      <source data-src="assets/sneaker.mp4" type="video/mp4">
+    </video>
+    <div class="wc-sneaker-copy">
+      <p class="eyebrow">// Video, non decorazione</p>
+      <h2>Quarantadue megabyte<br>ne sono diventati uno e mezzo.</h2>
+      <p class="lead">Il master era 4K a 24 Mbps. Qui gira a 1080p in due formati, senza traccia audio, e non scende un byte finché non arrivi a questo punto della pagina. Un video di sfondo che si fa aspettare non è un video di sfondo.</p>
+    </div>
+  </section>
+
+  <!-- SEZIONE SVUOTATA. Vesper stava qui, e ora è la TERZA forma della catena
+       di morph là sopra (capWarp): spostarlo voleva dire toglierlo da qui, se
+       no la stessa scena comparirebbe due volte nella stessa pagina.
+       La scena resta sul disco e si riaccende con due righe: il
+       in fondo alla pagina, più l'altezza a 400svh in sections.css.
+       ⚠️ La copy qui sotto descrive esattamente quello che ora fa capWarp
+       ("una sola scena che cambia forma"): è testo buono, ma è finito nel
+       capitolo sbagliato. Da spostare o riscrivere quando l'ordine è definitivo. -->
   <section class="wc-part" id="cap06" data-cursor="cross">
     <div class="wc-part-pin" id="wcPartPin">
-      <canvas id="wcPartCanvas"></canvas>
       <div class="wc-part-copy">
         <p class="eyebrow">// 06 — Una cosa che diventa un'altra</p>
         <h2>Non due scene.<br>Una sola, che cambia forma.</h2>
@@ -195,22 +297,28 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js" integrity="sha384-xb96EMJeax+NLXMC88ZBa1xAeAW+kn+horHh/zFlbMLG2UPWhMJJSlv7fi57hS+Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js" integrity="sha384-JCMGAgtMgo/19ttIm8BSnUFxOA5KAxaKT7jZdTDtaL0df8+CHKRo9XFCmhsvUlXG" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js" integrity="sha384-lg3+EgIwmxYq9YD4ix279pdUEasqmOS17fF+2mI/NEg6JHkawYaWYpJ6nKZenPOy" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260813f"></script>
-<script src="js/glsl.js?v=20260813f"></script>
-<script src="js/cursor.js?v=20260813f"></script>
-<script src="js/fluid.js?v=20260813f"></script>
-<script src="js/loader.js?v=20260813f"></script>
-<script src="js/tunnel.js?v=20260813f"></script>
-<script src="js/manifesto.js?v=20260813f"></script>
-<script src="js/spine.js?v=20260813f"></script>
-<script src="js/carousel.js?v=20260813f"></script>
-<script src="js/robot.js?v=20260813f"></script>
-<script src="js/particles.js?v=20260813f"></script>
-<script src="js/horizontal.js?v=20260813f"></script>
+<script src="js/core.js?v=20260816a"></script>
+<script src="js/glsl.js?v=20260816a"></script>
+<script src="js/cursor.js?v=20260816a"></script>
+<script src="js/fluid.js?v=20260816a"></script>
+<script src="js/loader.js?v=20260816a"></script>
+<script src="js/tunnel.js?v=20260816a"></script>
+<script src="js/warp.js?v=20260816a"></script>
+<script src="js/manifesto.js?v=20260816a"></script>
+<script src="js/headings.js?v=20260816a"></script>
+<script src="js/carousel.js?v=20260816a"></script>
+<script src="js/saucer.js?v=20260816a"></script>
+<script src="js/robot.js?v=20260816a"></script>
+<script src="js/horizontal.js?v=20260816a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
-<script src="js/form.js?v=20260813f"></script>
+<script src="js/lithos.js?v=20260816a"></script>
+<script src="js/sneaker.js?v=20260816a"></script>
+<script src="js/form.js?v=20260816a"></script>
 </body>
 </html>

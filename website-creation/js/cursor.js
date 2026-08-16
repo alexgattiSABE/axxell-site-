@@ -31,7 +31,11 @@ WC.register('cursor', function(ctx){
   })();
 
   // --- macchina a stati ---
-  var STATES = ['hidden','default','read','orbit','grab','cross','invert','arrow','caret'];
+  // 'dot' non ha regole CSS proprie: è il cursore base, punto e anello, senza
+  // scia e senza etichetta. Deve però stare in questa lista lo stesso, perché
+  // è da qui che le classi vengono RIMOSSE quando si cambia sezione: uno stato
+  // fuori lista resterebbe appiccicato al body e si sommerebbe al successivo.
+  var STATES = ['hidden','default','dot','read','orbit','grab','cross','invert','arrow','caret'];
   var current = '';
 
   function setState(name, text){

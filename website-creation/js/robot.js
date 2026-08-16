@@ -1,4 +1,4 @@
-/* CAP 05 — modello 3D interattivo (Spline) con faro che segue il cursore.
+/* CAP 05 — modello 3D interattivo (Spline), a tutta sezione.
  *
  * ATTENZIONE, questa sezione rompe due vincoli del piano, di proposito e su
  * richiesta esplicita:
@@ -19,7 +19,6 @@ WC.register('robot', function(ctx){
   var card    = document.getElementById('wcRobotCard');
   var stage   = document.getElementById('wcRobotStage');
   var hint    = document.getElementById('wcRobotHint');
-  var spot    = document.getElementById('wcRobotSpot');
   if (!section || !card || !stage) return;
 
   var VIEWER = 'https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js';
@@ -28,19 +27,9 @@ WC.register('robot', function(ctx){
 
   var cleanups = [];
 
-  // ------------------------------------------------------------------ faro
-  // Solo due variabili CSS: si muove un gradiente, non cambia il layout.
-  if (ctx.desktop) {
-    var onMove = function(e){
-      var r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
-    };
-    card.addEventListener('mousemove', onMove);
-    cleanups.push(function(){ card.removeEventListener('mousemove', onMove); });
-  } else if (spot) {
-    spot.remove();
-  }
+  // Qui c'era un faro CSS che seguiva il cursore sulla card. Da quando la
+  // scena occupa tutta la sezione gli sta sopra un canvas opaco: il faro non
+  // si vedeva più. Tolto, insieme al suo listener di mousemove.
 
   // --------------------------------------------------------------- caricam.
   var mounted = false;

@@ -6,11 +6,16 @@ window.WC = (function(){
     lenis: null,
     motionOk: true,
     desktop: true,
+    ease: 'expo.out',  // sostituita dalla curva del sito in boot(), se CustomEase c'è
     loaded: false,   // messo a true dal loader (Task 3) a sipario aperto
     register: function(name, initFn){ registry.push({ name: name, init: initFn }); },
 
-    // Split a mano: SplitText è un plugin a pagamento e non si usa. Sta in
-    // core perché la usano tre capitoli diversi.
+    // Split a mano per parole. Da GSAP 3.13 SplitText è pubblico e il sito lo
+    // carica (lo usa js/headings.js per le righe dei titoli), ma questa resta:
+    // produce la coppia .w/.wi su cui è costruita la coreografia dell'hero
+    // (tunnel.js fa volare .w e riserva .wi all'entrata dal loader), e il
+    // manifesto colora i .wi allo scrub. Riscriverla con SplitText cambierebbe
+    // quei nodi senza aggiungere nulla: qui serve il taglio a parole, non a righe.
     //
     // Passa attraverso i nodi figli invece di leggere textContent: diversi
     // titoli portano un <br> voluto, e riscrivere l'innerHTML dal solo testo
@@ -64,6 +69,22 @@ window.WC = (function(){
 
   function boot(){
     gsap.registerPlugin(ScrollTrigger);
+
+    // SplitText e CustomEase sono opzionali: se il CDN non risponde il sito
+    // resta in piedi, solo senza il reveal dei titoli.
+    if (typeof SplitText !== 'undefined') gsap.registerPlugin(SplitText);
+    if (typeof Flip !== 'undefined') gsap.registerPlugin(Flip);
+    if (typeof CustomEase !== 'undefined') {
+      gsap.registerPlugin(CustomEase);
+      // Curve del sito, non preset. `wcOut` parte più decisa e frena più a
+      // lungo di expo.out: il movimento è già finito quando l'occhio arriva,
+      // e quello che resta è solo l'assestamento.
+      CustomEase.create('wcOut', 'M0,0 C0.12,0.86 0.16,1 1,1');
+      // Simmetrica, per andate e ritorni: accelera e frena con la stessa
+      // curva, così un elemento che va e torna non sembra due animazioni.
+      CustomEase.create('wcInOut', 'M0,0 C0.76,0 0.24,1 1,1');
+    }
+    api.ease = typeof CustomEase !== 'undefined' ? 'wcOut' : 'expo.out';
 
     var mm = gsap.matchMedia();
     mm.add({

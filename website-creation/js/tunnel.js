@@ -148,10 +148,13 @@ WC.register('tunnel', function(ctx){
   var maxDpr = wide > 1024 ? 1.75 : 1.25;
 
   var CONFIG = {
-    // Ritinta: la parete corre dal verde --green scuro al ciano --cyan pieno.
-    colorLow: '#052a24',
-    colorHigh: '#00d4ff',
-    atmoColor: '#7fe4ff',
+    // Colori ORIGINALI della scene "Tunnel" di GetLayers, ripresi dal suo
+    // CONFIG: parete da viola profondo a ciano, motes azzurri. Erano stati
+    // ritinti sui token del sito (verde -> ciano); l'utente ha chiesto di
+    // tornare alla proposta di GetLayers.
+    colorLow: '#180a3a',
+    colorHigh: '#2bf0ff',
+    atmoColor: '#8fe6ff',
     atmoCount: wide > 1024 ? 300 : 160,
     atmoSize: 24,
     atmoSpeed: 1.0,
