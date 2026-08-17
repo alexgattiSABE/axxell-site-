@@ -574,3 +574,34 @@ body.wc-locked{overflow:hidden;}
   padding-top:5rem;padding-bottom:5rem;}
 .wc-process.-static .wc-process-row{flex-direction:column;transform:none!important;}
 .wc-process.-static .wc-step{flex:0 0 auto;}
+
+/* ---- EFFETTI DI CURSORE PER CAPITOLO (js/cursorfx.js) ----
+   Un solo strato per tutti: canvas o velo, sopra il capitolo e trasparente ai
+   click. Sta a 40, cioè sopra le scene (0-2) e sopra la copy (3-5): sono
+   effetti che seguono il puntatore, e il puntatore passa sopra tutto.
+   Ogni sezione che ne vuole uno lo dichiara con `data-cursor-fx` sul proprio
+   elemento ospite — vedi index.html. */
+.wc-fx{position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:40;}
+
+/* La torcia non è un canvas: è un velo con un gradiente radiale che si
+   ridisegna a ogni frame. Il nero di partenza è quello che si vede nel
+   fotogramma prima che il gradiente arrivi. */
+.wc-fx-torch{background:rgba(0,0,0,.85);border-radius:inherit;}
+/* La fiammella al centro del cono. Parte invisibile: la accende js/cursorfx.js
+   quando il puntatore entra, se no resterebbe un puntino nell'angolo. */
+.wc-fx-flame{position:absolute;z-index:41;pointer-events:none;opacity:0;
+  width:9px;height:9px;border-radius:50%;background:#ffb347;
+  box-shadow:0 0 14px 5px rgba(255,140,20,.65);
+  transform:translate(-50%,-50%);will-change:left,top,transform;}
+
+/* Le parole attratte dal puntatore. `will-change` perché la transform la
+   riscrive il JS a ogni frame; `inline-block` perché su uno span in linea la
+   transform non ha effetto. */
+[data-magnetic]{display:inline-block;will-change:transform;}
+
+/* Reduced-motion: il modulo non parte nemmeno, ma se un velo fosse già stato
+   montato prima del cambio di preferenza resterebbe un rettangolo nero. */
+@media (prefers-reduced-motion:reduce){
+  .wc-fx,.wc-fx-flame{display:none;}
+}

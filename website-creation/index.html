@@ -28,7 +28,7 @@
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css?v=20260816b">
-<link rel="stylesheet" href="css/sections.css?v=20260817a">
+<link rel="stylesheet" href="css/sections.css?v=20260817b">
 </head>
 <body>
 
@@ -83,7 +83,7 @@
        (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
        fra due scene, decelera dentro una sola. -->
   <section class="wc-warp" id="capWarp" data-cursor="dot">
-    <div class="wc-warp-pin" id="wcWarpPin">
+    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation">
       <canvas id="wcWarpCanvas"></canvas>
       <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
            cambia forma, quindi il testo cambia con lei invece di scorrere via.
@@ -117,7 +117,8 @@
     <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
          l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
          dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
-    <div class="wc-manifesto-pin" id="wcManifestoPin">
+    <div class="wc-manifesto-pin" id="wcManifestoPin" data-cursor-fx="dna"
+         data-magnetic-sel=".wc-manifesto-text .wi">
       <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
       <p class="eyebrow">// 02 — Metodo</p>
       <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
@@ -183,7 +184,7 @@
        qui in poi la pagina passa ai modelli 3D veri. Mettendola dopo l'ufo si
        sarebbe tornati indietro di un passo. -->
   <section class="wc-vesper" id="capVesper" data-cursor="dot">
-    <div class="wc-vesper-pin" id="wcVesperPin">
+    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror">
       <canvas id="wcVesperCanvas"></canvas>
       <div class="wc-vesper-copy">
         <p class="eyebrow">// 04 — Materia</p>
@@ -211,7 +212,7 @@
        cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
        quindi non si resta comunque senza. -->
   <section class="wc-robot" id="cap05" data-cursor="dot">
-    <div class="wc-robot-card" id="wcRobotCard">
+    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="torch">
       <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
            davanti in basso, sopra un velo, invece di dividere lo spazio a metà
            come faceva la griglia di prima. -->
@@ -251,7 +252,7 @@
        quell'attributo governa il buffering, non la scelta della sorgente.
        È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
        sezione scendono solo gli 83 KB del poster. -->
-  <section class="wc-sneaker" id="capSneaker" data-cursor="dot">
+  <section class="wc-sneaker" id="capSneaker" data-cursor="dot" data-cursor-fx="fire">
     <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
            preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
       <source data-src="assets/sneaker.webm" type="video/webm">
@@ -349,6 +350,7 @@
 <script src="js/tunnel.js?v=20260816b"></script>
 <script src="js/warp.js?v=20260816b"></script>
 <script src="js/manifesto.js?v=20260816n"></script>
+<script src="js/cursorfx.js?v=20260817c"></script>
 <script src="js/dna.js?v=20260816p"></script>
 <script src="js/headings.js?v=20260816b"></script>
 <script src="js/vesper.js?v=20260816c"></script>
