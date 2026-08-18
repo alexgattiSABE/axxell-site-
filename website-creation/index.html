@@ -27,8 +27,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260816b">
-<link rel="stylesheet" href="css/sections.css?v=20260817b">
+<link rel="stylesheet" href="css/base.css?v=20260818e">
+<link rel="stylesheet" href="css/sections.css?v=20260818e">
 </head>
 <body>
 
@@ -43,9 +43,11 @@
 
 <div class="cursor" id="cur"></div>
 <div class="cursor-ring" id="curR"><span class="cursor-label" id="curLabel"></span></div>
-<div class="cursor-trail" data-i="0"></div>
-<div class="cursor-trail" data-i="1"></div>
-<div class="cursor-trail" data-i="2"></div>
+<!-- QUI C'ERANO LE TRE PALLINE DELLA SCIA (`.cursor-trail`): ognuna inseguiva
+     la precedente più lentamente, dietro l'anello che insegue il puntatore.
+     Tolte da tutto il sito su richiesta. Il codice che le muoveva è ancora in
+     js/cursor.js e non fa niente se non trova nodi: si riaccendono rimettendo
+     questi tre div. -->
 
 <nav>
   <a href="/" class="nav-logo">AXX<span>ELL</span></a>
@@ -83,7 +85,13 @@
        (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
        fra due scene, decelera dentro una sola. -->
   <section class="wc-warp" id="capWarp" data-cursor="dot">
-    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation">
+    <!-- La costellazione entra solo DOPO la prima animazione. Fino a 0,26 la
+         scena è il tubo che si apre e decelera (`phaseMorphIn` in js/warp.js):
+         lì le stelle del cursore si sommavano alle particelle del volo e non
+         si capiva più cosa fosse cosa. Da lì in poi la scena si riordina e
+         l'effetto ha un fondo su cui leggersi. -->
+    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation"
+         data-cursor-fx-range="0.26,1">
       <canvas id="wcWarpCanvas"></canvas>
       <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
            cambia forma, quindi il testo cambia con lei invece di scorrere via.
@@ -117,8 +125,12 @@
     <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
          l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
          dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
-    <div class="wc-manifesto-pin" id="wcManifestoPin" data-cursor-fx="dna"
-         data-magnetic-sel=".wc-manifesto-text .wi">
+    <!-- Qui c'erano l'elica di cursore (`data-cursor-fx="dna"`) e le parole
+         magnetiche (`data-magnetic-sel`). Tolti su richiesta: il capitolo ha
+         già la sua elica WebGL e le parole in spirale, e due eliche che
+         seguono il puntatore nella stessa schermata si disturbavano.
+         Si riaccendono rimettendo i due attributi qui sotto. -->
+    <div class="wc-manifesto-pin" id="wcManifestoPin">
       <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
       <p class="eyebrow">// 02 — Metodo</p>
       <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
@@ -159,6 +171,36 @@
            gesto su un canvas che è già aria-hidden: senza il fluido non
            vuol dire niente, e con reduced-motion non compare mai. -->
       <p class="wc-spine-invite" id="wcSpineInvite" aria-hidden="true">Muovi il cursore</p>
+      <!-- E dopo che hai giocato un po', la consegna al capitolo successivo:
+           lì la stessa matematica non disegna più, deforma una fotografia.
+           Compare, resta il tempo di leggerla, e se ne va — vedi `next`/
+           `nextOut` in js/fluid.js. -->
+      <p class="wc-spine-next" id="wcSpineNext" aria-hidden="true">Questo era inchiostro sul nero.<br>Adesso proviamo con un&#39;immagine.</p>
+    </div>
+  </section>
+
+  <!-- ALTITUDE — il fondo che si piega sotto il dito.
+       Sta dopo Festina di proposito: là il video è materia da far scorrere,
+       qui è materia da deformare. Due capitoli di seguito sullo stesso
+       oggetto, che gli fanno fare due cose che non c'entrano niente.
+
+       Il <video> vero sotto il canvas NON è di scorta: è la sorgente della
+       texture, e si vede finché il primo fotogramma non è salito sulla GPU.
+       Il canvas ci va sopra in dissolvenza — vedi `fade` in js/altitude.js. -->
+  <!-- `hidden` e non più `cross`: il mirino faceva da terzo puntatore sopra
+       un capitolo in cui il cursore È già il vortice. Qui il cursore del sito
+       si spegne e resta il fluido. -->
+  <section class="wc-alt" id="capAltitude" data-cursor="hidden">
+    <video id="wcAltVideo" class="wc-alt-video" muted loop playsinline
+           preload="none" poster="assets/starry-poster.webp" aria-hidden="true">
+      <source data-src="assets/starry.mp4" type="video/mp4">
+    </video>
+    <canvas id="wcAltCanvas" class="wc-alt-canvas" aria-hidden="true"></canvas>
+    <div class="wc-alt-copy">
+      <p class="eyebrow">// Il fondo non &egrave; un fondo</p>
+      <h2>Passa il dito,<br>e l'immagine si <em class="wc-serif">piega</em>.</h2>
+      <p class="lead">Non &egrave; un filtro appoggiato sopra il video: &egrave; un fluido risolto mentre lo attraversi, e ogni pixel campiona il fotogramma spostato dalla velocit&agrave; del flusso. I tre canali vengono presi a distanze diverse lungo quello spostamento — la frangia di colore ai bordi del vortice non &egrave; disegnata, &egrave; quello che fa una lente.</p>
+      <p class="wc-alt-foot">Ti fermi, e il cielo torna fermo.</p>
     </div>
   </section>
 
@@ -184,7 +226,13 @@
        qui in poi la pagina passa ai modelli 3D veri. Mettendola dopo l'ufo si
        sarebbe tornati indietro di un passo. -->
   <section class="wc-vesper" id="capVesper" data-cursor="dot">
-    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror">
+    <!-- I fantasmi specchiati solo sulla PRIMA sfera. L'orologio di vesper
+         ripiega il pin in tre terzi (sfera, galassia, cervello — vedi
+         `clockFromScroll` in js/vesper.js): il primo terzo è l'orb, ed è
+         l'unica forma su cui quattro cerchi concentrici hanno senso. Sulla
+         galassia e sul cervello erano solo quattro anelli in mezzo. -->
+    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror"
+         data-cursor-fx-range="0,0.34">
       <canvas id="wcVesperCanvas"></canvas>
       <div class="wc-vesper-copy">
         <p class="eyebrow">// 04 — Materia</p>
@@ -196,8 +244,14 @@
 
   <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
        con un modello 3D vero, e stando vicine si leggono come una coppia. -->
-  <section class="wc-saucer" id="capSaucer" data-cursor="dot">
-    <div class="wc-saucer-pin" id="wcSaucerPin">
+  <!-- `data-cursor="hidden"`: in questo capitolo il cursore del sito (punto +
+       anello ciano) si spegne e resta SOLO l'anello elastico verde. Erano due
+       anelli concentrici che inseguivano lo stesso puntatore. -->
+  <section class="wc-saucer" id="capSaucer" data-cursor="hidden">
+    <!-- L'anello elastico verde: è il colore del raggio, non un accento
+           estraneo appoggiato sopra. Il disco intanto deriva col puntatore
+           — vedi la sezione DERIVA in js/saucer.js. -->
+      <div class="wc-saucer-pin" id="wcSaucerPin" data-cursor-fx="elastic">
       <canvas id="wcSaucerCanvas"></canvas>
       <div class="wc-saucer-copy">
         <p class="eyebrow">// Notte</p>
@@ -210,9 +264,16 @@
   <!-- Cursore 'dot' e non più 'invert': quello faceva della sezione un disco
        da 110 px che inseguiva il mouse sopra il modello. Via la palla, resta il
        cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
-       quindi non si resta comunque senza. -->
+       quindi non si resta comunque senza.
+
+       QUI C'ERA LA TORCIA (`data-cursor-fx="torch"`): per rivelare doveva prima
+       coprire la sezione di nero all'85%, e il robot si vedeva solo dentro il
+       cono. Ora c'è il circuito: il modello non viene mai oscurato, e le tracce
+       si accendono al PASSAGGIO invece che sotto la posizione del puntatore —
+       fermi il mouse e non entra più corrente. La differenza è scritta in
+       testa a FX.circuit in js/cursorfx.js. -->
   <section class="wc-robot" id="cap05" data-cursor="dot">
-    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="torch">
+    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
       <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
            davanti in basso, sopra un velo, invece di dividere lo spazio a metà
            come faceva la griglia di prima. -->
@@ -222,7 +283,7 @@
       <div class="wc-robot-copy">
         <p class="eyebrow">// 05 — Oggetti vivi</p>
         <h2>Non un video.<br>Un modello che risponde.</h2>
-        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini.</p>
+        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini. Dietro, il rame si accende dove passi — non dove ti fermi.</p>
         <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
       </div>
     </div>
@@ -252,7 +313,9 @@
        quell'attributo governa il buffering, non la scelta della sorgente.
        È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
        sezione scendono solo gli 83 KB del poster. -->
-  <section class="wc-sneaker" id="capSneaker" data-cursor="dot" data-cursor-fx="fire">
+  <!-- La scia di fiamme del cursore (`data-cursor-fx="fire"`) era qui: tolta.
+       Il capitolo è già un video acceso a tutto schermo. -->
+  <section class="wc-sneaker" id="capSneaker" data-cursor="dot">
     <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
            preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
       <source data-src="assets/sneaker.webm" type="video/webm">
@@ -265,24 +328,65 @@
     </div>
   </section>
 
-  <!-- SEZIONE SVUOTATA. Vesper stava qui, e ora è la TERZA forma della catena
-       di morph là sopra (capWarp): spostarlo voleva dire toglierlo da qui, se
-       no la stessa scena comparirebbe due volte nella stessa pagina.
-       La scena resta sul disco e si riaccende con due righe: il
-       in fondo alla pagina, più l'altezza a 400svh in sections.css.
-       ⚠️ La copy qui sotto descrive esattamente quello che ora fa capWarp
-       ("una sola scena che cambia forma"): è testo buono, ma è finito nel
-       capitolo sbagliato. Da spostare o riscrivere quando l'ordine è definitivo. -->
-  <section class="wc-part" id="cap06" data-cursor="cross">
-    <div class="wc-part-pin" id="wcPartPin">
-      <div class="wc-part-copy">
-        <p class="eyebrow">// 06 — Una cosa che diventa un'altra</p>
-        <h2>Non due scene.<br>Una sola, che cambia forma.</h2>
-        <p class="lead">Migliaia di punti si tengono in una sfera, si sfaldano in lenzuola e si riordinano in una spirale. Nessun taglio, nessun video: è lo stesso sistema di particelle, e la posizione dello scroll decide a che punto della trasformazione sei.</p>
+  <!-- FESTINA — il filmato che scorre solo se scorri tu.
+       Sta subito dopo la sneaker perché sono i due capitoli di video, e vicini
+       si leggono come una coppia: là un fondo che gira da solo e si fa
+       aspettare, qui un filmato che non parte affatto finché non lo muovi.
+
+       A SCHERMATA INTERA, con ritaglio `cover`. Le quattro frasi sono
+       agganciate a rettangoli misurati in percentuale del fotogramma
+       (`scripts/festina-spazi.py` li ha cercati su tutti i 241 fotogrammi), e
+       il ritaglio sposta l'immagine sotto ai riquadri: per questo js/festina.js
+       misura il riquadro REALE del video e ci riporta sopra i rettangoli. Chi
+       tocca il posizionamento parta da lì, non dalle percentuali del viewport.
+
+       È l'unico capitolo su fondo chiaro: lo studio del filmato è bianco, e a
+       tutto schermo la pagina sbianca per una schermata. L'inchiostro qui è
+       scuro e non c'è ciano — su bianco non avrebbe contrasto, e sarebbe
+       l'unica macchia fredda su tutta la parete.
+
+       Il <source> ha data-src e non src, come la sneaker: senza, il browser
+       scarica i 2,2 MB appena incontra il tag, e `preload="none"` non lo ferma
+       — quell'attributo governa il buffering, non la scelta della sorgente. -->
+  <section class="wc-festina" id="capFestina" data-cursor="light">
+    <div class="wc-festina-pin" id="wcFestinaPin">
+      <div class="wc-festina-stage">
+        <video id="wcFestinaVideo" class="wc-festina-video" muted playsinline
+               preload="none" poster="assets/festina-poster.webp" aria-hidden="true">
+          <source data-src="assets/festina.mp4" type="video/mp4">
+        </video>
+
+        <!-- Le quattro frasi. Ordine del markup = ordine delle finestre in
+             js/festina.js: chi ne sposta una sposta anche quella. Fra la 2 e la
+             3 c'è il silenzio dell'esplosione, che è voluto — vedi il modulo.
+             Il corsivo è il Playfair del cap. Lithos, l'unico della pagina:
+             cade sulla parola su cui gira la frase, mai su più di una. -->
+        <div class="wc-festina-say" data-say="1">
+          <p class="eyebrow">// Fotogramma per fotogramma</p>
+          <h2>Non parte.<br>Lo muovi <em class="wc-serif">tu</em>.</h2>
+        </div>
+        <div class="wc-festina-say" data-say="2">
+          <p>Duecentoquarantuno fotogrammi, e a scorrerli sei tu. Fermi il dito e si ferma a met&agrave;.</p>
+        </div>
+        <div class="wc-festina-say" data-say="3">
+          <p>Torni indietro e si rimonta. Nello stesso ordine, al contrario.</p>
+        </div>
+        <div class="wc-festina-say" data-say="4">
+          <h2>Il tempo del filmato<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
+          <p>Nessun play, nessun loop, nessun controllo. E due megabyte che scendono solo quando arrivi qui.</p>
+        </div>
       </div>
     </div>
   </section>
 
+  <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
+       sfalda in galassia) era già migrata dentro capWarp come terza forma, e
+       quello che restava era un guscio: la sola copy, che per giunta
+       descriveva quello che capWarp fa davvero. Tolto su richiesta.
+       `js/particles.js` resta sul disco, come js/spine.js: si riaccende
+       rimettendo la sezione, il canvas #wcPartCanvas e lo <script>.
+       NB gli `id` degli altri capitoli non si toccano: a #cap08 è agganciata
+       la voce di menu "Parliamone" e a cap05/cap07 i trigger in js/. -->
   <section class="wc-process" id="cap07" data-cursor="arrow">
     <div class="wc-process-pin" id="wcProcessPin">
       <div class="wc-process-head">
@@ -342,24 +446,26 @@
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260816b"></script>
-<script src="js/glsl.js?v=20260816b"></script>
-<script src="js/cursor.js?v=20260816b"></script>
-<script src="js/fluid.js?v=20260817a"></script>
-<script src="js/loader.js?v=20260816b"></script>
-<script src="js/tunnel.js?v=20260816b"></script>
-<script src="js/warp.js?v=20260816b"></script>
-<script src="js/manifesto.js?v=20260816n"></script>
-<script src="js/cursorfx.js?v=20260817c"></script>
-<script src="js/dna.js?v=20260816p"></script>
-<script src="js/headings.js?v=20260816b"></script>
-<script src="js/vesper.js?v=20260816c"></script>
-<script src="js/saucer.js?v=20260816f"></script>
-<script src="js/robot.js?v=20260816b"></script>
-<script src="js/horizontal.js?v=20260816b"></script>
+<script src="js/core.js?v=20260818e"></script>
+<script src="js/glsl.js?v=20260818e"></script>
+<script src="js/cursor.js?v=20260818e"></script>
+<script src="js/fluid.js?v=20260818e"></script>
+<script src="js/loader.js?v=20260818e"></script>
+<script src="js/tunnel.js?v=20260818e"></script>
+<script src="js/warp.js?v=20260818e"></script>
+<script src="js/manifesto.js?v=20260818e"></script>
+<script src="js/cursorfx.js?v=20260818e"></script>
+<script src="js/dna.js?v=20260818e"></script>
+<script src="js/headings.js?v=20260818e"></script>
+<script src="js/vesper.js?v=20260818e"></script>
+<script src="js/saucer.js?v=20260818e"></script>
+<script src="js/robot.js?v=20260818e"></script>
+<script src="js/horizontal.js?v=20260818e"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
-<script src="js/lithos.js?v=20260816b"></script>
-<script src="js/sneaker.js?v=20260816b"></script>
-<script src="js/form.js?v=20260816b"></script>
+<script src="js/lithos.js?v=20260818e"></script>
+<script src="js/sneaker.js?v=20260818e"></script>
+<script src="js/festina.js?v=20260818e"></script>
+<script src="js/altitude.js?v=20260818e"></script>
+<script src="js/form.js?v=20260818e"></script>
 </body>
 </html>

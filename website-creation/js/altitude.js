@@ -1,168 +1,89 @@
-/* FLOWSTATE — il fluido del capitolo 03.
+/* ALTITUDE — il fluido non disegna sopra l'immagine: la piega.
  *
- * Vive solo dentro quel capitolo: il canvas sta nel pin e il loop parte e si
- * ferma con la sezione. Dentro non serve premere niente — basta muovere il
- * mouse — ma fuori non gira affatto.
+ * Dal template "Altitude" di GetLayers (Next.js + react-three/react-spring),
+ * portato a vanilla. Di quel progetto qui arriva UNA cosa sola, che è la sua:
+ * la passata finale, in cui il video di fondo viene campionato spostato dal
+ * campo di VELOCITÀ del fluido. Tutto il resto — il masthead, il modulo, la
+ * barra di statistiche, le due righe verticali — resta fuori: erano l'hero di
+ * un marchio inventato, e questa è una pagina in cui ogni capitolo mostra una
+ * tecnica nostra.
  *
- * Il motore è la WebGL Fluid Simulation di Pavel Dobryakov (MIT, 2017,
- * github.com/PavelDoGreat/WebGL-Fluid-Simulation). La SCENA è quella di
- * `Effetti webiste/flowstate`, che di quel motore è una versione con altri
- * numeri e due aggiunte sue: la macchiata d'ingresso e il cursore automatico
- * che orbita. Prima qui erano arrivati solo due dei suoi valori (CURL 42 e
- * SPLAT_RADIUS 0.22); adesso c'è tutto — vedi i punti 4 e 6.
+ * ── COSA LO DISTINGUE DAL CAP. 03 ──────────────────────────────────────────
+ * Lì il fluido È l'immagine: inchiostro colorato sul nero. Qui il fluido non
+ * si vede quasi — è il MEZZO. Ogni pixel campiona il video a `uv + velocità`,
+ * quindi il cielo si trascina dove il flusso si muove e sta fermo dove è
+ * fermo. Sono due capitoli sulla stessa matematica che mostrano due cose
+ * diverse, ed è il motivo per cui sta lontano dal 03 nella pagina.
  *
- * Perché ci sta bene: il capitolo 03 è stato svuotato (la colonna di vetro è
- * stata tolta, la copy è fuori schermo), quindi il fluido non è più un velo
- * sopra una scena — è la scena. Che è esattamente quello che è in flowstate,
- * dove sta a tutto schermo dietro l'hero.
+ * ── PERCHÉ IL SOLUTORE È DUPLICATO E NON CONDIVISO ─────────────────────────
+ * Dalla riga "contesto" fino a `step()` questo file è js/fluid.js: stesse
+ * shader, stessi framebuffer, stesso passo di Navier-Stokes (porting della
+ * WebGL Fluid Simulation di Pavel Dobryakov, MIT). Estrarre un motore comune
+ * e farci girare sopra tutti e due sarebbe più pulito da leggere e avrebbe
+ * voluto dire rimettere le mani nel cap. 03, che è già collaudato a schermo.
+ * La copia è consapevole: il prezzo è che una correzione al solutore va fatta
+ * in due posti. ⚠️ Chi ne tocca uno controlli l'altro.
  *
- * Cosa cambia rispetto ai due sorgenti, e perché:
+ * Le differenze vere rispetto a js/fluid.js sono tre, ed è lì che va guardato:
+ *   1. `compositeShader` al posto di `displayShader` — la passata che piega
+ *      il video, con l'aberrazione cromatica e la spinta di saturazione;
+ *   2. il video come TEXTURE, ricaricata a ogni fotogramma;
+ *   3. il vortice segue il puntatore con una molla e si spegne se il puntatore
+ *      si ferma, invece di orbitare per sempre attorno al centro.
  *
- * 1. NIENTE PRESS-AND-HOLD. Nell'originale il mousemove splatta solo se il
- *    pulsante è premuto. Qui il puntatore è sempre "giù": muovere il mouse
- *    basta. Il primo movimento non genera delta, altrimenti la scia partirebbe
- *    dall'angolo 0,0 con una frustata.
- * 2. NIENTE BLOOM NÉ SUNRAYS. Sono ~400 righe e due catene di framebuffer in
- *    più, e i sunrays sono proprio quello che tira fuori il giallo. Via tutti
- *    e due: meno GPU e nessun colore fuori palette.
- * 3. PALETTE CHIUSA. Il generateColor originale pesca una tinta a caso su
- *    tutto il cerchio: escono verdi, gialli e arancioni. Qui le tinte sono
- *    limitate a quattro fasce — ciano, blu, viola, fucsia/rosa — le stesse
- *    del cap. 03.
- * 4. I NUMERI SONO QUELLI DI FLOWSTATE — risoluzioni, dissipazioni, iterazioni
- *    di pressione — TRANNE due, vorticità e raggio della macchia, abbassati
- *    perché qui il capitolo regge quattordici salve di fuochi e con i suoi si
- *    impastava. Vedi il blocco `config`.
- * 5. TRASPARENTE. Il canvas non ha fondo e si compone in mix-blend-mode screen
- *    (vedi sections.css). Il fondo opaco di flowstate (BACK_COLOR 4,5,12) NON
- *    arriva: qui sotto c'è già il nero della pagina, e un secondo nero opaco
- *    coprirebbe la giuntura fra le sezioni.
- * 6. L'ENTRATA E IL CURSORE AUTOMATICO, i due "project tweak" di flowstate:
- *    una macchiata densa quando il capitolo entra in quadro, e un puntatore
- *    invisibile che orbita per sempre attorno al centro. Senza il secondo, la
- *    sezione torna nera mezzo secondo dopo che smetti di muovere il mouse — e
- *    su un capitolo vuoto quello è tutto quello che c'è da vedere.
- *
- * Con reduced-motion il modulo non parte affatto.
+ * ── PERCHÉ IL WARP È MASCHERATO DALL'INCHIOSTRO ────────────────────────────
+ * Il campo di velocità, dopo due mosse di mouse, è diverso da zero quasi
+ * ovunque: deformare il fotogramma direttamente lo sbriciolerebbe tutto.
+ * Lo spostamento viene quindi moltiplicato per una maschera ricavata
+ * dall'inchiostro — che invece sta solo dove sei passato. Con uno smoothstep
+ * e non una soglia netta: un bordo duro trasforma la separazione dei colori
+ * in fili rossi e verdi visibili invece che in rifrazione.
  */
-WC.register('fluid', function(ctx){
-  var canvas  = document.getElementById('wcFluid');
-  var section = document.getElementById('cap03');
-  var pinEl   = document.getElementById('wcSpinePin');
-  var copyEl  = section && section.querySelector('.wc-spine-copy');
-  var footEl  = section && section.querySelector('.wc-spine-foot');
-  var invite  = document.getElementById('wcSpineInvite');
-  var nextEl  = document.getElementById('wcSpineNext');
-  if (!canvas || !ctx.motionOk) {
-    // Senza fluido la sezione non ha più una sequenza da srotolare, e i suoi
-    // 300svh diventerebbero due schermate di nero sotto al testo.
-    if (section) section.classList.add('-static');
-    return;
-  }
+WC.register('altitude', function(ctx){
+  var canvas  = document.getElementById('wcAltCanvas');
+  var section = document.getElementById('capAltitude');
+  var video   = document.getElementById('wcAltVideo');
+  if (!canvas || !section || !video) return;
 
-  var mobile = window.innerWidth <= 640 || matchMedia('(pointer:coarse)').matches;
+  // Reduced-motion: niente simulazione e niente video in movimento. Resta il
+  // poster, che il tag mostra da sé, e la copy sopra.
+  if (!ctx.motionOk) { section.classList.add('-static'); return; }
 
-  // Numeri di "flowstate", tutti. Prima ne erano arrivati due (CURL e raggio) e
-  // il resto era rimasto della taratura vecchia; ora il capitolo è nero e vuoto
-  // — la colonna di vetro è stata tolta — quindi non c'è più niente da non
-  // coprire, ed è caduto anche l'unico valore che era stato scostato.
+  // Su telefono il fluido non parte: sono venti passaggi di pressione per
+  // fotogramma e non c'è un puntatore da seguire. Resta il video, che è
+  // comunque la metà della scena.
+  var mobile = window.innerWidth <= 900 || matchMedia('(pointer:coarse)').matches;
+  if (mobile) { section.classList.add('-plain'); }
+
+  /* Numeri del template, non i nostri: `FLUID_CONFIG` di hero-media.tsx.
+   * Sono diversi da quelli del cap. 03 perché servono a un'altra cosa — CURL
+   * alto e dissipazione lenta fanno un vortice che resta e continua a girare,
+   * che è quello che deve trascinare l'immagine. */
   var config = {
-    SIM_RESOLUTION: mobile ? 128 : 200,
-    DYE_RESOLUTION: mobile ? 384 : 512,
-    /* ⚠️ LE DISSIPAZIONI NON SI COPIANO DAL FILE: i due motori usano formule
-     * diverse, e lo stesso numero vuol dire due cose opposte.
-     *
-     *   flowstate (Dobryakov 2017):  gl_FragColor = dissipation * source
-     *   qui       (Dobryakov 2020):  gl_FragColor = source / (1.0 + dissipation * dt)
-     *
-     * Là 0.958 è il fattore che RESTA a ogni frame — 4,2% perso ogni frame,
-     * cioè il 92% perso in un secondo. Qui 0.958 dà 1/(1+0.958·0,0167) = 0,984
-     * per frame: il 62% perso in un secondo, cinque volte più lento. Messo
-     * pari pari, l'inchiostro si accumulava fino a saturare a bianco e il
-     * capitolo diventava una parete grigia — visto a schermo prima di fare i
-     * conti.
-     *
-     * La conversione è d = (1/k − 1)/dt con dt = 1/60:
-     *   densità   k=0.958 → 2.63
-     *   velocità  k=0.96  → 2.50
-     * Cambiando i valori del file, rifare questo passaggio. */
-    DENSITY_DISSIPATION: 2.63,
-    VELOCITY_DISSIPATION: 2.50,
+    SIM_RESOLUTION: 200,
+    DYE_RESOLUTION: 512,
+    DENSITY_DISSIPATION: 0.93,
+    VELOCITY_DISSIPATION: 0.96,
     PRESSURE: 0.8,
-    PRESSURE_ITERATIONS: mobile ? 12 : 20,
-    /* Vorticità e raggio sono gli unici due valori scostati da flowstate (che
-     * ha 42 e 0.22). Con i suoi, l'inchiostro è colato grosso e arricciato:
-     * bello da fermo, ma su un capitolo che deve reggere quattordici salve di
-     * fuochi si impasta in una parete. Più bassi, i getti restano filamenti
-     * distinti e i botti si contano. */
-    CURL: 16,              // vorticità: quanto si arriccia il flusso
-    // 0.22: raddoppiato. A 0.11 la scia era un filo sottile che si perdeva
-    // sul nero — era tarata quando il capitolo aveva ancora la colonna di
-    // vetro dietro e l'inchiostro le si sovrapponeva. Adesso il fluido è tutto
-    // quello che c'è in questa schermata, e deve occuparla.
-    SPLAT_RADIUS: 0.22,    // e quanto è grossa ogni macchia
-    SPLAT_FORCE: 5000,
+    PRESSURE_ITERATIONS: 20,
+    CURL: 42,
+    // 0.13 e non 0.16 del template: la sola deviazione voluta dai suoi numeri,
+    // per uno splash un filo più piccolo. Stessa cosa per il raggio d'orbita,
+    // 125 invece di 150 — il vortice resta della stessa forma, occupa meno.
+    SPLAT_RADIUS: 0.13,
+    SPLAT_FORCE: 6000,
     SHADING: true,
     COLOR_UPDATE_SPEED: 4,
-    // ---- l'entrata e il cursore automatico, i due "project tweak" del file ----
-    BURST_SPLATS: 34,      // la macchiata densa all'ingresso
-    BURST_WAVES: 8,        // più le ondate che la seguono, una per frame
-    ORBIT_RADIUS: 300,     // px CSS: il cursore finto gira attorno al centro
+    // ---- il vortice ----
+    ORBIT_RADIUS: 125,     // px: il punto che mescola gira attorno al cursore
     ORBIT_SPEED: 0.026,    // rad/frame — un giro ogni ~4 s
-    ORBIT_DELAY: 700       // ms dopo l'ingresso: prima si vede la macchiata
-  };
-
-  /* LA SEQUENZA, in quote di scroll del pin (0 = la sezione si incastra,
-   * 1 = si sgancia). I quattro tempi del capitolo:
-   *
-   *   0 → FIRE      il fluido di flowstate come lo conosce il file: la
-   *                 macchiata d'ingresso, il cursore automatico che orbita, il
-   *                 testo a schermo.
-   *   FIRE → BOOM   i fuochi. Salve di scoppi radiali a quote regolari, mentre
-   *                 il testo si spegne. Quattordici e non una: un botto solo è
-   *                 un lampo, quattordici sono uno spettacolo che finisce.
-   *   BOOM → DARK   nessuno splatta più e l'orbita si ferma. L'inchiostro si
-   *                 dissolve da sé — non serve cancellarlo, ci pensa la
-   *                 dissipazione, ed è per quello che si legge come fumo che si
-   *                 posa invece che come un interruttore.
-   *   DARK → 1      nero, e poi l'invito.
-   *
-   * Scorrendo all'indietro tutto si riavvolge: le salve si riarmano (vedi
-   * `lastSalvo`) e il testo torna. */
-  var SEQ = {
-    fire: 0.20,          // quando parte il primo botto
-    boom: 0.68,          // quando finisce l'ultimo
-    dark: 0.76,          // da qui il campo è vuoto
-    /* 0.64, e non più 0.82. L'invito compariva a un sesto dalla fine: il tempo
-     * di leggerlo e la sezione era già finita, senza spazio per fare la cosa
-     * che chiede. Adesso gli resta oltre un TERZO della corsa — su 320svh sono
-     * più di cento schermate-punto di scroll in cui il capitolo è nero, la
-     * scritta è lì e il cursore disegna. È il tempo che serve alla battuta
-     * finale, non riempitivo. */
-    invite: 0.82,
-    /* E dopo l'invito, la consegna al capitolo successivo. `next` sta poco
-       dopo — il tempo di qualche schermata col cursore, non di più — e la
-       frase se ne va prima che la sezione si sganci, se no resterebbe a
-       schermo mentre quella dopo sale a coprire. L'invito si spegne mentre
-       questa entra: due righe al centro nello stesso momento si contendono
-       lo stesso posto. */
-    next: 0.90,
-    nextOut: 0.975,
-    /* I fuochi, ritarati dopo averli visti a schermo: erano quattordici in un
-     * quinto della corsa, cioè tutti addosso, grossi e accecanti.
-     *
-     *   quanti   14 → 30   e la finestra da 0,20 a 0,48 di corsa: su 620svh
-     *                      sono ~10svh di scroll fra un botto e il successivo,
-     *                      contro i ~6 di prima su una sezione più corta. Si
-     *                      succedono invece di sovrapporsi.
-     *   bracci   18 → 11   una corolla, non una palla piena
-     *   spinta 2600 → 1250 il raggio si dimezza: stanno larghi, non si toccano
-     *   luce     12 → 4.5  l'inchiostro non brucia più a bianco */
-    salvos: 30,          // quante salve nella finestra dei fuochi
-    salvoArms: 11,       // scoppi per salva, disposti in cerchio
-    salvoForce: 1250,    // spinta verso l'esterno di ogni scoppio
-    salvoInk: 4.5,       // e quanto è acceso il suo inchiostro
-    salvoApart: 0.34     // e quanto devono stare lontani due botti di fila
+    STIR: 9,               // quanto spinge, in proporzione a quanto si è mosso
+    INK_GAIN: 0.30,        // e quanto è acceso il suo inchiostro
+    FOLLOW: 0.09,          // rigidità della molla che insegue il puntatore
+    IDLE_MS: 180,          // fermo per tanto → il vortice comincia a spegnersi
+    // ---- la piega ----
+    WARP: 0.20,            // quanto il flusso trascina l'immagine
+    ABERRATION: 0.09       // e di quanto si separano i tre canali
   };
 
   // ------------------------------------------------------------- contesto
@@ -228,7 +149,7 @@ WC.register('fluid', function(ctx){
     var shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error('[WC fluid]', gl.getShaderInfoLog(shader));
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error('[WC altitude]', gl.getShaderInfoLog(shader));
     return shader;
   }
 
@@ -237,7 +158,7 @@ WC.register('fluid', function(ctx){
     gl.attachShader(this.program, vs);
     gl.attachShader(this.program, fs);
     gl.linkProgram(this.program);
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) console.error('[WC fluid]', gl.getProgramInfoLog(this.program));
+    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) console.error('[WC altitude]', gl.getProgramInfoLog(this.program));
     this.uniforms = {};
     var count = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
     for (var i = 0; i < count; i++) {
@@ -274,25 +195,60 @@ WC.register('fluid', function(ctx){
     'void main(){ gl_FragColor = value * texture2D(uTexture, vUv); }'
   ].join('\n'));
 
-  var displayShader = compileShader(gl.FRAGMENT_SHADER, [
+
+  /* LA PASSATA FINALE — l'unica shader che non viene dal motore del fluido.
+   *
+   * Disegna il VIDEO, spostato dalla velocità del fluido, e ci posa sopra
+   * l'inchiostro. In ordine:
+   *   · `mask` — dove c'è inchiostro, e quindi dove è lecito deformare;
+   *   · `flow` — la velocità, limitata a MAXD: oltre, l'immagine si strappa
+   *     invece di piegarsi;
+   *   · i tre canali campionati a distanze diverse lungo lo spostamento, che
+   *     è l'aberrazione cromatica — forte dove il flusso corre, assente dove
+   *     è fermo, come farebbe una lente;
+   *   · una spinta di saturazione proporzionale allo spostamento, che è quello
+   *     che fa leggere la deformazione come rifrazione e non come sfocatura;
+   *   · l'inchiostro, con la finta luce dal gradiente del motore originale.
+   *
+   * `cover()` rifà `object-fit:cover` in uv: si campiona un ritaglio della
+   * texture invece di deformarla. Senza, un video 4:3 su una finestra 16:9
+   * uscirebbe schiacciato. */
+  var compositeShader = compileShader(gl.FRAGMENT_SHADER, [
     'precision highp float; precision highp sampler2D;',
     'varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB;',
-    'uniform sampler2D uTexture; uniform vec2 texelSize;',
+    'uniform sampler2D uDye; uniform sampler2D uVideo; uniform sampler2D uVelocity;',
+    'uniform vec2 texelSize; uniform vec2 uSimTexel;',
+    'uniform vec2 uVideoScale; uniform vec2 uVideoOffset;',
+    'uniform float uWarp; uniform float uAberration; uniform float uFade;',
+    'vec2 cover(vec2 uv){ return uv * uVideoScale + uVideoOffset; }',
+    'const float MAXD = 0.035;',
     'void main(){',
-    '  vec3 c = texture2D(uTexture, vUv).rgb;',
+    '  vec3 ink = texture2D(uDye, vUv).rgb;',
+    '  float mask = smoothstep(0.015, 0.32, max(ink.r, max(ink.g, ink.b)));',
+    '  vec2 flow = texture2D(uVelocity, vUv).xy * uSimTexel * uWarp;',
+    '  float d = length(flow);',
+    '  if (d > MAXD) flow *= MAXD / d;',
+    '  vec2 disp = flow * mask;',
+    '  float strength = clamp(length(disp) / MAXD, 0.0, 1.0);',
+    '  vec2 shift = disp * uAberration;',
+    '  vec3 media;',
+    '  media.r = texture2D(uVideo, cover(vUv + disp + shift)).r;',
+    '  media.g = texture2D(uVideo, cover(vUv + disp)).g;',
+    '  media.b = texture2D(uVideo, cover(vUv + disp - shift)).b;',
+    '  float lum = dot(media, vec3(0.299, 0.587, 0.114));',
+    '  media += (media - vec3(lum)) * strength * 0.55;',
+    '  vec3 c = ink;',
     '#ifdef SHADING',
-    '  vec3 lc = texture2D(uTexture, vL).rgb;',
-    '  vec3 rc = texture2D(uTexture, vR).rgb;',
-    '  vec3 tc = texture2D(uTexture, vT).rgb;',
-    '  vec3 bc = texture2D(uTexture, vB).rgb;',
+    '  vec3 lc = texture2D(uDye, vL).rgb;',
+    '  vec3 rc = texture2D(uDye, vR).rgb;',
+    '  vec3 tc = texture2D(uDye, vT).rgb;',
+    '  vec3 bc = texture2D(uDye, vB).rgb;',
     '  float dx = length(rc) - length(lc);',
     '  float dy = length(tc) - length(bc);',
     '  vec3 n = normalize(vec3(dx, dy, length(texelSize)));',
-    '  float diffuse = clamp(dot(n, vec3(0.0, 0.0, 1.0)) + 0.7, 0.7, 1.0);',
-    '  c *= diffuse;',
+    '  c *= clamp(dot(n, vec3(0.0, 0.0, 1.0)) + 0.7, 0.7, 1.0);',
     '#endif',
-    '  float a = max(c.r, max(c.g, c.b));',
-    '  gl_FragColor = vec4(c, a);',
+    '  gl_FragColor = vec4((media + c) * uFade, 1.0);',
     '}'
   ].join('\n'), config.SHADING ? ['SHADING'] : null);
 
@@ -402,7 +358,7 @@ WC.register('fluid', function(ctx){
 
   var copyProgram      = new Program(baseVertexShader, copyShader);
   var clearProgram     = new Program(baseVertexShader, clearShader);
-  var displayProgram   = new Program(baseVertexShader, displayShader);
+  var compositeProgram = new Program(baseVertexShader, compositeShader);
   var splatProgram     = new Program(baseVertexShader, splatShader);
   var advectionProgram = new Program(baseVertexShader, advectionShader);
   var divergenceProg   = new Program(baseVertexShader, divergenceShader);
@@ -520,32 +476,29 @@ WC.register('fluid', function(ctx){
     pressure   = createDoubleFBO(simRes.width, simRes.height, formatR.internalFormat, formatR.format, halfFloatTexType, gl.NEAREST);
   }
 
-  // -------------------------------------------------------------- palette
-  // Quattro fasce di tinta: ciano, blu, viola, fucsia/rosa. Fuori restano
-  // verde (0.25-0.45), giallo e arancione (0.06-0.20) e il rosso pieno.
-  var HUE_BANDS = [[0.50, 0.575], [0.60, 0.70], [0.70, 0.80], [0.82, 0.92]];
-
-  function hsvToRgb(h, s, v){
-    var i = Math.floor(h * 6), f = h * 6 - i;
-    var p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-      case 0: return { r: v, g: t, b: p };
-      case 1: return { r: q, g: v, b: p };
-      case 2: return { r: p, g: v, b: t };
-      case 3: return { r: p, g: q, b: v };
-      case 4: return { r: t, g: p, b: v };
-      default: return { r: v, g: p, b: q };
-    }
-  }
+  /* -------------------------------------------------------------- palette
+   * I DUE COLORI SONO QUELLI DEL TEMPLATE, non quelli del sito: `--vortex-warm`
+   * (#ffd75a) e `--vortex-cool` (#8ccfff), letti dai suoi token. Qui prima
+   * c'erano le quattro fasce di tinta del cap. 03 (ciano→fucsia): stessa
+   * meccanica, ma su un cielo notturno blu l'inchiostro freddo spariva dentro
+   * il fondo e lo splash non si leggeva più come lo splash di GetLayers.
+   *
+   * La scelta cade VICINO a un capo o all'altro e quasi mai in mezzo: una
+   * distribuzione uniforme passerebbe la maggior parte delle macchie nel
+   * grigiore centrale, e i due colori non si leggerebbero mai come due colori.
+   * A mescolarli ci pensa il solutore. La sbilanciatura verso il caldo (55%) è
+   * loro e ha un motivo: su un cielo blu l'inchiostro freddo riceve una spinta
+   * gratis dal fondo, e una divisione a metà esce tutta azzurra. */
+  var VORTEX_WARM = [1.000, 0.843, 0.353];   // #ffd75a
+  var VORTEX_COOL = [0.549, 0.812, 1.000];   // #8ccfff
 
   function generateColor(){
-    var band = HUE_BANDS[(Math.random() * HUE_BANDS.length) | 0];
-    var c = hsvToRgb(band[0] + Math.random() * (band[1] - band[0]), 0.86 + Math.random() * 0.14, 1);
-    // 0.92, il valore di flowstate. Era 0.34 perché la scia si sommava alla
-    // colonna di vetro illuminata e sopra quella bruciava; il capitolo adesso è
-    // nero, e a 0.34 su nero l'inchiostro si legge spento.
-    c.r *= 0.92; c.g *= 0.92; c.b *= 0.92;
-    return c;
+    var t = Math.random() < 0.55 ? Math.random() * 0.2 : 0.8 + Math.random() * 0.2;
+    return {
+      r: (VORTEX_WARM[0] + (VORTEX_COOL[0] - VORTEX_WARM[0]) * t) * config.INK_GAIN,
+      g: (VORTEX_WARM[1] + (VORTEX_COOL[1] - VORTEX_WARM[1]) * t) * config.INK_GAIN,
+      b: (VORTEX_WARM[2] + (VORTEX_COOL[2] - VORTEX_WARM[2]) * t) * config.INK_GAIN
+    };
   }
 
   // -------------------------------------------------------------- puntatore
@@ -627,117 +580,6 @@ WC.register('fluid', function(ctx){
     dye.swap();
   }
 
-  /* ---- L'ENTRATA — `multipleSplats` di flowstate ----
-   * Macchie sparse su tutto il riquadro, ognuna con la sua spinta, con
-   * l'inchiostro moltiplicato per dieci: sono i nuclei che poi saturano a
-   * bianco e da cui si aprono i vortici. Nel file parte al caricamento della
-   * pagina; qui parte quando il capitolo entra in quadro, che è il momento in
-   * cui il fluido nasce (fuori dalla sezione il loop non gira nemmeno).
-   *
-   * Le coordinate del file sono in pixel di canvas, qui sono texcoord 0..1 —
-   * il nostro `splat` prende già lo spazio normalizzato. Le velocità invece
-   * restano nelle stesse unità: ±500, come nel file. */
-  function multipleSplats(amount){
-    for (var i = 0; i < amount; i++) {
-      var c = generateColor();
-      c.r *= 10.0; c.g *= 10.0; c.b *= 10.0;
-      splat(Math.random(), Math.random(),
-            1000 * (Math.random() - 0.5), 1000 * (Math.random() - 0.5), c);
-    }
-  }
-
-  // Rampa morbida fra due quote. Scritta qui e non presa da `WC.glsl` perché
-  // questo modulo non dipende da three: è WebGL a mano, e `glsl.js` tira dentro
-  // THREE per i suoi helper di colore e di pulviscolo.
-  function smoothstep(a, b, x){
-    var t = (x - a) / (b - a);
-    t = t < 0 ? 0 : t > 1 ? 1 : t;
-    return t * t * (3 - 2 * t);
-  }
-
-  /* ---- I FUOCHI ----
-   * Uno scoppio non è una manciata di macchie sparse come `multipleSplats`: è
-   * un punto da cui tutto parte VERSO L'ESTERNO. Le macchie stanno su un
-   * cerchietto attorno al centro e la loro spinta punta in fuori, quindi il
-   * fluido apre una corolla invece di fare una nuvola. Tutte dello stesso
-   * colore: un fuoco d'artificio è di un colore solo, e mescolandoli si
-   * ottiene la stessa poltiglia dell'ingresso. */
-  var lastFwX = -9, lastFwY = -9;
-
-  function firework(){
-    /* Due botti di fila non devono cadere vicini: presi a caso puro capitava
-     * di continuo che il secondo si aprisse dentro il primo, e si leggevano
-     * come un unico scoppio slabbrato. Si tira finché il punto non è lontano
-     * abbastanza dal precedente — al massimo otto volte, poi si tiene quello
-     * che è uscito: meglio un botto vicino che nessun botto. */
-    var cx = 0, cy = 0;
-    for (var tries = 0; tries < 8; tries++) {
-      cx = 0.16 + Math.random() * 0.68;
-      cy = 0.20 + Math.random() * 0.60;
-      var ddx = cx - lastFwX, ddy = cy - lastFwY;
-      if (ddx * ddx + ddy * ddy > SEQ.salvoApart * SEQ.salvoApart) break;
-    }
-    lastFwX = cx; lastFwY = cy;
-    var c = generateColor();
-    c.r *= SEQ.salvoInk; c.g *= SEQ.salvoInk; c.b *= SEQ.salvoInk;
-    for (var i = 0; i < SEQ.salvoArms; i++) {
-      var a = (i / SEQ.salvoArms) * Math.PI * 2 + Math.random() * 0.25;
-      var r = 0.015 + Math.random() * 0.025;
-      splat(cx + Math.cos(a) * r, cy + Math.sin(a) * r,
-            Math.cos(a) * SEQ.salvoForce, Math.sin(a) * SEQ.salvoForce, c);
-    }
-  }
-
-  /* ---- IL CURSORE AUTOMATICO ----
-   * Un puntatore invisibile che gira attorno al centro per sempre, del tutto
-   * indipendente da quello vero: non si ferma quando muovi il mouse e il mouse
-   * non lo sposta — i due convivono nello stesso campo di fluido. È lui che fa
-   * la differenza fra "un effetto che risponde al cursore" e una scena che
-   * vive: senza, passato mezzo secondo dalla macchiata d'ingresso il capitolo
-   * torna nero finché non passi col mouse.
-   *
-   * Il raggio respira (0.72 → 1.0 del massimo) invece di essere fisso, così
-   * l'orbita spazza un disco e non un anello sottile.
-   *
-   * Splatta con inchiostro schiarito ×3.2 e non passando dal percorso del
-   * puntatore vero: quello depositerebbe una tinta ~6 volte più fioca, e a
-   * macchiata svanita sembrerebbe che non stia succedendo niente. */
-  var orbitAngle = 0, orbitSeeded = false, vPrevX = 0, vPrevY = 0;
-  var virtualColor = null, lastVColor = 0, awakeSince = 0;
-
-  function driveVirtualPointer(now){
-    if (now - awakeSince < config.ORBIT_DELAY) return;
-    var w = canvas.clientWidth, h = canvas.clientHeight;
-    if (w < 1 || h < 1) return;
-    var cx = w / 2, cy = h / 2;
-    // Il raggio è in pixel, non in texcoord: in texcoord un cerchio su un
-    // riquadro largo diventerebbe un'ellisse schiacciata.
-    var base = Math.min(config.ORBIT_RADIUS, w * 0.35, h * 0.35);
-    var r = base * (0.72 + 0.28 * Math.sin(orbitAngle * 0.37));
-    orbitAngle += config.ORBIT_SPEED;
-    // Gira per sempre, come nel file. C'è stato un passaggio in cui si fermava
-    // dopo un giro solo: ma dopo quel giro l'inchiostro si posa in un paio di
-    // secondi, e il capitolo resta un rettangolo nero finché non ci passi sopra
-    // col mouse. Su una sezione la cui unica scena è questa, non regge.
-    var x = cx + Math.cos(orbitAngle) * r;
-    var y = cy + Math.sin(orbitAngle) * r;
-    if (!orbitSeeded) {
-      // Primo giro: si registra la posizione e basta, se no il primo frame
-      // tira una frustata dall'angolo.
-      orbitSeeded = true; vPrevX = x; vPrevY = y;
-      return;
-    }
-    if (!virtualColor || now - lastVColor > 120) {
-      virtualColor = generateColor();
-      virtualColor.r *= 3.2; virtualColor.g *= 3.2; virtualColor.b *= 3.2;
-      lastVColor = now;
-    }
-    var dx = (x - vPrevX) * 9.0, dy = (y - vPrevY) * 9.0;
-    vPrevX = x; vPrevY = y;
-    // In texcoord la Y è capovolta rispetto ai pixel dello schermo.
-    splat(x / w, 1 - y / h, dx, -dy, virtualColor);
-  }
-
   function step(dt){
     gl.disable(gl.BLEND);
 
@@ -803,23 +645,6 @@ WC.register('fluid', function(ctx){
     dye.swap();
   }
 
-  function render(){
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.enable(gl.BLEND);
-
-    displayProgram.bind();
-    if (config.SHADING)
-      gl.uniform2f(displayProgram.uniforms.texelSize, 1 / gl.drawingBufferWidth, 1 / gl.drawingBufferHeight);
-    gl.uniform1i(displayProgram.uniforms.uTexture, dye.read.attach(0));
-    blit(null);
-  }
-
-  // Il buffer di disegno non segue i CSS pixel: si scala col devicePixelRatio,
-  // ma non oltre 1.5 — sopra si paga solo GPU.
   function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, 1.5)); }
 
   function resizeCanvas(){
@@ -864,13 +689,147 @@ WC.register('fluid', function(ctx){
   resizeCanvas();
   initFramebuffers();
 
-  var lastTime = Date.now(), colorTimer = 0, raf = 0, running = false;
-  // Stato della sequenza: la quota del pin, l'ultima salva sparata, e se
-  // l'orbita è ancora accesa.
-  var seqProgress = 0, lastSalvo = -1, orbitOn = true, cleared = false;
-  // Le ondate che seguono la macchiata d'ingresso: si svuotano una per frame,
-  // così l'entrata dura qualche decimo invece di essere un fotogramma solo.
-  var splatStack = [];
+
+  /* --------------------------------------------------------- il video texture
+   * Il video non è un elemento sotto al canvas: è una TEXTURE. Deve esserlo —
+   * la piega campiona il fotogramma a `uv + spostamento`, e un livello DOM
+   * separato non è campionabile da uno shader. Il canvas disegna il video *e*
+   * l'inchiostro; finché la texture non ha un fotogramma, il `<video>` vero
+   * resta visibile sotto e non si vede alcuno stacco. */
+  var videoTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, videoTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 0, 255]));
+
+  var videoReady = false, videoLoaded = false;
+
+  function loadVideo(){
+    if (videoLoaded) return;
+    videoLoaded = true;
+    var srcs = video.querySelectorAll('source[data-src]');
+    for (var i = 0; i < srcs.length; i++) {
+      srcs[i].src = srcs[i].getAttribute('data-src');
+      srcs[i].removeAttribute('data-src');
+    }
+    video.load();
+    var p = video.play();
+    if (p && p.catch) p.catch(function(){});
+  }
+
+  function uploadVideo(){
+    if (video.readyState < 2 || !video.videoWidth) return;
+    gl.activeTexture(gl.TEXTURE0 + 4);
+    gl.bindTexture(gl.TEXTURE_2D, videoTex);
+    // Il fotogramma arriva dall'alto in basso, le texcoord del fluido vanno dal
+    // basso in alto: senza il capovolgimento il cielo starebbe sotto. Si rimette
+    // subito a posto, perché è stato globale della GL e i framebuffer del
+    // solutore non devono ereditarlo.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    videoReady = true;
+  }
+
+  /* ------------------------------------------------------------- il vortice
+   * Il modello è quello del template: NON si splatta dove sta il cursore. Un
+   * punto invisibile orbita attorno a una molla che insegue il cursore, ed è
+   * il MOVIMENTO di quel punto che il solutore arriccia in vortice. Uno splat
+   * fermo sarebbe una macchia; è il giro a farne un mulinello.
+   *
+   * L'intensità si spegne se il puntatore sta fermo più di IDLE_MS: il vortice
+   * smette di essere alimentato e si dissolve da solo in un secondo. Il warp è
+   * moltiplicato per la stessa intensità, quindi a cursore fermo l'immagine
+   * torna ferma — non "quasi ferma". */
+  var sx = 0, sy = 0, sSeeded = false;          // la molla, in px canvas
+  var intensity = 0, lastMoveAt = 0;
+  var orbitAngle = 0, orbitSeeded = false, oPrevX = 0, oPrevY = 0;
+  var vColor = null, lastVColor = 0;
+
+  function driveVortex(now){
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w < 1 || h < 1) return;
+
+    // Il puntatore in pixel del canvas. `pointer` lo tiene in texcoord con la
+    // Y capovolta, perché è così che lo vuole il solutore.
+    if (pointer.seen) {
+      var px = pointer.texcoordX * w, py = (1 - pointer.texcoordY) * h;
+      if (!sSeeded) { sSeeded = true; sx = px; sy = py; }
+      sx += (px - sx) * config.FOLLOW;
+      sy += (py - sy) * config.FOLLOW;
+      if (pointer.moved) { lastMoveAt = now; pointer.moved = false; }
+    }
+
+    var awake = pointer.seen && (now - lastMoveAt) < config.IDLE_MS;
+    // Entra in fretta e se ne va piano: un vortice che sparisce alla stessa
+    // velocità con cui arriva sembra un interruttore.
+    intensity += ((awake ? 1 : 0) - intensity) * (awake ? 0.12 : 0.035);
+    if (intensity < 0.01) { orbitSeeded = false; return; }
+
+    var base = Math.min(config.ORBIT_RADIUS, w * 0.22, h * 0.28);
+    var r = base * (0.72 + 0.28 * Math.sin(orbitAngle * 0.37));
+    orbitAngle += config.ORBIT_SPEED;
+    var x = sx + Math.cos(orbitAngle) * r;
+    var y = sy + Math.sin(orbitAngle) * r;
+
+    if (!orbitSeeded) { orbitSeeded = true; oPrevX = x; oPrevY = y; return; }
+
+    // Il colore cambia ogni 120 ms lungo la banda, come nel template. Nessun
+    // guadagno in più: `INK_GAIN` è già dentro `generateColor`, e qui prima
+    // c'era un ×3.3 preso dal cap. 03 — dove serve, perché lì l'inchiostro è
+    // la scena. Su un video, satura e il vortice diventa un sole bianco piatto.
+    if (!vColor || now - lastVColor > 120) { vColor = generateColor(); lastVColor = now; }
+    var dx = (x - oPrevX) * config.STIR, dy = (y - oPrevY) * config.STIR;
+    oPrevX = x; oPrevY = y;
+    // In texcoord la Y è capovolta rispetto ai pixel dello schermo.
+    splat(x / w, 1 - y / h, dx, -dy,
+          { r: vColor.r * intensity, g: vColor.g * intensity, b: vColor.b * intensity });
+  }
+
+  /* ---------------------------------------------------------- la resa a schermo */
+  var fade = 0;
+
+  function render(){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.disable(gl.BLEND);
+
+    compositeProgram.bind();
+    gl.uniform2f(compositeProgram.uniforms.texelSize,
+                 1 / gl.drawingBufferWidth, 1 / gl.drawingBufferHeight);
+    gl.uniform2f(compositeProgram.uniforms.uSimTexel,
+                 velocity.texelSizeX, velocity.texelSizeY);
+    gl.uniform1i(compositeProgram.uniforms.uDye, dye.read.attach(0));
+    gl.uniform1i(compositeProgram.uniforms.uVelocity, velocity.read.attach(1));
+
+    gl.activeTexture(gl.TEXTURE0 + 4);
+    gl.bindTexture(gl.TEXTURE_2D, videoTex);
+    gl.uniform1i(compositeProgram.uniforms.uVideo, 4);
+
+    // `cover` in uv: si campiona un ritaglio della texture. Il rapporto del
+    // video è quello vero quando c'è, 1 finché la texture è il pixel nero —
+    // se no il primo fotogramma esce stirato.
+    var va = videoReady && video.videoHeight ? video.videoWidth / video.videoHeight : 1;
+    var ca = gl.drawingBufferWidth / Math.max(1, gl.drawingBufferHeight);
+    var scaleX = va > ca ? ca / va : 1;
+    var scaleY = va > ca ? 1 : va / ca;
+    gl.uniform2f(compositeProgram.uniforms.uVideoScale, scaleX, scaleY);
+    gl.uniform2f(compositeProgram.uniforms.uVideoOffset, (1 - scaleX) / 2, (1 - scaleY) / 2);
+
+    gl.uniform1f(compositeProgram.uniforms.uWarp, config.WARP * intensity);
+    gl.uniform1f(compositeProgram.uniforms.uAberration, config.ABERRATION);
+    gl.uniform1f(compositeProgram.uniforms.uFade, fade);
+    blit(null);
+  }
+
+
+  resizeCanvas();
+  initFramebuffers();
+
+  var lastTime = Date.now(), raf = 0, running = false;
 
   function update(){
     if (!running) return;
@@ -883,133 +842,73 @@ WC.register('fluid', function(ctx){
     if (document.hidden) return;
     if (resizeCanvas()) initFramebuffers();
 
-    stepSequence();
-    if (splatStack.length) multipleSplats(splatStack.pop());
-    if (orbitOn) driveVirtualPointer(now);
+    // Il canvas entra in dissolvenza sopra il <video> vero: finché la texture
+    // non ha un fotogramma i due sono la stessa immagine, quindi il passaggio
+    // non si vede. Serve solo a non far comparire un rettangolo nero nel caso
+    // la texture arrivi in ritardo.
+    fade = Math.min(1, fade + dt * 1.6);
 
-    colorTimer += dt * config.COLOR_UPDATE_SPEED;
-    if (colorTimer >= 1) { colorTimer = colorTimer % 1; pointer.color = generateColor(); }
-
-    if (pointer.moved) {
-      pointer.moved = false;
-      splat(pointer.texcoordX, pointer.texcoordY,
-            pointer.deltaX * config.SPLAT_FORCE, pointer.deltaY * config.SPLAT_FORCE,
-            pointer.color);
-    }
-
+    uploadVideo();
+    driveVortex(now);
     step(dt);
     render();
-  }
-
-  /* Il pilota della sequenza. Legge la quota di scroll e decide tre cose: se
-   * l'orbita gira, se è il momento di una salva, e quanto sono accesi i testi.
-   *
-   * Le salve non partono "quando u supera x": partirebbero a ogni frame finché
-   * u resta lì. Partono quando cambia il GRADINO — la finestra dei fuochi è
-   * divisa in `SEQ.salvos` scalini e il botto scatta al passaggio da uno al
-   * successivo. Tornando indietro `lastSalvo` si riazzera e si possono
-   * rivedere. */
-  function stepSequence(){
-    var u = seqProgress;
-
-    orbitOn = u < SEQ.boom;
-
-    if (u < SEQ.fire) {
-      lastSalvo = -1;
-    } else if (u < SEQ.boom) {
-      var stepIdx = Math.floor((u - SEQ.fire) / (SEQ.boom - SEQ.fire) * SEQ.salvos);
-      if (stepIdx > lastSalvo) { lastSalvo = stepIdx; firework(); }
-    }
-
-    /* IL NERO, garantito. Dopo l'ultima salva nessuno splatta più e la
-     * dissipazione porterebbe via l'inchiostro da sola — ma in quanto tempo lo
-     * decide chi scorre, non noi: passando in fretta da `boom` a `invite` sono
-     * tre decimi di secondo, e la scritta comparirebbe su una nuvola ancora
-     * accesa. Quindi il campo lo si spegne per davvero, in due mosse:
-     *   1. il canvas sfuma a zero fra `boom` e `dark` — è quello che si vede,
-     *      e sopra la dissipazione vera si legge come fumo che si posa;
-     *   2. arrivati a `dark` la simulazione viene SVUOTATA una volta sola, e
-     *      il canvas torna opaco: da lì il campo è vergine, e il primo colpo di
-     *      cursore disegna sul nero invece che sugli avanzi dei fuochi.
-     * Tornando indietro `cleared` si riarma e la sequenza si rigioca. */
-    if (u >= SEQ.dark) {
-      if (!cleared) { cleared = true; clearSim(); }
-      canvas.style.opacity = '1';
-    } else {
-      cleared = false;
-      canvas.style.opacity = (1 - smoothstep(SEQ.boom, SEQ.dark, u)).toFixed(3);
-    }
-
-    // I testi. Quello del capitolo si spegne mentre i fuochi lo coprono;
-    // l'invito arriva quando il campo è già vuoto.
-    var copyA = 1 - smoothstep(SEQ.fire, SEQ.boom, u);
-    // L'invito entra, e si spegne quando arriva la consegna.
-    var inviteA = smoothstep(SEQ.invite, Math.min(1, SEQ.invite + 0.12), u)
-                * (1 - smoothstep(SEQ.next - 0.02, SEQ.next + 0.03, u));
-    var nextA = smoothstep(SEQ.next, SEQ.next + 0.035, u)
-              * (1 - smoothstep(SEQ.nextOut, Math.min(1, SEQ.nextOut + 0.02), u));
-    if (copyEl) copyEl.style.opacity = copyA.toFixed(3);
-    if (footEl) footEl.style.opacity = copyA.toFixed(3);
-    if (invite) invite.style.opacity = inviteA.toFixed(3);
-    if (nextEl) nextEl.style.opacity = nextA.toFixed(3);
   }
 
   function start(){
     if (running || document.hidden) return;
     running = true; lastTime = Date.now();
-    // L'entrata si rigioca ogni volta che il capitolo torna in quadro, e non
-    // una volta sola al caricamento come nel file: uscendo dalla sezione la
-    // simulazione viene svuotata (vedi `stop`), quindi rientrando il campo è
-    // vuoto e senza la macchiata si tornerebbe su un rettangolo nero.
-    awakeSince = lastTime;
-    orbitSeeded = false; orbitAngle = 0;
+    loadVideo();
+    var p = video.play();
+    if (p && p.catch) p.catch(function(){});
     resizeCanvas();
-    multipleSplats(config.BURST_SPLATS);
-    for (var i = 0; i < config.BURST_WAVES; i++)
-      splatStack.push(10 + ((Math.random() * 10) | 0));
     raf = requestAnimationFrame(update);
   }
   function stop(){
     if (!running) return;
     running = false;
     cancelAnimationFrame(raf);
+    if (!video.paused) video.pause();
     pointer.seen = false; pointer.moved = false;
-    splatStack.length = 0;
+    sSeeded = false; orbitSeeded = false; intensity = 0; fade = 0;
+    // Svuotare all'uscita: se no, rientrando si vedrebbe per un istante il
+    // vortice congelato di prima, e la velocità residua ripartirebbe da sola
+    // deformando l'immagine senza che nessuno l'abbia toccata.
     clearSim();
   }
 
-  // Il pin: la schermata resta ferma e i 200svh di corsa diventano il tempo
-  // della sequenza. `pinSpacing: false` come negli altri capitoli — lo spazio
-  // di scroll ce l'ha già la sezione (300svh in sections.css).
-  var stPin = pinEl && ScrollTrigger.create({
-    trigger: '#cap03', start: 'top top', end: 'bottom bottom',
-    pin: pinEl, pinSpacing: false, anticipatePin: 1,
-    onUpdate: function(self){ seqProgress = self.progress; }
+  // Il video comincia a scendere mezza schermata prima, come la sneaker: il
+  // capitolo deve avere già un cielo quando ci arrivi.
+  var stPre = ScrollTrigger.create({
+    trigger: section, start: 'top bottom+=50%', end: 'bottom top-=50%',
+    onEnter: loadVideo, onEnterBack: loadVideo
   });
-  // Il fluido esiste solo dove ha un senso: dentro il capitolo. Fuori da lì non
-  // gira nemmeno il loop — sono venti passaggi di pressione per frame, non è
-  // roba da tenere accesa su tutta la pagina.
+  // La simulazione vive solo dentro il capitolo: sono venti passaggi di
+  // pressione per fotogramma più una texture video ricaricata ogni frame, non
+  // è roba da tenere accesa su tutta la pagina.
   var stLife = ScrollTrigger.create({
-    trigger: '#cap03', start: 'top bottom', end: 'bottom top',
+    trigger: section, start: 'top bottom', end: 'bottom top',
     onToggle: function(self){ self.isActive ? start() : stop(); }
   });
   var onVis = function(){ if (document.hidden) stop(); else if (stLife.isActive) start(); };
   document.addEventListener('visibilitychange', onVis);
   if (stLife.isActive) start();
 
+  section.classList.add('-live');
+
   return function(){
     stop();
-    if (stPin) stPin.kill();
-    stLife.kill();
+    stPre.kill(); stLife.kill();
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('mouseout', onLeave);
+    section.classList.remove('-live');
     if (dye) dye.destroy();
     if (velocity) velocity.destroy();
     if (pressure) pressure.destroy();
     if (divergence) divergence.destroy();
     if (curl) curl.destroy();
+    gl.deleteTexture(videoTex);
     gl.deleteBuffer(quadBuffer);
     gl.deleteBuffer(quadIndex);
     var lose = gl.getExtension('WEBGL_lose_context');

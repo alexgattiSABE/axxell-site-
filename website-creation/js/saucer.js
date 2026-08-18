@@ -70,6 +70,12 @@ WC.register('saucer', function(ctx){
     // disco
     saucerScale: 2.0, saucerY: 4.5, saucerTilt: -0.13, saucerSpin: 0.05,
     bobAmount: 0.09, bobSpeed: 0.55,
+    // QUI C'ERA LA DERIVA DEL DISCO (driftX/driftY/bank/pitch): il disco si
+    // spostava col puntatore, e con lui raggio, rapito e pozza sull'erba.
+    // Tolta: la richiesta è che a muoversi sia la VISUALE, non l'oggetto —
+    // il disco resta appeso dov'è e cambia il punto da cui lo si guarda.
+    // Quello lo fa già la parallasse di camera qui sotto, che è stata
+    // rinforzata (`parallax` 0.30 → 0.46) perché adesso è tutto l'effetto.
     hullDark: 0.14, lampColor: '#bfffd8', lampStr: 2.8, lampThresh: 0.66,
     haloColor: '#8affc6', haloStr: 0.32, haloSize: 5.5,
     keyStr: 0.45, ambient: 0.22,
@@ -97,7 +103,7 @@ WC.register('saucer', function(ctx){
     // disco sotto la barra sia il prato dentro il bordo basso. Alzare invece
     // `camTargetY` avrebbe fatto scendere il disco portandosi dietro il prato,
     // fuori dall'inquadratura.
-    fov: 42, camY: 1.15, camZ: 8.1, camTargetY: 2.6, parallax: 0.30,
+    fov: 42, camY: 1.15, camZ: 8.1, camTargetY: 2.6, parallax: 0.46,
     // passaggio finale
     exposure: 1.0,
     bloomStrength: 0.36, bloomRadius: 0.28, bloomThreshold: 0.62,
@@ -920,6 +926,7 @@ WC.register('saucer', function(ctx){
   var rect = { w: 1, h: 1 }, dpr = 1;
   var running = false, raf = 0, last = performance.now(), started = performance.now();
   var tmx = 0, tmy = 0, mx = 0, my = 0;
+
   var _v0 = new THREE.Vector3(), _v1 = new THREE.Vector3();
 
   function resize(){

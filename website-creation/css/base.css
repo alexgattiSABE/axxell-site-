@@ -57,6 +57,18 @@ body.cur-grab .cursor-ring{width:84px;height:84px;
   background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.75);}
 body.cur-grab .cursor-label{opacity:1;}
 
+/* --- 10 light: l'unico capitolo su fondo chiaro (Festina).
+   `mix-blend-mode:screen` su bianco dà bianco: lì il cursore ciano sparisce
+   del tutto. Qui la fusione si spegne e il cursore torna a essere inchiostro
+   scuro. Il puntatore di sistema non è nascosto da nessuna parte, quindi
+   anche senza questa regola non si resterebbe al buio — ma si perderebbe
+   l'unico elemento di continuità col resto della pagina. --- */
+body.cur-light .cursor,body.cur-light .cursor-ring,body.cur-light .cursor-trail{
+  mix-blend-mode:normal;}
+body.cur-light .cursor{background:#0b0b12;}
+body.cur-light .cursor-ring{border-color:rgba(11,11,18,.34);}
+body.cur-light .cursor-trail{border-color:rgba(11,11,18,.14);}
+
 /* --- 05 cross: mirino --- */
 body.cur-cross .cursor{width:1px;height:22px;border-radius:0;}
 body.cur-cross .cursor-ring{width:22px;height:1px;border-radius:0;

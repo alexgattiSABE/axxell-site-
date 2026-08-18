@@ -83,13 +83,21 @@ WC.register('warp', function(ctx){
     // ---- seconda forma: l'elica ----
     // Misure in unità di scena. L'elica sta davanti alla camera, non dove
     // nascono le strisce: `dnaZ` è la profondità a cui si compone.
-    dnaR: 3.4,          // raggio dei due filamenti
+    /* ELICA PIÙ SPESSA E PIÙ TRIDIMENSIONALE.
+       Era un reticolo piatto di puntini da 2,4 px su un raggio di 3,4: a
+       schermo si leggeva come un disegno, non come un oggetto. Tre modifiche,
+       e le prime due sono solo misure:
+         dnaR   3.4 → 4.2   l'elica occupa più spazio, i due filamenti si
+                            staccano invece di sovrapporsi in proiezione
+         dnaDot 2.4 → 3.8   corpo vero ai punti
+       La terza è la profondità: vedi `vDnaDepth` nella shader. */
+    dnaR: 4.2,          // raggio dei due filamenti
     dnaH: 24,           // altezza totale
     dnaTurns: 4.5,      // giri completi
     dnaZ: -22,
     dnaRungs: 46,       // pioli fra un filamento e l'altro
     dnaRungFrac: 0.42,  // quota di particelle che fa i pioli invece dei filamenti
-    dnaDot: 2.4,        // lato del quadratino, in pixel CSS (era 3.4: vedi `streaks`)
+    dnaDot: 3.8,        // lato del quadratino, in pixel CSS
     // ---- terza forma: vesper ----
     // Sfera + galassia a spirale, i due oggetti della scena originale. Le
     // particelle ne compongono la FORMA, non il materiale: l'orbe era una mesh
@@ -297,6 +305,7 @@ WC.register('warp', function(ctx){
       uMorph2: uMorph2, uSpin2: uSpin2,
       uDnaZ: { value: CONFIG.dnaZ }, uVesZ: { value: CONFIG.vesZ },
       uDot: { value: CONFIG.dnaDot },
+      uDnaR: { value: CONFIG.dnaR },
       uStrandA: { value: C_STRAND_A }, uStrandB: { value: C_STRAND_B },
       uRung:    { value: C_RUNG },
       uOrb:     { value: C_ORB }, uGal: { value: C_GAL }
@@ -307,8 +316,10 @@ WC.register('warp', function(ctx){
       'uniform float uTime; uniform vec2 uRes; uniform float uSpeed; uniform float uLen;',
       'uniform float uFar; uniform float uNear; uniform float uWidth;',
       'uniform float uMorph; uniform float uSpin; uniform float uDnaZ; uniform float uDot;',
+      'uniform float uDnaR;',
       'uniform float uMorph2; uniform float uSpin2; uniform float uVesZ;',
       'varying float vLife; varying float vTail; varying float vRole; varying vec2 vQuad;',
+      'varying float vDnaDepth;',
       'varying float vMorph; varying float vMorph2; varying float vRole2;',
       '',
       'vec4 project(vec3 p){ return projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
@@ -334,6 +345,11 @@ WC.register('warp', function(ctx){
       '  float cs = cos(uSpin), sn = sin(uSpin);',
       '  vec3 d = vec3(aDna.x * cs - aDna.z * sn, aDna.y, aDna.x * sn + aDna.z * cs);',
       '  vec3 wDna = vec3(d.x, d.y, d.z + uDnaZ);',
+      // Da che lato dell'asse sta questo punto: +1 il filamento che ti viene
+      // incontro, -1 quello che gira dietro. È il numero che dà la profondità
+      // all'elica — senza, i due filamenti hanno la stessa luce e lo stesso
+      // corpo, e una doppia elica vista di fronte diventa un reticolo piatto.
+      '  vDnaDepth = clamp(d.z / max(0.001, uDnaR), -1.0, 1.0);',
       '',
       // ---- FORMA 3: vesper. Sfera e galassia, anche loro con la propria
       // rotazione attorno all'asse verticale.
@@ -385,8 +401,12 @@ WC.register('warp', function(ctx){
       // Da particella: un quadratino rivolto alla camera. Le due costruzioni
       // sono pesate dallo stesso `mi`, quindi la cometa si accorcia mentre il
       // quadratino cresce e non c'è un istante in cui è nessuna delle due.
+      // Il corpo del quadratino segue la profondità: più grosso davanti, più
+      // minuto dietro. È scorcio, non decorazione — è il motivo per cui i due
+      // filamenti si distinguono anche quando si incrociano.
+      '  float dnaScale = mix(1.0, 0.72 + 0.52 * (vDnaDepth * 0.5 + 0.5), mi);',
       '  clip.xy += vec2(aSide.x, aSide.y * 2.0 - 1.0) / vec2(asp, 1.0)',
-      '           * (uDot / uRes.y) * clip.w * mi;',
+      '           * (uDot / uRes.y) * clip.w * mi * dnaScale;',
       '  vLife = t;',
       '  vTail = aSide.y;',
       '  vRole = aRole;',
@@ -402,6 +422,7 @@ WC.register('warp', function(ctx){
       'uniform vec3 uStrandA; uniform vec3 uStrandB; uniform vec3 uRung;',
       'uniform vec3 uOrb; uniform vec3 uGal;',
       'varying float vLife; varying float vTail; varying float vRole; varying vec2 vQuad;',
+      'varying float vDnaDepth;',
       'varying float vMorph; varying float vMorph2; varying float vRole2;',
       'void main(){',
       // Da COMETA: la coda sfuma, la testa no — è quella differenza a farle
@@ -420,9 +441,16 @@ WC.register('warp', function(ctx){
       // dell'elica, e dentro l'elica cambia col ruolo — i due filamenti hanno
       // due tinte diverse, i pioli una terza. Senza quella distinzione la
       // doppia elica si legge come un tubo di puntini.
-      '  vec3 flight = mix(uFarCol, uNearCol, vLife) * (0.55 + vLife * 1.35);',
+      // Luminosità alzata su tutta la sezione (era 0.55 + 1.35): il capitolo
+      // gira senza bloom — three r128 core non porta EffectComposer — e i
+      // valori venivano da una scena che ce l'aveva.
+      '  vec3 flight = mix(uFarCol, uNearCol, vLife) * (0.78 + vLife * 1.65);',
       '  vec3 helix  = vRole < 0.5 ? uStrandA : (vRole < 1.5 ? uStrandB : uRung);',
-      '  helix *= (vRole > 1.5) ? 0.85 : 1.35;',   // i pioli stanno indietro
+      '  helix *= (vRole > 1.5) ? 1.05 : 1.75;',   // i pioli stanno indietro
+      // E la luce segue il lato: il filamento che viene avanti è quasi doppio
+      // di quello che gira dietro. Insieme al corpo del punto (`dnaScale` nel
+      // vertex) è tutto ciò che serve perché l'elica si legga come un volume.
+      '  helix *= 0.62 + 0.78 * (vDnaDepth * 0.5 + 0.5);',
       // Vesper: la sfera in menta, la galassia in indaco. Il nucleo del disco
       // schiarisce verso la menta, se no la spirale è una macchia viola uniforme
       // e non si legge che ha un centro.

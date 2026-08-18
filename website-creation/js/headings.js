@@ -46,16 +46,37 @@ WC.register('headings', function(ctx){
   // mangerebbe. Riga per riga il ritorno a capo resta dov'è.
   var SCRAMBLE_IN = '#capSaucer';
 
+  /* Lo scramble si RIGIOCA, in tutte e due le direzioni.
+   *
+   * Prima aveva `once: true` come gli altri titoli: si decodificava la prima
+   * volta e poi restava scritto per sempre. Su un titolo che sale è giusto —
+   * una riga entra una volta sola — ma qui la decodifica È il contenuto del
+   * capitolo, e chi torna indietro con lo scroll si aspetta di rivederla.
+   *
+   * Il tween nasce in pausa e non porta più il proprio ScrollTrigger: lo
+   * comanda un trigger a parte che lo fa ripartire all'ingresso da sopra e da
+   * sotto. `restart(true)` include il delay, così lo stagger fra le due righe
+   * si rigioca com'era la prima volta. */
   function scramble(lines, h, onEnter){
-    return gsap.to(lines, {
+    var tw = gsap.to(lines, {
       duration: 1.3,
       // "{original}" = il testo che la riga ha già: non va ripetuto qui, e
       // continua a funzionare se la copy cambia.
       scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 },
       ease: 'none',
       stagger: 0.22,
-      scrollTrigger: { trigger: h, start: 'top 85%', once: true, onEnter: onEnter }
+      paused: true
     });
+    var play = function(){ if (onEnter) onEnter(); tw.restart(true); };
+    var st = ScrollTrigger.create({
+      trigger: h, start: 'top 85%', end: 'bottom top',
+      onEnter: play, onEnterBack: play
+    });
+    // Il teardown passa da qui: chi raccoglie il tween si aspetta di poterlo
+    // uccidere, e il trigger deve morire con lui.
+    var kill = tw.kill.bind(tw);
+    tw.kill = function(){ st.kill(); return kill(); };
+    return tw;
   }
 
   heads.forEach(function(h){
@@ -74,14 +95,18 @@ WC.register('headings', function(ctx){
       linesClass: 'wcline',
       autoSplit: true,
       onSplit: function(self){
+        // Lo scramble si riaggancia SEMPRE alle righe nuove, anche se il titolo
+        // è già stato letto: sono nodi diversi da quelli di prima, e quelli
+        // vecchi si sono portati via il tween. Senza questa riga, dopo un
+        // resize (o dopo il caricamento del font, che ritaglia da sé) la
+        // decodifica non ripartirebbe mai più.
+        if (scrambles) return scramble(self.lines, h, function(){ shown = true; });
         if (shown) {
           // Al ritaglio successivo il titolo è già stato letto: rimetterlo a
-          // posto, non rifarlo. Per lo scramble non c'è niente da rimettere —
-          // il testo è già quello giusto — quindi basta annullare lo scorrimento.
+          // posto, non rifarlo.
           gsap.set(self.lines, { yPercent: 0 });
           return;
         }
-        if (scrambles) return scramble(self.lines, h, function(){ shown = true; });
         return gsap.from(self.lines, {
           yPercent: 110,
           duration: 0.9,

@@ -69,10 +69,37 @@ WC.register('dna', function(ctx){
     var back  = document.createElement('div'); back.className  = 'wc-dna-layer -back';
     var front = document.createElement('div'); front.className = 'wc-dna-layer -front';
     pairs = WORDS.map(function(w, i){
+      /* Ogni parola è una fila di LETTERE, non un testo unico.
+       *
+       * Serve alla piegatura: una parola che si curva deve avere i suoi
+       * caratteri su un arco, e un nodo di testo solo non si può piegare —
+       * al massimo lo si inclina. Le lettere si tagliano UNA VOLTA, alla
+       * costruzione, e ognuna si porta due costanti:
+       *
+       *   --k   distanza dal centro al quadrato, con segno: è la campana che
+       *         fa l'arco (le lettere ai capi scendono, quelle in mezzo no)
+       *   --r   distanza dal centro con segno: è il ventaglio, quanto ogni
+       *         lettera ruota rispetto alla successiva
+       *
+       * Il loop poi scrive UNA sola custom property per parola (`--bend`), e
+       * la curva la compone il CSS. Con la matematica per lettera in
+       * JavaScript sarebbero state duecento scritture di stile a fotogramma
+       * invece di sedici. */
       var mk = function(layer){
         var s = document.createElement('span');
         s.className = 'wc-dna-word';
-        s.textContent = w;
+        var n = w.length, mid = (n - 1) / 2;
+        for (var c = 0; c < n; c++) {
+          var ch = document.createElement('span');
+          ch.className = 'wc-dna-ch';
+          // Lo spazio unificatore: uno spazio normale dentro un inline-block
+          // collasserebbe e la parola si stringerebbe.
+          ch.textContent = w[c] === ' ' ? '\u00a0' : w[c];
+          var d = mid ? (c - mid) / mid : 0;        // −1 .. +1
+          ch.style.setProperty('--k', (d * d).toFixed(4));
+          ch.style.setProperty('--r', d.toFixed(4));
+          s.appendChild(ch);
+        }
         layer.appendChild(s);
         return s;
       };
@@ -102,15 +129,21 @@ WC.register('dna', function(ctx){
   // flameColor, flameAmt) non compaiono: vivevano nel post-processing che qui
   // non c'è.
   var CONFIG = {
-    colorLow: '#04123a',      // blu profondo in basso...
-    colorHigh: '#27043e',     // ...viola in alto
+    /* SCHIARITA. I due colori della scena sorgente erano #04123a e #27043e:
+       nati sotto un bloom che qui non c'è (three r128 core, niente
+       EffectComposer), e senza quello l'elica restava un accenno scuro su
+       nero. Alzati di luminosità tenendo la STESSA coppia di tinte — blu
+       profondo in basso, viola in alto — e non sostituiti con altri colori:
+       il gradiente del capitolo è quello. La `brightness` sale con loro. */
+    colorLow: '#0b2f8c',      // blu profondo in basso...
+    colorHigh: '#5a1386',     // ...viola in alto
     atmoColor: '#7fe6ff',
     atmoCount: wide > 1024 ? 320 : 160,
     atmoSize: 24,
     atmoSpeed: 0.4,
     opacity: 2,
     pointSize: 4,
-    brightness: 1.15,
+    brightness: 1.55,
     twist: 0.65,
     waveAmt: 0.7,
     dnaFloat: 0.95,
@@ -351,10 +384,30 @@ WC.register('dna', function(ctx){
       var edge = G.smoothstep(0, 0.12, u) * (1 - G.smoothstep(0.88, 1, u));
       var alpha = (0.16 + depth * 0.84) * edge * appear;
       var mixF = depth * depth * (3 - 2 * depth);          // smoothstep sulla silhouette
+
+      /* LA PIEGATURA. Comincia quando la parola è passata DAVANTI e cresce
+       * mentre si allontana, poi si distende prima che il giro la riporti
+       * di fronte. Non è simmetrica di proposito: una curvatura che sale e
+       * scende attorno al punto più vicino si legge come una lente, questa
+       * si legge come una scia che viene deviata dopo essere passata.
+       *
+       * `q` è la quota del giro contata DAL FRONTE (0 = davanti, 1 = di
+       * nuovo davanti). Il fronte è dove sin(ang) fa massimo, cioè ang = π/2:
+       * da lì si conta. */
+      var q = ((ang - Math.PI / 2) / (Math.PI * 2)) % 1;
+      if (q < 0) q += 1;
+      var bend = G.smoothstep(0, 0.30, q) * (1 - G.smoothstep(0.70, 0.98, q));
+
       var tf = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)' +
-               ' translate(-50%,-50%) scale(' + scale.toFixed(3) + ')';
+               ' translate(-50%,-50%) scale(' + scale.toFixed(3) + ')' +
+               // La parola intera si inclina e si stira mentre si piega: è la
+               // parte che dice "spazio", le lettere dicono "curvo".
+               ' rotate(' + (bend * 9).toFixed(2) + 'deg)' +
+               ' skewX(' + (bend * -13).toFixed(2) + 'deg)';
       p.f.style.transform = tf;
       p.b.style.transform = tf;
+      p.f.style.setProperty('--bend', bend.toFixed(4));
+      p.b.style.setProperty('--bend', bend.toFixed(4));
       p.f.style.opacity = (alpha * mixF).toFixed(3);
       p.b.style.opacity = (alpha * (1 - mixF)).toFixed(3);
     }
