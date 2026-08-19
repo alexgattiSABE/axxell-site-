@@ -38,9 +38,11 @@
  *    `getBoundingClientRect()` per ogni parola a ogni frame — con cinquanta
  *    parole sono cinquanta ricalcoli di layout per fotogramma. Qui si misurano
  *    una volta e si rimisurano quando la pagina cambia forma.
- * 4. NIENTE `click`. Le animazioni di clic del sorgente restano fuori: su
- *    queste sezioni il clic non è previsto (nessuna è cliccabile) e il gesto
- *    che conta è il passaggio.
+ * 4. QUASI NIENTE `click`. Le animazioni di clic del sorgente restano fuori:
+ *    su queste sezioni il gesto che conta è il passaggio, non il tocco.
+ *    L'unica eccezione è l'anello elastico del disco volante, che dal clic fa
+ *    partire tre onde concentriche — lì il clic è previsto apposta, e il
+ *    perché sta scritto sopra `FX.elastic`.
  */
 WC.register('cursorfx', function(ctx){
   var hosts = Array.prototype.slice.call(
@@ -359,11 +361,11 @@ WC.register('cursorfx', function(ctx){
         g.shadowColor = COL; g.shadowBlur = 12 * gh.a;
         g.stroke(); g.restore();
       }
-      if (ptr.p.inside) {
-        g.save(); g.beginPath();
-        g.arc(mx, my, Math.max(0.5, 3 * (ptr.p.over ? 0.5 : 1)), 0, Math.PI * 2);
-        g.fillStyle = '#fff'; g.fill(); g.restore();
-      }
+      /* E QUI C'ERA IL PALLINO BIANCO sul puntatore, dentro il fantasma
+       * principale: cioè di nuovo un cerchio con un punto dentro, la stessa
+       * cosa tolta dappertutto. Via anche questo — i quattro fantasmi
+       * specchiati, che sono l'effetto, restano tutti. Si rimette con
+       * `g.arc(mx, my, 3, 0, 2π)` pieno di bianco quando `ptr.p.inside`. */
     }
     return { frame: frame, resize: cv.resize,
              destroy: function(){ ptr.destroy(); cv.destroy(); } };
@@ -468,9 +470,69 @@ WC.register('cursorfx', function(ctx){
     var MAXS = 0.62;         // tetto all'allungamento, se no a scatti diventa un ago
     var x = 0, y = 0, vx = 0, vy = 0, seeded = false, stretch = 0, ang = 0;
 
+    /* ── LE ONDE DEL CLIC ──────────────────────────────────────────────────
+     * In testa a questo file c'è scritto che le animazioni di clic del
+     * sorgente restano fuori, «su queste sezioni il clic non è previsto». Qui
+     * il clic diventa previsto, e in un capitolo dove ha senso: il disco
+     * volante emette un raggio, e un'onda che parte dal puntatore è la stessa
+     * cosa vista da vicino.
+     *
+     * Ogni clic ne accende TRE, sfasate: una sola si legge come un cerchio che
+     * si allarga, tre come un impulso che si propaga. Nascono ferme sul punto
+     * in cui si è cliccato — non seguono il puntatore, se no sarebbero una
+     * scia e non un'onda — e si spengono da sole.
+     *
+     * `ONDA_MAX` è volutamente corto: l'onda deve propagarsi POCO, restare un
+     * gesto locale attorno al dito. Un anello che attraversa la sezione
+     * diventerebbe un effetto di pagina e ruberebbe la scena al disco.
+     *
+     * Nessun `dt`: questo loop gira a fotogramma e si ferma con la sezione
+     * (vedi in fondo al modulo), quindi il tempo si conta in fotogrammi come
+     * fa tutto il resto del file. */
+    var ONDE = [], ONDA_MAX = 92, ONDA_VEL = 2.6, ONDA_SFASE = 7, ONDA_N = 3;
+
+    function onDown(e){
+      var r = host.getBoundingClientRect();
+      var cx = e.clientX - r.left, cy = e.clientY - r.top;
+      for (var i = 0; i < ONDA_N; i++)
+        ONDE.push({ x: cx, y: cy, t: -i * ONDA_SFASE });
+      // Tetto di sicurezza: chi tiene premuto e martella non deve poter
+      // accumulare centinaia di anelli da disegnare a ogni fotogramma.
+      if (ONDE.length > 24) ONDE.splice(0, ONDE.length - 24);
+    }
+    host.addEventListener('pointerdown', onDown);
+
+    function onde(g){
+      for (var i = ONDE.length - 1; i >= 0; i--) {
+        var o = ONDE[i];
+        o.t += ONDA_VEL;
+        if (o.t <= 0) continue;                  // non ancora nata
+        var u = o.t / ONDA_MAX;                  // 0 → 1 lungo la vita
+        if (u >= 1) { ONDE.splice(i, 1); continue; }
+        // Il raggio rallenta mentre cresce (radice invece che lineare): è come
+        // si propaga un'onda vera, e senza questo l'anello sembra sparato.
+        var rr = Math.sqrt(u) * ONDA_MAX;
+        g.save();
+        g.beginPath();
+        g.arc(o.x, o.y, rr, 0, Math.PI * 2);
+        g.strokeStyle = COL;
+        // Si assottiglia e si spegne insieme: un anello che resta spesso
+        // mentre svanisce legge come una dissolvenza, non come un'onda.
+        g.lineWidth = 2.2 * (1 - u);
+        g.globalAlpha = (1 - u) * (1 - u) * 0.85;
+        g.shadowColor = COL; g.shadowBlur = 12 * (1 - u);
+        g.stroke();
+        g.restore();
+      }
+    }
+
     function frame(){
       var g = cv.g, w = cv.size.w, h = cv.size.h;
       g.clearRect(0, 0, w, h);
+      // Le onde si disegnano PRIMA del controllo qui sotto: sono agganciate al
+      // punto in cui si è cliccato, non al puntatore, e devono finire la loro
+      // corsa anche se nel frattempo il mouse è uscito dal riquadro.
+      onde(g);
       if (!ptr.p.inside) { seeded = false; return; }
 
       var tx = ptr.p.x, ty = ptr.p.y;
@@ -506,15 +568,19 @@ WC.register('cursorfx', function(ctx){
       g.stroke();
       g.restore();
 
-      // Il punto sta sul puntatore VERO, non sull'anello: è il riferimento
-      // fermo contro cui si legge il ritardo dell'anello.
-      g.save();
-      g.beginPath(); g.arc(tx, ty, 2.6, 0, Math.PI * 2);
-      g.fillStyle = COL; g.shadowColor = COL; g.shadowBlur = 10;
-      g.fill(); g.restore();
+      /* QUI C'ERA IL PALLINO sul puntatore vero — il riferimento fermo contro
+       * cui si leggeva il ritardo dell'anello. Tolto su richiesta: di questo
+       * capitolo resta solo l'anello elastico, e il ritardo si legge lo stesso
+       * contro il puntatore di sistema, che qui è l'unico punto in quadro.
+       * Si rimette riaggiungendo l'arco: `g.arc(tx, ty, 2.6, 0, 2π)` pieno di
+       * COL con `shadowBlur` 10. */
     }
     return { frame: frame, resize: cv.resize,
-             destroy: function(){ ptr.destroy(); cv.destroy(); } };
+             destroy: function(){
+               host.removeEventListener('pointerdown', onDown);
+               ONDE.length = 0;
+               ptr.destroy(); cv.destroy();
+             } };
   };
 
   /* CIRCUITO — tracce da PCB che si accendono al passaggio, e si spengono dietro.
@@ -562,7 +628,14 @@ WC.register('cursorfx', function(ctx){
     var COL = '0,212,255';       // il ciano del sito, in componenti per rgba()
     var GRID = 42;               // passo della griglia di instradamento, px
     var SAMPLE = 13;             // passo di ricampionamento: la risoluzione della corrente
-    var BASE = 0.055;            // le tracce spente: quasi invisibili, ma ci sono
+    /* 0, e non più 0.055. Le tracce spente erano appena visibili — un reticolo
+     * di rame fermo sul fondo, che si vedeva anche senza toccare niente. Su
+     * richiesta la scheda ORA NON C'È: il capitolo è nero, e il rame esiste
+     * solo dove è appena passato il cursore. È anche il modo in cui l'effetto
+     * si spiega da sé — non si illumina una cosa che sta lì, si accende una
+     * cosa che non c'era. La passata "spenta" qui sotto resta scritta e non
+     * disegna nulla a 0: rimettere un valore la riaccende. */
+    var BASE = 0;                // le tracce a riposo: invisibili
     var DECAY = 0.945;           // quanto si spegne ogni campione per fotogramma
     var SPREAD = 0.90;           // quanto ne passa al vicino: sotto DECAY la coda muore dietro
     // Quanto rame si accende attorno al passaggio. Era 26 px e la corrente si
@@ -690,15 +763,19 @@ WC.register('cursorfx', function(ctx){
       // Le tracce spente, tutte in un solo tracciato e una sola passata: sono
       // centinaia di segmenti, e chiamare stroke() per ognuno costerebbe più
       // dell'intero effetto.
-      g.beginPath();
-      for (i = 0; i < traces.length; i++) {
-        p = traces[i].p;
-        g.moveTo(p[0], p[1]);
-        for (j = 2; j < p.length; j += 2) g.lineTo(p[j], p[j+1]);
+      // A BASE 0 questa passata disegnerebbe centinaia di segmenti totalmente
+      // trasparenti: costo pieno, risultato nessuno. Si salta.
+      if (BASE > 0) {
+        g.beginPath();
+        for (i = 0; i < traces.length; i++) {
+          p = traces[i].p;
+          g.moveTo(p[0], p[1]);
+          for (j = 2; j < p.length; j += 2) g.lineTo(p[j], p[j+1]);
+        }
+        g.strokeStyle = 'rgba(' + COL + ',' + BASE + ')';
+        g.stroke();
       }
-      g.strokeStyle = 'rgba(' + COL + ',' + BASE + ')';
       g.lineWidth = 1; g.lineJoin = 'round'; g.lineCap = 'round';
-      g.stroke();
 
       // I tratti sotto corrente, in additivo. Due passate: un alone largo e
       // tenue e un cuore stretto e pieno — più economico di `shadowBlur`, che

@@ -129,25 +129,36 @@ WC.register('fluid', function(ctx){
    *
    * Scorrendo all'indietro tutto si riavvolge: le salve si riarmano (vedi
    * `lastSalvo`) e il testo torna. */
+  /* ⚠️ QUESTE QUOTE SONO FRAZIONI DELLA CORSA, non svh: se cambia l'altezza
+   * della sezione in css/sections.css cambiano TUTTE le durate. I numeri qui
+   * sotto sono tarati sui 730svh attuali (630svh di corsa, tolta la schermata
+   * inchiodata) e sono stati ricalcolati — non scelti a occhio — quando la
+   * sezione è passata da 620 a 730svh: ogni tempo prima dell'invito vale gli
+   * stessi svh di prima, e le 110svh aggiunte finiscono tutte nel vuoto fra
+   * l'invito e la consegna. Chi tocca l'altezza rifaccia lo stesso conto. */
   var SEQ = {
-    fire: 0.20,          // quando parte il primo botto
-    boom: 0.68,          // quando finisce l'ultimo
-    dark: 0.76,          // da qui il campo è vuoto
+    fire: 0.121,         // quando parte il primo botto   (~104svh, come sempre)
+    boom: 0.411,         // quando finisce l'ultimo       (~354svh, come sempre)
+    dark: 0.460,         // da qui il campo è vuoto       (~395svh, come sempre)
     /* 0.64, e non più 0.82. L'invito compariva a un sesto dalla fine: il tempo
      * di leggerlo e la sezione era già finita, senza spazio per fare la cosa
      * che chiede. Adesso gli resta oltre un TERZO della corsa — su 320svh sono
      * più di cento schermate-punto di scroll in cui il capitolo è nero, la
      * scritta è lì e il cursore disegna. È il tempo che serve alla battuta
      * finale, non riempitivo. */
-    invite: 0.82,
-    /* E dopo l'invito, la consegna al capitolo successivo. `next` sta poco
-       dopo — il tempo di qualche schermata col cursore, non di più — e la
-       frase se ne va prima che la sezione si sganci, se no resterebbe a
-       schermo mentre quella dopo sale a coprire. L'invito si spegne mentre
-       questa entra: due righe al centro nello stesso momento si contendono
-       lo stesso posto. */
-    next: 0.90,
-    nextOut: 0.975,
+    invite: 0.496,       // ~426svh: identico a prima, in svh
+    /* E dopo l'invito, la consegna al capitolo successivo. Il vuoto fra le due
+       frasi è passato da ~42svh a ~150 e ora a ~260: due schermate e mezzo di
+       nero in cui il cursore disegna e basta, che è esattamente la cosa che
+       l'invito chiede di fare. L'invito si spegne mentre questa entra: due
+       righe al centro nello stesso momento si contendono lo stesso posto.
+
+       E dopo la consegna c'è una CODA VERA: la frase resta ~75svh, sfuma, e
+       restano ancora ~84svh di nero prima che il capitolo si sganci. Prima
+       finiva a ridosso della fine, e la sezione successiva saliva a coprire
+       mentre l'ultima riga era ancora a schermo. */
+    next: 0.798,
+    nextOut: 0.885,
     /* I fuochi, ritarati dopo averli visti a schermo: erano quattordici in un
      * quinto della corsa, cioè tutti addosso, grossi e accecanti.
      *
@@ -944,10 +955,14 @@ WC.register('fluid', function(ctx){
     // l'invito arriva quando il campo è già vuoto.
     var copyA = 1 - smoothstep(SEQ.fire, SEQ.boom, u);
     // L'invito entra, e si spegne quando arriva la consegna.
-    var inviteA = smoothstep(SEQ.invite, Math.min(1, SEQ.invite + 0.12), u)
-                * (1 - smoothstep(SEQ.next - 0.02, SEQ.next + 0.03, u));
-    var nextA = smoothstep(SEQ.next, SEQ.next + 0.035, u)
-              * (1 - smoothstep(SEQ.nextOut, Math.min(1, SEQ.nextOut + 0.02), u));
+    // Le dissolvenze sono frazioni della corsa come le quote: allungata la
+    // sezione, sono riscalate dello stesso fattore (520/860) — se no una
+    // comparsa che durava 62svh ne sarebbe durate 102, e l'invito sarebbe
+    // arrivato a piena luce molto più tardi invece che nello stesso punto.
+    var inviteA = smoothstep(SEQ.invite, Math.min(1, SEQ.invite + 0.073), u)
+                * (1 - smoothstep(SEQ.next - 0.012, SEQ.next + 0.018, u));
+    var nextA = smoothstep(SEQ.next, SEQ.next + 0.021, u)
+              * (1 - smoothstep(SEQ.nextOut, Math.min(1, SEQ.nextOut + 0.012), u));
     if (copyEl) copyEl.style.opacity = copyA.toFixed(3);
     if (footEl) footEl.style.opacity = copyA.toFixed(3);
     if (invite) invite.style.opacity = inviteA.toFixed(3);

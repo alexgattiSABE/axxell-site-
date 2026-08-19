@@ -3,9 +3,18 @@ WC.register('manifesto', function(ctx){
   if (!el) return;
   var items = WC.splitWords(el);
 
+  /* I COLORI DELLA SEZIONE, non una palette decorativa: sono gli stessi quattro
+   * dell'elica (js/dna.js, `colorLow` / `colorAqua` / `colorHigh` / `colorRed`),
+   * portati alla luminosità che serve a un testo su nero. Quelli dell'elica
+   * sono scuri perché lì la fusione è additiva e si sommano punto su punto;
+   * qui sono inchiostro, e vanno letti. Stessa quaterna, stessa sequenza dal
+   * basso verso l'alto: chi guarda l'elica e poi il testo vede la stessa
+   * scala. */
+  var PALETTE = ['#4a7bff', '#2fe0c4', '#a75cff', '#ff5a68'];
+
   // Reduced-motion: testo pieno, nessuno scrub.
   if (!ctx.motionOk) {
-    gsap.set(items, { color: '#f0f0f6' });
+    gsap.set(items, { color: '#f0f0f6', opacity: 1 });
     return;
   }
 
@@ -24,11 +33,44 @@ WC.register('manifesto', function(ctx){
     scrollTrigger: {
       trigger: '#cap02',
       start: 'top top',
-      end: '+=100%',
+      // '+=130%' e non più '+=100%': le onde sono due e la seconda finisce
+      // dopo la prima. Con una schermata sola l'ultima parola prendeva il suo
+      // colore proprio nell'ultimo pixel di corsa, cioè non lo prendeva.
+      end: '+=130%',
       scrub: .6
     }
   });
-  tl.to(items, { color: '#f0f0f6', stagger: .35, ease: 'none' });
+  /* DUE ONDE, non una.
+   *
+   * Prima ce n'era una sola: le parole partivano grigie e diventavano bianche.
+   * Adesso partono da NIENTE — opacità zero — e succedono due cose in fila,
+   * sfalsate, sulle stesse parole e nello stesso ordine:
+   *
+   *   1ª onda   la parola compare, e compare BIANCA. È il momento in cui il
+   *             testo si scrive: fin qui non c'era.
+   *   2ª onda   la parola prende il suo colore, uno dei quattro della sezione.
+   *             Parte quando la prima è a circa un terzo, quindi le due onde
+   *             si accavallano: mentre in fondo al paragrafo le parole stanno
+   *             ancora comparendo, in cima si stanno già colorando. Se
+   *             partisse a prima finita si leggerebbero come due animazioni
+   *             separate su un testo fermo in mezzo.
+   *
+   * `span` è la durata vera della prima onda: lo sfalsamento moltiplicato per
+   * il numero di parole, più il tween. Va calcolato e non indovinato — il
+   * manifesto può cambiare lunghezza, e una posizione scritta a mano ("parti
+   * al secondo 6") si scollerebbe alla prima riscrittura del testo. */
+  var STAG = .35;
+  var span = STAG * (items.length - 1) + .5;
 
-  return function(){ tl.scrollTrigger && tl.scrollTrigger.kill(); tl.kill(); };
+  tl.fromTo(items, { opacity: 0, color: '#f0f0f6' },
+                   { opacity: 1, stagger: STAG, ease: 'none' }, 0);
+  tl.to(items, {
+    color: function(i){ return PALETTE[i % PALETTE.length]; },
+    stagger: STAG, ease: 'none'
+  }, span * .34);
+
+  return function(){
+    tl.scrollTrigger && tl.scrollTrigger.kill(); tl.kill();
+    gsap.set(items, { clearProps: 'opacity,color' });
+  };
 });

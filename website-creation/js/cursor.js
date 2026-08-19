@@ -47,7 +47,12 @@ WC.register('cursor', function(ctx){
   }
   WC.setCursor = setState;   // il loader (Task 3) lo usa per 'hidden'
 
-  setState('default');
+  // Stato di partenza: quello della prima sezione che ne dichiara uno, non un
+  // 'default' fisso. ScrollTrigger non chiama `onEnter` per una sezione che è
+  // già in quadro al caricamento, quindi senza questa riga il primo capitolo
+  // resterebbe con lo stato scritto qui invece che col suo.
+  var firstSec = document.querySelector('[data-cursor]');
+  setState((firstSec && firstSec.dataset.cursor) || 'hidden');
 
   // Ogni sezione dichiara il proprio stato: il cursore non sa nulla dei capitoli.
   var triggers = [];

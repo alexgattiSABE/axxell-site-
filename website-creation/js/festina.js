@@ -86,6 +86,7 @@ WC.register('festina', function(ctx){
   // il browser non ha proprio un indirizzo da cui scaricare. Sono 2,2 MB in
   // fondo a una pagina che ha già cinque scene WebGL, due modelli e un video.
   var loaded = false, ready = false;
+  var cleanups = [];
 
   function load(){
     if (loaded) return;
@@ -108,17 +109,104 @@ WC.register('festina', function(ctx){
     video.load();
   }
 
+  /* ⚠️ E QUESTO È IL MOTIVO PER CUI NON SI MUOVEVA LA SECONDA VOLTA.
+   * Scorrere un video vuol dire SALTARE dentro al file, e un browser salta
+   * solo se il server sa servire un pezzo alla volta: `Accept-Ranges: bytes` e
+   * risposte 206. Vercel lo fa; `python3 -m http.server`, con cui questa
+   * cartella si guarda in locale, NO — risponde sempre 200 con tutto il file.
+   * Il risultato è che il video si scarica per intero, `buffered` arriva a
+   * [0, 10.04] e `readyState` a 4… ma `seekable` resta [0, 0]: Chrome si
+   * rifiuta di cercare in una sorgente che non ha dichiarato di essere
+   * divisibile. Ogni `currentTime = t` viene ignorato, `currentTime` resta 0,
+   * e a schermo l'orologio è il primo fotogramma per tutta la sezione.
+   * Misurato in Chromium su ognuno dei due server, non dedotto.
+   *
+   * La toppa: se alla comparsa dei metadati la sorgente NON è cercabile, il
+   * filmato viene riscaricato con `fetch` e rimontato come Blob. Un blob è in
+   * memoria, quindi è cercabile per definizione, qualunque cosa dica il server.
+   * Non costa un byte in più a chi arriva da un server fatto bene — lì la
+   * condizione è falsa e questo ramo non parte mai — e non costa il doppio
+   * nemmeno qui, perché la risposta senza Range è già in cache HTTP.
+   *
+   * Se `fetch` fallisce non si fa niente di speciale: resta il poster fermo,
+   * che è esattamente quello che si aveva prima. */
+  function canSeek(){
+    var sk = video.seekable;
+    return !!(sk && sk.length && sk.end(sk.length - 1) > 0.1);
+  }
+
+  var rescued = false;
+  function rescue(){
+    if (rescued) return;
+    rescued = true;
+    var url = video.currentSrc || 'assets/festina.mp4';
+    fetch(url).then(function(r){
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.blob();
+    }).then(function(blob){
+      var obj = URL.createObjectURL(blob);
+      cleanups.push(function(){ URL.revokeObjectURL(obj); });
+      // Via i <source>: con quelli ancora attaccati il browser ripescherebbe
+      // la sorgente non cercabile al primo `load()`.
+      var srcs = video.querySelectorAll('source');
+      for (var i = srcs.length - 1; i >= 0; i--) srcs[i].remove();
+      video.src = obj;
+      video.load();   // `loadedmetadata` riparte, e stavolta `canSeek()` è vero
+    }).catch(function(){});
+  }
+
   function onMeta(){
+    if (!canSeek()) { rescue(); return; }
     ready = true;
     sec.classList.add('-ready');
-    // iOS non disegna niente finché il video non è stato riprodotto almeno
-    // una volta: si resta col poster e si scrolla su un'immagine ferma. Un
-    // play immediatamente annullato basta a sbloccare la pittura, ed è
-    // permesso senza gesto perché il video è muto e playsinline.
-    var p = video.play();
-    if (p && p.then) p.then(function(){ video.pause(); }).catch(function(){});
-    else video.pause();
+    unlock();
     pump();
+  }
+
+  /* LO SBLOCCO DELLA PITTURA.
+   * Safari (macOS e iOS) non disegna NIENTE di un <video> che non è mai stato
+   * riprodotto: resta il poster, e i seek — che pure vanno a buon fine, con
+   * `currentTime` che avanza — non compaiono a schermo. Un play immediatamente
+   * annullato basta a sbloccarla, e non fa vedere niente perché dura un frame.
+   *
+   * ⚠️ MA `play()` PUÒ ESSERE RIFIUTATO. Su Safari basta che l'utente abbia
+   * messo il sito su "Non riprodurre mai" in Impostazioni → Siti web →
+   * Riproduzione automatica (o che lo faccia una policy di sistema) e la
+   * promessa viene respinta. Prima quel rifiuto finiva in un `.catch` vuoto:
+   * il modulo continuava a cercare i fotogrammi giusti, `currentTime` si
+   * muoveva, e a schermo restava il poster fermo per tutta la sezione — cioè
+   * esattamente il sintomo "l'orologio non fa l'animazione", indistinguibile
+   * da un video che non si carica.
+   *
+   * Adesso il rifiuto non è la fine: si riprova al primo gesto vero
+   * (`pointerdown`/`keydown`, che valgono come attivazione da parte
+   * dell'utente — lo scroll NO, non conta come gesto). Un clic qualsiasi sulla
+   * pagina, in qualunque momento, sblocca la pittura. */
+  var unlocked = false, gestureArmed = false;
+
+  function armGesture(){
+    if (gestureArmed) return;
+    gestureArmed = true;
+    var retry = function(){ unlock(); if (unlocked) disarm(); };
+    var disarm = function(){
+      window.removeEventListener('pointerdown', retry, true);
+      window.removeEventListener('keydown', retry, true);
+    };
+    window.addEventListener('pointerdown', retry, true);
+    window.addEventListener('keydown', retry, true);
+    cleanups.push(disarm);
+  }
+
+  function unlock(){
+    if (unlocked) return;
+    var pr;
+    try { pr = video.play(); } catch (err) { armGesture(); return; }
+    if (pr && pr.then) {
+      pr.then(function(){ unlocked = true; video.pause(); pump(); })
+        .catch(function(){ armGesture(); });
+    } else {
+      unlocked = true; video.pause();
+    }
   }
   video.addEventListener('loadedmetadata', onMeta);
 
@@ -200,21 +288,78 @@ WC.register('festina', function(ctx){
     tl.to(el, { opacity: 0, y: -12, duration: fade, ease: 'none' }, b - fade);
   });
 
-  // Il primo pezzo di filmato serve prima di arrivarci: mezza schermata di
-  // margine e il buffer è già aperto quando la sezione entra in scena.
+  /* Il filmato serve GIÀ PRONTO, non "in arrivo".
+   * Erano mezza schermata di margine: chi scende di corsa entrava nella
+   * sezione mentre i 2,2 MB stavano ancora scendendo, vedeva il poster fermo
+   * per le prime schermate di scroll e ne concludeva — ragionevolmente — che
+   * l'orologio non si muove. Una schermata e mezzo dà al file il tempo di
+   * arrivare anche a scroll veloce, e non costa niente a chi non ci arriva:
+   * il trigger sta comunque dentro la pagina, non al caricamento. */
   var stPre = ScrollTrigger.create({
-    trigger: sec, start: 'top bottom+=50%', end: 'bottom top-=50%',
+    trigger: sec, start: 'top bottom+=150%', end: 'bottom top-=50%',
     onEnter: load, onEnterBack: load
   });
+
+  /* LA POMPA CONTINUA.
+   * `pump()` veniva chiamata solo da due punti: l'aggiornamento della timeline
+   * (cioè mentre si scorre) e l'evento `seeked`. Basta che UN `seeked` non
+   * arrivi — un seek respinto, una sorgente che si riapre, un decoder che
+   * rinuncia — e mentre lo scroll è fermo non chiama più nessuno: il filmato
+   * resta dov'è finché non si torna a scorrere, e in mezzo alla sezione sembra
+   * piantato. Qui invece si ripompa a ogni fotogramma finché il capitolo è in
+   * quadro: `pump()` esce da sola in due righe se non c'è niente da fare
+   * (stessa posizione, o seek ancora in volo), quindi non costa niente.
+   * Il loop gira SOLO dentro la sezione — non è un rAF di pagina. */
+  var raf = 0;
+  function tick(){ pump(); raf = requestAnimationFrame(tick); }
+  var stPump = ScrollTrigger.create({
+    trigger: sec, start: 'top bottom', end: 'bottom top',
+    onToggle: function(self){
+      if (self.isActive) { if (!raf) raf = requestAnimationFrame(tick); }
+      else { cancelAnimationFrame(raf); raf = 0; }
+    }
+  });
+  if (stPump.isActive) raf = requestAnimationFrame(tick);
+
+  /* PANNELLO DIAGNOSTICO — solo con `?diag` nell'indirizzo.
+   * Non è debug lasciato in giro: questo capitolo è l'unico della pagina che
+   * dipende da come il SERVER manda il file e da come il browser decide di
+   * trattare un <video>, e le due cose non si vedono guardando lo schermo —
+   * un filmato fermo sul primo fotogramma può voler dire cinque cose diverse.
+   * Con `?diag` le dice tutte e cinque in un angolo. Senza, non esiste. */
+  if (/[?&]diag\b/.test(location.search)) {
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;' +
+      'font:11px/1.5 ui-monospace,monospace;color:#0f0;background:rgba(0,0,0,.82);' +
+      'padding:8px 10px;border:1px solid #0f0;white-space:pre;pointer-events:none;';
+    document.body.appendChild(box);
+    var diag = setInterval(function(){
+      var sk = video.seekable;
+      box.textContent =
+        'src      ' + (video.currentSrc || '(nessuna)').replace(location.origin, '') + '\n' +
+        'seekable ' + (sk && sk.length ? sk.end(sk.length - 1).toFixed(2) : 'VUOTO  ← il server non manda i Range') + '\n' +
+        'ready    ' + video.readyState + '   (4 = pronto)\n' +
+        'durata   ' + (isFinite(video.duration) ? video.duration.toFixed(2) : '?') + '\n' +
+        'want     ' + want.toFixed(2) + '\n' +
+        'current  ' + video.currentTime.toFixed(2) + (Math.abs(video.currentTime - want) > 0.3 ? '   ← NON SEGUE' : '') + '\n' +
+        'seeking  ' + video.seeking + '\n' +
+        'play     ' + (unlocked ? 'ok' : gestureArmed ? 'RIFIUTATO  ← clicca la pagina' : 'in attesa') + '\n' +
+        'errore   ' + (video.error ? video.error.code + ' ' + (video.error.message || '') : 'nessuno');
+    }, 200);
+    cleanups.push(function(){ clearInterval(diag); box.remove(); });
+  }
 
   sec.classList.add('-live');
 
   return function(){
+    cancelAnimationFrame(raf); raf = 0;
+    stPump.kill();
     tl.scrollTrigger && tl.scrollTrigger.kill();
     tl.kill();
     stPre.kill();
     video.removeEventListener('loadedmetadata', onMeta);
     video.removeEventListener('seeked', onSeeked);
+    cleanups.forEach(function(f){ f(); });
     gsap.set(says, { clearProps: 'opacity,transform' });
     sec.classList.remove('-live', '-ready');
   };

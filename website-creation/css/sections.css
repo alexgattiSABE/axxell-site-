@@ -142,6 +142,12 @@ body.wc-locked{overflow:hidden;}
    Senza sfondo non serve più nemmeno il velo — il testo è bianco su nero. */
 .wc-manifesto-text{font-size:clamp(1.5rem,3.4vw,2.8rem);line-height:1.35;
   font-weight:500;letter-spacing:-.015em;max-width:22ch;}
+/* Lo stato di riposo è ancora GRIGIO E VISIBILE, non trasparente, e non è una
+   dimenticanza: l'invisibilità la mette js/manifesto.js con `fromTo` appena
+   parte. Se quel modulo non parte — niente GSAP, uno script che non scende —
+   con `opacity:0` scritto qui il manifesto sarebbe una schermata vuota, cioè
+   il testo più importante del capitolo perso per un file mancante. Così invece
+   resta leggibile. */
 .wc-manifesto-text .wi{color:var(--dim);transition:none;}
 /* L'elica sta DIETRO il testo (z-index 0 contro il resto in 1) e non prende
    eventi: il cursore "read" della sezione deve continuare a valere sul testo.
@@ -164,30 +170,25 @@ body.wc-locked{overflow:hidden;}
   color:var(--white);will-change:transform,opacity;}
 /* La copia di dietro è sfocata e spenta: non è un effetto, è quello che dice
    all'occhio da che parte dell'elica sta passando. */
-/* LA PIEGATURA — la curva la compone il CSS, non il JavaScript.
-   `--bend` (0..1) la scrive js/dna.js una volta per parola a fotogramma;
-   `--k` e `--r` sono costanti per lettera, decise alla costruzione. Da qui
-   escono due cose insieme:
-     l'ARCO       le lettere ai capi scendono (`--k` è la distanza dal centro
-                  al quadrato), quelle in mezzo restano — è una campana, cioè
-                  una parabola, cioè il modo in cui si disegna una geodetica
-                  deviata da una massa;
-     il VENTAGLIO ogni lettera ruota in proporzione a quanto è lontana dal
-                  centro, e col segno: la parola si apre invece di inclinarsi
-                  tutta insieme.
-   Il moltiplicatore dell'arco è in `em` e non in px: una parola lunga si
-   piega più di una corta, come farebbe una cosa lunga davvero. */
-.wc-dna-ch{display:inline-block;will-change:transform;
-  transform:translateY(calc(var(--bend,0) * var(--k,0) * 0.62em))
-            rotate(calc(var(--bend,0) * var(--r,0) * 26deg));}
-/* La copia dietro è già sfocata: la piegatura la rende un filo più molle,
-   come una cosa vista attraverso qualcosa. */
-.wc-dna-layer.-back .wc-dna-word{color:var(--muted);filter:blur(1.5px);}
-.wc-dna-layer.-back .wc-dna-ch{
-  transform:translateY(calc(var(--bend,0) * var(--k,0) * 0.78em))
-            rotate(calc(var(--bend,0) * var(--r,0) * 32deg));}
-/* Senza WebGL le parole sono una lista ferma: niente da piegare. */
-.wc-dna-orbit.-static .wc-dna-ch{transform:none;}
+/* LO SFALDAMENTO — qui c'era la curva composta in CSS con `--bend`, `--k` e
+   `--r`: una parabola per parola, una sola custom property a fotogramma.
+   Non basta più. Adesso ogni LETTERA ha una vita sua — parte in un istante
+   diverso dalle altre, curva all'indietro e sale per conto proprio — e una
+   formula sola condivisa da tutte le lettere non può descrivere quattordici
+   partenze sfasate. La transform e l'opacità di ogni lettera le scrive
+   js/dna.js (funzione `letters`), e solo per le parole che in quel fotogramma
+   si stanno sfaldando: le altre non vengono toccate.
+   Qui resta il minimo che serve perché una transform abbia effetto. */
+.wc-dna-ch{display:inline-block;will-change:transform,opacity;}
+/* La copia dietro è sfocata e spenta: non è un effetto, è quello che dice
+   all'occhio da che parte dell'elica sta passando. */
+/* La copia dietro NON forza più il colore: adesso ogni parola porta il suo,
+   preso dalla scala dell'elica (js/dna.js, WORD_COLORS). Restare a
+   `var(--muted)` avrebbe cancellato proprio la cosa che si vuole vedere.
+   Dietro si distingue lo stesso — è sfocata e smorzata — ma con la sua tinta. */
+.wc-dna-layer.-back .wc-dna-word{filter:blur(1.5px) brightness(.55) saturate(.8);}
+/* Senza WebGL le parole sono una lista ferma: niente da sfaldare. */
+.wc-dna-orbit.-static .wc-dna-ch{transform:none!important;opacity:1!important;}
 .wc-manifesto-pin > .eyebrow,
 .wc-manifesto-pin > .wc-manifesto-text{position:relative;z-index:3;}
 
@@ -225,8 +226,19 @@ body.wc-locked{overflow:hidden;}
    centrato, riga di chiusura appoggiata in basso. */
 /* 620svh e non più 420: la finestra dei fuochi si è allargata da un quinto
    della corsa a quasi metà, e serviva scroll vero sotto — se no trenta salve
-   in 84svh sarebbero state più fitte delle quattordici di prima. */
-.wc-spine{padding:0;height:620svh;}
+   in 84svh sarebbero state più fitte delle quattordici di prima.
+   AGGIORNATO a 960svh, in due passaggi e sempre con lo stesso criterio: tutto
+   quello che viene PRIMA dell'invito continua a durare gli stessi svh di
+   quando la sezione era 620 (i fuochi restano a ~8svh l'uno dall'altro), e
+   ogni svh aggiunto finisce nella coda. Oggi la coda vale:
+     invito → consegna   ~260svh   (era 42, poi 150)
+     consegna → fine     ~130svh   di nero dopo che la frase se n'è andata,
+                                   prima che il capitolo si sganci — se no la
+                                   sezione dopo saliva a coprire mentre l'ultima
+                                   riga era ancora a schermo.
+   Le quote stanno in js/fluid.js (`SEQ`) e sono frazioni di QUESTA corsa: chi
+   tocca l'altezza le rifà col conto scritto lì. */
+.wc-spine{padding:0;height:960svh;}
 .wc-spine-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:var(--nav-h) clamp(1.5rem,5vw,4rem) clamp(3rem,7vh,5rem);}
@@ -297,13 +309,18 @@ body.wc-locked{overflow:hidden;}
   margin:0;translate:0 -50%;text-align:center;opacity:0;
   font-size:clamp(1.6rem,4vw,3rem);font-weight:500;letter-spacing:-.01em;
   color:var(--white);pointer-events:none;}
-/* La frase di consegna: stesso posto dell'invito, misura più piccola — è una
-   riga che si legge, non un invito a fare qualcosa. */
+/* La frase di consegna. Era più piccola e più spenta dell'invito — "una riga
+   che si legge, non un invito a fare qualcosa". Su richiesta adesso è la STESSA
+   COSA: stesso corpo, stesso peso, stesso bianco. Le due righe si danno il
+   cambio nello stesso punto dello schermo, e con due misure diverse il cambio
+   si leggeva come un cambio di voce; con la stessa, come una frase che
+   continua. Resta solo `line-height`, perché questa va su due righe e l'altra
+   su una. */
 .wc-spine-next{position:absolute;left:0;right:0;top:50%;z-index:5;
   margin:0;translate:0 -50%;text-align:center;opacity:0;
-  padding:0 clamp(1.5rem,5vw,4rem);
-  font-size:clamp(1.1rem,2.4vw,1.9rem);font-weight:400;line-height:1.35;
-  letter-spacing:-.01em;color:var(--muted);pointer-events:none;}
+  padding:0 clamp(1.5rem,5vw,4rem);line-height:1.28;
+  font-size:clamp(1.6rem,4vw,3rem);font-weight:500;
+  letter-spacing:-.01em;color:var(--white);pointer-events:none;}
 /* Qui c'era la regola che teneva la copy fuori schermo: il capitolo era vuoto e
    il testo restava nel DOM solo per i lettori di schermo. Adesso il capitolo ha
    di nuovo un contenuto suo, e il debito è saldato. */
@@ -451,6 +468,39 @@ body.wc-locked{overflow:hidden;}
    buio attorno a lui diventa scheda. */
 .wc-robot-stage{position:absolute;inset:0 -60%;z-index:1;
   mix-blend-mode:lighten;filter:brightness(1.28) contrast(1.03);}
+/* ---- IL BUCO ATTORNO AL ROBOT ----
+   `lighten` da solo NON basta a mettere il circuito dietro, ed è il motivo per
+   cui prima si vedeva passargli davanti: lighten sceglie il più chiaro CANALE
+   PER CANALE, e questo robot è nero — carbonio, quasi zero su tutti e tre i
+   canali su gran parte del corpo. Una traccia ciano accesa lì è più chiara del
+   modello, quindi vince, e si legge come una riga disegnata SOPRA di lui.
+   Verificato a schermo: le tracce attraversavano torace e gambe.
+
+   Non c'è modo di far occludere il rame dal modello — il canvas di Spline è
+   opaco e la sua silhouette non la conosciamo. Quindi il rame non ci arriva
+   proprio: il canvas del circuito è mascherato con un'ellisse morbida al
+   centro, dove il modello sta sempre (è centrato in orizzontale e prende tutta
+   l'altezza). Dentro l'ellisse la maschera è trasparente e non si disegna
+   niente; il bordo sfuma su ~26 punti, così le tracce non si tagliano di netto
+   ma si spengono avvicinandosi — che è come si comporta uno sfondo dietro un
+   oggetto in primo piano.
+
+   La maschera sta sul `.wc-fx` DENTRO la card del robot e non su tutti: gli
+   altri capitoli hanno effetti che devono coprire tutto il riquadro. */
+.wc-robot-card > .wc-fx{
+  -webkit-mask-image:radial-gradient(26% 52% at 50% 56%,
+    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);
+  mask-image:radial-gradient(26% 52% at 50% 56%,
+    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);}
+@media (max-width:900px){
+  /* Su schermo stretto il modello è inquadrato più largo (vedi lo sbordo a
+     −150% qui sotto): il buco lo segue, se no il rame gli torna addosso. */
+  .wc-robot-card > .wc-fx{
+    -webkit-mask-image:radial-gradient(38% 48% at 50% 52%,
+      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);
+    mask-image:radial-gradient(38% 48% at 50% 52%,
+      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);}
+}
 .wc-robot-stage spline-viewer{width:100%;height:100%;display:block;}
 /* Velo in basso: la copy sta sopra al modello, non di fianco. */
 /* Il velo arrivava a .92 di nero su un 60% di altezza: la parte bassa del
@@ -795,3 +845,39 @@ body.wc-locked{overflow:hidden;}
 .wc-alt.-static .wc-alt-canvas{display:none;}
 .wc-alt.-static .wc-alt-video{display:none;}
 .wc-alt.-static{background:#05060b url(assets/starry-poster.webp) center/cover no-repeat;}
+
+/* ---- L'OFFERTA — l'ultima sezione (js/offer.js) ----
+   Nessun velo e nessun riquadro dietro al testo, ed è una scelta: nel filmato
+   il centro dell'inquadratura resta NERO per tutti i 6,4 s del loop — le due
+   formazioni di vetro stanno ai lati e non ci entrano mai. Il contrasto è già
+   nel fondo, e un velo sopra avrebbe spento il vetro senza servire a niente.
+   Il testo sta esattamente in quel vuoto: max-width stretta e centrato. */
+.wc-offer{position:relative;height:100svh;overflow:hidden;padding:0;
+  display:flex;align-items:center;justify-content:center;background:#05050a;}
+.wc-offer-video{position:absolute;inset:0;z-index:0;
+  width:100%;height:100%;object-fit:cover;}
+.wc-offer-copy{position:relative;z-index:2;
+  width:min(46ch,72%);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.15rem;}
+.wc-offer-copy .lead{max-width:44ch;}
+.wc-offer-cta{margin-top:.9rem;display:inline-block;
+  padding:.85rem 1.7rem;border:1px solid var(--border2);border-radius:2px;
+  font-family:var(--mono);font-size:.74rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--white);text-decoration:none;
+  background:rgba(6,6,9,.35);backdrop-filter:blur(6px);
+  transition:border-color .3s ease,color .3s ease,background .3s ease;}
+.wc-offer-cta:hover{border-color:var(--cyan);color:var(--cyan);
+  background:rgba(0,212,255,.07);}
+
+/* Su viewport strette il ritaglio `cover` avvicina le due formazioni e il
+   vuoto centrale si stringe: il testo si stringe con lui, e sotto arriva un
+   velo — lì il fondo dietro le parole non è più garantito nero. */
+@media (max-width:760px){
+  .wc-offer::after{content:'';position:absolute;inset:0;z-index:1;
+    pointer-events:none;background:rgba(5,5,10,.55);}
+  .wc-offer-copy{width:86%;}
+}
+
+/* Reduced-motion: resta il poster, che il tag mostra da sé. */
+.wc-offer.-static .wc-offer-video{display:none;}
+.wc-offer.-static{background:#05050a url(assets/glass-poster.webp) center/cover no-repeat;}

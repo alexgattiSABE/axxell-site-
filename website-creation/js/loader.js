@@ -9,7 +9,14 @@ WC.register('loader', function(ctx){
     root.style.display = 'none';
     document.body.classList.remove('wc-locked');
     if (WC.lenis) WC.lenis.start();
-    if (WC.setCursor) WC.setCursor('default');
+    /* Il sipario si alza sul primo capitolo, quindi il cursore torna a essere
+     * QUELLO CHE IL PRIMO CAPITOLO DICHIARA — non un 'default' scritto qui.
+     * Era hardcodato, ed è per quello che l'anello col punto restava acceso
+     * sull'hero anche dopo che l'hero era passato a `hidden`: il trigger di
+     * sezione non riscatta su una sezione già in quadro, e l'ultima parola
+     * era di questa riga. */
+    var first = document.querySelector('[data-cursor]');
+    if (WC.setCursor) WC.setCursor((first && first.dataset.cursor) || 'hidden');
     WC.loaded = true;                                   // per chi si registra dopo
     document.dispatchEvent(new CustomEvent('wc:loaded'));
   }

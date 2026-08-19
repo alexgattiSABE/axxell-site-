@@ -49,6 +49,23 @@ WC.register('dna', function(ctx){
                'RITMO','EQUILIBRIO','TENSIONE','MEMORIA'];
   var pairs = [];
 
+  /* I COLORI DELLE PAROLE — le quattro fermate dell'elica, a BLOCCHI.
+   *
+   * Non una parola per tinta a giro: sedici parole divise in quattro gruppi da
+   * quattro, nell'ordine in cui le tinte stanno sull'elica dall'alto in basso
+   * (rosso in cima, poi viola, verd'acqua, blu in fondo). Le parole scendono
+   * lungo la spirale nello stesso ordine — `offset: i / WORDS.length` — quindi
+   * il blocco di colore scende con loro e la scia legge come una continuazione
+   * dell'elica invece che come un'etichetta appiccicata sopra.
+   *
+   * Le tinte NON sono le stesse esadecimali del CONFIG: quelle sono fatte per
+   * essere sommate additivamente e moltiplicate per `brightness` 1.55: come
+   * colore di testo su nero, #8f1526 e #0b2f8c sono quasi illeggibili. Qui
+   * sono gli stessi quattro toni portati in luminanza — stessa tinta, stessa
+   * sequenza, contrasto sufficiente per leggere una parola. */
+  //              rosso      viola      verd'acqua  blu
+  var WORD_COLORS = ['#ff3d55', '#a63ce8', '#16e2c4', '#2a6bff'];
+
   // Reduced-motion o niente WebGL: il capitolo resta com'era, testo su nero, e
   // le parole diventano una lista in fila sotto il manifesto — leggibile, ferma.
   if (!ctx.motionOk || typeof THREE === 'undefined') {
@@ -88,23 +105,29 @@ WC.register('dna', function(ctx){
       var mk = function(layer){
         var s = document.createElement('span');
         s.className = 'wc-dna-word';
-        var n = w.length, mid = (n - 1) / 2;
+        var chars = [];
+        var n = w.length;
         for (var c = 0; c < n; c++) {
           var ch = document.createElement('span');
           ch.className = 'wc-dna-ch';
           // Lo spazio unificatore: uno spazio normale dentro un inline-block
           // collasserebbe e la parola si stringerebbe.
           ch.textContent = w[c] === ' ' ? '\u00a0' : w[c];
-          var d = mid ? (c - mid) / mid : 0;        // −1 .. +1
-          ch.style.setProperty('--k', (d * d).toFixed(4));
-          ch.style.setProperty('--r', d.toFixed(4));
           s.appendChild(ch);
+          chars.push(ch);
         }
         layer.appendChild(s);
-        return s;
+        return { el: s, chars: chars };
       };
+      var mb = mk(back), mf = mk(front);
+      // Blocchi contigui: con 16 parole e 4 tinte, quattro parole per tinta.
+      // Il conto si adatta da solo se WORDS cresce.
+      var per = Math.max(1, Math.ceil(WORDS.length / WORD_COLORS.length));
+      var col = WORD_COLORS[Math.min(WORD_COLORS.length - 1, Math.floor(i / per))];
+      mf.el.style.color = col;
+      mb.el.style.color = col;
       return {
-        b: mk(back), f: mk(front),
+        b: mb.el, f: mf.el, bc: mb.chars, fc: mf.chars, n: w.length, pp: -1,
         // Sfasate in modo uniforme lungo la spirale: se partissero insieme
         // sarebbero un anello di otto parole, non una scia.
         offset: i / WORDS.length,
@@ -135,17 +158,39 @@ WC.register('dna', function(ctx){
        nero. Alzati di luminosità tenendo la STESSA coppia di tinte — blu
        profondo in basso, viola in alto — e non sostituiti con altri colori:
        il gradiente del capitolo è quello. La `brightness` sale con loro. */
+    /* QUATTRO FERMATE, non più due. La scala saliva dal blu al viola e basta;
+       adesso in mezzo c'è il verd'acqua e in cima il rosso. L'interpolazione è
+       la stessa di prima — continua, senza gradini — solo con due tappe in più
+       lungo l'altezza dell'elica: dal basso, blu → verd'acqua → viola → rosso.
+       I valori restano SCURI di proposito, come i due originali: la fusione è
+       additiva e i punti si sommano fra loro, quindi un colore già chiaro qui
+       arriverebbe a bianco dove i filamenti si incrociano. La luminosità la
+       mette `brightness`, non la tinta. */
     colorLow: '#0b2f8c',      // blu profondo in basso...
-    colorHigh: '#5a1386',     // ...viola in alto
+    colorAqua: '#0c8f7e',     // ...verd'acqua nel primo terzo...
+    colorHigh: '#5a1386',     // ...viola nel secondo...
+    colorRed: '#8f1526',      // ...e rosso in cima
     atmoColor: '#7fe6ff',
     atmoCount: wide > 1024 ? 320 : 160,
     atmoSize: 24,
     atmoSpeed: 0.4,
-    opacity: 2,
-    pointSize: 4,
+    /* 1.45 e non più 2. Con la fusione additiva l'opacità è un moltiplicatore
+       che si SOMMA punto su punto: a 2, dove i filamenti si incrociano si
+       arrivava a bianco pieno, e una zona bruciata non ha profondità per
+       definizione — è tutta allo stesso valore. Abbassandola le sovrapposizioni
+       restano colorate e la sfumatura fra vicino e lontano sopravvive.
+       La grandezza del punto sale da 4 a 5 per compensare: stessa quantità di
+       luce, distribuita invece che concentrata. */
+    opacity: 1.45,
+    pointSize: 5,
     brightness: 1.55,
     twist: 0.65,
-    waveAmt: 0.7,
+    /* 0.5 e non più 0.7. Il rumore sposta l'elica anche in Z, in funzione
+       dell'altezza: mentre `scrollClimb` la fa salire, il tratto inquadrato
+       cambia profondità e con lei scala apparente. È lo stesso difetto della
+       precessione qui sopra, in piccolo — l'ampiezza scende, il serpeggiamento
+       resta. */
+    waveAmt: 0.5,
     dnaFloat: 0.95,
     spin: 0.18,
     scale: 0.63,
@@ -202,7 +247,9 @@ WC.register('dna', function(ctx){
     uTime:          { value: CONFIG.shapeTime },
     uAppear:        { value: 0 },
     uColLow:        { value: G.hexToVec3(CONFIG.colorLow) },
+    uColAqua:       { value: G.hexToVec3(CONFIG.colorAqua) },
     uColHigh:       { value: G.hexToVec3(CONFIG.colorHigh) },
+    uColRed:        { value: G.hexToVec3(CONFIG.colorRed) },
     uOpacity:       { value: CONFIG.opacity },
     uSize:          { value: CONFIG.pointSize },
     uBrightness:    { value: CONFIG.brightness },
@@ -224,9 +271,9 @@ WC.register('dna', function(ctx){
     vertexShader: [
       'uniform float uTime; uniform float uSize; uniform float uTwist;',
       'uniform float uWaveAmt; uniform float uScale; uniform float uFloat;',
-      'uniform vec3 uColLow; uniform vec3 uColHigh;',
+      'uniform vec3 uColLow; uniform vec3 uColAqua; uniform vec3 uColHigh; uniform vec3 uColRed;',
       'uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;',
-      'varying float vFade; varying vec3 vColor;',
+      'varying float vFade; varying vec3 vColor; varying float vDepth;',
       G.SNOISE,
       'void main(){',
       // La sfera viene stirata in un segmento verticale lungo: `t` è la quota
@@ -237,8 +284,16 @@ WC.register('dna', function(ctx){
       '  float rnd3 = random(position + vec3(2.0));',
       '  float t = stretchedY + sin(uTime * 0.8 + rnd1 * 6.28318) * uFloat;',
       '  float twist = t * uTwist;',
-      '  float dnaRadius = 1.0;',
-      '  float strandThickness = 0.35;',
+      /* PIÙ LARGA E PIÙ SPESSA. Il raggio dell'elica passa da 1.0 a 1.22 e la
+       * grossezza di ogni filamento da 0.35 a 0.52. Non è solo "più grande":
+       * è quello che dà ai due filamenti dello spazio in cui stare uno DIETRO
+       * l'altro. Con raggio 1.0 e filamenti sottili, alla profondità della
+       * camera i due passavano quasi sovrapposti e la scena si leggeva piatta,
+       * come un disegno. Allargando, fra il filamento davanti e quello dietro
+       * ci sono ~2.4 unità di scena: abbastanza perché la sfumatura di
+       * profondità qui sotto abbia qualcosa da separare. */
+      '  float dnaRadius = 1.22;',
+      '  float strandThickness = 0.52;',
       '  vec3 dnaPos;',
       '  if (rnd1 < 0.40) {',                    // primo filamento
       '    vec3 core = vec3(dnaRadius * cos(twist), t, dnaRadius * sin(twist));',
@@ -252,7 +307,7 @@ WC.register('dna', function(ctx){
       '    float discreteTwist = discreteT * uTwist;',
       '    vec3 p1 = vec3(dnaRadius * cos(discreteTwist), discreteT, dnaRadius * sin(discreteTwist));',
       '    vec3 p2 = vec3(dnaRadius * cos(discreteTwist + 3.14159), discreteT, dnaRadius * sin(discreteTwist + 3.14159));',
-      '    dnaPos = mix(p1, p2, rungT) + vec3(rnd1 - 0.9, rnd2 - 0.5, rnd3 - 0.5) * 2.0 * 0.10;',
+      '    dnaPos = mix(p1, p2, rungT) + vec3(rnd1 - 0.9, rnd2 - 0.5, rnd3 - 0.5) * 2.0 * 0.16;',
       '  }',
       '  dnaPos.x += snoise(vec3(0.0, t * 0.2, uTime * 0.2)) * uWaveAmt;',
       '  dnaPos.z += snoise(vec3(t * 0.2, 0.0, uTime * 0.2)) * uWaveAmt;',
@@ -262,21 +317,61 @@ WC.register('dna', function(ctx){
       '  float fall = smoothstep(uRepelRadius, 0.0, length(toP));',
       '  modelPosition.xyz += normalize(toP + vec3(0.0001)) * fall * uRepelStrength * uActivity;',
       '  vec4 mvPosition = viewMatrix * modelPosition;',
-      '  vColor = mix(uColLow, uColHigh, clamp(smoothstep(-20.0, 12.0, t), 0.0, 1.0));',
+      /* La scala di colore lungo l'elica, in quattro fermate. `g` è la quota
+       * normalizzata (0 in fondo, 1 in cima) ed è la stessa di prima; sopra ci
+       * si applicano tre miscelazioni in fila, con le finestre che si
+       * SOVRAPPONGONO di qualche punto. La sovrapposizione è il punto: con
+       * intervalli attaccati (0-0.33, 0.33-0.66, …) ogni giunzione sarebbe un
+       * cambio di pendenza visibile, cioè una fascia. Così le transizioni si
+       * fondono l'una nell'altra e la scala resta un unico passaggio continuo,
+       * come lo era da blu a viola. */
+      '  float g = clamp(smoothstep(-20.0, 12.0, t), 0.0, 1.0);',
+      /* ⚠️ LE FINESTRE NON POSSONO ESSERE ATTACCATE. Al primo tentativo erano
+       * 0.02-0.38 / 0.30-0.70 / 0.62-0.98: il verd'acqua non si vedeva MAI,
+       * perché cominciava a virare al viola prima di essere arrivato a sé
+       * stesso. Ogni tinta ha bisogno di un tratto in cui è PURA, e la
+       * miscelazione successiva deve cominciare dopo. Qui ogni fermata tiene
+       * il campo per ~0.15 di scala prima che parta quella dopo — abbastanza
+       * per riconoscerla, poco perché il passaggio resti continuo. */
+      '  vec3 col = mix(uColLow,  uColAqua, smoothstep(0.02, 0.24, g));',
+      '  col      = mix(col,      uColHigh, smoothstep(0.40, 0.62, g));',
+      '  col      = mix(col,      uColRed,  smoothstep(0.76, 0.97, g));',
+      '  vColor = col;',
+      /* LA PROFONDITÀ, che prima non c'era proprio: `vFade` valeva 1.0 per ogni
+       * punto, la fusione è additiva, e la dimensione dipendeva da z solo per
+       * la prospettiva. Risultato: davanti e dietro identici, e l'elica leggeva
+       * come una macchia piatta invece che come un oggetto.
+       *
+       * La camera sta a z 8.67 e l'elica occupa circa ±1.25 unità attorno a
+       * quella distanza: `vDepth` è la posizione dentro quella fetta, 0 sul
+       * lato lontano e 1 su quello vicino. Da qui escono TRE cose che vanno
+       * nella stessa direzione, ed è il fatto che vadano insieme a leggersi
+       * come volume invece che come una sfumatura:
+       *   la DIMENSIONE  i punti vicini sono grossi più del doppio dei lontani;
+       *   la LUCE        (nel fragment) i lontani valgono un quarto;
+       *   la MORBIDEZZA  (nel fragment) i lontani hanno il bordo più sfumato,
+       *                  cioè sono sfocati — è la sola cosa che l'occhio legge
+       *                  come "sta più indietro" e non come "è più piccolo". */
+      '  vDepth = clamp((mvPosition.z + 9.95) / 2.45, 0.0, 1.0);',
       '  vFade = 1.0;',
-      '  gl_PointSize = max(uSize * (10.0 / -mvPosition.z), 1.5);',
+      '  gl_PointSize = max(uSize * (10.0 / -mvPosition.z) * mix(0.62, 1.42, vDepth), 1.2);',
       '  gl_Position = projectionMatrix * mvPosition;',
       '}'
     ].join('\n'),
     fragmentShader: [
       'uniform float uOpacity; uniform float uBrightness; uniform float uAppear;',
-      'varying float vFade; varying vec3 vColor;',
+      'varying float vFade; varying vec3 vColor; varying float vDepth;',
       'void main(){',
       '  vec2 xy = gl_PointCoord - 0.5;',
       '  float ll = length(xy);',
       '  if (ll > 0.5) discard;',
-      '  float a = smoothstep(0.5, 0.1, ll);',
-      '  gl_FragColor = vec4(vColor * uBrightness, vFade * a * uOpacity * uAppear);',
+      // Il bordo del punto: netto davanti (0.30), molle dietro (0.50). È la
+      // sfocatura, ed è quello che fa "fuori fuoco" invece di "piccolo".
+      '  float a = smoothstep(0.5, mix(0.50, 0.30, vDepth), ll);',
+      // La luce. 0.26 dietro, piena davanti: con la fusione additiva è questo
+      // che impedisce ai due filamenti di sommarsi in un'unica macchia.
+      '  float lum = mix(0.26, 1.0, vDepth);',
+      '  gl_FragColor = vec4(vColor * uBrightness * lum, vFade * a * uOpacity * uAppear * lum);',
       '}'
     ].join('\n'),
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
@@ -284,6 +379,24 @@ WC.register('dna', function(ctx){
 
   var group = new THREE.Group();
   group.position.x = CONFIG.offsetX;
+  /* ⚠️ L'ORDINE DELLE ROTAZIONI, ed è il motivo per cui l'elica sembrava
+   * INGRANDIRSI verso la fine del capitolo.
+   *
+   * Con l'ordine di default ('XYZ') three compone R = Rx·Ry·Rz, cioè applica
+   * per PRIMA la Z: l'elica viene inclinata di `scrollTilt`, e POI la si fa
+   * girare attorno a Y. Un corpo alto e inclinato che gira attorno all'asse
+   * verticale precede come una trottola — i suoi due capi descrivono un cono
+   * e a fine corsa uno dei due arriva quasi un'unità più vicino alla camera.
+   * A 8,67 unità di distanza è più del 10% di scala: non cambiava la forma,
+   * cambiava la distanza, ma a schermo si legge come "è diventata più grande".
+   *
+   * Con 'ZYX' l'ordine si inverte: prima la rotazione attorno a Y (l'elica
+   * gira su sé stessa, e un'elica che gira attorno al proprio asse non si
+   * avvicina di un millimetro), poi l'inclinazione attorno a Z, che a quel
+   * punto è l'asse che punta alla camera — cioè un rollio nel piano dello
+   * schermo, che per definizione non ha profondità. La forma resta quella e
+   * la distanza pure. */
+  group.rotation.order = 'ZYX';
   var points = new THREE.Points(geometry, material);
   points.frustumCulled = false;
   group.add(points);
@@ -361,6 +474,58 @@ WC.register('dna', function(ctx){
    * scollano dalla cosa attorno a cui dovrebbero girare. */
   var _centre = new THREE.Vector3();
 
+  /* I numeri dello sfaldamento, tutti in un posto solo.
+   *   peelA/peelB  la finestra, in quote di giro contate dal fronte. Il
+   *                passaggio dietro l'elica è a 0.25: la finestra gli sta
+   *                attorno, così le prime lettere si staccano poco prima di
+   *                arrivarci e le ultime poco dopo.
+   *   backA/backB  dove la parola si ricompone, dietro, in ombra.
+   *   stag         quanto è sfasata l'ultima lettera rispetto alla prima, in
+   *                frazioni della finestra. A 0 partirebbero tutte insieme e
+   *                sarebbe di nuovo una parola che se ne va intera; a 1 la
+   *                prima avrebbe finito prima che l'ultima cominci, e la
+   *                parola si spezzerebbe in due tronconi. 0.62 tiene la coda
+   *                agganciata alla testa.
+   *   rise         quanto sale una lettera, in frazioni di schermata. È il
+   *                termine che fa "quasi verticale": lo spostamento laterale
+   *                qui sotto vale un decimo di questo.
+   *   swing        l'ampiezza dell'arco all'indietro, in px. Esce e rientra
+   *                (campana), come farebbe un punto di un filamento che gira
+   *                attorno all'asse per mezzo giro.
+   *   sink         quanto rimpicciolisce arrivata in cima: è la profondità,
+   *                cioè il "dietro". Insieme alla dissolvenza è quello che
+   *                distingue "va dietro" da "esce dallo schermo". */
+  var WORD = { peelA: 0.06, peelB: 0.48, backA: 0.58, backB: 0.82,
+               stag: 0.62, rise: 0.34, swing: 30, sink: 0.55 };
+
+  /* Una parola, lettera per lettera. `pp` è l'avanzamento della parola (0..1);
+   * ogni lettera ne vede una fetta sfasata e la vive tutta da sola. */
+  function letters(p, pp, h){
+    var n = p.n, span = 1 - WORD.stag, lift = h * WORD.rise;
+    for (var c = 0; c < n; c++) {
+      // t: 0 la prima lettera, 1 l'ultima. Con una lettera sola non c'è
+      // sfasamento da distribuire e t vale 0.
+      var t  = n > 1 ? c / (n - 1) : 0;
+      var lp = (pp - t * WORD.stag) / span;
+      lp = lp < 0 ? 0 : lp > 1 ? 1 : lp;
+      var ch, tf, op;
+      if (lp === 0) {
+        tf = ''; op = '';
+      } else {
+        // Mezzo giro attorno all'asse: l'arco esce e rientra, la salita no.
+        var swing = Math.sin(lp * Math.PI) * WORD.swing;
+        var up    = lp * lift;
+        var sc    = 1 - lp * WORD.sink;
+        tf = 'translate(' + swing.toFixed(1) + 'px,' + (-up).toFixed(1) + 'px)' +
+             ' rotate(' + (lp * -18).toFixed(1) + 'deg)' +
+             ' scale(' + sc.toFixed(3) + ')';
+        op = (1 - lp).toFixed(3);
+      }
+      ch = p.fc[c]; ch.style.transform = tf; ch.style.opacity = op;
+      ch = p.bc[c]; ch.style.transform = tf; ch.style.opacity = op;
+    }
+  }
+
   function layoutWords(){
     if (!pairs.length) return;
     _centre.set(group.position.x, 0, 0).project(camera);
@@ -385,31 +550,50 @@ WC.register('dna', function(ctx){
       var alpha = (0.16 + depth * 0.84) * edge * appear;
       var mixF = depth * depth * (3 - 2 * depth);          // smoothstep sulla silhouette
 
-      /* LA PIEGATURA. Comincia quando la parola è passata DAVANTI e cresce
-       * mentre si allontana, poi si distende prima che il giro la riporti
-       * di fronte. Non è simmetrica di proposito: una curvatura che sale e
-       * scende attorno al punto più vicino si legge come una lente, questa
-       * si legge come una scia che viene deviata dopo essere passata.
+      /* LO SFALDAMENTO — cosa fa una parola quando sta per passare DIETRO.
        *
-       * `q` è la quota del giro contata DAL FRONTE (0 = davanti, 1 = di
-       * nuovo davanti). Il fronte è dove sin(ang) fa massimo, cioè ang = π/2:
-       * da lì si conta. */
+       * La parola resta orizzontale per tutto il giro. Poi, arrivata al punto
+       * in cui l'orbita la porta dietro all'elica, non ci passa dietro intera:
+       * si sfalda UNA LETTERA ALLA VOLTA. Ogni lettera fa il movimento dei
+       * filamenti — curva all'indietro e sale quasi in verticale, allontanandosi
+       * e rimpicciolendo — e chi parte prima è più avanti di chi parte dopo,
+       * quindi la parola si apre a ventaglio verso l'alto invece di sparire
+       * tutta insieme.
+       *
+       * `q` è la quota del giro contata DAL FRONTE (0 = davanti, 1 = di nuovo
+       * davanti). Il passaggio dietro cade a q = 0.25 (lì sin(ang) = 0, cioè
+       * la parola sta attraversando la silhouette dell'elica), e la finestra
+       * dello sfaldamento gli sta attorno.
+       *
+       *   peel  0 → 1 lungo la finestra: è l'avanzamento della PAROLA. Ogni
+       *         lettera ne prende una fetta sfasata (vedi `STAG`), quindi la
+       *         prima è già in cima quando l'ultima si stacca.
+       *   pp    lo stesso, ma azzerato di scatto a fine finestra — a quel punto
+       *         tutte le lettere sono a opacità 0, quindi il ritorno a riposo
+       *         non si vede. Senza il taglio le lettere RIDISCENDEREBBERO.
+       *   vis   la parola si ricompone dietro all'elica, fra 0.58 e 0.82, dove
+       *         è poco più di un'ombra: il rimontaggio non si vede mai.
+       *
+       * Le lettere si riscrivono solo quando `pp` cambia. A regime sono tre o
+       * quattro parole per volta dentro la finestra: una quarantina di lettere,
+       * non tutte e trecentocinquanta. */
       var q = ((ang - Math.PI / 2) / (Math.PI * 2)) % 1;
       if (q < 0) q += 1;
-      var bend = G.smoothstep(0, 0.30, q) * (1 - G.smoothstep(0.70, 0.98, q));
+      var peel = G.smoothstep(WORD.peelA, WORD.peelB, q);
+      var pp   = q < WORD.peelB ? peel : 0;
+      var vis  = q < WORD.peelB ? 1 : G.smoothstep(WORD.backA, WORD.backB, q);
 
       var tf = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)' +
-               ' translate(-50%,-50%) scale(' + scale.toFixed(3) + ')' +
-               // La parola intera si inclina e si stira mentre si piega: è la
-               // parte che dice "spazio", le lettere dicono "curvo".
-               ' rotate(' + (bend * 9).toFixed(2) + 'deg)' +
-               ' skewX(' + (bend * -13).toFixed(2) + 'deg)';
+               ' translate(-50%,-50%) scale(' + scale.toFixed(3) + ')';
       p.f.style.transform = tf;
       p.b.style.transform = tf;
-      p.f.style.setProperty('--bend', bend.toFixed(4));
-      p.b.style.setProperty('--bend', bend.toFixed(4));
-      p.f.style.opacity = (alpha * mixF).toFixed(3);
-      p.b.style.opacity = (alpha * (1 - mixF)).toFixed(3);
+      p.f.style.opacity = (alpha * mixF * vis).toFixed(3);
+      p.b.style.opacity = (alpha * (1 - mixF) * vis).toFixed(3);
+
+      if (pp !== p.pp) {
+        p.pp = pp;
+        letters(p, pp, size.h);
+      }
     }
   }
 
