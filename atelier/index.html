@@ -60,9 +60,12 @@
 </svg>
 
 <div class="wc-loader" id="wcLoader">
+  <!-- Il marchio si condensa dal vapore: un'onda passa da sinistra a destra e
+       dietro di se' lascia il logo. I pixel li da' `#wcAxxellMark` qui sopra —
+       gli stessi tracciati della nav e del footer, rasterizzati una volta sola
+       da js/loader.js. Niente Lottie e niente contatore: solo il logo. -->
   <div class="wc-loader-inner">
-    <div class="wc-loader-lottie" id="wcLoaderLottie"></div>
-    <div class="wc-loader-count" id="wcLoaderCount">00</div>
+    <canvas class="wc-loader-vapour" id="wcLoaderVapour" aria-hidden="true"></canvas>
   </div>
   <div class="wc-curtain wc-curtain-t"></div>
   <div class="wc-curtain wc-curtain-b"></div>
@@ -502,7 +505,6 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js" integrity="sha384-lg3+EgIwmxYq9YD4ix279pdUEasqmOS17fF+2mI/NEg6JHkawYaWYpJ6nKZenPOy" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js" integrity="sha384-QsPhgdP78a1erQNT34dj/oyh7uPCXUnT/FkptUa/56LnSGsbTBmdiAOfB7j+8K4A" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
 <script src="js/core.js?v=20260819a"></script>
 <script src="js/glsl.js?v=20260819a"></script>

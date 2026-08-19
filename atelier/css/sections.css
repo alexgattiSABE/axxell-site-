@@ -8,9 +8,7 @@
 /* Il sipario è position:absolute: senza uno stacking esplicito qui, gli elementi
    posizionati dipingono sempre sopra il flow statico, a prescindere dall'ordine
    nel markup — il sipario coprirebbe contatore e logo per l'intera animazione. */
-.wc-loader-lottie{width:min(60vw,320px);}
-.wc-loader-count{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;
-  color:var(--dim);}
+.wc-loader-vapour{display:block;}
 .wc-curtain{position:absolute;left:0;right:0;height:50%;background:var(--bg);}
 .wc-curtain-t{top:0;}
 .wc-curtain-b{bottom:0;}
