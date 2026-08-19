@@ -20,8 +20,10 @@
  * ai pioli che li legano. Per questo la sfera va de-indicizzata: THREE.Points
  * onora l'indice e ridisegnerebbe ogni vertice sei volte sopra sé stesso.
  *
- * Lo scroll fa scendere l'elica davanti alla camera e stringe le spire; il
- * cursore fa parallasse e scosta i filamenti al suo passaggio.
+ * Lo scroll fa scendere l'elica davanti alla camera e la fa girare su sé
+ * stessa — non la stringe e non la inclina: `scrollTwist` e `scrollTilt` sono
+ * stati tolti, e il perché sta nel CONFIG. Il cursore fa parallasse e scosta i
+ * filamenti al suo passaggio.
  */
 WC.register('dna', function(ctx){
   var section = document.getElementById('cap02');
@@ -237,7 +239,12 @@ WC.register('dna', function(ctx){
      * elica che gira, non una che si deforma. */
     shapeTime: 3.2,          // l'istante a cui il rumore viene congelato
     scrollSpin: 1.8,
-    scrollTilt: 0.16,        // rad: ~9°, quanto basta senza portarla sul testo
+    /* ⚠️ L'INCLINAZIONE È STATA TOLTA, come prima `scrollTwist`. Valeva 0.16 rad
+     * (~9°) crescenti con lo scroll: un'elica che pende di più man mano che
+     * scendi. Il capitolo è alto e stretto e ci sta accanto una colonna di
+     * testo, e una verticale che si scosta piano da un blocco di testo fermo
+     * non legge come movimento — legge come storto. Adesso l'asse è verticale
+     * e ci resta. */
     // ---- le parole in orbita ----
     wordRing: 0.20,          // raggio del giro, in frazioni del lato corto
     wordSpan: 1.25,          // altezza percorsa, in altezze di sezione
@@ -404,8 +411,15 @@ WC.register('dna', function(ctx){
 
   var group = new THREE.Group();
   group.position.x = CONFIG.offsetX;
-  /* ⚠️ L'ORDINE DELLE ROTAZIONI, ed è il motivo per cui l'elica sembrava
-   * INGRANDIRSI verso la fine del capitolo.
+  /* ⚠️ L'ORDINE DELLE ROTAZIONI — una GUARDIA, non più una necessità.
+   *
+   * Oggi la rotazione attorno a Z vale sempre zero (l'inclinazione è stata
+   * tolta, vedi CONFIG), quindi l'ordine non cambia nulla. La riga resta, con
+   * il perché, perché chi rimettesse l'inclinazione senza di essa ricadrebbe
+   * esattamente nel difetto qui sotto — che è costato una diagnosi.
+   *
+   * Era il motivo per cui l'elica sembrava INGRANDIRSI verso la fine del
+   * capitolo.
    *
    * Con l'ordine di default ('XYZ') three compone R = Rx·Ry·Rz, cioè applica
    * per PRIMA la Z: l'elica viene inclinata di `scrollTilt`, e POI la si fa
@@ -476,13 +490,12 @@ WC.register('dna', function(ctx){
     uniforms.uCursor.value.copy(pointer.world);
     uniforms.uActivity.value = pointer.activity;
 
-    // Le tre uniche cose che si muovono, e sono tutte e tre RIGIDE: l'elica
-    // sale, gira e si inclina. Il corpo che gira è sempre lo stesso.
+    // Le due uniche cose che si muovono, ed entrambe RIGIDE: l'elica sale e
+    // gira su sé stessa. Il corpo che gira è sempre lo stesso, e sta dritto.
     group.position.y = -scroll * CONFIG.scrollClimb;
     // La rotazione non si accumula più con dt: è una funzione dello scroll,
     // altrimenti l'elica continuerebbe a girare da ferma.
     group.rotation.y = scroll * (CONFIG.spin + CONFIG.scrollSpin);
-    group.rotation.z = scroll * CONFIG.scrollTilt;
 
     atmo.step(scroll * CONFIG.scrollAtmoTime, camera, dpr, size.h);
     layoutWords();
