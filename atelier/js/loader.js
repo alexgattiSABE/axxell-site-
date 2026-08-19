@@ -71,9 +71,13 @@ WC.register('loader', function(ctx){
   var VB = { x: 28, y: 104, w: 598, h: 154 };
   var cssW = Math.min(window.innerWidth * 0.7, 620);
   var cssH = cssW * VB.h / VB.w;
-  // Oltre 2 non si guadagna niente di visibile e si quadruplica il conto delle
-  // particelle: questo è un sipario, dura due secondi e deve partire subito.
-  var dpr  = Math.min(window.devicePixelRatio || 1, 2);
+  /* 1.5 e non 2. Da quando non si sottocampiona più (vedi STEP) il conto delle
+   * particelle è uno per pixel d'inchiostro, e con dpr 2 su questa larghezza
+   * sarebbero ~60.000 per fotogramma — troppe per stare dentro i 16 ms.
+   * A 1.5 sono ~33.000 e il marchio resta comunque sopra l'uno a uno.
+   * ⚠️ È QUESTA la manopola delle prestazioni, non STEP: saltare pixel fa
+   * tornare il grigio o la scalettatura, abbassare il dpr no. */
+  var dpr  = Math.min(window.devicePixelRatio || 1, 1.5);
   var W    = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
 
   canvas.style.width  = cssW + 'px';
@@ -116,18 +120,36 @@ WC.register('loader', function(ctx){
    * troppo larga e non si legge più un'onda ma una dissolvenza generale. */
   var SPREAD = 0.34;
 
-  /* Un pixel sì e uno no: a dpr 2 la densità resta quella di uno schermo
-   * normale e il conto delle particelle si divide per quattro. Ogni particella
-   * rappresenta quindi un quadratino di STEP×STEP, e va disegnata come tale —
-   * vedi il ciclo in `draw()`. */
-  var STEP = 2;
+  /* ⚠️ UNO. NON SI SOTTOCAMPIONA, e ci sono voluti due tentativi per capirlo.
+   *
+   * A STEP = 2 si prende un pixel ogni due per lato, e ogni particella
+   * rappresenta un quadratino di 2×2 del marchio. Disegnandone uno solo la
+   * copertura scende al 25% e il marchio finito legge GRIGIO. Disegnando il
+   * quadratino intero la copertura torna piena — ma il bordo si aggancia a una
+   * griglia di due pixel, e i pixel di antialiasing del contorno (che hanno
+   * alfa parziale) vengono spalmati su tutto il quadratino: le lettere
+   * escono SEGHETTATE.
+   *
+   * Non c'è una via di mezzo: il contorno di un marchio È l'antialiasing, e
+   * l'unico modo di conservarlo è portarsi dietro ogni pixel con la sua alfa.
+   * Quindi una particella = un pixel, e a riposo il marchio è una copia esatta
+   * del rasterizzato — bordi compresi.
+   *
+   * Il conto delle particelle si quadruplica, e si paga abbassando il dpr
+   * invece che saltando pixel: vedi `dpr` più sopra. */
+  var STEP = 1;
 
   function build(ink){
     var idx = [];
     for (var y = 0; y < H; y += STEP) {
       for (var x = 0; x < W; x += STEP) {
+        /* Soglia bassa APPOSTA. I pixel di contorno di un marchio hanno alfa
+         * parziale — sono l'antialiasing — e sono proprio quelli che fanno il
+         * bordo morbido. Scartandoli sopra una soglia alta il contorno si
+         * indurisce e ricompare la scaletta. Sotto 8 non si vede più niente e
+         * si pagherebbero particelle invisibili. */
         var a = ink[(y * W + x) * 4 + 3];
-        if (a > 24) idx.push(x, y, a);
+        if (a > 8) idx.push(x, y, a);
       }
     }
     N  = idx.length / 3;
@@ -240,37 +262,26 @@ WC.register('loader', function(ctx){
       var alpha = oa[i] * (settle + veil * 0.32);
       if (alpha <= 0.004) continue;
 
+      /* UN PIXEL, con la SUA alfa. A riposo ogni particella torna esattamente
+       * sul pixel da cui è stata campionata, quindi il marchio composto è una
+       * copia esatta del rasterizzato: i pixel di contorno mantengono la loro
+       * alfa parziale, ed è quella a fare il bordo morbido. Qualunque
+       * arrotondamento a blocchi lo trasforma in una scaletta. */
       var X = px | 0, Y = py | 0;
+      if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
 
-      /* ⚠️ 2×2, NON UN PIXEL. È il motivo per cui il marchio finito sembrava
-       * GRIGIO invece che bianco, e non era una questione di tinta.
-       * Il campionamento prende un pixel ogni STEP per lato: con STEP = 2 ogni
-       * particella RAPPRESENTA un quadratino di 2×2 pixel del marchio.
-       * Disegnandone uno solo, a marchio composto si accendeva un pixel su
-       * quattro — copertura 25%, che su nero l'occhio integra come grigio al
-       * 25%, per quanto bianchi siano i singoli pixel. Disegnando il quadratino
-       * intero la copertura torna piena e il bianco è bianco.
-       * Chi cambia STEP cambi anche questo ciclo, o il grigio torna. */
-      for (var by = 0; by < STEP; by++) {
-        var yy = Y + by;
-        if (yy < 0 || yy >= H) continue;
-        for (var bx = 0; bx < STEP; bx++) {
-          var xx = X + bx;
-          if (xx < 0 || xx >= W) continue;
-          var o = yy * W + xx;
-          // Somma sul canale alfa, tinta fissa: le particelle sovrapposte si
-          // addensano invece di sostituirsi, ed è così che la nebbia sembra nebbia.
-          var acc = (buf32[o] >>> 24) / 255 + alpha;
-          if (acc > 1) acc = 1;
-          /* BIANCO PIENO, e qui è voluto. Il resto della pagina non usa mai
-           * #fff (D8): è l'inchiostro #f0f0f6, appena smorzato, perché su
-           * fondo scuro un bianco pieno a grandi superfici abbaglia. Il
-           * sipario però non è una superficie — è un marchio sottile su nero
-           * pieno, per tre secondi. È la stessa deroga funzionale del cursore
-           * in `invert`. // little-endian: 0xAABBGGRR */
-          buf32[o] = ((acc * 255) << 24) | (255 << 16) | (255 << 8) | 255;
-        }
-      }
+      var o = Y * W + X;
+      // Somma sul canale alfa, tinta fissa: le particelle sovrapposte si
+      // addensano invece di sostituirsi, ed è così che la nebbia sembra nebbia.
+      var acc = (buf32[o] >>> 24) / 255 + alpha;
+      if (acc > 1) acc = 1;
+      /* BIANCO PIENO, e qui è voluto. Il resto della pagina non usa mai #fff
+       * (D8): è l'inchiostro #f0f0f6, appena smorzato, perché su fondo scuro un
+       * bianco pieno a grandi superfici abbaglia. Il sipario però non è una
+       * superficie — è un marchio sottile su nero pieno, per tre secondi. È la
+       * stessa deroga funzionale del cursore in `invert`.
+       * // little-endian: 0xAABBGGRR */
+      buf32[o] = ((acc * 255) << 24) | (255 << 16) | (255 << 8) | 255;
     }
 
     ctx2d.putImageData(frame, 0, 0);
