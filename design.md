@@ -21,15 +21,15 @@ parliamone.html`, pagina propria, con il proprio `<title>` e le proprie OG.
 ## Genere
 
 Vetrina di capacità tecnica. La pagina non descrive cosa sappiamo fare: lo
-fa mentre la si scorre. **Tredici sezioni**, ognuna dimostra una capacità
+fa mentre la si scorre. **Dodici sezioni**, ognuna dimostra una capacità
 diversa e ha uno spazio tutto suo — l'ampiezza dell'inventario senza la
 sovrapposizione da demo reel.
 
 Nell'ordine: hero col tunnel (`cap01`), warp (`capWarp`), manifesto con la
 doppia elica (`cap02`), Vesper (`capVesper`), fluido (`cap03`), altitudine
 (`capAltitude`), disco volante (`capSaucer`), modello Spline (`cap05`), Lithos
-(`capLithos`), sneaker (`capSneaker`), Festina (`capFestina`), processo
-orizzontale (`cap07`), offerta (`capOffer`).
+(`capLithos`), sneaker (`capSneaker`), processo orizzontale (`cap07`), offerta
+(`capOffer`).
 
 > Erano nove. Il conto e' salito per aggiunte successive, e gli `id` non sono
 > mai stati rinumerati: chi legge `cap05` non deve dedurne la posizione. `cap04`
@@ -89,15 +89,15 @@ contrario.
 
 ### D4 — quattro sezioni pinnate invece di una
 
-> Aggiornata due volte. Erano due (cap. 03 e 07), poi quattro, **ora sono
-> otto**: tunnel (`cap01`), warp (`capWarp`), elica (`cap02`), Vesper
-> (`capVesper`), fluido (`cap03`), disco volante (`capSaucer`), Festina
-> (`capFestina`), processo orizzontale (`cap07`). La motivazione non e'
+> Aggiornata tre volte. Erano due (cap. 03 e 07), poi quattro, poi otto,
+> **ora sono sette**: tunnel (`cap01`), warp (`capWarp`), elica (`cap02`),
+> Vesper (`capVesper`), fluido (`cap03`), disco volante (`capSaucer`),
+> processo orizzontale (`cap07`). La motivazione non e'
 > cambiata, il conteggio si', e va detto invece che lasciato indovinare.
 
 D4 ne ammette una sola per pagina.
 
-Sei di questi otto usano `pinSpacing: false` e si ricavano la corsa
+Cinque di questi sette usano `pinSpacing: false` e si ricavano la corsa
 dall'altezza della sezione: con lo spaziatore, ognuno aggiungerebbe sotto di se'
 altrettante schermate di scroll morto a movimento finito.
 
@@ -128,11 +128,15 @@ griglia bento, spunta di conferma. La griglia bento non esiste più: il
 cap. 05 è diventato il modello Spline, e con lei sono spariti i quattro
 Lottie che portava.
 
-Ne restano **due**, ed entrambi fanno una cosa che CSS e SVG da soli non
-fanno bene: il logo che si scrive nel loader, e la spunta che si disegna
-alla conferma dell'invio. D15 tollera i Lottie dove servono davvero; a
-questo numero non c'è più niente da derogare. Il costo scende da ~150KB
-+ sei JSON a ~150KB + due JSON piccoli.
+> Aggiornata il 2026-08-19: **ne resta UNO**. Il logo che si scriveva nel
+> loader era un disegno che SOMIGLIAVA al marchio; adesso il sipario mostra il
+> marchio vero, condensato dal vapore con un canvas 2D (vedi più sotto), e
+> `assets/logo-reveal.json` è stato cancellato. Con lui lottie-web è uscito da
+> `atelier/index.html`: la libreria resta solo su `parliamone.html`.
+
+Resta la **spunta che si disegna alla conferma dell'invio**, che fa una cosa
+che CSS e SVG da soli non fanno bene, e vive dove serve. Di deroga non c'è più
+niente: il costo è ~150KB di libreria e un JSON piccolo, su una pagina sola.
 
 ## Applicati invece di derogati
 
@@ -325,18 +329,19 @@ versione, questa è la prima cosa che si rompe.
 
 Quattro cose nuove da mettere a verbale, e una che resta aperta.
 
-### Quattro video su una pagina — deroga a «asset procedurali soltanto»
+### Tre video su una pagina — deroga a «asset procedurali soltanto»
 
 | File | Dove | A cosa serve |
 |---|---|---|
 | `assets/starry.mp4` | `capAltitude` | **non è una scorta**: è la sorgente della texture che il canvas campiona |
 | `assets/sneaker.webm` / `.mp4` | `capSneaker` | fondo che gira da solo, in due formati |
-| `assets/festina.mp4` | `capFestina` | filmato guidato dallo scroll |
 | `assets/glass.mp4` | `capOffer` | loop di vetro viola dietro la chiusura |
 
-**Perché si deroga:** due dei quattro capitoli *sono* «il video trattato come
+**Perché si deroga:** uno dei tre capitoli *è* «il video trattato come
 materia» — è la capacità in vetrina, e un video procedurale non esiste. Gli
 altri due sono fondo.
+
+> Erano quattro: `assets/festina.mp4` è uscito con il capitolo dell'orologio.
 
 **Contenimento, vincolante per chi tocca queste sezioni:**
 
@@ -345,41 +350,25 @@ altri due sono fondo.
    attributo governa il buffering, non la scelta della sorgente. L'indirizzo
    viene scritto quando la sezione si avvicina, non prima.
 2. **Ricompressi, con la ricetta sul disco.** `scripts/pack-*.md` tiene il
-   comando `ffmpeg` esatto di ognuno. L'offerta è scesa da 17,7 MB a 1,5;
-   Festina da 42 MB a 2,2. Chi rifà un asset rilancia la ricetta, non
-   improvvisa i parametri.
+   comando `ffmpeg` esatto di ognuno. L'offerta è scesa da 17,7 MB a 1,5. Chi
+   rifà un asset rilancia la ricetta, non improvvisa i parametri.
 3. **Nessuno ha traccia audio.** Qui non si riproduce niente da ascoltare.
 
-### Festina: il filmato guidato dallo scroll ha due vincoli che non si vedono
+### CHIUSA — il capitolo dell'orologio non c'è più
 
-Questo capitolo dipende da **come il server manda il file**, non solo dal
-codice, ed è l'unico della pagina che lo fa.
+> **Tolto il 2026-08-19, su richiesta.** Con lui sono spariti dal disco il
+> filmato, il poster, il modulo, lo script che cercava lo spazio libero sui 241
+> fotogrammi e la ricetta di ricompressione: cinque file, niente lasciato
+> dormiente. Non è un capitolo che si riaccende togliendo un commento.
 
-1. **I keyframe devono restare fitti.** Il master ne ha uno ogni ~4 s: per
-   mostrare un istante qualsiasi il decoder riparte dall'ultimo keyframe e
-   decodifica tutto quello che c'è in mezzo, e in scrub si vede. L'asset in
-   pagina ne ha uno ogni 6 fotogrammi — al massimo cinque da decodificare per
-   salto.
-2. **Il server deve servire le richieste Range.** Cercare dentro un video vuol
-   dire chiedere un pezzo di file: senza `Accept-Ranges: bytes` e risposte
-   `206`, Chrome si rifiuta di cercare — `seekable` resta vuoto anche a file
-   interamente scaricato, e a schermo resta il primo fotogramma.
-   ⚠️ **`python3 -m http.server` NON lo fa.** Vercel sì. Per provarlo in
-   locale serve un server che risponda 206, altrimenti si sta guardando un
-   difetto del server e non della pagina. In `js/festina.js` c'è una toppa che
-   riscarica il filmato come Blob quando la sorgente non è cercabile: non
-   costa niente dove il server è fatto bene, ma **maschera il problema**, e chi
-   misura le prestazioni in locale lo tenga presente.
-3. **Le frasi non si spostano a mano.** Le quattro finestre temporali e i
-   quattro rettangoli escono da `scripts/festina-spazi.py`, che cerca lo spazio
-   libero su tutti i 241 fotogrammi. Se si cambia il filmato si rilancia lo
-   script e si riportano i numeri che dà.
-
-> **APERTO al 2026-08-19.** Il capitolo ha ancora un difetto segnalato: il
-> filmato a volte parte da solo e si ferma a caso, e lo scroll ne risente.
-> Sotto indagine — `?diag` nell'indirizzo apre un pannello che separa le
-> ipotesi (si muove da solo / non segue / è la pagina a scattare). Finché non è
-> chiuso, questo capitolo non è da considerare finito.
+Resta a verbale una cosa sola, perché vale per **qualunque** video si voglia far
+scorrere con lo scroll, non solo per quello: **il server deve servire le
+richieste Range.** Cercare dentro un video vuol dire chiedere un pezzo di file;
+senza `Accept-Ranges: bytes` e risposte `206`, Chrome si rifiuta di cercare —
+`seekable` resta vuoto anche a file interamente scaricato, e a schermo resta
+fermo il primo fotogramma. `python3 -m http.server` **non** lo fa, Vercel sì.
+Chi prova in locale con quello sta guardando un difetto del server, non della
+pagina.
 
 ### Il marchio del footer è un SVG ricalcato, e va tenuto tale
 
@@ -416,10 +405,12 @@ stesse soglie sovrapposte.
 ⚠️ **Chi tocca le soglie di una deve toccare l'altra**, o le parole si
 scollano dal colore che dovrebbero avere.
 
-Il testo del manifesto, a sinistra, usa la stessa quaterna in inchiostro
-leggibile e **a blocchi contigui**, non a parole alterne: un quarto delle
-parole per fermata, nell'ordine in cui si legge il testo. A modulo si leggeva
-come coriandoli, non come una scala.
+Il testo del manifesto, a sinistra, **è bianco e resta bianco**. Ha avuto due
+versioni colorate — a rotazione (che da lontano leggeva come coriandoli) e a
+blocchi contigui — e nessuna delle due è sopravvissuta: accanto a un'elica che
+È GIÀ una scala di quattro colori, un testo colorato le fa concorrenza invece
+di lasciarla parlare. L'unica cosa che fa è comparire, una parola alla volta,
+mentre si scorre. Il bianco è la scelta, non un ripiego.
 
 L'elica **sta dritta e sale**. `scrollTilt` è stato tolto (pendeva sempre di
 più accanto a una colonna di testo ferma, e si leggeva come storta). La salita
@@ -427,3 +418,84 @@ invece **non si può togliere**: l'elica è molto più alta dell'inquadratura, e
 la scala di colore sfila davanti alla camera proprio perché il corpo sale.
 Fermandola si vedrebbe `g` fra 0.10 e 0.58 — blu e verd'acqua — e il viola
 pieno e il rosso non entrerebbero mai in campo.
+
+### Il sipario: il marchio si condensa dal vapore
+
+Un'onda attraversa lo schermo da sinistra a destra. Davanti a lei non c'è
+niente, sotto di lei una nebbia di particelle, dietro di lei il marchio fermo e
+pieno. **Non è il logo che evapora: è il vapore che diventa logo.**
+
+È il rovescio dell'effetto sorgente (*vapour text effect*, React), che parte dal
+testo pieno e lo disperde. Il meccanismo è lo stesso e sta tutto nel segno di
+un'interpolazione: si campiona una volta la forma finale e ogni particella
+viaggia fra «dispersa» e «al suo posto». Disperdere è andare da 1 a 0;
+condensare è andare da 0 a 1.
+
+Vincoli per chi tocca `js/loader.js`:
+
+1. **Il marchio è quello vero.** `#wcAxxellMark`, gli stessi dieci tracciati di
+   nav e footer. Non un disegno che gli somiglia.
+2. **Si passa per un'immagine, e non è pigrizia.** Servono i PIXEL, non le
+   curve: ogni particella nasce da un pixel d'inchiostro. I tracciati vengono
+   serializzati in un SVG con data-URL, disegnati una volta su un canvas di
+   servizio, e `getImageData` dà la mappa. Il data-URL è same-origin, quindi il
+   canvas non si sporca.
+3. **`ImageData`, non `fillRect`.** Sono ~15.000 particelle a fotogramma: con
+   `fillRect` sarebbero altrettanti cambi di `fillStyle`, ed è lì che il costo
+   esplode. Si scrive nel buffer a 32 bit e si fa un solo `putImageData`. La
+   somma sull'alfa è a mano — è quella che fa sembrare nebbia la nebbia.
+4. **Il vapore nasce in alto e scende.** Se nascesse in tutte le direzioni
+   sarebbe un'esplosione al contrario, che è un'altra cosa. Il tremolio si
+   spegne con `1 - settle`: un marchio finito che vibra non è un marchio.
+5. **Se la rasterizzazione fallisce, il sipario si alza lo stesso.** Un loader
+   che non finisce è una pagina che non esiste.
+
+⚠️ **Il segno dell'onda.** La prima stesura usava `(wave - nx + SPREAD)`: la
+particella risultava già posata nell'istante in cui il fronte la raggiungeva,
+cioè le lettere si formavano *davanti* all'onda invece che dietro. È
+`(wave - nx)`.
+
+### Il marchio sta in tre posti, con tre trattamenti
+
+Gli stessi tracciati, una copia sola in cima al `<body>`, tre usi diversi:
+
+| Dove | Come |
+|---|---|
+| nav, 22 px | **pieno** (`fill: currentColor`) |
+| loader | **rasterizzato in particelle** |
+| footer, dieci volte più grande | **in contorno**, con un gradiente che scorre dentro |
+
+⚠️ Per questo **`fill` non sta sul gruppo condiviso**, ma su chi fa `<use>`. Ci
+stava (`fill="none"`, ereditato dal file sorgente) ed era ridondante — lo dice
+già `.wc-foot-t{fill:none}` — ma impediva a chiunque altro di riempirlo. Chi lo
+rimette sul gruppo fa sparire il logo in nav.
+
+### L'elica deve essere la stessa a qualunque quota la si guardi
+
+Verso la fine dello scroll diventava più grossa e i pioli sparivano. Due cause
+distinte, entrambe rese visibili da `scrollClimb`, che la fa sfilare davanti
+alla camera. Sono **vincoli**, non aneddoti: chi tocca la scena li ricontrolli.
+
+1. **La quota si prende dall'ANGOLO, non da `position.y`.** Gli anelli di una
+   sfera UV sono equispaziati in angolo, non in altezza (`y = R·cos φ`):
+   passando dall'altezza si eredita quel coseno e la densità lungo l'elica va
+   come `1/sin φ`, cioè i punti si ammassano ai capi. In cifre: `sin φ` = 0.981
+   all'inizio dello scroll e 0.71 alla fine — **40% di punti in più per unità
+   di quota**, che con la fusione additiva legge come «più spessa», e i pioli
+   (20% dei punti) annegano nei filamenti.
+   ↳ Contropartita: gli anelli sono scesi di `1/1.54 = 0.649`, o l'elica
+   sarebbe risultata una volta e mezzo più fitta di com'era. **La manopola
+   della densità è quel numero** (`seg[1]`), non `pointSize`, che cambierebbe
+   anche lo spessore del singolo punto.
+2. **`vDepth` si misura dall'ASSE, non dalla camera.** Era una finestra fissa
+   tarata sul primo fotogramma; ma l'elica in Z non sta ferma — il
+   serpeggiamento la sposta in funzione della quota — e la finestra scivolava
+   sotto ai punti: verso la fine saturava, davanti e dietro smettevano di
+   separarsi, e l'elica leggeva come una macchia piatta. Ora misura quanto il
+   punto sta davanti o dietro all'asse **alla sua quota**, e l'asse porta con sé
+   lo stesso serpeggiamento: la misura è immune a dove l'elica si trovi. La
+   fetta si ricava da `dnaRadius + strandThickness`, non è scritta a mano.
+
+L'intervallo di `t` non è cambiato (21.4 in cima, −37.4 in fondo): la scala di
+colore dello shader e il calcolo in JS che tinge le parole in orbita leggono le
+stesse quote di prima.
