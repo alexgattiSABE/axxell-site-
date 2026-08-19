@@ -1,0 +1,193 @@
+/* OROLOGIO — si smonta se scorri giù, si rimonta se torni su.
+ *
+ * Fondo bianco pieno, l'oggetto al centro, e due colonne vuote ai lati per le
+ * frasi. Lo scroll non "fa partire" niente: è lui il tempo. Fermi il dito e
+ * l'orologio resta a metà, con la ghiera sospesa sopra il vetro.
+ *
+ * ── PERCHÉ UNA SEQUENZA DI FOTOGRAMMI E NON UN <video> ─────────────────────
+ * Perché un <video> scrubbato è già stato provato su questa pagina, ed è stato
+ * tolto. Cercare dentro un filmato vuol dire chiedere al server un pezzo di
+ * file: senza `Accept-Ranges` e risposte 206 il browser si RIFIUTA di cercare,
+ * `python3 -m http.server` non le manda, e il capitolo resta fermo sul primo
+ * fotogramma senza che niente lo dica. In più il decoder va in affanno quando
+ * i salti arrivano a 60 Hz, `seeked` si perde, e la pagina scatta.
+ *
+ * Qui non c'è niente da cercare. I fotogrammi sono immagini, stanno in memoria,
+ * e a ogni posizione di scroll ne corrisponde UNO, calcolato e disegnato. È la
+ * tecnica delle pagine prodotto Apple, ed è l'unica che dà davvero un
+ * fotogramma per pixel.
+ *
+ * ── IL COSTO, E COME È CONTENUTO ───────────────────────────────────────────
+ * Sono N immagini invece di un file solo. Per questo: WebP, larghezza ridotta
+ * al necessario, e soprattutto NIENTE si scarica finché non ci si avvicina —
+ * la sezione è in fondo a una pagina che ha già cinque scene WebGL.
+ * Il capitolo non si accende finché non è arrivato tutto: mezzo smontaggio con
+ * i buchi è peggio di un'attesa.
+ */
+WC.register('orologio', function(ctx){
+  var sec    = document.getElementById('capOrologio');
+  var pin    = document.getElementById('wcOroPin');
+  var canvas = document.getElementById('wcOroCanvas');
+  if (!sec || !pin || !canvas) return;
+
+  var says = Array.prototype.slice.call(sec.querySelectorAll('.wc-oro-say'));
+
+  /* ⚠️ QUESTI DUE NUMERI LI SCRIVE LO SCRIPT DI PACK, non si toccano a mano:
+   * `scripts/pack-orologio.md` dice come si rigenerano. FRAMES deve essere il
+   * numero di file davvero presenti in assets/orologio/ — se è più alto, la
+   * fine della sezione chiede fotogrammi che non esistono e resta sul nero. */
+  var FRAMES = 80;
+  var PAD    = 3;              // orologio-001.webp
+  var SRC    = function(i){
+    var s = String(i + 1);
+    while (s.length < PAD) s = '0' + s;
+    return 'assets/orologio/orologio-' + s + '.webp';
+  };
+
+  var ctx2d = canvas.getContext('2d');
+  if (!ctx2d) return;
+
+  /* Senza movimento non si scarica un fotogramma: resta il primo, statico, e
+   * le frasi diventano una lista sotto. Un capitolo che senza movimento non
+   * dice più niente sarebbe un capitolo vuoto, e un capitolo vuoto è un bug. */
+  if (!ctx.motionOk) { sec.classList.add('-static'); return; }
+
+  // ------------------------------------------------------------ caricamento
+  var imgs = new Array(FRAMES), got = 0, ready = false, started = false;
+  var cleanups = [];
+
+  function load(){
+    if (started) return;
+    started = true;
+    for (var i = 0; i < FRAMES; i++) (function(i){
+      var im = new Image();
+      im.decoding = 'async';
+      im.onload = function(){
+        imgs[i] = im;
+        if (++got === FRAMES) { ready = true; sec.classList.add('-ready'); draw(); }
+      };
+      /* Un fotogramma che non arriva non deve bloccare tutto il capitolo: si
+       * conta lo stesso, e `pick()` più sotto ripiega sul più vicino che c'è. */
+      im.onerror = function(){ if (++got === FRAMES) { ready = true; sec.classList.add('-ready'); draw(); } };
+      im.src = SRC(i);
+    })(i);
+  }
+
+  // ------------------------------------------------------------------ resa
+  var dpr = 1, W = 1, H = 1;
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var r = pin.getBoundingClientRect();
+    W = Math.max(1, Math.round(r.width  * dpr));
+    H = Math.max(1, Math.round(r.height * dpr));
+    canvas.width = W; canvas.height = H;
+    canvas.style.width  = r.width  + 'px';
+    canvas.style.height = r.height + 'px';
+    draw();
+  }
+
+  /* Il fotogramma più vicino a `i` che sia davvero arrivato. Serve solo se una
+   * richiesta è fallita: a regime restituisce `i` alla prima iterazione. */
+  function pick(i){
+    if (imgs[i]) return imgs[i];
+    for (var d = 1; d < FRAMES; d++) {
+      if (imgs[i - d]) return imgs[i - d];
+      if (imgs[i + d]) return imgs[i + d];
+    }
+    return null;
+  }
+
+  var shown = -1, want = 0;
+
+  function draw(){
+    if (!ready) return;
+    var im = pick(want);
+    if (!im) return;
+    ctx2d.clearRect(0, 0, W, H);
+    /* `contain` e non `cover`: qui il ritaglio non è un'opzione. Le colonne
+     * vuote ai lati SONO la composizione — è lì che vanno le frasi — e un
+     * `cover` su una finestra stretta se le mangerebbe insieme ai bordi
+     * dell'orologio. Meglio del bianco in più sopra e sotto, che su fondo
+     * bianco non si vede nemmeno. */
+    var s = Math.min(W / im.naturalWidth, H / im.naturalHeight);
+    var w = im.naturalWidth * s, h = im.naturalHeight * s;
+    ctx2d.drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
+    shown = want;
+  }
+
+  // -------------------------------------------------------------- timeline
+  var state = { t: 0 };
+
+  var tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: sec,
+      start: 'top top',
+      end: 'bottom bottom',
+      pin: pin,
+      /* La sezione fornisce lei la corsa con la propria altezza: con
+       * pinSpacing:true se ne aggiungerebbe altrettanta sotto, cioè schermate
+       * di scroll morto a smontaggio finito. Stesso schema degli altri pin. */
+      pinSpacing: false,
+      anticipatePin: 1,
+      /* Un filo di ritardo. Senza, la posizione salta con lo scroll invece di
+       * inseguirlo, e una sequenza di fotogrammi discreti a scatti secchi
+       * sembra persa anche quando è esatta. */
+      scrub: .35,
+      invalidateOnRefresh: true,
+      onRefresh: resize,
+      onEnter: load, onEnterBack: load
+    }
+  });
+
+  tl.to(state, {
+    t: 1, duration: 1, ease: 'none',
+    onUpdate: function(){
+      var i = Math.round(state.t * (FRAMES - 1));
+      if (i < 0) i = 0; else if (i > FRAMES - 1) i = FRAMES - 1;
+      if (i === want) return;
+      want = i;
+      if (want !== shown) draw();
+    }
+  }, 0);
+
+  /* LE FRASI. Ognuna ha la sua finestra lungo la corsa, e le dissolvenze
+   * stanno DENTRO la finestra: una frase che sfuma fuori tempo sfumerebbe
+   * mentre un pezzo d'orologio le passa accanto.
+   * Le finestre le legge dal markup (`data-in` / `data-out`, in frazioni della
+   * corsa), così spostare una frase non vuol dire toccare questo file. */
+  says.forEach(function(el){
+    var a = parseFloat(el.getAttribute('data-in'));
+    var b = parseFloat(el.getAttribute('data-out'));
+    if (!isFinite(a) || !isFinite(b) || b <= a) return;
+    var fade = Math.min((b - a) * .28, .05);
+    tl.fromTo(el, { opacity: 0, y: 14 },
+                  { opacity: 1, y: 0, duration: fade, ease: 'none' }, a);
+    tl.to(el, { opacity: 0, y: -10, duration: fade, ease: 'none' }, b - fade);
+  });
+
+  /* I fotogrammi servono GIÀ PRONTI, non "in arrivo". Una schermata e mezzo di
+   * margine dà al pacchetto il tempo di scendere anche a scroll veloce, e non
+   * costa niente a chi non ci arriva: il trigger sta dentro la pagina, non al
+   * caricamento. */
+  var stPre = ScrollTrigger.create({
+    trigger: sec, start: 'top bottom+=150%', end: 'bottom top-=50%',
+    onEnter: load, onEnterBack: load
+  });
+
+  var onResize = function(){ resize(); };
+  window.addEventListener('resize', onResize);
+  cleanups.push(function(){ window.removeEventListener('resize', onResize); });
+  resize();
+
+  sec.classList.add('-live');
+
+  return function(){
+    tl.scrollTrigger && tl.scrollTrigger.kill();
+    tl.kill();
+    stPre.kill();
+    cleanups.forEach(function(f){ f(); });
+    gsap.set(says, { clearProps: 'opacity,transform' });
+    sec.classList.remove('-live', '-ready');
+  };
+});

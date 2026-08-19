@@ -720,6 +720,76 @@ body.wc-locked{overflow:hidden;}
   .wc-fx,.wc-fx-flame{display:none;}
 }
 
+/* ---- OROLOGIO — SI SMONTA SE SCORRI (js/orologio.js) ----
+
+   L'UNICO CAPITOLO SU FONDO CHIARO, e per questo l'inchiostro qui è scuro e
+   non c'è ciano: su bianco non avrebbe contrasto e, a schermata intera,
+   sarebbe l'unica macchia fredda su tutta la parete.
+
+   LA COMPOSIZIONE È IL PUNTO. L'orologio sta nel terzo centrale — è stato
+   generato apposta così, e le sorgenti sono state ricentrate col pixel prima
+   di girare il filmato — e le due colonne laterali sono vuote PER LE FRASI.
+   Per questo il canvas disegna in `contain` e non in `cover`: un ritaglio su
+   finestra stretta si mangerebbe le colonne insieme ai bordi dell'oggetto.
+   Chi cambia queste larghezze rompe l'accordo fra immagine e testo. */
+.wc-orologio{height:340svh;padding:0;background:#fff;}
+.wc-orologio-pin{height:100svh;position:relative;overflow:hidden;background:#fff;}
+.wc-oro-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+/* ---- LE FRASI ----
+   Le finestre temporali stanno nel markup (`data-in`/`data-out`, in frazioni
+   della corsa) e non qui: spostare una frase nel tempo non deve voler dire
+   toccare il CSS, e viceversa. Qui si decide solo DOVE. */
+.wc-oro-say{position:absolute;opacity:0;z-index:2;
+  display:flex;flex-direction:column;gap:.7rem;
+  color:#0b0b12;text-wrap:balance;}
+.wc-oro-say[data-side="l"]{left:5%;width:25%;}
+.wc-oro-say[data-side="r"]{right:5%;width:25%;text-align:right;align-items:flex-end;}
+.wc-oro-say[data-y="alto"]{top:18%;}
+.wc-oro-say[data-y="mezzo"]{top:50%;transform:translateY(-50%);}
+.wc-oro-say[data-y="basso"]{bottom:18%;}
+/* L'occhiello non è ciano: qui sarebbe l'unica macchia fredda su una parete
+   bianca a tutto schermo. Resta il mono, in inchiostro tenue. */
+.wc-oro-say .eyebrow{color:rgba(11,11,18,.52);}
+.wc-oro-say h2{color:#0b0b12;font-size:clamp(1.4rem,2.6vw,2.6rem);line-height:1.04;}
+/* Il corsivo serif è quello del cap. Lithos, l'unico della pagina: un accento
+   di display contro il grottesco. */
+.wc-oro-say h2 .wc-serif{font-size:1.12em;}
+.wc-oro-say p{font-family:var(--mono);font-size:clamp(.7rem,.95vw,.92rem);
+  line-height:1.6;color:rgba(11,11,18,.74);letter-spacing:.01em;}
+
+/* Su viewport strette le colonne laterali non esistono più: l'orologio, per
+   restare leggibile, prende tutta la larghezza. Le frasi escono da lì e vanno
+   nella fascia bassa, sopra un velo chiaro — una alla volta, nello stesso
+   ordine e con lo stesso scrub. Cambia dove stanno, non quando. */
+@media (max-width:899px){
+  .wc-orologio-pin::after{content:'';position:absolute;inset:0;z-index:1;
+    pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,0) 46%,rgba(255,255,255,.92) 76%,#fff);}
+  .wc-oro-say,
+  .wc-oro-say[data-side="l"],
+  .wc-oro-say[data-side="r"]{left:clamp(1rem,5vw,3rem);right:clamp(1rem,5vw,3rem);
+    width:auto;top:auto;bottom:clamp(1.5rem,5vh,3rem);transform:none;
+    text-align:left;align-items:flex-start;}
+  .wc-oro-say h2{font-size:clamp(1.3rem,6vw,2rem);}
+}
+
+/* Senza movimento non si scarica un fotogramma: resta il poster e le frasi
+   diventano una colonna sotto, in ordine. È l'unico modo in cui il capitolo
+   continua a dire qualcosa quando non gli si concede di animarsi. */
+.wc-orologio.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-orologio.-static .wc-orologio-pin{height:auto;overflow:visible;}
+.wc-orologio.-static .wc-orologio-pin::after{display:none;}
+.wc-orologio.-static .wc-oro-canvas{display:none;}
+.wc-orologio.-static .wc-oro-poster{display:block;width:100%;max-width:60rem;
+  margin:0 auto 2rem;height:auto;}
+.wc-orologio.-static .wc-oro-say,
+.wc-orologio.-static .wc-oro-say[data-side="l"],
+.wc-orologio.-static .wc-oro-say[data-side="r"]{position:static;opacity:1;
+  width:100%;left:auto;right:auto;transform:none;margin-bottom:1.6rem;
+  text-align:left;align-items:flex-start;}
+.wc-oro-poster{display:none;}
+
 /* ---- ALTITUDE — IL FONDO CHE SI PIEGA (js/altitude.js) ----
 
    Due livelli sovrapposti, e il video sotto NON è una scorta: è la sorgente

@@ -27,8 +27,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260819d">
-<link rel="stylesheet" href="css/sections.css?v=20260819d">
+<link rel="stylesheet" href="css/base.css?v=20260819e">
+<link rel="stylesheet" href="css/sections.css?v=20260819e">
 </head>
 <body>
 
@@ -385,6 +385,57 @@
   </section>
 
 
+  <!-- OROLOGIO — si smonta se scorri giù, si rimonta se torni su.
+
+       Sta subito dopo la sneaker perché sono i due capitoli in cui un oggetto
+       è la scena: là un fondo che gira da solo, qui un oggetto che non si
+       muove affatto finché non lo muovi tu.
+
+       È L'UNICO CAPITOLO SU FONDO CHIARO. Il resto della pagina è nero; qui la
+       parete sbianca per una schermata, l'inchiostro diventa scuro e sparisce
+       il ciano — su bianco non avrebbe contrasto e sarebbe l'unica macchia
+       fredda a tutto schermo.
+
+       NON È UN <video>. È una sequenza di fotogrammi disegnata su canvas: a
+       ogni posizione di scroll ne corrisponde UNO. Un filmato scrubbato su
+       questa pagina è già stato provato e tolto — cercare dentro un video
+       dipende da come il SERVER manda il file, e quando il server non manda le
+       richieste Range il capitolo resta fermo senza che niente lo dica.
+       Vedi l'intestazione di js/orologio.js.
+
+       LE COLONNE LATERALI SONO VUOTE APPOSTA. L'orologio è stato generato per
+       stare nel terzo centrale e le sorgenti sono state ricentrate al pixel
+       prima di girare il filmato: le due fasce ai lati sono lo spazio delle
+       frasi, e il canvas disegna in `contain` per non mangiarsele.
+
+       ⚠️ I TESTI QUI SOTTO SONO PROVVISORI, messi per verificare che
+       l'impaginazione regga. Le finestre (`data-in`/`data-out`, in frazioni
+       della corsa) invece sono vere: chi riscrive le frasi tocchi il testo,
+       non i numeri, finché non cambia il ritmo. -->
+  <section class="wc-orologio" id="capOrologio" data-cursor="hidden">
+    <div class="wc-orologio-pin" id="wcOroPin">
+      <canvas class="wc-oro-canvas" id="wcOroCanvas" aria-hidden="true"></canvas>
+      <!-- Il primo fotogramma, per chi ha il movimento ridotto: lì il canvas
+           non si accende e questa immagine resta al suo posto. -->
+      <img class="wc-oro-poster" src="assets/orologio/orologio-001.webp" alt="" aria-hidden="true">
+
+      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.03" data-out="0.27">
+        <p class="eyebrow">// Testo provvisorio</p>
+        <h2>Non parte.<br>Lo apri <em class="wc-serif">tu</em>.</h2>
+      </div>
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.31" data-out="0.55">
+        <p>Testo provvisorio. Ogni pezzo si stacca alla quota che gli tocca, e si ferma dove ti fermi.</p>
+      </div>
+      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.59" data-out="0.80">
+        <p>Testo provvisorio. Torni indietro e si rimonta, nello stesso ordine, al contrario.</p>
+      </div>
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.83" data-out="1.00">
+        <h2>Il tempo di questo<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
+        <p>Testo provvisorio.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
        sfalda in galassia) era già migrata dentro capWarp come terza forma, e
        quello che restava era un guscio: la sola copy, che per giunta
@@ -506,26 +557,27 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js" integrity="sha384-QsPhgdP78a1erQNT34dj/oyh7uPCXUnT/FkptUa/56LnSGsbTBmdiAOfB7j+8K4A" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260819d"></script>
-<script src="js/glsl.js?v=20260819d"></script>
-<script src="js/nav.js?v=20260819d"></script>
-<script src="js/cursor.js?v=20260819d"></script>
-<script src="js/fluid.js?v=20260819d"></script>
-<script src="js/loader.js?v=20260819d"></script>
-<script src="js/tunnel.js?v=20260819d"></script>
-<script src="js/warp.js?v=20260819d"></script>
-<script src="js/manifesto.js?v=20260819d"></script>
-<script src="js/cursorfx.js?v=20260819d"></script>
-<script src="js/dna.js?v=20260819d"></script>
-<script src="js/headings.js?v=20260819d"></script>
-<script src="js/vesper.js?v=20260819d"></script>
-<script src="js/saucer.js?v=20260819d"></script>
-<script src="js/robot.js?v=20260819d"></script>
-<script src="js/horizontal.js?v=20260819d"></script>
-<script src="js/lithos.js?v=20260819d"></script>
-<script src="js/sneaker.js?v=20260819d"></script>
-<script src="js/altitude.js?v=20260819d"></script>
-<script src="js/offer.js?v=20260819d"></script>
-<script src="js/footer.js?v=20260819d"></script>
+<script src="js/core.js?v=20260819e"></script>
+<script src="js/glsl.js?v=20260819e"></script>
+<script src="js/nav.js?v=20260819e"></script>
+<script src="js/cursor.js?v=20260819e"></script>
+<script src="js/fluid.js?v=20260819e"></script>
+<script src="js/loader.js?v=20260819e"></script>
+<script src="js/tunnel.js?v=20260819e"></script>
+<script src="js/warp.js?v=20260819e"></script>
+<script src="js/manifesto.js?v=20260819e"></script>
+<script src="js/cursorfx.js?v=20260819e"></script>
+<script src="js/dna.js?v=20260819e"></script>
+<script src="js/headings.js?v=20260819e"></script>
+<script src="js/vesper.js?v=20260819e"></script>
+<script src="js/saucer.js?v=20260819e"></script>
+<script src="js/robot.js?v=20260819e"></script>
+<script src="js/horizontal.js?v=20260819e"></script>
+<script src="js/lithos.js?v=20260819e"></script>
+<script src="js/sneaker.js?v=20260819e"></script>
+<script src="js/orologio.js?v=20260819e"></script>
+<script src="js/altitude.js?v=20260819e"></script>
+<script src="js/offer.js?v=20260819e"></script>
+<script src="js/footer.js?v=20260819e"></script>
 </body>
 </html>
