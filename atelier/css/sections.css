@@ -87,7 +87,11 @@ body.wc-locked{overflow:hidden;}
 /* Nove schermate: tre forme e due riordini, e ognuno dei cinque tratti ha
    bisogno del suo respiro. Comprimendoli si sovrappongono, e sovrapposti non
    se ne legge nessuno. */
-.wc-warp{padding:0;height:900svh;}
+/* 780svh e non più 900: si e' accorciata SOLO la decelerazione iniziale, da
+   208 a 90svh di corsa. Tutte le fasi successive valgono ancora gli stessi svh
+   di prima — le frazioni in js/warp.js sono state ricalcolate su questa nuova
+   altezza, non lasciate dov'erano. Chi tocca questo numero rifaccia il conto. */
+.wc-warp{padding:0;height:780svh;}
 .wc-warp-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;align-items:flex-end;
   padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
@@ -236,7 +240,13 @@ body.wc-locked{overflow:hidden;}
                                    riga era ancora a schermo.
    Le quote stanno in js/fluid.js (`SEQ`) e sono frazioni di QUESTA corsa: chi
    tocca l'altezza le rifà col conto scritto lì. */
-.wc-spine{padding:0;height:960svh;}
+/* 760svh e non più 960. Si sono accorciate DUE cose, e solo quelle: l'attesa
+   prima dell'invito (427 -> 290svh) e la coda dopo la consegna (99 -> 36svh).
+   Il vuoto fra le due frasi resta di 259svh, perché è il tempo in cui si fa la
+   cosa che l'invito chiede — quello non è riempitivo.
+   ⚠️ Le quote in js/fluid.js sono FRAZIONI di questa altezza: chi la cambia le
+   rifaccia, o si spostano tutte insieme. */
+.wc-spine{padding:0;height:760svh;}
 .wc-spine-pin{height:100svh;position:relative;overflow:hidden;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:var(--nav-h) clamp(1.5rem,5vw,4rem) clamp(3rem,7vh,5rem);}

@@ -130,35 +130,40 @@ WC.register('fluid', function(ctx){
    * Scorrendo all'indietro tutto si riavvolge: le salve si riarmano (vedi
    * `lastSalvo`) e il testo torna. */
   /* ⚠️ QUESTE QUOTE SONO FRAZIONI DELLA CORSA, non svh: se cambia l'altezza
-   * della sezione in css/sections.css cambiano TUTTE le durate. I numeri qui
-   * sotto sono tarati sui 730svh attuali (630svh di corsa, tolta la schermata
-   * inchiodata) e sono stati ricalcolati — non scelti a occhio — quando la
-   * sezione è passata da 620 a 730svh: ogni tempo prima dell'invito vale gli
-   * stessi svh di prima, e le 110svh aggiunte finiscono tutte nel vuoto fra
-   * l'invito e la consegna. Chi tocca l'altezza rifaccia lo stesso conto. */
+   * della sezione in css/sections.css cambiano TUTTE le durate.
+   *
+   * Tarati sui 760svh attuali, cioè 660svh di corsa tolta la schermata
+   * inchiodata. Ricalcolati — non scelti a occhio — e ogni volta con lo stesso
+   * metodo: si decide quanti svh deve durare ogni tratto, poi si divide.
+   *
+   * Ultimo giro (760svh): si sono accorciate DUE cose sole.
+   *   l'attesa prima dell'invito   427 -> 290svh
+   *   la coda dopo la consegna      99 ->  36svh
+   * Il vuoto fra le due frasi resta 259svh identico: è il tempo in cui si fa
+   * la cosa che l'invito chiede, e accorciarlo sarebbe togliere il capitolo.
+   *
+   * Da dove sono usciti i 137svh dell'attesa: 74 dall'attacco muto prima del
+   * primo botto (era una schermata intera in cui non succedeva niente) e 63
+   * dalla finestra dei fuochi, che scende da 250 a 210svh — con le salve
+   * ridotte in proporzione, o si sarebbero sovrapposte di nuovo. */
   var SEQ = {
-    fire: 0.121,         // quando parte il primo botto   (~104svh, come sempre)
-    boom: 0.411,         // quando finisce l'ultimo       (~354svh, come sempre)
-    dark: 0.460,         // da qui il campo è vuoto       (~395svh, come sempre)
-    /* 0.64, e non più 0.82. L'invito compariva a un sesto dalla fine: il tempo
-     * di leggerlo e la sezione era già finita, senza spazio per fare la cosa
-     * che chiede. Adesso gli resta oltre un TERZO della corsa — su 320svh sono
-     * più di cento schermate-punto di scroll in cui il capitolo è nero, la
-     * scritta è lì e il cursore disegna. È il tempo che serve alla battuta
-     * finale, non riempitivo. */
-    invite: 0.496,       // ~426svh: identico a prima, in svh
-    /* E dopo l'invito, la consegna al capitolo successivo. Il vuoto fra le due
-       frasi è passato da ~42svh a ~150 e ora a ~260: due schermate e mezzo di
-       nero in cui il cursore disegna e basta, che è esattamente la cosa che
-       l'invito chiede di fare. L'invito si spegne mentre questa entra: due
-       righe al centro nello stesso momento si contendono lo stesso posto.
+    fire: 0.045,         // quando parte il primo botto   (~30svh, era ~104)
+    boom: 0.364,         // quando finisce l'ultimo       (~240svh)
+    dark: 0.427,         // da qui il campo è vuoto       (~282svh)
+    /* L'invito ha oltre un TERZO della corsa davanti a sé: nero, la scritta lì,
+     * e il cursore che disegna. È il tempo che serve alla battuta finale, non
+     * riempitivo — ed è per questo che questo tratto NON si è toccato mentre si
+     * accorciava tutto il resto. */
+    invite: 0.439,       // ~290svh (era ~427)
+    /* E dopo l'invito, la consegna al capitolo successivo. L'invito si spegne
+       mentre questa entra: due righe al centro nello stesso momento si
+       contendono lo stesso posto.
 
-       E dopo la consegna c'è una CODA VERA: la frase resta ~75svh, sfuma, e
-       restano ancora ~84svh di nero prima che il capitolo si sganci. Prima
-       finiva a ridosso della fine, e la sezione successiva saliva a coprire
-       mentre l'ultima riga era ancora a schermo. */
-    next: 0.798,
-    nextOut: 0.885,
+       La CODA dopo la consegna è scesa da ~99 a ~36svh. Serviva a non far
+       salire la sezione successiva mentre l'ultima riga era ancora a schermo,
+       e per quello 36 bastano: la frase è già sfumata da un pezzo. */
+    next: 0.832,         // ~549svh
+    nextOut: 0.945,      // ~624svh, e restano 36svh di nero
     /* I fuochi, ritarati dopo averli visti a schermo: erano quattordici in un
      * quinto della corsa, cioè tutti addosso, grossi e accecanti.
      *
@@ -169,7 +174,11 @@ WC.register('fluid', function(ctx){
      *   bracci   18 → 11   una corolla, non una palla piena
      *   spinta 2600 → 1250 il raggio si dimezza: stanno larghi, non si toccano
      *   luce     12 → 4.5  l'inchiostro non brucia più a bianco */
-    salvos: 30,          // quante salve nella finestra dei fuochi
+    /* 25 e non più 30: la finestra dei fuochi è scesa da 250 a 210svh, e a
+       parità di salve si sarebbero riavvicinate a ~7svh l'una dall'altra —
+       cioè tornate a sovrapporsi, che era il difetto già corretto una volta.
+       Ridotte in proporzione restano a ~8,4svh: si succedono. */
+    salvos: 25,          // quante salve nella finestra dei fuochi
     salvoArms: 11,       // scoppi per salva, disposti in cerchio
     salvoForce: 1250,    // spinta verso l'esterno di ogni scoppio
     salvoInk: 4.5,       // e quanto è acceso il suo inchiostro

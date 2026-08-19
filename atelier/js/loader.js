@@ -86,7 +86,7 @@ WC.register('loader', function(ctx){
   var svgText =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
     VB.x + ' ' + VB.y + ' ' + VB.w + ' ' + VB.h + '" width="' + W + '" height="' + H + '">' +
-    '<g fill="#f0f0f6">' + mark.innerHTML + '</g></svg>';
+    '<g fill="#ffffff">' + mark.innerHTML + '</g></svg>';
 
   var img = new Image();
 
@@ -157,7 +157,10 @@ WC.register('loader', function(ctx){
     /* L'onda parte dal bordo sinistro del marchio e arriva a SPREAD oltre il
      * destro: l'eccedenza serve perché anche l'ultima particella abbia il suo
      * tratto intero per condensarsi, invece di posarsi di scatto sul finale. */
-    tl.to(state, { w: 1, duration: 2.2, ease: 'power1.inOut',
+    /* 3.4s e non più 2.2: l'onda deve dare il tempo di vedere la nebbia
+     * addensarsi, non solo di accorgersi che è passata. Il tempo totale del
+     * sipario resta comunque sotto i cinque secondi, sipario compreso. */
+    tl.to(state, { w: 1, duration: 3.4, ease: 'power1.inOut',
                    onUpdate: function(){ wave = state.w * (1 + SPREAD); } })
       .to('.wc-loader-inner', { opacity: 0, duration: .4, ease: 'power2.in' }, '+=0.35')
       .to('.wc-curtain-t', { yPercent: -100, duration: .9, ease: 'expo.inOut' }, '<')
@@ -220,8 +223,13 @@ WC.register('loader', function(ctx){
       var prev = (buf32[o] >>> 24) / 255;
       var acc  = prev + alpha;
       if (acc > 1) acc = 1;
-      // little-endian: 0xAABBGGRR — #f0f0f6
-      buf32[o] = ((acc * 255) << 24) | (246 << 16) | (240 << 8) | 240;
+      /* BIANCO PIENO, e qui è voluto. Il resto della pagina non usa mai #fff
+       * (D8): è l'inchiostro #f0f0f6, appena smorzato, perché su fondo scuro un
+       * bianco pieno a grandi superfici abbaglia. Il sipario però non è una
+       * superficie — è un marchio sottile su nero pieno, per due secondi, e lì
+       * il bianco smorzato legge come grigio. È la stessa deroga funzionale del
+       * cursore in `invert`. // little-endian: 0xAABBGGRR */
+      buf32[o] = ((acc * 255) << 24) | (255 << 16) | (255 << 8) | 255;
     }
 
     ctx2d.putImageData(frame, 0, 0);

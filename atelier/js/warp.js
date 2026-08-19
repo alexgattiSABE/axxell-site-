@@ -117,10 +117,19 @@ WC.register('warp', function(ctx){
     // Fasi dello scroll, in fila. Sovrapporle rendeva illeggibile ognuna:
     // rallentare, riordinarsi e ruotare sono tre letture che si annullano se
     // capitano insieme.
-    phaseMorphIn:  0.26,   // esce dal tubo, rallenta
-    phaseMorphOut: 0.46,   // si riordina nell'elica
-    phaseVesIn:    0.60,   // l'elica gira
-    phaseVesOut:   0.84,   // si riordina in vesper
+    /* ⚠️ SONO FRAZIONI DELLA CORSA, non svh. La sezione e' alta 780svh, cioe'
+     * 680svh di corsa tolta la schermata inchiodata, e questi numeri sono
+     * TARATI su quella: chi cambia l'altezza in css/sections.css li rifaccia,
+     * o ogni fase si allunga in proporzione senza che nessuno lo abbia deciso.
+     *
+     * La decelerazione iniziale e' scesa da 208 a 90svh: due schermate buone
+     * passate a rallentare e basta, prima che succedesse qualunque altra cosa.
+     * Le tre fasi successive valgono ancora ESATTAMENTE gli stessi svh di
+     * prima (160 / 112 / 192) — si e' tolto tempo morto, non ritmo. */
+    phaseMorphIn:  0.132,  //  90svh: esce dal tubo, rallenta
+    phaseMorphOut: 0.368,  // 160svh dopo: si riordina nell'elica
+    phaseVesIn:    0.532,  // 112svh dopo: l'elica gira
+    phaseVesOut:   0.815,  // 192svh dopo: si riordina in vesper
     dnaSpinTurns: 0.55, // giri dell'elica su sé stessa dopo formata
     stars: 900,
     starRadiusMin: 70,
