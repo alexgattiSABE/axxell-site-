@@ -172,7 +172,17 @@ WC.register('dna', function(ctx){
   var wide = window.innerWidth;
   // Come nel tunnel: il reticolo di semi si scala con la finestra. Cambia la
   // densità dei punti, non la forma — la posizione di ognuno esce dal suo hash.
-  var seg    = wide > 1440 ? [140, 420] : wide > 1024 ? [120, 340] : [90, 240];
+  /* ⚠️ GLI ANELLI SONO SCESI DI UN TERZO, ed è la contropartita della densità
+   * uniforme. Prima i punti si ammassavano ai capi e si diradavano in mezzo;
+   * col passaggio all'angolo la densità è la stessa ovunque — ma "ovunque" è
+   * quella dei CAPI, cioè l'elica al centro sarebbe risultata 1.54 volte più
+   * fitta di com'era. Il conto: la densità per unità di quota passa da
+   * `1/(29.4·sin φ)` a `π/58.8`, e nell'inquadratura iniziale sin φ vale 0.981
+   * → 28.8 contro 18.7. Gli anelli si moltiplicano per 1/1.54 = 0.649 e
+   * l'elica torna esattamente fitta com'era all'inizio dello scroll.
+   * Se dovesse sembrare troppo rada o troppo densa, la manopola è QUESTA (il
+   * secondo numero), non `pointSize`: quella cambierebbe anche lo spessore. */
+  var seg    = wide > 1440 ? [140, 273] : wide > 1024 ? [120, 221] : [90, 156];
   var maxDpr = wide > 1024 ? 1.75 : 1.25;
 
   // Valori originali della scena GetLayers. Quelli del pass finale (bgColor,
@@ -295,7 +305,11 @@ WC.register('dna', function(ctx){
     uActivity:      { value: 0 }
   };
 
-  var geometry = new THREE.SphereGeometry(4.2, seg[0], seg[1]);
+  /* ⚠️ IL RAGGIO SERVE ANCHE ALLO SHADER, che da `position.y` deve risalire
+   * all'angolo. Sta qui una volta sola e viene interpolato nel sorgente GLSL:
+   * cambiarlo in un posto solo spezzerebbe la mappatura. */
+  var SPHERE_R = 4.2;
+  var geometry = new THREE.SphereGeometry(SPHERE_R, seg[0], seg[1]);
   geometry.setIndex(null);
 
   var material = new THREE.ShaderMaterial({
@@ -310,7 +324,26 @@ WC.register('dna', function(ctx){
       'void main(){',
       // La sfera viene stirata in un segmento verticale lungo: `t` è la quota
       // del punto lungo l'elica, e ci si somma un respiro sfasato per punto.
-      '  float stretchedY = position.y * 7.0 - 8.0;',
+      /* ⚠️ DENSITÀ UNIFORME LUNGO L'ELICA, e non è un dettaglio estetico.
+       *
+       * Era `position.y * 7.0 - 8.0`. Una sfera UV ha lo stesso numero di
+       * vertici su ogni anello, ma gli anelli sono equispaziati in ANGOLO, non
+       * in altezza: `y = R·cos(φ)`. Passando dall'altezza si eredita quel
+       * coseno, e la densità lungo l'elica va come `1/sin(φ)` — cioè i punti si
+       * ammassano ai due capi.
+       *
+       * Si vedeva: `scrollClimb` fa sfilare l'elica, e verso la fine
+       * l'inquadratura arrivava dove `sin(φ)` scende a ~0.71, con il 40% di
+       * punti in più per unità di altezza. Con la fusione additiva quello legge
+       * come "più spessa e più accesa", e i pioli — che sono solo il 20% dei
+       * punti — annegavano nei due filamenti.
+       *
+       * Prendendo l'ANGOLO invece del coseno la densità è costante ovunque, e
+       * l'elica è la stessa a qualunque quota la si guardi. L'intervallo di `t`
+       * non cambia (da 21.4 in cima a -37.4 in fondo): la scala di colore e il
+       * calcolo in JS che tinge le parole leggono le stesse quote di prima. */
+      '  float phi = acos(clamp(position.y / ' + SPHERE_R.toFixed(1) + ', -1.0, 1.0));',
+      '  float stretchedY = 21.4 - (phi / 3.14159265) * 58.8;',
       '  float rnd1 = random(position);',
       '  float rnd2 = random(position + vec3(1.0));',
       '  float rnd3 = random(position + vec3(2.0));',
@@ -341,8 +374,13 @@ WC.register('dna', function(ctx){
       '    vec3 p2 = vec3(dnaRadius * cos(discreteTwist + 3.14159), discreteT, dnaRadius * sin(discreteTwist + 3.14159));',
       '    dnaPos = mix(p1, p2, rungT) + vec3(rnd1 - 0.9, rnd2 - 0.5, rnd3 - 0.5) * 2.0 * 0.16;',
       '  }',
-      '  dnaPos.x += snoise(vec3(0.0, t * 0.2, uTime * 0.2)) * uWaveAmt;',
-      '  dnaPos.z += snoise(vec3(t * 0.2, 0.0, uTime * 0.2)) * uWaveAmt;',
+      // Il serpeggiamento si tiene in due variabili invece di sommarlo al
+      // volo: serve una seconda volta più sotto, per sapere dov'è l'ASSE
+      // dell'elica a questa quota. Due chiamate di rumore, non quattro.
+      '  float wx = snoise(vec3(0.0, t * 0.2, uTime * 0.2)) * uWaveAmt;',
+      '  float wz = snoise(vec3(t * 0.2, 0.0, uTime * 0.2)) * uWaveAmt;',
+      '  dnaPos.x += wx;',
+      '  dnaPos.z += wz;',
       '  vec3 finalPos = (dnaPos - vec3(0.0, -8.0, 0.0)) * uScale;',
       '  vec4 modelPosition = modelMatrix * vec4(finalPos, 1.0);',
       '  vec3 toP = modelPosition.xyz - uCursor;',
@@ -384,7 +422,31 @@ WC.register('dna', function(ctx){
        *   la MORBIDEZZA  (nel fragment) i lontani hanno il bordo più sfumato,
        *                  cioè sono sfocati — è la sola cosa che l'occhio legge
        *                  come "sta più indietro" e non come "è più piccolo". */
-      '  vDepth = clamp((mvPosition.z + 9.95) / 2.45, 0.0, 1.0);',
+      /* ⚠️ LA PROFONDITÀ SI MISURA DALL'ASSE, non dalla camera.
+       *
+       * Era `(mvPosition.z + 9.95) / 2.45`: una finestra fissa, tarata su dove
+       * stava l'elica al primo fotogramma. Ma l'elica NON sta ferma in Z — il
+       * serpeggiamento la sposta in funzione della quota, e `scrollClimb` fa
+       * cambiare la quota inquadrata. Il risultato è che la finestra si
+       * spostava sotto ai punti: verso la fine `vDepth` saturava, davanti e
+       * dietro smettevano di separarsi, e l'elica leggeva come una macchia
+       * piatta invece che come un oggetto. Insieme alla densità, è l'altra
+       * metà del "diventa enorme e i pioli non si vedono più".
+       *
+       * Adesso si misura quanto il punto sta davanti o dietro all'ASSE
+       * dell'elica alla SUA quota — che è la cosa che `vDepth` ha sempre voluto
+       * dire. L'asse porta con sé lo stesso serpeggiamento (`wx`, `wz`), quindi
+       * la misura è immune a dove l'elica si trova: si sposta l'asse, si
+       * spostano con lui i suoi punti, e la differenza resta quella.
+       * `modelViewMatrix` è la stessa `viewMatrix * modelMatrix` usata qui
+       * sopra — three la fornisce già composta, e costa un prodotto in meno. */
+      '  vec3 axisLocal = (vec3(wx, dnaPos.y, wz) - vec3(0.0, -8.0, 0.0)) * uScale;',
+      '  float axisZ = (modelViewMatrix * vec4(axisLocal, 1.0)).z;',
+      // La fetta in cui un punto può stare: raggio più grossezza del filamento,
+      // davanti e dietro. Ricavata, non scritta a mano: se l'elica si allarga,
+      // la scala di profondità si allarga con lei.
+      '  float axisSpan = 2.0 * (dnaRadius + strandThickness) * uScale;',
+      '  vDepth = clamp((mvPosition.z - axisZ) / axisSpan + 0.5, 0.0, 1.0);',
       '  vFade = 1.0;',
       '  gl_PointSize = max(uSize * (10.0 / -mvPosition.z) * mix(0.62, 1.42, vDepth), 1.2);',
       '  gl_Position = projectionMatrix * mvPosition;',
