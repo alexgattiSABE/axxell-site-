@@ -61,10 +61,15 @@ brand con valori già definiti.
 | Secondario | verde `#00e8a2` |
 | Bordi | `rgba(255,255,255,.07)` · `.13` |
 
-Nessun `#000` né `#fff` puri (D8). Unica eccezione: `#fff` come base del
-cursore in stato `invert`, dove serve un bianco pieno perché
-`mix-blend-mode:difference` produca l'inversione — un valore funzionale, non
-un colore di superficie.
+Nessun `#000` né `#fff` puri (D8). **Due eccezioni, entrambe funzionali e
+nessuna delle due su una superficie:**
+
+1. `#fff` come base del cursore in stato `invert`, dove serve un bianco pieno
+   perché `mix-blend-mode:difference` produca l'inversione.
+2. `#fff` per il marchio del sipario. `#f0f0f6` esiste perché su fondo scuro un
+   bianco pieno a GRANDI SUPERFICI abbaglia; il sipario non è una superficie —
+   è un marchio sottile su nero pieno, per tre secondi — e lì l'inchiostro
+   smorzato legge come grigio invece che come bianco.
 
 ## Motion budget
 
