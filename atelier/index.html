@@ -43,11 +43,12 @@
 
 <!-- IL CURSORE DEL SITO — quasi tutto spento, e non per caso.
      Il puntatore custom era un ANELLO CON UN PUNTO DENTRO in nove capitoli su
-     dodici (`default`, `dot`, e la sua variante scura `light` su Festina), un
+     dodici (`default`, `dot`, e una variante scura `light`), un
      ROMBO in rotazione sul cap. 03, una BARRA DI LETTURA sul manifesto e una
      FRECCIA sul cap. 07. Tolti tutti su richiesta: quelle sezioni adesso
      dichiarano `data-cursor="hidden"` e mostrano il puntatore di sistema.
-     Resta acceso un solo stato, il `caret` del form (cap. 08), che non è un
+     Resta acceso un solo stato, il `caret` del form (ora su parliamone.html),
+     che non è un
      ornamento — dice dove si scrive.
      Questi due nodi restano perché sono loro a portare il caret, e perché
      ogni stato è ancora tutto in css/base.css: si riaccende un capitolo
@@ -222,9 +223,8 @@
   </section>
 
   <!-- ALTITUDE — il fondo che si piega sotto il dito.
-       Sta dopo Festina di proposito: là il video è materia da far scorrere,
-       qui è materia da deformare. Due capitoli di seguito sullo stesso
-       oggetto, che gli fanno fare due cose che non c'entrano niente.
+       Il video qui non è da guardare: è materia da deformare. Il fotogramma
+       diventa una texture e la texture si piega sotto il puntatore.
 
        Il <video> vero sotto il canvas NON è di scorta: è la sorgente della
        texture, e si vede finché il primo fotogramma non è salito sulla GPU.
@@ -352,56 +352,6 @@
     </div>
   </section>
 
-  <!-- FESTINA — il filmato che scorre solo se scorri tu.
-       Sta subito dopo la sneaker perché sono i due capitoli di video, e vicini
-       si leggono come una coppia: là un fondo che gira da solo e si fa
-       aspettare, qui un filmato che non parte affatto finché non lo muovi.
-
-       A SCHERMATA INTERA, con ritaglio `cover`. Le quattro frasi sono
-       agganciate a rettangoli misurati in percentuale del fotogramma
-       (`scripts/festina-spazi.py` li ha cercati su tutti i 241 fotogrammi), e
-       il ritaglio sposta l'immagine sotto ai riquadri: per questo js/festina.js
-       misura il riquadro REALE del video e ci riporta sopra i rettangoli. Chi
-       tocca il posizionamento parta da lì, non dalle percentuali del viewport.
-
-       È l'unico capitolo su fondo chiaro: lo studio del filmato è bianco, e a
-       tutto schermo la pagina sbianca per una schermata. L'inchiostro qui è
-       scuro e non c'è ciano — su bianco non avrebbe contrasto, e sarebbe
-       l'unica macchia fredda su tutta la parete.
-
-       Il <source> ha data-src e non src, come la sneaker: senza, il browser
-       scarica i 2,2 MB appena incontra il tag, e `preload="none"` non lo ferma
-       — quell'attributo governa il buffering, non la scelta della sorgente. -->
-  <section class="wc-festina" id="capFestina" data-cursor="hidden">
-    <div class="wc-festina-pin" id="wcFestinaPin">
-      <div class="wc-festina-stage">
-        <video id="wcFestinaVideo" class="wc-festina-video" muted playsinline
-               preload="none" poster="assets/festina-poster.webp" aria-hidden="true">
-          <source data-src="assets/festina.mp4" type="video/mp4">
-        </video>
-
-        <!-- Le quattro frasi. Ordine del markup = ordine delle finestre in
-             js/festina.js: chi ne sposta una sposta anche quella. Fra la 2 e la
-             3 c'è il silenzio dell'esplosione, che è voluto — vedi il modulo.
-             Il corsivo è il Playfair del cap. Lithos, l'unico della pagina:
-             cade sulla parola su cui gira la frase, mai su più di una. -->
-        <div class="wc-festina-say" data-say="1">
-          <p class="eyebrow">// Fotogramma per fotogramma</p>
-          <h2>Non parte.<br>Lo muovi <em class="wc-serif">tu</em>.</h2>
-        </div>
-        <div class="wc-festina-say" data-say="2">
-          <p>Duecentoquarantuno fotogrammi, e a scorrerli sei tu. Fermi il dito e si ferma a met&agrave;.</p>
-        </div>
-        <div class="wc-festina-say" data-say="3">
-          <p>Torni indietro e si rimonta. Nello stesso ordine, al contrario.</p>
-        </div>
-        <div class="wc-festina-say" data-say="4">
-          <h2>Il tempo del filmato<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
-          <p>Nessun play, nessun loop, nessun controllo. E due megabyte che scendono solo quando arrivi qui.</p>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
        sfalda in galassia) era già migrata dentro capWarp come terza forma, e
@@ -555,7 +505,6 @@
 <script src="js/horizontal.js?v=20260819a"></script>
 <script src="js/lithos.js?v=20260819a"></script>
 <script src="js/sneaker.js?v=20260819a"></script>
-<script src="js/festina.js?v=20260819b"></script>
 <script src="js/altitude.js?v=20260819a"></script>
 <script src="js/offer.js?v=20260819a"></script>
 <script src="js/footer.js?v=20260819a"></script>

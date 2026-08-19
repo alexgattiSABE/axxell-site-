@@ -66,7 +66,10 @@ body.cur-grab .cursor-ring{width:84px;height:84px;
   background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.75);}
 body.cur-grab .cursor-label{opacity:1;}
 
-/* --- 10 light: l'unico capitolo su fondo chiaro (Festina).
+/* --- 10 light: per un capitolo su fondo chiaro. DORMIENTE: l'unico che
+   c'era (Festina, il filmato guidato dallo scroll) è stato tolto, e con lui
+   l'unico fondo chiaro della pagina. La regola resta perché il costo è zero e
+   perché il ragionamento serve a chiunque ne rimetta uno.
    `mix-blend-mode:screen` su bianco dà bianco: lì il cursore ciano sparisce
    del tutto. Qui la fusione si spegne e il cursore torna a essere inchiostro
    scuro. Il puntatore di sistema non è nascosto da nessuna parte, quindi
