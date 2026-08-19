@@ -130,9 +130,14 @@ nav.-away{transform:translateY(-101%);}
   nav{transition:none;}
   nav.-away{transform:none;}
 }
-.nav-logo{font-weight:700;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--white);text-decoration:none;}
-.nav-logo span{color:var(--cyan);}
+/* Il logo in nav e' il MARCHIO, non piu' la parola scritta a mano. I tracciati
+   stanno una volta sola in cima al <body> e qui si <use>-ano PIENI: a 22 px di
+   altezza un contorno spesso 1 unita' di viewBox sarebbe una poltiglia. Nel
+   footer, dove il marchio e' alto dieci volte tanto, il contorno e' invece
+   proprio il punto — stessa forma, due trattamenti opposti, e per questo `fill`
+   non sta sul gruppo condiviso ma su chi lo usa. */
+.nav-logo{display:flex;align-items:center;color:var(--white);text-decoration:none;}
+.nav-logo svg{display:block;height:22px;width:auto;fill:currentColor;}
 .nav-links{display:flex;list-style:none;gap:1.4rem;}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;
   padding:1rem .5rem;}
