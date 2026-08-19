@@ -1,4 +1,8 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/website-creation", "destination": "/atelier", "permanent": true },
+    { "source": "/website-creation/:path*", "destination": "/atelier/:path*", "permanent": true }
+  ]
 }
