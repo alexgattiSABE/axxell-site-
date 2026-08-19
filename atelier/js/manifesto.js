@@ -1,24 +1,21 @@
+/* CAP 02 — il manifesto si scrive mentre scendi.
+ *
+ * Il testo a sinistra parte da niente e compare una parola alla volta, legato
+ * allo scroll. È l'unico movimento di questo blocco: non si sposta, non si
+ * ingrandisce, non cambia colore. Si scrive.
+ *
+ * ⚠️ C'È STATA UNA SECONDA ONDA, ED È STATA TOLTA. Faceva prendere a ogni
+ * parola una delle quattro tinte dell'elica che le sta accanto — prima a
+ * rotazione (`PALETTE[i % 4]`, che da lontano leggeva come coriandoli), poi a
+ * blocchi contigui. Nessuna delle due versioni è sopravvissuta: accanto a
+ * un'elica che È GIÀ una scala di quattro colori, un testo colorato le faceva
+ * concorrenza invece di lasciarla parlare. Il bianco è la scelta, non un
+ * ripiego — e chi volesse rimetterla trovi qui il motivo per cui non c'è.
+ */
 WC.register('manifesto', function(ctx){
   var el = document.getElementById('wcManifesto');
   if (!el) return;
   var items = WC.splitWords(el);
-
-  /* I COLORI DELLA SEZIONE, non una palette decorativa: sono gli stessi quattro
-   * dell'elica (js/dna.js, `colorLow` / `colorAqua` / `colorHigh` / `colorRed`),
-   * portati alla luminosità che serve a un testo su nero. Quelli dell'elica
-   * sono scuri perché lì la fusione è additiva e si sommano punto su punto;
-   * qui sono inchiostro, e vanno letti. Stessa quaterna, stessa sequenza dal
-   * basso verso l'alto: chi guarda l'elica e poi il testo vede la stessa
-   * scala. */
-  /* L'ordine e' quello dell'elica DALL'ALTO IN BASSO, lo stesso di
-   * `INK` in js/dna.js — che pero' le tiene nell'ordine dello shader (dal
-   * basso: blu, verd'acqua, viola, rosso). Qui la sequenza e' rovesciata,
-   * perche' il testo si legge dall'alto: rosso in cima, poi viola, verd'acqua, blu in
-   * fondo. Il testo si legge dall'alto verso il basso e l'elica gli sta
-   * accanto: percorrendoli con l'occhio insieme, le due scale coincidono.
-   * (Prima la quaterna era rovesciata, contata dal basso: il testo partiva blu
-   * mentre a fianco l'elica era rossa.) */
-  var PALETTE = ['#ff5a68', '#a75cff', '#2fe0c4', '#4a7bff'];
 
   // Reduced-motion: testo pieno, nessuno scrub.
   if (!ctx.motionOk) {
@@ -36,60 +33,27 @@ WC.register('manifesto', function(ctx){
    * tutto bianco. Visto a schermo.
    *
    * `+=100%` è una schermata di scroll: su 160svh di corsa, il testo finisce di
-   * accendersi a circa due terzi, e l'ultimo terzo resta all'elica. */
+   * scriversi a circa due terzi, e l'ultimo terzo resta all'elica. Era '+=130%'
+   * quando le onde erano due e la seconda finiva dopo la prima; con una sola,
+   * quella corsa in più sarebbe scroll speso su un testo già tutto scritto.
+   */
   var tl = gsap.timeline({
     scrollTrigger: {
       trigger: '#cap02',
       start: 'top top',
-      // '+=130%' e non più '+=100%': le onde sono due e la seconda finisce
-      // dopo la prima. Con una schermata sola l'ultima parola prendeva il suo
-      // colore proprio nell'ultimo pixel di corsa, cioè non lo prendeva.
-      end: '+=130%',
+      end: '+=100%',
       scrub: .6
     }
   });
-  /* DUE ONDE, non una.
-   *
-   * Prima ce n'era una sola: le parole partivano grigie e diventavano bianche.
-   * Adesso partono da NIENTE — opacità zero — e succedono due cose in fila,
-   * sfalsate, sulle stesse parole e nello stesso ordine:
-   *
-   *   1ª onda   la parola compare, e compare BIANCA. È il momento in cui il
-   *             testo si scrive: fin qui non c'era.
-   *   2ª onda   la parola prende il suo colore, uno dei quattro della sezione.
-   *             Parte quando la prima è a circa un terzo, quindi le due onde
-   *             si accavallano: mentre in fondo al paragrafo le parole stanno
-   *             ancora comparendo, in cima si stanno già colorando. Se
-   *             partisse a prima finita si leggerebbero come due animazioni
-   *             separate su un testo fermo in mezzo.
-   *
-   * `span` è la durata vera della prima onda: lo sfalsamento moltiplicato per
-   * il numero di parole, più il tween. Va calcolato e non indovinato — il
-   * manifesto può cambiare lunghezza, e una posizione scritta a mano ("parti
-   * al secondo 6") si scollerebbe alla prima riscrittura del testo. */
+
+  /* Lo sfalsamento è per parola, non per riga: è quello che fa leggere il
+   * blocco come una cosa che si scrive invece che come un paragrafo che
+   * sfuma. Le parole partono a opacità zero — prima non ci sono affatto — e
+   * arrivano bianche, che è il colore in cui restano. */
   var STAG = .35;
-  var span = STAG * (items.length - 1) + .5;
 
   tl.fromTo(items, { opacity: 0, color: '#f0f0f6' },
                    { opacity: 1, stagger: STAG, ease: 'none' }, 0);
-  /* A BLOCCHI, non a parole alterne.
-   *
-   * Era `PALETTE[i % PALETTE.length]`: il modulo dà una parola per tinta a
-   * rotazione — rosso, viola, verd'acqua, blu, rosso… — e da lontano non si
-   * legge come una scala, si legge come coriandoli. L'elica qui accanto invece
-   * tiene ogni tinta per un tratto intero prima di passare alla successiva.
-   *
-   * Diviso in blocchi contigui il testo fa la stessa cosa: un quarto delle
-   * parole per ciascuna fermata, nell'ordine dell'elica. Il conto si ricava
-   * dalla lunghezza vera del manifesto, così riscriverlo non scolla niente —
-   * stesso schema di js/dna.js per le parole in orbita. */
-  var per = Math.max(1, Math.ceil(items.length / PALETTE.length));
-  tl.to(items, {
-    color: function(i){
-      return PALETTE[Math.min(PALETTE.length - 1, Math.floor(i / per))];
-    },
-    stagger: STAG, ease: 'none'
-  }, span * .34);
 
   return function(){
     tl.scrollTrigger && tl.scrollTrigger.kill(); tl.kill();
