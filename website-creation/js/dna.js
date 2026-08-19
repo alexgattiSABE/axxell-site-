@@ -63,8 +63,29 @@ WC.register('dna', function(ctx){
    * colore di testo su nero, #8f1526 e #0b2f8c sono quasi illeggibili. Qui
    * sono gli stessi quattro toni portati in luminanza — stessa tinta, stessa
    * sequenza, contrasto sufficiente per leggere una parola. */
-  //              rosso      viola      verd'acqua  blu
-  var WORD_COLORS = ['#ff3d55', '#a63ce8', '#16e2c4', '#2a6bff'];
+  /* Le stesse QUATTRO FERMATE dello shader, in inchiostro leggibile e
+   * nell'ordine in cui le legge lui: `g` = 0 in fondo, `g` = 1 in cima.
+   * Le esadecimali del CONFIG non si possono riusare — la' la fusione e'
+   * additiva e i punti si sommano, qui e' testo su nero e #0b2f8c non si
+   * legge. Stessa tinta, stessa sequenza, contrasto da leggere. */
+  //          blu(basso)   verd'acqua   viola        rosso(alto)
+  var INK = [[42,107,255], [22,226,196], [166,60,232], [255,61,85]];
+
+  /* La scala di colore, identica a quella del vertex shader: le stesse tre
+   * miscelazioni, con le stesse finestre sovrapposte. Se un giorno si toccano
+   * le soglie la', vanno toccate anche qui — sono la stessa scala scritta due
+   * volte, una per la GPU e una per il DOM. */
+  function mixRGB(a, b, k){
+    return [a[0] + (b[0] - a[0]) * k,
+            a[1] + (b[1] - a[1]) * k,
+            a[2] + (b[2] - a[2]) * k];
+  }
+  function ink(g){
+    var c = mixRGB(INK[0], INK[1], G.smoothstep(0.02, 0.24, g));
+    c = mixRGB(c, INK[2], G.smoothstep(0.40, 0.62, g));
+    c = mixRGB(c, INK[3], G.smoothstep(0.76, 0.97, g));
+    return 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
+  }
 
   // Reduced-motion o niente WebGL: il capitolo resta com'era, testo su nero, e
   // le parole diventano una lista in fila sotto il manifesto — leggibile, ferma.
@@ -120,19 +141,23 @@ WC.register('dna', function(ctx){
         return { el: s, chars: chars };
       };
       var mb = mk(back), mf = mk(front);
-      // Blocchi contigui: con 16 parole e 4 tinte, quattro parole per tinta.
-      // Il conto si adatta da solo se WORDS cresce.
-      var per = Math.max(1, Math.ceil(WORDS.length / WORD_COLORS.length));
-      var col = WORD_COLORS[Math.min(WORD_COLORS.length - 1, Math.floor(i / per))];
-      mf.el.style.color = col;
-      mb.el.style.color = col;
+      /* IL COLORE NON SI DECIDE QUI. Prima era `WORD_COLORS[floor(i/per)]`:
+       * fissato dall'indice della parola, cioe' immobile. Ma l'altezza di una
+       * parola NON e' il suo indice — e' `u = offset + scroll * wordScrollTurns`,
+       * che cambia mentre si scorre e si riavvolge in cima. Con l'elica che a
+       * sua volta sale, la tinta assegnata all'inizio non poteva coincidere con
+       * quella del tratto d'elica accanto nemmeno per caso: una parola rossa si
+       * ritrovava a girare attorno al blu.
+       * Adesso lo decide `layoutWords()` a ogni fotogramma, leggendo l'altezza
+       * VERA della parola nella stessa scala che usa lo shader. */
       return {
         b: mb.el, f: mf.el, bc: mb.chars, fc: mf.chars, n: w.length, pp: -1,
         // Sfasate in modo uniforme lungo la spirale: se partissero insieme
         // sarebbero un anello di otto parole, non una scia.
         offset: i / WORDS.length,
         phase: (i % 3) * 2.1,
-        rx: 0.86 + (i % 3) * 0.09
+        rx: 0.86 + (i % 3) * 0.09,
+        col: ''        // ultima tinta scritta: evita 32 scritture di stile a vuoto
       };
     });
     orbitEl.appendChild(back);
@@ -473,6 +498,8 @@ WC.register('dna', function(ctx){
    * la stessa camera, altrimenti al variare di aspetto e parallasse le parole si
    * scollano dalla cosa attorno a cui dovrebbero girare. */
   var _centre = new THREE.Vector3();
+  // Per ricavare l'altezza di scena di una parola dalla sua altezza a schermo.
+  var _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3(), _pl = new THREE.Vector3();
 
   /* I numeri dello sfaldamento, tutti in un posto solo.
    *   peelA/peelB  la finestra, in quote di giro contate dal fronte. Il
@@ -535,6 +562,20 @@ WC.register('dna', function(ctx){
     var span = size.h * CONFIG.wordSpan;
     var top  = size.h * 0.5 - span * 0.5;
 
+    /* DA PIXEL A SCENA, con due proiezioni invece di sedici unproject.
+     * Sul piano dell'asse (z = 0) la prospettiva e' una mappa lineare fra
+     * altezza di scena e altezza a schermo: proiettando due punti noti si ha
+     * la retta, e da li' si torna indietro per qualsiasi parola.
+     * `updateMatrixWorld` serve perche' la matrice del gruppo la aggiorna
+     * `render()`, che gira DOPO di noi: senza, si leggerebbe la posizione del
+     * fotogramma precedente e il colore resterebbe indietro di uno. */
+    group.updateMatrixWorld();
+    _p0.set(0, 0, 0).project(camera);
+    _p1.set(0, 1, 0).project(camera);
+    var sy0 = (-_p0.y * 0.5 + 0.5) * size.h;
+    var sy1 = (-_p1.y * 0.5 + 0.5) * size.h;
+    var perPx = (sy1 - sy0) ? 1 / (sy1 - sy0) : 0;
+
     for (var i = 0; i < pairs.length; i++) {
       var p = pairs[i];
       var u = p.offset + scroll * CONFIG.wordScrollTurns;
@@ -549,6 +590,23 @@ WC.register('dna', function(ctx){
       var edge = G.smoothstep(0, 0.12, u) * (1 - G.smoothstep(0.88, 1, u));
       var alpha = (0.16 + depth * 0.84) * edge * appear;
       var mixF = depth * depth * (3 - 2 * depth);          // smoothstep sulla silhouette
+
+      /* LA TINTA DELLA PAROLA E' QUELLA DELL'ELICA CHE HA ATTORNO.
+       * Si risale l'intera catena invece di indovinarla: altezza a schermo →
+       * altezza di scena → coordinate locali del gruppo (che qui dentro tiene
+       * salita, rotazione e inclinazione) → la `t` del vertex shader, che nello
+       * shader vale `(dnaPos.y + 8) * uScale` una volta portata in scena.
+       * Da `t` esce `g`, e da `g` la stessa scala a quattro fermate.
+       * Cosi' la parola resta in tinta anche mentre l'elica scorre sotto di lei. */
+      _pl.set(0, (y - sy0) * perPx, 0);
+      group.worldToLocal(_pl);
+      var tShader = _pl.y / CONFIG.scale - 8;
+      var col = ink(G.clamp01(G.smoothstep(-20, 12, tShader)));
+      if (col !== p.col) {
+        p.col = col;
+        p.f.style.color = col;
+        p.b.style.color = col;
+      }
 
       /* LO SFALDAMENTO — cosa fa una parola quando sta per passare DIETRO.
        *

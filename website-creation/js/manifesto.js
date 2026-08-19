@@ -10,7 +10,15 @@ WC.register('manifesto', function(ctx){
    * qui sono inchiostro, e vanno letti. Stessa quaterna, stessa sequenza dal
    * basso verso l'alto: chi guarda l'elica e poi il testo vede la stessa
    * scala. */
-  var PALETTE = ['#4a7bff', '#2fe0c4', '#a75cff', '#ff5a68'];
+  /* L'ordine e' quello dell'elica DALL'ALTO IN BASSO, lo stesso di
+   * `INK` in js/dna.js — che pero' le tiene nell'ordine dello shader (dal
+   * basso: blu, verd'acqua, viola, rosso). Qui la sequenza e' rovesciata,
+   * perche' il testo si legge dall'alto: rosso in cima, poi viola, verd'acqua, blu in
+   * fondo. Il testo si legge dall'alto verso il basso e l'elica gli sta
+   * accanto: percorrendoli con l'occhio insieme, le due scale coincidono.
+   * (Prima la quaterna era rovesciata, contata dal basso: il testo partiva blu
+   * mentre a fianco l'elica era rossa.) */
+  var PALETTE = ['#ff5a68', '#a75cff', '#2fe0c4', '#4a7bff'];
 
   // Reduced-motion: testo pieno, nessuno scrub.
   if (!ctx.motionOk) {
@@ -64,8 +72,22 @@ WC.register('manifesto', function(ctx){
 
   tl.fromTo(items, { opacity: 0, color: '#f0f0f6' },
                    { opacity: 1, stagger: STAG, ease: 'none' }, 0);
+  /* A BLOCCHI, non a parole alterne.
+   *
+   * Era `PALETTE[i % PALETTE.length]`: il modulo dà una parola per tinta a
+   * rotazione — rosso, viola, verd'acqua, blu, rosso… — e da lontano non si
+   * legge come una scala, si legge come coriandoli. L'elica qui accanto invece
+   * tiene ogni tinta per un tratto intero prima di passare alla successiva.
+   *
+   * Diviso in blocchi contigui il testo fa la stessa cosa: un quarto delle
+   * parole per ciascuna fermata, nell'ordine dell'elica. Il conto si ricava
+   * dalla lunghezza vera del manifesto, così riscriverlo non scolla niente —
+   * stesso schema di js/dna.js per le parole in orbita. */
+  var per = Math.max(1, Math.ceil(items.length / PALETTE.length));
   tl.to(items, {
-    color: function(i){ return PALETTE[i % PALETTE.length]; },
+    color: function(i){
+      return PALETTE[Math.min(PALETTE.length - 1, Math.floor(i / per))];
+    },
     stagger: STAG, ease: 'none'
   }, span * .34);
 
