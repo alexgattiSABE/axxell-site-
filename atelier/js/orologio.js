@@ -4,6 +4,17 @@
  * frasi. Lo scroll non "fa partire" niente: è lui il tempo. Fermi il dito e
  * l'orologio resta a metà, con la ghiera sospesa sopra il vetro.
  *
+ * ── L'ARCO STA TUTTO NELLA DISCESA ─────────────────────────────────────────
+ * Scendendo si vede lo smontaggio E il rimontaggio: a metà corsa l'orologio è
+ * completamente aperto, e da lì in poi si richiude. Non serve tornare su per
+ * vederlo tornare intero — anche se tornando su succede lo stesso, perché è
+ * sempre lo scroll a comandare.
+ *
+ * I fotogrammi sul disco raccontano solo l'apertura: la chiusura è la stessa
+ * sequenza letta all'indietro. Costa zero byte e non c'è modo di distinguerla
+ * da una chiusura girata davvero, perché il movimento è reversibile — nessun
+ * pezzo cade, nessuno rimbalza, niente ha un verso proprio.
+ *
  * ── PERCHÉ UNA SEQUENZA DI FOTOGRAMMI E NON UN <video> ─────────────────────
  * Perché un <video> scrubbato è già stato provato su questa pagina, ed è stato
  * tolto. Cercare dentro un filmato vuol dire chiedere al server un pezzo di
@@ -143,7 +154,16 @@ WC.register('orologio', function(ctx){
   tl.to(state, {
     t: 1, duration: 1, ease: 'none',
     onUpdate: function(){
-      var i = Math.round(state.t * (FRAMES - 1));
+      /* ANDATA E RITORNO, in discesa. `state.t` va da 0 a 1 lungo la corsa;
+       * l'indice del fotogramma ci sale sopra come un triangolo:
+       *   t = 0    -> fotogramma 0        orologio intero
+       *   t = 0.5  -> ultimo fotogramma   completamente aperto
+       *   t = 1    -> fotogramma 0        di nuovo intero
+       * `1 - |2t - 1|` è quel triangolo. Ogni fotogramma viene mostrato due
+       * volte, una per ramo, e la corsa per ramo è metà — per questo la
+       * sezione è alta il doppio di quanto servirebbe a una passata sola. */
+      var tri = 1 - Math.abs(state.t * 2 - 1);
+      var i = Math.round(tri * (FRAMES - 1));
       if (i < 0) i = 0; else if (i > FRAMES - 1) i = FRAMES - 1;
       if (i === want) return;
       want = i;

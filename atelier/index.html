@@ -27,8 +27,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260819e">
-<link rel="stylesheet" href="css/sections.css?v=20260819e">
+<link rel="stylesheet" href="css/base.css?v=20260819f">
+<link rel="stylesheet" href="css/sections.css?v=20260819f">
 </head>
 <body>
 
@@ -408,6 +408,11 @@
        prima di girare il filmato: le due fasce ai lati sono lo spazio delle
        frasi, e il canvas disegna in `contain` per non mangiarsele.
 
+       L'ARCO STA TUTTO NELLA DISCESA: a metà sezione l'orologio è
+       completamente aperto, e da lì in poi si richiude. Le finestre delle
+       frasi seguono quell'arco — una mentre si apre, una col pezzo fermo in
+       aria, una mentre si richiude, una a orologio di nuovo intero.
+
        ⚠️ I TESTI QUI SOTTO SONO PROVVISORI, messi per verificare che
        l'impaginazione regga. Le finestre (`data-in`/`data-out`, in frazioni
        della corsa) invece sono vere: chi riscrive le frasi tocchi il testo,
@@ -419,17 +424,17 @@
            non si accende e questa immagine resta al suo posto. -->
       <img class="wc-oro-poster" src="assets/orologio/orologio-001.webp" alt="" aria-hidden="true">
 
-      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.03" data-out="0.27">
+      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.04" data-out="0.24">
         <p class="eyebrow">// Testo provvisorio</p>
         <h2>Non parte.<br>Lo apri <em class="wc-serif">tu</em>.</h2>
       </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.31" data-out="0.55">
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.40" data-out="0.60">
         <p>Testo provvisorio. Ogni pezzo si stacca alla quota che gli tocca, e si ferma dove ti fermi.</p>
       </div>
-      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.59" data-out="0.80">
+      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.68" data-out="0.86">
         <p>Testo provvisorio. Torni indietro e si rimonta, nello stesso ordine, al contrario.</p>
       </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.83" data-out="1.00">
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.88" data-out="1.00">
         <h2>Il tempo di questo<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
         <p>Testo provvisorio.</p>
       </div>
@@ -557,27 +562,27 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js" integrity="sha384-QsPhgdP78a1erQNT34dj/oyh7uPCXUnT/FkptUa/56LnSGsbTBmdiAOfB7j+8K4A" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260819e"></script>
-<script src="js/glsl.js?v=20260819e"></script>
-<script src="js/nav.js?v=20260819e"></script>
-<script src="js/cursor.js?v=20260819e"></script>
-<script src="js/fluid.js?v=20260819e"></script>
-<script src="js/loader.js?v=20260819e"></script>
-<script src="js/tunnel.js?v=20260819e"></script>
-<script src="js/warp.js?v=20260819e"></script>
-<script src="js/manifesto.js?v=20260819e"></script>
-<script src="js/cursorfx.js?v=20260819e"></script>
-<script src="js/dna.js?v=20260819e"></script>
-<script src="js/headings.js?v=20260819e"></script>
-<script src="js/vesper.js?v=20260819e"></script>
-<script src="js/saucer.js?v=20260819e"></script>
-<script src="js/robot.js?v=20260819e"></script>
-<script src="js/horizontal.js?v=20260819e"></script>
-<script src="js/lithos.js?v=20260819e"></script>
-<script src="js/sneaker.js?v=20260819e"></script>
-<script src="js/orologio.js?v=20260819e"></script>
-<script src="js/altitude.js?v=20260819e"></script>
-<script src="js/offer.js?v=20260819e"></script>
-<script src="js/footer.js?v=20260819e"></script>
+<script src="js/core.js?v=20260819f"></script>
+<script src="js/glsl.js?v=20260819f"></script>
+<script src="js/nav.js?v=20260819f"></script>
+<script src="js/cursor.js?v=20260819f"></script>
+<script src="js/fluid.js?v=20260819f"></script>
+<script src="js/loader.js?v=20260819f"></script>
+<script src="js/tunnel.js?v=20260819f"></script>
+<script src="js/warp.js?v=20260819f"></script>
+<script src="js/manifesto.js?v=20260819f"></script>
+<script src="js/cursorfx.js?v=20260819f"></script>
+<script src="js/dna.js?v=20260819f"></script>
+<script src="js/headings.js?v=20260819f"></script>
+<script src="js/vesper.js?v=20260819f"></script>
+<script src="js/saucer.js?v=20260819f"></script>
+<script src="js/robot.js?v=20260819f"></script>
+<script src="js/horizontal.js?v=20260819f"></script>
+<script src="js/lithos.js?v=20260819f"></script>
+<script src="js/sneaker.js?v=20260819f"></script>
+<script src="js/orologio.js?v=20260819f"></script>
+<script src="js/altitude.js?v=20260819f"></script>
+<script src="js/offer.js?v=20260819f"></script>
+<script src="js/footer.js?v=20260819f"></script>
 </body>
 </html>

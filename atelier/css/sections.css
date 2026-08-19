@@ -732,7 +732,11 @@ body.wc-locked{overflow:hidden;}
    Per questo il canvas disegna in `contain` e non in `cover`: un ritaglio su
    finestra stretta si mangerebbe le colonne insieme ai bordi dell'oggetto.
    Chi cambia queste larghezze rompe l'accordo fra immagine e testo. */
-.wc-orologio{height:340svh;padding:0;background:#fff;}
+/* 480svh perché la corsa va percorsa DUE volte: scendendo l'orologio si apre
+   fino a metà sezione e da lì si richiude (vedi il triangolo in
+   js/orologio.js). 380svh di corsa ÷ 2 rami ÷ 80 fotogrammi = 2,4 svh per
+   fotogramma, che è dentro il bersaglio di scripts/pack-orologio.md. */
+.wc-orologio{height:480svh;padding:0;background:#fff;}
 .wc-orologio-pin{height:100svh;position:relative;overflow:hidden;background:#fff;}
 .wc-oro-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 
