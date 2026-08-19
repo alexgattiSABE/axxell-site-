@@ -6,15 +6,34 @@ questo file prima di costruire, per restare coerente.
 ## Ambito
 
 Sito madre `index.html`: SPA statico a file singolo, preesistente, **non
-ridisegnato**. Questo documento descrive le scelte della pagina
-`website-creation/` e i token che eredita dal sito madre.
+ridisegnato**. Questo documento descrive le scelte della pagina `atelier/` e i
+token che eredita dal sito madre.
+
+> **La cartella si chiamava `website-creation/`** e l'indirizzo era
+> `/website-creation`. Dal 2026-08-19 sono `atelier/` e `/atelier`, con un 301
+> in `vercel.json` per la pagina e per tutto quello che le sta sotto (gli asset
+> sono linkati per percorso assoluto dal `<base>`, quindi serve anche la regola
+> con `:path*`). Il vecchio nome sopravvive solo in questo riquadro.
+
+La pagina non e' piu' sola: il modulo di contatto vive in `atelier/
+parliamone.html`, pagina propria, con il proprio `<title>` e le proprie OG.
 
 ## Genere
 
 Vetrina di capacità tecnica. La pagina non descrive cosa sappiamo fare: lo
-fa mentre la si scorre. Nove capitoli, ognuno dimostra una capacità diversa
-e ha una sezione tutta sua — l'ampiezza dell'inventario senza la
+fa mentre la si scorre. **Tredici sezioni**, ognuna dimostra una capacità
+diversa e ha uno spazio tutto suo — l'ampiezza dell'inventario senza la
 sovrapposizione da demo reel.
+
+Nell'ordine: hero col tunnel (`cap01`), warp (`capWarp`), manifesto con la
+doppia elica (`cap02`), Vesper (`capVesper`), fluido (`cap03`), altitudine
+(`capAltitude`), disco volante (`capSaucer`), modello Spline (`cap05`), Lithos
+(`capLithos`), sneaker (`capSneaker`), Festina (`capFestina`), processo
+orizzontale (`cap07`), offerta (`capOffer`).
+
+> Erano nove. Il conto e' salito per aggiunte successive, e gli `id` non sono
+> mai stati rinumerati: chi legge `cap05` non deve dedurne la posizione. `cap04`
+> e `cap06` non esistono piu', `cap08` e' uscito dalla pagina (vedi Ambito).
 
 ## Tema
 
@@ -52,9 +71,11 @@ un colore di superficie.
 Condizionato per tipo di sezione (D5):
 
 - **Hero (cap 01):** una entrata orchestrata + warp ambientale continuo
-- **Capitoli 02–07:** motion legato allo scroll, uno per capitolo, mai un
-  fade-up universale
-- **Cap 08:** solo micro-interazioni sui campi
+- **Sezioni intermedie:** motion legato allo scroll, uno per sezione, mai un
+  fade-up universale. Diverse non hanno moto proprio affatto: fermo il dito,
+  si ferma tutto (il cap. 02 lo dichiara esplicitamente nel suo CONFIG)
+- **Parliamone:** pagina a sé, solo micro-interazioni sui campi. Niente WebGL,
+  niente capitoli — carica solo le librerie che il modulo usa davvero
 - **Ambient:** solo nell'hero. Nessun livello di movimento a pagina intera
 
 Librerie: GSAP 3.13.0 + ScrollTrigger (scroll storytelling reale, D1),
@@ -68,12 +89,17 @@ contrario.
 
 ### D4 — quattro sezioni pinnate invece di una
 
-> Aggiornata dopo la sessione degli effetti: erano due (cap. 03 e 07), ora
-> sono quattro. Il tunnel dell'hero e la sfera→galassia sono arrivati dopo.
+> Aggiornata due volte. Erano due (cap. 03 e 07), poi quattro, **ora sono
+> otto**: tunnel (`cap01`), warp (`capWarp`), elica (`cap02`), Vesper
+> (`capVesper`), fluido (`cap03`), disco volante (`capSaucer`), Festina
+> (`capFestina`), processo orizzontale (`cap07`). La motivazione non e'
+> cambiata, il conteggio si', e va detto invece che lasciato indovinare.
 
-Il piano pinna l'hero (cap. 01), l'oggetto 3D (cap. 03), la sfera che si
-sfalda in galassia (cap. 06) e il processo orizzontale (cap. 07). D4 ne
-ammette una sola per pagina.
+D4 ne ammette una sola per pagina.
+
+Sei di questi otto usano `pinSpacing: false` e si ricavano la corsa
+dall'altezza della sezione: con lo spaziatore, ognuno aggiungerebbe sotto di se'
+altrettante schermate di scroll morto a movimento finito.
 
 **Perché si deroga:** su questa pagina il pin non è un vezzo, è una delle
 capacità in vetrina, e sono quattro pin che fanno quattro cose diverse —
@@ -128,19 +154,31 @@ spegne tutto il movimento non funzionale · si animano solo
 
 Tutte e tre decise dall'utente, che ha chiesto esplicitamente questi effetti.
 
-### Quattro contesti WebGL su una pagina
+### Otto contesti WebGL su una pagina
 
 Le regole di composizione dicono «una scena sopra la piega, al massimo» e
 «più di ~2 scene su una pagina è quasi sempre sbagliato». Qui ce ne sono
-cinque: il tunnel (cap. 01), la colonna di vetro (cap. 03), il fluido del
-cursore (sempre nel cap. 03, contesto suo), la scena Spline (cap. 05) e la
-sfera→galassia (cap. 06).
+**otto**:
 
-> Aggiornata il 2026-08-13: la doppia elica del cap. 03 è stata sostituita
-> dalla colonna di vetro con le sei lastre in orbita, e nello stesso capitolo
-> è entrato il quinto contesto, il fluido. Non c'è mai più di un capitolo
-> acceso alla volta, ma i due del cap. 03 girano insieme: è l'unico punto
-> della pagina che paga due simulazioni contemporanee.
+| Contesto | Sezione | Tipo |
+|---|---|---|
+| tunnel | `cap01` | three.js |
+| warp | `capWarp` | three.js |
+| doppia elica | `cap02` | three.js |
+| Vesper | `capVesper` | three.js |
+| fluido del cursore | `cap03` | WebGL2 grezzo |
+| altitudine | `capAltitude` | WebGL2 grezzo |
+| disco volante | `capSaucer` | three.js |
+| scena Spline | `cap05` | runtime di terze parti |
+
+> Aggiornata il 2026-08-19: erano cinque. Due dei cinque non ci sono piu' con
+> quel nome — la colonna di vetro e la sfera→galassia sono uscite dalla pagina
+> — e ne sono entrati altri. `js/spine.js` e `js/particles.js` restano **sul
+> disco ma NON vengono caricati**: sono moduli dormienti, si riaccendono
+> rimettendo la sezione, il canvas e lo `<script>`. Chi conta i contesti conti
+> i tag `<script>`, non i file in `js/`.
+
+Non c'e' mai piu' di una sezione accesa alla volta.
 
 **Perché si deroga:** la pagina *è* la vetrina di questa capacità; mostrarla
 una volta sola direbbe meno. Il costo è contenuto in tre modi, e sono
@@ -181,9 +219,16 @@ piano gratuito e nasconderla via CSS violerebbe i termini di Spline. Le due
 strade per toglierlo sono un piano Spline a pagamento, oppure rifare la scena
 e ospitarla in proprio.
 
-### La spina del cap. 03 è un'immagine (sessione 2026-08-13)
+### CHIUSA — la spina del cap. 03 è un'immagine (sessione 2026-08-13)
 
-Il piano dice «asset procedurali soltanto». La spina non lo è più: è
+> **Chiusa il 2026-08-19: la colonna di vetro non è più in pagina.** Il
+> `cap03` adesso ospita solo il fluido del cursore, e il suo occhiello dice
+> «// 04 — Fluido». `js/spine.js` e `assets/spine.webp` restano sul disco,
+> dormienti. Tutto quello che segue vale se e solo se qualcuno la rimette, ed
+> è tenuto per intero apposta: era la sezione più costosa della pagina e la
+> ricetta dell'asset non è ricostruibile a occhio.
+
+Il piano diceva «asset procedurali soltanto». La spina non lo è più: è
 `assets/spine.webp` (100 KB), il render fornito dall'utente come riferimento
 visivo vincolante — «do not interpret the reference creatively». La versione
 procedurale a 24 vertebre esisteva ed è stata scartata da lui.
@@ -256,8 +301,10 @@ Cosa comporta, e come è contenuto:
    scia congelata.
 2. **Palette chiusa.** `generateColor` del sorgente pesca su tutto il cerchio
    delle tinte. Qui pesca su quattro fasce — ciano, blu, viola, fucsia/rosa —
-   che sono quelle della colonna. Il vincolo dell'utente è anche il modo di
-   tenere il capitolo coerente.
+   che erano quelle della colonna di vetro. La colonna è uscita dalla pagina
+   (vedi la deroga chiusa più sopra) e il fluido è rimasto da solo nel `cap03`,
+   ma le fasce **non vanno riaperte**: sono il vincolo dell'utente, e adesso
+   sono anche l'unica cosa che dà una tinta a questa sezione.
 3. **Niente bloom né sunrays.** Sono ~400 righe e due catene di framebuffer, e
    i sunrays sono proprio il passaggio che tira fuori il giallo.
 4. **CURL 2 e SPLAT_RADIUS 0.09** contro i 30 e 0.25 del sorgente, con
@@ -273,3 +320,110 @@ encoding e caricano i byte del colore grezzi. three.js r128 — la versione
 pinnata dal piano — fa lo stesso. Convertire in lineare qui li slaverebbe:
 `WC.glsl.hexToVec3` carica il crudo, di proposito. Se un giorno si sale di
 versione, questa è la prima cosa che si rompe.
+
+## Sessione 2026-08-19
+
+Quattro cose nuove da mettere a verbale, e una che resta aperta.
+
+### Quattro video su una pagina — deroga a «asset procedurali soltanto»
+
+| File | Dove | A cosa serve |
+|---|---|---|
+| `assets/starry.mp4` | `capAltitude` | **non è una scorta**: è la sorgente della texture che il canvas campiona |
+| `assets/sneaker.webm` / `.mp4` | `capSneaker` | fondo che gira da solo, in due formati |
+| `assets/festina.mp4` | `capFestina` | filmato guidato dallo scroll |
+| `assets/glass.mp4` | `capOffer` | loop di vetro viola dietro la chiusura |
+
+**Perché si deroga:** due dei quattro capitoli *sono* «il video trattato come
+materia» — è la capacità in vetrina, e un video procedurale non esiste. Gli
+altri due sono fondo.
+
+**Contenimento, vincolante per chi tocca queste sezioni:**
+
+1. **`<source data-src=` e non `src=`.** Con `src` il browser comincia a
+   scaricare appena incontra il tag, e `preload="none"` non lo ferma: quel
+   attributo governa il buffering, non la scelta della sorgente. L'indirizzo
+   viene scritto quando la sezione si avvicina, non prima.
+2. **Ricompressi, con la ricetta sul disco.** `scripts/pack-*.md` tiene il
+   comando `ffmpeg` esatto di ognuno. L'offerta è scesa da 17,7 MB a 1,5;
+   Festina da 42 MB a 2,2. Chi rifà un asset rilancia la ricetta, non
+   improvvisa i parametri.
+3. **Nessuno ha traccia audio.** Qui non si riproduce niente da ascoltare.
+
+### Festina: il filmato guidato dallo scroll ha due vincoli che non si vedono
+
+Questo capitolo dipende da **come il server manda il file**, non solo dal
+codice, ed è l'unico della pagina che lo fa.
+
+1. **I keyframe devono restare fitti.** Il master ne ha uno ogni ~4 s: per
+   mostrare un istante qualsiasi il decoder riparte dall'ultimo keyframe e
+   decodifica tutto quello che c'è in mezzo, e in scrub si vede. L'asset in
+   pagina ne ha uno ogni 6 fotogrammi — al massimo cinque da decodificare per
+   salto.
+2. **Il server deve servire le richieste Range.** Cercare dentro un video vuol
+   dire chiedere un pezzo di file: senza `Accept-Ranges: bytes` e risposte
+   `206`, Chrome si rifiuta di cercare — `seekable` resta vuoto anche a file
+   interamente scaricato, e a schermo resta il primo fotogramma.
+   ⚠️ **`python3 -m http.server` NON lo fa.** Vercel sì. Per provarlo in
+   locale serve un server che risponda 206, altrimenti si sta guardando un
+   difetto del server e non della pagina. In `js/festina.js` c'è una toppa che
+   riscarica il filmato come Blob quando la sorgente non è cercabile: non
+   costa niente dove il server è fatto bene, ma **maschera il problema**, e chi
+   misura le prestazioni in locale lo tenga presente.
+3. **Le frasi non si spostano a mano.** Le quattro finestre temporali e i
+   quattro rettangoli escono da `scripts/festina-spazi.py`, che cerca lo spazio
+   libero su tutti i 241 fotogrammi. Se si cambia il filmato si rilancia lo
+   script e si riportano i numeri che dà.
+
+> **APERTO al 2026-08-19.** Il capitolo ha ancora un difetto segnalato: il
+> filmato a volte parte da solo e si ferma a caso, e lo scroll ne risente.
+> Sotto indagine — `?diag` nell'indirizzo apre un pannello che separa le
+> ipotesi (si muove da solo / non segue / è la pagina a scattare). Finché non è
+> chiuso, questo capitolo non è da considerare finito.
+
+### Il marchio del footer è un SVG ricalcato, e va tenuto tale
+
+La parola che si accende sotto il cursore è il **logo vero** — dieci tracciati,
+orbita compresa — non un `<text>`.
+
+**Perché non si può passare a testo vero**, anche se l'effetto funzionerebbe
+(contorno, gradiente e maschera non hanno bisogno dei tracciati):
+
+- l'orbita non esiste in nessun font;
+- la firma che si scrive da sé usa `stroke-dashoffset`, che su un `<text>`
+  tratteggia tutti i contorni delle lettere insieme: si otterrebbe un
+  luccichio, non una scrittura.
+
+**Il ricalco era storto e adesso non lo è più.** Diciassette segmenti che
+dovevano essere verticali o orizzontali avevano uno scarto, tutti fra 0.27 e
+0.31 nello stesso verso — un'inclinazione sistematica di poco meno di un grado
+presa in fase di vettorializzazione, non tremolio casuale. Su un contorno
+spesso ~2 unità di viewBox è il 15%, e si vedeva. Sedici sono stati agganciati
+alla media del proprio gruppo; il diciassettesimo è un vero spigolo diagonale
+nella coda dell'orbita ed è escluso apposta.
+
+⚠️ Se un giorno si rimpiazza l'SVG con un export nuovo, si ricontrolli che i
+segmenti dritti lo siano: un ricalco automatico li fa storti di default.
+
+### La scala di colore del cap. 02 è scritta due volte
+
+Le quattro fermate dell'elica (blu → verd'acqua → viola → rosso) esistono in
+**due copie**: nel vertex shader per la GPU, e in JavaScript (`INK` + `ink()`
+in `js/dna.js`) per il DOM, perché le parole in orbita devono prendere la tinta
+del tratto d'elica che hanno attorno. Sono le stesse tre miscelazioni con le
+stesse soglie sovrapposte.
+
+⚠️ **Chi tocca le soglie di una deve toccare l'altra**, o le parole si
+scollano dal colore che dovrebbero avere.
+
+Il testo del manifesto, a sinistra, usa la stessa quaterna in inchiostro
+leggibile e **a blocchi contigui**, non a parole alterne: un quarto delle
+parole per fermata, nell'ordine in cui si legge il testo. A modulo si leggeva
+come coriandoli, non come una scala.
+
+L'elica **sta dritta e sale**. `scrollTilt` è stato tolto (pendeva sempre di
+più accanto a una colonna di testo ferma, e si leggeva come storta). La salita
+invece **non si può togliere**: l'elica è molto più alta dell'inquadratura, e
+la scala di colore sfila davanti alla camera proprio perché il corpo sale.
+Fermandola si vedrebbe `g` fra 0.10 e 0.58 — blu e verd'acqua — e il viola
+pieno e il rosso non entrerebbero mai in campo.
