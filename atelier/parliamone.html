@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- PARLIAMONE — il modulo di contatto, in una pagina sua.
+     Stava in fondo all'Atelier come capitolo 08. Il capitolo era l'ultima cosa
+     da leggere dopo otto schermate di portfolio, e il modulo ci arrivava
+     stanco: chi voleva scrivere doveva scorrere tutto, e chi stava guardando
+     il portfolio se lo trovava in mezzo ai piedi. Adesso e' una destinazione:
+     ci si arriva dal menu o dalla chiusura, da qualunque punto.
+
+     `<base href="/atelier/">` come la pagina madre, cosi' `css/`, `js/` e
+     `assets/` puntano dove devono anche se questa pagina vive un livello piu'
+     in la' nell'indirizzo.
+
+     Niente WebGL, niente capitoli: qui non c'e' niente da guardare, c'e' da
+     scrivere. Delle librerie restano solo quelle che il modulo usa davvero. -->
+<base href="/atelier/">
+<title>Parliamone | Axxell</title>
+<meta name="description" content="Raccontaci cosa deve fare il tuo sito. Ti rispondiamo entro un giorno lavorativo.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta property="og:title" content="Parliamone | Axxell">
+<meta property="og:description" content="Raccontaci cosa deve fare il tuo sito.">
+<meta property="og:url" content="https://axxell.ai/atelier/parliamone">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://axxell.ai/atelier/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css?v=20260819a">
+<link rel="stylesheet" href="css/sections.css?v=20260819a">
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">AXX<span>ELL</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/atelier/">Atelier</a></li>
+    <li><a href="/atelier/parliamone" class="nav-cta active">Parliamone</a></li>
+  </ul>
+</nav>
+
+<main id="wc-main">
+  <section class="wc-cta" data-cursor="caret">
+    <p class="eyebrow">// Parliamone</p>
+    <h2>Raccontaci cosa deve fare<br>il tuo sito.</h2>
+    <form class="wc-form" id="wcForm" novalidate>
+      <div class="wc-field">
+        <input type="text" id="wcNome" name="nome" required placeholder=" " autocomplete="name">
+        <label for="wcNome">Nome</label>
+      </div>
+      <div class="wc-field">
+        <input type="email" id="wcEmail" name="email" required placeholder=" " autocomplete="email">
+        <label for="wcEmail">Email</label>
+      </div>
+      <div class="wc-field">
+        <textarea id="wcMsg" name="messaggio" rows="4" required placeholder=" "></textarea>
+        <label for="wcMsg">Cosa hai in mente</label>
+      </div>
+      <button type="submit" class="wc-submit wc-hover" id="wcSubmit">
+        <span id="wcSubmitLabel">Invia</span>
+      </button>
+      <p class="wc-form-err" id="wcFormErr" role="alert" hidden></p>
+    </form>
+    <div class="wc-form-ok" id="wcFormOk" hidden>
+      <div class="wc-form-ok-lottie" id="wcFormOkLottie"></div>
+      <p>Ricevuto. Ti rispondiamo entro un giorno lavorativo.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
+<script src="js/core.js?v=20260819a"></script>
+<script src="js/nav.js?v=20260819a"></script>
+<script src="js/form.js?v=20260819a"></script>
+</body>
+</html>

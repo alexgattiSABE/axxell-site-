@@ -65,10 +65,13 @@
   <ul class="nav-links">
     <li><a href="/">Home</a></li>
     <li><a href="/atelier/" class="active">Atelier</a></li>
-    <!-- Il pulsante dell'hero ora entra nel tunnel e non porta più ai
-         contatti: senza questa voce la pagina non avrebbe più una rotta
-         verso il form da nessun punto in cui ti trovi. -->
-    <li><a href="#cap08" class="nav-cta">Parliamone</a></li>
+    <!-- Il pulsante dell'hero entra nel tunnel e non porta ai contatti:
+         senza questa voce la pagina non avrebbe una rotta verso il modulo da
+         nessun punto in cui ti trovi. Da quando il modulo ha una pagina sua
+         (parliamone.html) non e' piu' un'ancora ma un indirizzo: funziona
+         anche da fermo, si puo' mandare a qualcuno, e non obbliga a scorrere
+         otto capitoli per arrivarci. -->
+    <li><a href="/atelier/parliamone" class="nav-cta">Parliamone</a></li>
   </ul>
 </nav>
 
@@ -257,8 +260,9 @@
        posto libero — un capitolo tolto, uno aggiunto. Vesper poi si è spostata
        su, subito dopo il cap. 02, e questo posto è tornato vuoto: qui adesso
        non c'è più niente, si passa da Altitude al disco volante. Gli `id` non sono mai
-       stati toccati in nessuno dei due passaggi: restano cap05..cap08 perché ci
-       sono agganciati la voce di menu "Parliamone" (#cap08) e i trigger in js/.
+       stati toccati in nessuno dei due passaggi: restano cap05..cap07 perché ci
+       sono agganciati i trigger in js/. (cap08 era il modulo di contatto ed è
+       uscito da questa pagina: ora è parliamone.html.)
        Vesper, essendo nuovo, ha un id parlante (capVesper) come le altre
        sezioni aggiunte dopo la numerazione originale. -->
 
@@ -405,8 +409,8 @@
        descriveva quello che capWarp fa davvero. Tolto su richiesta.
        `js/particles.js` resta sul disco, come js/spine.js: si riaccende
        rimettendo la sezione, il canvas #wcPartCanvas e lo <script>.
-       NB gli `id` degli altri capitoli non si toccano: a #cap08 è agganciata
-       la voce di menu "Parliamone" e a cap05/cap07 i trigger in js/. -->
+       NB gli `id` degli altri capitoli non si toccano: a cap05/cap07 sono
+       agganciati i trigger in js/. -->
   <section class="wc-process" id="cap07" data-cursor="hidden">
     <div class="wc-process-pin" id="wcProcessPin">
       <div class="wc-process-head">
@@ -423,43 +427,25 @@
     </div>
   </section>
 
-  <section class="wc-cta" id="cap08" data-cursor="caret">
-    <p class="eyebrow">// 08 — Parliamone</p>
-    <h2>Raccontaci cosa deve fare<br>il tuo sito.</h2>
-    <form class="wc-form" id="wcForm" novalidate>
-      <div class="wc-field">
-        <input type="text" id="wcNome" name="nome" required placeholder=" " autocomplete="name">
-        <label for="wcNome">Nome</label>
-      </div>
-      <div class="wc-field">
-        <input type="email" id="wcEmail" name="email" required placeholder=" " autocomplete="email">
-        <label for="wcEmail">Email</label>
-      </div>
-      <div class="wc-field">
-        <textarea id="wcMsg" name="messaggio" rows="4" required placeholder=" "></textarea>
-        <label for="wcMsg">Cosa hai in mente</label>
-      </div>
-      <button type="submit" class="wc-submit wc-hover" id="wcSubmit">
-        <span id="wcSubmitLabel">Invia</span>
-      </button>
-      <p class="wc-form-err" id="wcFormErr" role="alert" hidden></p>
-    </form>
-    <div class="wc-form-ok" id="wcFormOk" hidden>
-      <div class="wc-form-ok-lottie" id="wcFormOkLottie"></div>
-      <p>Ricevuto. Ti rispondiamo entro un giorno lavorativo.</p>
-    </div>
-  </section>
+  <!-- QUI STAVA IL CAPITOLO 08, il modulo di contatto. Adesso e' una pagina
+       sua: `parliamone.html`. Era l'ultima cosa da leggere dopo otto schermate
+       di portfolio, e ci arrivava stanco — chi voleva scrivere doveva scorrere
+       tutto, chi guardava il portfolio se lo trovava in mezzo. Il markup e' lo
+       stesso, id compresi, cosi' js/form.js non e' cambiato di una riga: si e'
+       spostato, non riscritto.
+       Con lui se ne sono andati da questa pagina anche js/form.js e la
+       libreria emailjs, che qui non hanno piu' niente da fare. -->
 
-  <!-- L'OFFERTA — ultima sezione della pagina, dopo il modulo.
+  <!-- L'OFFERTA — ultima sezione della pagina.
        Il fondo è un loop di vetro viola: due formazioni ai lati e un vuoto
        nero al centro, che nel filmato resta vuoto per tutti i 6,4 s. È lì che
        va il testo, e per questo la sezione non ha né velo né riquadro — il
        contrasto ce l'ha già di suo, perché al centro non passa niente.
 
-       Sta DOPO il modulo di contatto di proposito: non è un'altra richiesta di
-       scrivere, è la chiusura. Chi ci arriva ha già scorso tutto il capitolo e
-       ha appena avuto il modulo sotto gli occhi; qui si dice cosa si compra, e
-       il pulsante riporta su a quel modulo invece di aprirne un secondo. -->
+       È la CHIUSURA: chi ci arriva ha già scorso tutto il capitolo, e qui si
+       dice cosa si compra. Da quando il modulo ha una pagina sua il pulsante
+       non riporta più su a un'ancora ma ci porta — che è anche il motivo per
+       cui l'offerta può stare in fondo senza lasciare la pagina senza uscita. -->
   <section class="wc-offer" id="capOffer" data-cursor="dot">
     <video id="wcGlassVideo" class="wc-offer-video" muted loop playsinline
            preload="none" poster="assets/glass-poster.webp" aria-hidden="true">
@@ -469,7 +455,7 @@
       <p class="eyebrow">// Che cosa ti resta in mano</p>
       <h2>Un sito che si <em class="wc-serif">attraversa</em>,<br>non uno che si sfoglia.</h2>
       <p class="lead">Quello che hai appena scorso non &egrave; una vetrina di effetti: &egrave; il modo in cui lavoriamo. Ogni capitolo di questa pagina &egrave; una tecnica che pu&ograve; finire nel tuo sito — scelta perch&eacute; serve a qualcosa, mai perch&eacute; fa impressione.</p>
-      <a href="#cap08" class="wc-offer-cta wc-hover">Parliamone &rarr;</a>
+      <a href="/atelier/parliamone" class="wc-offer-cta wc-hover">Parliamone &rarr;</a>
     </div>
   </section>
 
@@ -567,13 +553,11 @@
 <script src="js/saucer.js?v=20260819a"></script>
 <script src="js/robot.js?v=20260819a"></script>
 <script src="js/horizontal.js?v=20260819a"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
 <script src="js/lithos.js?v=20260819a"></script>
 <script src="js/sneaker.js?v=20260819a"></script>
-<script src="js/festina.js?v=20260819a"></script>
+<script src="js/festina.js?v=20260819b"></script>
 <script src="js/altitude.js?v=20260819a"></script>
 <script src="js/offer.js?v=20260819a"></script>
 <script src="js/footer.js?v=20260819a"></script>
-<script src="js/form.js?v=20260819a"></script>
 </body>
 </html>
