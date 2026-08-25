@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototipo — superficie della card</title>
+<meta name="robots" content="noindex, nofollow">
+<!-- BANCO DI PROVA, NON UNA PAGINA DEL SITO.
+     Serve a tarare UNA cosa sola: il materiale della card della costellazione.
+     Un pannello di vetro sospeso nella nebbia che (a) rifrange il mondo dietro,
+     (b) ha un video dentro, e (c) decide quanto pesa l'uno e quanto l'altro in
+     base all'angolo di vista — Fresnel. Di faccia il portale si apre e ci si
+     entra, di taglio si richiude e torna a mostrare il mondo di qua.
+     Dietro alla card ci sono il NUCLEO VUOTO e una seconda card: sono lì
+     apposta, perché la trasparenza si giudica solo quando ha qualcosa da
+     mostrare dietro. Se le card non si sovrappongono mai, la rifrazione è
+     lavoro pagato per niente. -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;overflow:hidden}
+  canvas{display:block;width:100%;height:100%}
+  #stage{position:fixed;inset:0}
+
+  #panel{
+    position:fixed;top:16px;right:16px;width:288px;max-height:calc(100vh - 32px);
+    overflow-y:auto;background:rgba(8,10,16,.86);backdrop-filter:blur(14px);
+    border:1px solid rgba(223,228,238,.14);padding:14px 16px;font-size:11px;z-index:10;
+  }
+  #panel h1{font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:#3ad8ff;font-weight:400;margin-bottom:12px}
+  .row{margin-bottom:11px}
+  .row label{display:flex;justify-content:space-between;gap:8px;
+    letter-spacing:.06em;color:rgba(223,228,238,.72);margin-bottom:4px}
+  .row label b{color:#dfe4ee;font-weight:400;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:#3ad8ff;height:16px}
+  .hint{color:rgba(223,228,238,.4);font-size:10px;line-height:1.45;margin:-4px 0 12px}
+  .sep{height:1px;background:rgba(223,228,238,.12);margin:14px 0}
+  .btns{display:flex;gap:6px;flex-wrap:wrap}
+  button{
+    flex:1;min-width:78px;background:transparent;color:#dfe4ee;cursor:pointer;
+    border:1px solid rgba(223,228,238,.22);padding:7px 6px;font:inherit;font-size:10px;
+    letter-spacing:.1em;text-transform:uppercase;
+  }
+  button:hover{border-color:#3ad8ff;color:#3ad8ff}
+  button.on{border-color:#3ad8ff;color:#3ad8ff}
+  button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+  #dump{
+    width:100%;height:76px;margin-top:8px;background:#04050a;color:rgba(223,228,238,.6);
+    border:1px solid rgba(223,228,238,.14);font:inherit;font-size:10px;padding:6px;resize:none;
+  }
+  #help{
+    position:fixed;left:16px;bottom:16px;font-size:10.5px;letter-spacing:.06em;
+    color:rgba(223,228,238,.42);line-height:1.6;z-index:10;max-width:44ch;
+  }
+  #help b{color:rgba(223,228,238,.72);font-weight:400}
+  #err{position:fixed;inset:0;display:none;place-items:center;padding:32px;
+    text-align:center;color:#ff6b6b;font-size:13px;line-height:1.7;z-index:20}
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="c"></canvas></div>
+
+<div id="panel">
+  <h1>Superficie della card</h1>
+
+  <div class="row"><label>Fresnel — potenza <b id="vFres">3.2</b></label>
+    <input type="range" id="fres" min="0.4" max="8" step="0.05" value="3.2"></div>
+  <p class="hint">Quanto in fretta il portale si chiude girandolo di taglio. Basso = sempre aperto, alto = si apre solo quando lo guardi in faccia.</p>
+
+  <div class="row"><label>Apertura del portale <b id="vOpen">0.86</b></label>
+    <input type="range" id="open" min="0" max="1" step="0.01" value="0.86"></div>
+  <div class="row"><label>Spessore — rifrazione <b id="vThick">0.055</b></label>
+    <input type="range" id="thick" min="0" max="0.16" step="0.002" value="0.055"></div>
+  <div class="row"><label>Dispersione <b id="vDisp">0.28</b></label>
+    <input type="range" id="disp" min="0" max="0.8" step="0.01" value="0.28"></div>
+  <div class="row"><label>Smusso del bordo <b id="vBev">0.16</b></label>
+    <input type="range" id="bev" min="0.01" max="0.5" step="0.005" value="0.16"></div>
+  <div class="row"><label>Luce del bordo <b id="vRim">0.9</b></label>
+    <input type="range" id="rim" min="0" max="2.5" step="0.02" value="0.9"></div>
+  <div class="row"><label>Guadagno del video <b id="vGain">1.15</b></label>
+    <input type="range" id="gain" min="0.2" max="2.2" step="0.01" value="1.15"></div>
+  <div class="row"><label>Parallasse interna <b id="vPar">0.06</b></label>
+    <input type="range" id="par" min="0" max="0.2" step="0.005" value="0.06"></div>
+  <div class="row"><label>Smerigliatura <b id="vFrost">0.55</b></label>
+    <input type="range" id="frost" min="0" max="2" step="0.05" value="0.55"></div>
+  <p class="hint">Quanto il contenuto è visto attraverso vetro smerigliato. Cresce da sé verso il bordo: al centro resta più leggibile.</p>
+
+  <div class="row"><label>Sfocatura del fondo <b id="vBlur">1.00</b></label>
+    <input type="range" id="blur" min="0" max="3" step="0.05" value="1"></div>
+  <p class="hint">Quanto è nuvoloso ciò che filtra da dietro. A zero si riconoscono le forme dietro al vetro e sembrano poligoni; alzandola diventano aloni.</p>
+
+  <p class="hint">La parallasse sposta il video contro la vista: è quello che fa sembrare che il mondo stia <em>dietro</em> al vetro e non stampato sopra.</p>
+
+  <div class="sep"></div>
+  <p class="hint" style="margin-bottom:6px">Tre punti di partenza, per sentire subito l'escursione:</p>
+  <div class="btns">
+    <button data-preset="vetro">Vetro</button>
+    <button data-preset="portale" class="on">Portale</button>
+    <button data-preset="schermo">Schermo</button>
+  </div>
+
+  <div class="sep"></div>
+  <div class="btns">
+    <button id="bAuto" class="on">Rotazione auto</button>
+    <button id="bVid">Cambia video</button>
+    <button id="bRef">Solo rifrazione</button>
+    <button id="bReset">Reset</button>
+  </div>
+  <textarea id="dump" readonly aria-label="Valori correnti"></textarea>
+</div>
+
+<div id="help">
+  <b>Muovi il mouse</b> per girare la card — guarda cosa succede al portale quando passa di taglio.<br>
+  Dietro ci sono il <b>nucleo vuoto</b> e una <b>seconda card</b>: servono a giudicare la trasparenza.
+</div>
+
+<div id="err"></div>
+
+<script src="../vendor/three.min.js?v=20260824a"></script>
+<script>
+(function(){
+  var errBox = document.getElementById('err');
+  function die(msg){ errBox.style.display='grid'; errBox.textContent = msg; }
+  if (typeof THREE === 'undefined') { die('three.js non caricato. Apri questa pagina da un server (es. http://localhost:8788/atelier/lab/card.html), non con doppio clic dal Finder.'); return; }
+
+  var canvas = document.getElementById('c');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x04050a, 1);
+
+  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  camera.position.set(0, 0, 4.2);
+
+  /* ======================================================================
+     1. IL MONDO DIETRO — quello che la card dovrà rifrangere.
+     Sta in una scena sua perché viene reso PRIMA, dentro a un render target:
+     la card poi legge quella texture. È lo stesso giro che fa già il capitolo
+     del disco volante, solo con un passaggio in meno.
+     ====================================================================== */
+  var bg = new THREE.Scene();
+
+  // La nebbia: un quad a tutto schermo con gradiente freddo e vignettatura.
+  var fog = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    new THREE.ShaderMaterial({
+      depthTest: false, depthWrite: false,
+      uniforms: { uTime: { value: 0 }, uAspect: { value: 1 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }',
+      fragmentShader: [
+        'varying vec2 vUv; uniform float uTime; uniform float uAspect;',
+        // rumore povero: basta a togliere le bande dal quasi-nero
+        'float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'void main(){',
+        '  vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);',
+        '  float d = length(p);',
+        '  vec3 base = mix(vec3(0.055,0.052,0.085), vec3(0.012,0.013,0.024), smoothstep(0.0, 0.95, d));',
+        '  base += vec3(0.02,0.012,0.05) * (1.0 - smoothstep(0.0, 0.55, d));',
+        '  base += (h(gl_FragCoord.xy + uTime) - 0.5) * 0.012;',   // dither
+        '  gl_FragColor = vec4(base, 1.0);',
+        '}'
+      ].join('\n')
+    })
+  );
+  fog.frustumCulled = false;
+  bg.add(fog);
+
+  // Il pulviscolo: quello che resta del tunnel dopo che si è fermato.
+  var DUST = 900, dpos = new Float32Array(DUST * 3), dseed = new Float32Array(DUST);
+  for (var i = 0; i < DUST; i++){
+    dpos[i*3]   = (Math.random() - 0.5) * 12;
+    dpos[i*3+1] = (Math.random() - 0.5) * 7;
+    dpos[i*3+2] = (Math.random() - 0.5) * 6 - 1.5;
+    dseed[i] = Math.random() * 6.283;
+  }
+  var dgeo = new THREE.BufferGeometry();
+  dgeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3));
+  dgeo.setAttribute('aSeed', new THREE.BufferAttribute(dseed, 1));
+  var dust = new THREE.Points(dgeo, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uPr: { value: renderer.getPixelRatio() } },
+    vertexShader: [
+      'attribute float aSeed; uniform float uTime; uniform float uPr; varying float vA;',
+      'void main(){',
+      '  vec3 p = position;',
+      '  p.x += sin(uTime * 0.11 + aSeed) * 0.22;',
+      '  p.y += cos(uTime * 0.09 + aSeed * 1.7) * 0.18;',
+      '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+      '  vA = 0.20 + 0.55 * (0.5 + 0.5 * sin(uTime * 0.5 + aSeed * 3.1));',
+      '  gl_PointSize = (1.6 + 1.5 * fract(aSeed)) * uPr * (3.2 / -mv.z);',
+      '  gl_Position = projectionMatrix * mv;',
+      '}'
+    ].join('\n'),
+    fragmentShader: [
+      'varying float vA;',
+      'void main(){',
+      '  float d = length(gl_PointCoord - 0.5);',
+      '  if (d > 0.5) discard;',
+      '  float a = vA * (1.0 - smoothstep(0.18, 0.5, d));',
+      '  gl_FragColor = vec4(vec3(0.62, 0.78, 0.95), a);',
+      '}'
+    ].join('\n')
+  }));
+  bg.add(dust);
+
+  /* Il NUCLEO: il contorno vuoto, dietro alla card. Deve restare visibile
+     ATTRAVERSO il vetro — è il motivo per cui questo materiale val la pena. */
+  function outline(w, h, z, color, op){
+    var hw = w/2, hh = h/2;
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      -hw,-hh,0,  hw,-hh,0,   hw,-hh,0,  hw,hh,0,
+       hw, hh,0, -hw, hh,0,  -hw, hh,0, -hw,-hh,0
+    ]), 3));
+    var l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      color: color, transparent: true, opacity: op
+    }));
+    l.position.z = z;
+    return l;
+  }
+  /* Grande abbastanza da sporgere da dietro la card, così lo si vede sia di
+     fianco sia — deformato — attraverso il vetro. Se sta tutto nascosto dietro,
+     la dimostrazione non dimostra niente. */
+  var nucleo = outline(1.9, 1.18, -1.15, 0xdfe4ee, 0.8);
+  nucleo.position.x = -0.28; nucleo.position.y = -0.1;
+  bg.add(nucleo);
+
+  // Il pulviscolo rimasto senza destinazione, che gira attorno al vuoto.
+  var ORB = 90, opos = new Float32Array(ORB * 3), oseed = new Float32Array(ORB);
+  for (var j = 0; j < ORB; j++){
+    var a = Math.random() * 6.283, r = 1.15 + Math.random() * 0.55;
+    opos[j*3] = -0.28 + Math.cos(a) * r;
+    opos[j*3+1] = -0.1 + Math.sin(a) * r * 0.62;
+    opos[j*3+2] = -1.15 + (Math.random() - 0.5) * 0.3;
+    oseed[j] = Math.random() * 6.283;
+  }
+  var ogeo = new THREE.BufferGeometry();
+  ogeo.setAttribute('position', new THREE.BufferAttribute(opos, 3));
+  ogeo.setAttribute('aSeed', new THREE.BufferAttribute(oseed, 1));
+  var orb = new THREE.Points(ogeo, dust.material.clone());
+  bg.add(orb);
+
+  /* La seconda card, dietro e di lato: serve la sovrapposizione, se no la
+     trasparenza non ha niente da mostrare. Era una lastra piatta con il bordo
+     netto, e attraverso il vetro quel bordo tagliava un cuneo che sembrava un
+     errore di render invece che profondità. Adesso ha lo stesso rettangolo
+     arrotondato della card e i bordi sfumano: legge come un altro portale
+     lontano, non come un poligono. */
+  var ghost = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 0.94),
+    new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uAsp: { value: 1.5 / 0.94 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: [
+        'varying vec2 vUv; uniform float uAsp;',
+        'float sdBox(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r;',
+        '  return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r; }',
+        'void main(){',
+        '  vec2 p = (vUv - 0.5) * 2.0; p.x *= uAsp;',
+        '  float sd = sdBox(p, vec2(uAsp, 1.0) - 0.02, 0.16);',
+        '  if (sd > 0.0) discard;',
+        '  float fill = 1.0 - smoothstep(-0.5, -0.02, sd);',      // interno tenue
+        '  float edge = smoothstep(0.05, 0.0, -sd);',             // filo di bordo
+        '  vec3 col = mix(vec3(0.055,0.10,0.15), vec3(0.16,0.42,0.55), edge);',
+        '  gl_FragColor = vec4(col, 0.42 * (0.35 + 0.65 * fill) + edge * 0.45);',
+        '}'
+      ].join('\n')
+    })
+  );
+  ghost.position.set(1.28, 0.36, -0.9);
+  ghost.rotation.y = -0.42;
+  bg.add(ghost);
+
+  /* ======================================================================
+     2. IL VIDEO — il mondo di là. Sono i video che il sito ha già.
+     ====================================================================== */
+  /* Il `.webm` in coda non è un doppione per sbaglio: i Chromium senza codec
+     proprietari (headless, qualche build Linux) non decodificano l'H.264 e la
+     texture resterebbe nera. Con questo il banco di prova ha sempre almeno un
+     video che parte, ovunque lo si apra. */
+  var SRC = ['../assets/starry.mp4', '../assets/glass.mp4', '../assets/sneaker.mp4', '../assets/sneaker.webm'];
+  var vi = 0;
+  var video = document.createElement('video');
+  video.muted = true; video.loop = true; video.playsInline = true;
+  video.setAttribute('playsinline', ''); video.preload = 'auto'; video.crossOrigin = 'anonymous';
+  /* Il video sta NEL documento, non staccato: un elemento fuori dal DOM in
+     certi browser (Safari in testa) non decodifica, e la texture resta nera.
+     Invisibile ma non `display:none`, che avrebbe lo stesso effetto. */
+  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(video);
+  video.src = SRC[vi];
+  video.play().catch(function(){ /* parte al primo gesto, sotto */ });
+  var vtex = new THREE.VideoTexture(video);
+  vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
+  vtex.format = THREE.RGBFormat; vtex.encoding = THREE.sRGBEncoding;
+
+  /* ======================================================================
+     3. LA CARD — il pezzo che conta.
+
+     Il vetro è un piano, ma non deve SEMBRARE un piano: la normale viene
+     piegata verso fuori vicino ai bordi, ricavandola dal gradiente di un
+     rettangolo arrotondato in distanza con segno. È quello smusso che fa
+     spanciare il fondo lungo il perimetro, ed è tutta la differenza fra
+     «lastra di vetro» e «rettangolo semitrasparente».
+
+     La rifrazione è in spazio schermo: si campiona la texture del mondo dietro
+     spostata dalla normale. I tre canali a distanze diverse danno la frangia
+     prismatica — è lo stesso conto del capitolo `altitude`, dove il fluido
+     piega il video.
+     ====================================================================== */
+  var uni = {
+    tScene:  { value: null },
+    tVideo:  { value: vtex },
+    uRes:    { value: new THREE.Vector2(1, 1) },
+    uFres:   { value: 3.2 },
+    uOpen:   { value: 0.86 },
+    uThick:  { value: 0.055 },
+    uDisp:   { value: 0.28 },
+    uBev:    { value: 0.16 },
+    uRim:    { value: 0.9 },
+    uGain:   { value: 1.15 },
+    uPar:    { value: 0.06 },
+    uBlur:   { value: 1.0 },
+    uFrost:  { value: 0.55 },
+    uVidAsp: { value: 16/9 },
+    uCardAsp:{ value: 1.5/0.94 },
+    uOnlyRefr:{ value: 0 }
+  };
+
+  var card = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 0.94, 1, 1),
+    new THREE.ShaderMaterial({
+      uniforms: uni, transparent: true, depthWrite: false,
+      vertexShader: [
+        'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+        'void main(){',
+        '  vUv = uv;',
+        '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        '  vView = -mv.xyz;',
+        // base ortonormale del piano in spazio vista: serve per portarci dentro
+        // la normale piegata dallo smusso
+        '  vec3 T = normalize((modelViewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);',
+        '  vec3 B = normalize((modelViewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);',
+        '  vec3 N = normalize((modelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz);',
+        '  vTBN = mat3(T, B, N);',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+        'uniform sampler2D tScene, tVideo;',
+        'uniform vec2 uRes;',
+        'uniform float uFres, uOpen, uThick, uDisp, uBev, uRim, uGain, uPar, uBlur, uFrost;',
+        'uniform float uVidAsp, uCardAsp, uOnlyRefr;',
+
+        // rettangolo arrotondato, in distanza con segno
+        'float sdBox(vec2 p, vec2 b, float r){',
+        '  vec2 q = abs(p) - b + r;',
+        '  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;',
+        '}',
+
+        /* Smerigliatura del contenuto. Nella referenza il video dietro al vetro
+           non e' mai a fuoco: si legge come vetro smerigliato, non come vetro
+           pulito. Qui pero' dentro alla card ci finisce la landing di un
+           settore, che deve restare leggibile — quindi la frostatura e' LEGGERA
+           AL CENTRO e cresce verso il bordo, dove il vetro e' piu' spesso.
+           E' lo stesso anello di nove prelievi del fondo, sull'altra texture:
+           i sampler non si passano alle funzioni in modo affidabile su tutti i
+           driver in GLSL ES 1.00, quindi la funzione e' gemella invece che
+           condivisa. */
+        'vec3 blurVid(vec2 uv, float r){',
+        '  if (r <= 0.0) return texture2D(tVideo, uv).rgb;',
+        '  vec3 s = texture2D(tVideo, uv).rgb * 0.28;',
+        '  float d = r * 0.70710678;',
+        '  s += texture2D(tVideo, uv + vec2( r, 0.0)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2(-r, 0.0)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2(0.0,  r)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2(0.0, -r)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2( d,  d)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2( d, -d)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2(-d,  d)).rgb * 0.09;',
+        '  s += texture2D(tVideo, uv + vec2(-d, -d)).rgb * 0.09;',
+        '  return s;',
+        '}',
+
+        // anello di nove prelievi: scioglie le rette del fondo in un alone
+        'vec3 blur9(vec2 uv, float r){',
+        '  if (r <= 0.0) return texture2D(tScene, uv).rgb;',
+        '  vec3 s = texture2D(tScene, uv).rgb * 0.28;',
+        '  float d = r * 0.70710678;',
+        '  s += texture2D(tScene, uv + vec2( r, 0.0)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2(-r, 0.0)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2(0.0,  r)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2(0.0, -r)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2( d,  d)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2( d, -d)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2(-d,  d)).rgb * 0.09;',
+        '  s += texture2D(tScene, uv + vec2(-d, -d)).rgb * 0.09;',
+        '  return s;',
+        '}',
+
+        'void main(){',
+        '  vec2 p = (vUv - 0.5) * 2.0;',
+        '  p.x *= uCardAsp;',                       // in unità reali, se no lo smusso è ovale
+        '  vec2 b = vec2(uCardAsp, 1.0) - 0.012;',
+        '  float rad = 0.14;',
+        '  float sd = sdBox(p, b, rad);',
+        '  if (sd > 0.0) discard;',                 // fuori dalla card non si disegna niente
+
+        /* LA NORMALE DELLO SMUSSO NON VIENE DAL GRADIENTE DELLA DISTANZA.
+           Era la prima cosa che avevo provato ed è sbagliata: dentro a un
+           rettangolo quel gradiente punta verso il LATO più vicino, quindi è
+           costante a settori e cambia di scatto lungo le diagonali. Il risultato
+           erano quattro facce piatte che si incontravano al centro — il retro di
+           una busta da lettere — e ruotando la card si accendevano una alla
+           volta. Si vedeva anche a scena vuota, senza video e senza niente
+           dietro: era tutto qui.
+           Qui il profilo è costruito UN ASSE PER VOLTA, con due smoothstep
+           indipendenti che salgono solo nell'ultimo tratto verso il bordo.
+           È continuo ovunque, e negli angoli i due si sommano da soli dando la
+           piega diagonale giusta senza che nessuno la disegni. */
+        '  vec2 tEdge = clamp((abs(p) - (b - uBev)) / max(uBev, 1e-4), 0.0, 1.0);',
+        '  tEdge = tEdge * tEdge * (3.0 - 2.0 * tEdge);',
+        '  vec2 tilt = sign(p) * tEdge;',
+        '  float bend = clamp(max(abs(tilt.x), abs(tilt.y)), 0.0, 1.0);',
+        '  vec3 nLocal = normalize(vec3(tilt * 1.35, 1.0 - bend * 0.30));',
+        '  vec3 N = normalize(vTBN * nLocal);',
+        '  vec3 V = normalize(vView);',
+
+        /* Rifrazione in spazio schermo — con due correzioni, e sono la stessa
+           correzione vista da due lati.
+
+           1. LO SPOSTAMENTO VIVE SUL BORDO, NON AL CENTRO. Prima l'interno
+              piatto rifrangeva quanto il bordo: essendo la normale costante su
+              tutta la faccia, lo spostamento era costante, e ruotando la card
+              trascinava dentro al vetro i bordi DRITTI del nucleo e della
+              seconda card. Sembravano le pieghe di una busta. Una lastra a
+              facce parallele, nella realtà, sposta pochissimo: è lo smusso che
+              rifrange. Qui l'interno tiene un 10% — quel tanto che basta a non
+              perdere del tutto la frangia prismatica sul nucleo, che è la cosa
+              più bella che fa questo materiale.
+           2. QUELLO CHE FILTRA DA DIETRO È SFOCATO. Nella referenza di Active
+              Theory dietro al vetro non si riconosce mai una forma: è una
+              nuvola. Una rete di nove prelievi basta a sciogliere una retta in
+              un alone, ed è quello che toglie l'aria di «poligono visto in
+              trasparenza». (Se con sei card in scena pesasse, si scende a
+              cinque prelievi: la differenza si vede appena.) */
+        '  vec2 suv = gl_FragCoord.xy / uRes;',
+        '  float rMask = mix(0.10, 1.0, bend);',
+        '  vec2 off = N.xy * uThick * rMask;',
+        '  float br = uBlur * 0.009;',
+        '  vec3 sR = blur9(suv + off * (1.0 + uDisp), br);',
+        '  vec3 sG = blur9(suv + off, br);',
+        '  vec3 sB = blur9(suv + off * (1.0 - uDisp), br);',
+        '  vec3 refr = vec3(sR.r, sG.g, sB.b);',
+
+        // il mondo di là: il video, con parallasse contro la vista
+        '  vec2 vuv = vUv;',
+        '  float k = uCardAsp / uVidAsp;',                        // cover, non stiracchiato
+        '  if (k < 1.0) { vuv.y = (vuv.y - 0.5) * k + 0.5; } else { vuv.x = (vuv.x - 0.5) / k + 0.5; }',
+        '  vuv -= (vTBN[2].xy * 0.0 + vec2(V.x, V.y)) * uPar;',
+        '  float frost = uFrost * (0.18 + 0.82 * bend) * 0.020;',
+        '  vec3 inside = blurVid(clamp(vuv, 0.004, 0.996), frost) * uGain;',
+
+        // Fresnel: di faccia il portale è aperto, di taglio si richiude
+        '  float f = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), uFres);',
+        '  float open = clamp((1.0 - f) * uOpen, 0.0, 1.0);',
+        '  open *= mix(1.0, 0.0, uOnlyRefr);',
+        '  vec3 col = mix(refr, inside, open);',
+
+        // filo di luce sul perimetro, e un soffio in più dove è di taglio
+        '  float rim = smoothstep(0.055, 0.0, -sd);',
+        '  col += vec3(0.42, 0.78, 0.95) * rim * uRim * (0.35 + 0.65 * f);',
+        '  col += vec3(0.10, 0.16, 0.24) * f * 0.5;',
+
+        '  float a = 1.0 - smoothstep(-0.006, 0.0, sd);',
+        '  gl_FragColor = vec4(col, a);',
+        '}'
+      ].join('\n')
+    })
+  );
+  var scene = new THREE.Scene();
+  scene.add(card);
+
+  /* ======================================================================
+     4. RENDER TARGET, GIRO E CONTROLLI
+     ====================================================================== */
+  var rt = new THREE.WebGLRenderTarget(2, 2, {
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    format: THREE.RGBAFormat, stencilBuffer: false, depthBuffer: true
+  });
+  uni.tScene.value = rt.texture;
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    rt.setSize(Math.round(w * pr), Math.round(h * pr));
+    uni.uRes.value.set(Math.round(w * pr), Math.round(h * pr));
+    fog.material.uniforms.uAspect.value = w / h;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var mx = 0, my = 0, tmx = 0, tmy = 0, auto = true;
+  window.addEventListener('pointermove', function(e){
+    tmx = (e.clientX / window.innerWidth) * 2 - 1;
+    tmy = (e.clientY / window.innerHeight) * 2 - 1;
+  }, { passive: true });
+
+  // l'autoplay muto di solito passa; se il browser lo blocca, riparte al primo tocco
+  ['pointerdown','keydown'].forEach(function(ev){
+    window.addEventListener(ev, function(){ video.play().catch(function(){}); }, { once: true });
+  });
+
+  var t0 = performance.now();
+  function frame(){
+    requestAnimationFrame(frame);
+    var t = (performance.now() - t0) / 1000;
+
+    mx += (tmx - mx) * 0.06;
+    my += (tmy - my) * 0.06;
+
+    /* Ampiezza generosa di proposito: sotto i ~60° il Fresnel non arriva mai a
+       chiudere il portale e non si vede la cosa che questo banco deve mostrare. */
+    card.rotation.y = mx * 1.15 + (auto ? Math.sin(t * 0.33) * 0.85 : 0);
+    card.rotation.x = -my * 0.55 + (auto ? Math.sin(t * 0.21) * 0.16 : 0);
+    card.position.x = mx * 0.12;
+    card.position.y = -my * 0.08;
+
+    fog.material.uniforms.uTime.value = t;
+    dust.material.uniforms.uTime.value = t;
+    orb.material.uniforms.uTime.value = t;
+    nucleo.rotation.z = Math.sin(t * 0.12) * 0.02;
+
+    if (video.videoWidth) uni.uVidAsp.value = video.videoWidth / video.videoHeight;
+
+    renderer.setRenderTarget(rt);
+    renderer.clear();
+    renderer.render(bg, camera);
+    renderer.setRenderTarget(null);
+    renderer.clear();
+    renderer.render(bg, camera);      // il fondo si vede anche fuori dalla card
+    renderer.render(scene, camera);   // e la card ci va sopra
+  }
+  requestAnimationFrame(frame);
+  renderer.autoClear = false;
+
+  // Gancio di servizio: serve a isolare da fuori chi disegna cosa, senza
+  // rimettere mano al file ogni volta.
+  window.__lab = { uni: uni, bg: bg, card: card, ghost: ghost, nucleo: nucleo, orb: orb, fog: fog, dust: dust };
+
+  // --- pannello ---
+  var MAP = [
+    ['fres','uFres','vFres',2], ['open','uOpen','vOpen',2], ['thick','uThick','vThick',3],
+    ['disp','uDisp','vDisp',2], ['bev','uBev','vBev',3], ['rim','uRim','vRim',2],
+    ['gain','uGain','vGain',2], ['par','uPar','vPar',3], ['blur','uBlur','vBlur',2], ['frost','uFrost','vFrost',2]
+  ];
+  var dump = document.getElementById('dump');
+  function sync(){
+    var o = {};
+    MAP.forEach(function(m){
+      var el = document.getElementById(m[0]);
+      uni[m[1]].value = parseFloat(el.value);
+      document.getElementById(m[2]).textContent = parseFloat(el.value).toFixed(m[3]);
+      o[m[1]] = parseFloat(el.value);
+    });
+    dump.value = JSON.stringify(o);
+  }
+  MAP.forEach(function(m){ document.getElementById(m[0]).addEventListener('input', sync); });
+  sync();
+
+  var bAuto = document.getElementById('bAuto');
+  bAuto.addEventListener('click', function(){ auto = !auto; bAuto.classList.toggle('on', auto); });
+
+  document.getElementById('bVid').addEventListener('click', function(){
+    vi = (vi + 1) % SRC.length; video.src = SRC[vi]; video.play().catch(function(){});
+  });
+
+  var bRef = document.getElementById('bRef');
+  bRef.addEventListener('click', function(){
+    uni.uOnlyRefr.value = uni.uOnlyRefr.value > 0.5 ? 0 : 1;
+    bRef.classList.toggle('on', uni.uOnlyRefr.value > 0.5);
+  });
+
+  /* I tre punti di partenza. Non sono gusti: sono i tre regimi in cui questo
+     materiale può stare, e servono a capire in fretta dove si vuole finire.
+     `vetro` = si vede quasi solo il mondo dietro, il video si intravede.
+     `portale` = si apre di faccia e si richiude di taglio: quello che cerchiamo.
+     `schermo` = sempre aperto — è il rischio, la card torna un rettangolo con
+     un video sopra e la trasparenza non serve più a niente. */
+  var PRESET = {
+    vetro:   { fres:1.8, open:0.42, thick:0.085, disp:0.40, bev:0.24, rim:1.30, gain:1.00, par:0.090, blur:1.35, frost:0.95 },
+    /* ⭐ TARATURA APPROVATA — 24/08/2026, decisa a schermo da Alex.
+       Questi sono i numeri definitivi della superficie delle card della
+       costellazione: si copiano di qui, non si ritarano a occhio.
+       `thick` è 0.056 e non 0.055 perché il cursore ha passo 0.002 da zero:
+       0.055 non è raggiungibile, l'input lo agganciava e `Reset` restituiva
+       un valore diverso da quello scelto. */
+    portale: { fres:3.2, open:0.75, thick:0.056, disp:0.28, bev:0.16, rim:0.86, gain:1.15, par:0.060, blur:1.00, frost:0.55 },
+    schermo: { fres:5.5, open:0.98, thick:0.020, disp:0.10, bev:0.08, rim:0.40, gain:1.30, par:0.020, blur:0.55, frost:0.15 }
+  };
+  function apply(name){
+    var P = PRESET[name]; if (!P) return;
+    Object.keys(P).forEach(function(k){ document.getElementById(k).value = P[k]; });
+    sync();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(el){
+      el.classList.toggle('on', el.getAttribute('data-preset') === name);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(el){
+    el.addEventListener('click', function(){ apply(el.getAttribute('data-preset')); });
+  });
+  document.getElementById('bReset').addEventListener('click', function(){ apply('portale'); });
+  apply('portale');
+})();
+</script>
+</body>
+</html>

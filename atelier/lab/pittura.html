@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banco — dipingere il dopo</title>
+<meta name="robots" content="noindex, nofollow">
+<!-- BANCO DI PROVA — LA PITTURA DEL "DOPO".
+     Non è il faro di `lithos`. Là il puntatore scopre e, passando oltre,
+     rimette tutto com'era: chi guarda non lascia traccia. Qui la maschera si
+     può solo AGGIUNGERE — ogni passata somma alfa e non ne toglie mai — quindi
+     la casa cambia perché l'ha cambiata chi sta guardando, e resta cambiata.
+     È lo stesso mestiere che il mondo racconta: una ristrutturazione non si
+     annulla.
+
+     Il meccanismo è due tele:
+       `mask`  — nera, ci si timbrano cerchi sfumati in `lighter` (additivo);
+       `out`   — ci si disegna il DOPO e poi la si ritaglia con `destination-in`
+                 usando la maschera. Sotto, in DOM, sta il PRIMA.
+     Due operazioni per fotogramma, e solo quando qualcosa è cambiato. -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#06070c;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
+    display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden}
+
+  .pit{position:relative;width:min(1180px,100%);aspect-ratio:16/9;overflow:hidden;
+    border-radius:2px;cursor:none;touch-action:none;background:#0a0b10}
+  .pit-prima,.pit-out{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .pit-prima{object-fit:cover}
+  .pit-out{z-index:1}
+  /* il velo tiene leggibile la copy sopra a due fotografie diurne */
+  .pit::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,rgba(6,7,12,.72) 0%,rgba(6,7,12,.22) 34%,
+      rgba(6,7,12,0) 58%,rgba(6,7,12,.34) 100%)}
+  .pit-copy{position:absolute;z-index:3;left:clamp(18px,3vw,40px);top:clamp(16px,3vw,34px);
+    max-width:40ch;pointer-events:none}
+  .pit-copy .k{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7fe3c0}
+  .pit-copy h2{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
+    font-size:clamp(20px,2.6vw,34px);line-height:1.1;letter-spacing:-.01em;margin:.5rem 0 .5rem}
+  .pit-copy p{font-size:12.5px;line-height:1.6;color:rgba(223,228,238,.7);max-width:34ch}
+
+  /* il pennello segue il puntatore: senza, non si capisce di star dipingendo */
+  .pit-brush{position:absolute;z-index:4;border-radius:50%;pointer-events:none;
+    border:1px solid rgba(255,255,255,.5);transform:translate(-50%,-50%);
+    box-shadow:0 0 0 1px rgba(0,0,0,.25) inset;opacity:0;transition:opacity .25s ease}
+  .pit.-hot .pit-brush{opacity:1}
+
+  .pit-quanto{position:absolute;z-index:3;right:clamp(16px,3vw,34px);bottom:clamp(14px,3vw,30px);
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(223,228,238,.62);
+    pointer-events:none;font-variant-numeric:tabular-nums}
+  .pit-quanto b{color:#7fe3c0;font-weight:400}
+
+  #pannello{position:fixed;top:14px;right:14px;width:250px;background:rgba(8,10,16,.88);
+    backdrop-filter:blur(14px);border:1px solid rgba(223,228,238,.14);padding:13px 15px;
+    font-size:11px;z-index:20}
+  #pannello h1{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#7fe3c0;
+    font-weight:400;margin-bottom:11px}
+  .row{margin-bottom:10px}
+  .row label{display:flex;justify-content:space-between;gap:8px;color:rgba(223,228,238,.72);margin-bottom:3px}
+  .row label b{color:#dfe4ee;font-weight:400;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:#7fe3c0;height:15px}
+  .hint{color:rgba(223,228,238,.42);font-size:10px;line-height:1.45;margin:-2px 0 10px}
+  button{width:100%;background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.22);
+    padding:7px;font:inherit;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  button:hover{border-color:#7fe3c0;color:#7fe3c0}
+  button:focus-visible{outline:2px solid #7fe3c0;outline-offset:2px}
+  #valori{width:100%;height:44px;margin-top:7px;background:#06070c;color:rgba(223,228,238,.6);
+    border:1px solid rgba(223,228,238,.14);font:inherit;font-size:10px;padding:5px;resize:none}
+</style>
+</head>
+<body>
+
+<div class="pit" id="pit">
+  <img class="pit-prima" id="prima" alt="La casa prima dell'intervento." />
+  <canvas class="pit-out" id="out"></canvas>
+  <div class="pit-copy">
+    <p class="k">// prima e dopo</p>
+    <h2>Passaci sopra, e la casa cambia.</h2>
+    <p>Quello che scopri resta scoperto. Come un intervento vero: non si torna indietro.</p>
+  </div>
+  <div class="pit-brush" id="brush"></div>
+  <p class="pit-quanto">rifatto <b id="quanto">0%</b></p>
+</div>
+
+<div id="pannello">
+  <h1>Il pennello</h1>
+  <div class="row"><label>Raggio <b id="vR">0.13</b></label>
+    <input type="range" id="r" min="0.04" max="0.30" step="0.005" value="0.13"></div>
+  <div class="row"><label>Morbidezza <b id="vS">0.45</b></label>
+    <input type="range" id="s" min="0.05" max="0.95" step="0.01" value="0.45"></div>
+  <div class="row"><label>Resa per passata <b id="vF">0.30</b></label>
+    <input type="range" id="f" min="0.04" max="1" step="0.01" value="0.30"></div>
+  <p class="hint">Bassa = serve ripassare più volte, e si sente di star dipingendo. Alta = una passata sola copre, e sembra una gomma.</p>
+  <button id="reset">Ricomincia</button>
+  <textarea id="valori" readonly aria-label="Valori correnti"></textarea>
+</div>
+
+<script>
+(function(){
+  var PRIMA = '../costellazione/prima-e-dopo/assets/casa-prima.webp';
+  var DOPO  = '../costellazione/prima-e-dopo/assets/casa-dopo.webp';
+
+  var root  = document.getElementById('pit');
+  var imgP  = document.getElementById('prima');
+  var out   = document.getElementById('out');
+  var brush = document.getElementById('brush');
+  var quanto= document.getElementById('quanto');
+  var ctx   = out.getContext('2d');
+
+  /* La maschera vive in una tela sua: è l'unico posto dove sta la memoria di
+     quello che è stato dipinto. Non viene mai cancellata se non su richiesta. */
+  var mask  = document.createElement('canvas');
+  var mctx  = mask.getContext('2d');
+
+  var P = { r:0.13, s:0.45, f:0.30 };
+  var dopoImg = new Image();
+  var pronto = false, sporco = true, dpr = 1;
+  var lastX = null, lastY = null;
+
+  imgP.src = PRIMA;
+  dopoImg.onload = function(){ pronto = true; sporco = true; };
+  dopoImg.src = DOPO;
+
+  function misura(){
+    var rect = root.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var nw = Math.max(1, Math.round(rect.width * dpr));
+    var nh = Math.max(1, Math.round(rect.height * dpr));
+    if (nw === out.width && nh === out.height) return;
+    /* Ridimensionando NON si perde quello che è già stato dipinto: la vecchia
+       maschera viene riscalata dentro alla nuova. Perderla sarebbe un annulla
+       mascherato da resize. */
+    var vecchia = null;
+    if (mask.width && mask.height){
+      vecchia = document.createElement('canvas');
+      vecchia.width = mask.width; vecchia.height = mask.height;
+      vecchia.getContext('2d').drawImage(mask, 0, 0);
+    }
+    out.width = nw; out.height = nh;
+    mask.width = nw; mask.height = nh;
+    if (vecchia) mctx.drawImage(vecchia, 0, 0, vecchia.width, vecchia.height, 0, 0, nw, nh);
+    sporco = true;
+  }
+
+  // `cover` a mano: la tela deve inquadrare il DOPO esattamente come il CSS
+  // inquadra il PRIMA, se no le due immagini non combaciano più.
+  function cover(iw, ih, cw, ch){
+    var k = Math.max(cw / iw, ch / ih);
+    var w = iw * k, h = ih * k;
+    return [ (cw - w) / 2, (ch - h) / 2, w, h ];
+  }
+
+  function timbra(x, y){
+    var raggio = P.r * Math.min(mask.width, mask.height);
+    var g = mctx.createRadialGradient(x, y, 0, x, y, raggio);
+    g.addColorStop(0, 'rgba(255,255,255,' + P.f + ')');
+    g.addColorStop(P.s, 'rgba(255,255,255,' + (P.f * 0.55) + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    // SOLO ADDITIVO: è questa riga a rendere il gesto irreversibile.
+    mctx.globalCompositeOperation = 'lighter';
+    mctx.fillStyle = g;
+    mctx.beginPath(); mctx.arc(x, y, raggio, 0, 6.2832); mctx.fill();
+    sporco = true;
+  }
+
+  function traccia(x, y){
+    if (lastX === null){ timbra(x, y); lastX = x; lastY = y; return; }
+    /* Fra due eventi di puntatore ci può essere mezzo schermo: senza
+       interpolare, muovendo in fretta si dipinge a pallini invece che a
+       pennellata. Il passo è un quarto del raggio. */
+    var dx = x - lastX, dy = y - lastY;
+    var d = Math.hypot(dx, dy);
+    var passo = Math.max(2, P.r * Math.min(mask.width, mask.height) * 0.25);
+    var n = Math.min(64, Math.ceil(d / passo));
+    for (var i = 1; i <= n; i++) timbra(lastX + dx * i / n, lastY + dy * i / n);
+    lastX = x; lastY = y;
+  }
+
+  function daEvento(e){
+    var rect = root.getBoundingClientRect();
+    return [ (e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr, e.clientX - rect.left, e.clientY - rect.top ];
+  }
+
+  root.addEventListener('pointermove', function(e){
+    var p = daEvento(e);
+    traccia(p[0], p[1]);
+    brush.style.left = p[2] + 'px'; brush.style.top = p[3] + 'px';
+    var lato = P.r * Math.min(root.clientWidth, root.clientHeight) * 2;
+    brush.style.width = lato + 'px'; brush.style.height = lato + 'px';
+  }, { passive: true });
+  root.addEventListener('pointerenter', function(){ root.classList.add('-hot'); });
+  root.addEventListener('pointerleave', function(){ root.classList.remove('-hot'); lastX = null; });
+
+  function disegna(){
+    requestAnimationFrame(disegna);
+    if (!sporco || !pronto) return;
+    sporco = false;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, out.width, out.height);
+    var c = cover(dopoImg.naturalWidth, dopoImg.naturalHeight, out.width, out.height);
+    ctx.drawImage(dopoImg, c[0], c[1], c[2], c[3]);
+    // ritaglia il DOPO con la maschera: resta solo dove è stato dipinto
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  requestAnimationFrame(disegna);
+
+  /* Quanto è stato rifatto. Si misura su una riduzione a 64×36: leggere i
+     pixel della tela intera a ogni fotogramma costerebbe più del disegno. */
+  var mini = document.createElement('canvas'); mini.width = 64; mini.height = 36;
+  var mnc = mini.getContext('2d', { willReadFrequently: true });
+  var pieno = 0;
+  setInterval(function(){
+    if (!mask.width) return;
+    mnc.clearRect(0, 0, 64, 36);
+    mnc.drawImage(mask, 0, 0, 64, 36);
+    var d = mnc.getImageData(0, 0, 64, 36).data, somma = 0;
+    for (var i = 3; i < d.length; i += 4) somma += d[i];
+    var v = Math.round(somma / (64 * 36 * 255) * 100);
+    if (v > pieno){ pieno = v; quanto.textContent = Math.min(100, pieno) + '%'; }
+  }, 400);
+
+  window.addEventListener('resize', misura);
+  misura();
+
+  // --- pannello ---
+  var campi = [['r','r','vR',3],['s','s','vS',2],['f','f','vF',2]];
+  var valori = document.getElementById('valori');
+  function sync(){
+    var o = {};
+    campi.forEach(function(c){
+      var el = document.getElementById(c[0]);
+      P[c[1]] = parseFloat(el.value);
+      document.getElementById(c[2]).textContent = P[c[1]].toFixed(c[3]);
+      o[c[1]] = P[c[1]];
+    });
+    valori.value = JSON.stringify(o);
+  }
+  campi.forEach(function(c){ document.getElementById(c[0]).addEventListener('input', sync); });
+  sync();
+  document.getElementById('reset').addEventListener('click', function(){
+    mctx.globalCompositeOperation = 'source-over';
+    mctx.clearRect(0, 0, mask.width, mask.height);
+    pieno = 0; quanto.textContent = '0%'; sporco = true;
+  });
+
+  window.__pit = { root:root, mask:mask, timbra:timbra, traccia:traccia, dpr:function(){return dpr;} };
+})();
+</script>
+</body>
+</html>
