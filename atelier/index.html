@@ -12,11 +12,11 @@
      partono sempre da `/atelier/`, a qualunque profondita' si entri. -->
 <base href="/atelier/">
 <title>Atelier | Axxell</title>
-<meta name="description" content="Sei mondi costruiti, uno per ogni settore. Al centro manca il tuo.">
+<meta name="description" content="Otto mondi su una giostra, uno per ogni settore. Al centro manca il tuo.">
 <meta name="robots" content="index, follow">
 <link rel="icon" type="image/png" href="/favicon.png">
 <meta property="og:title" content="La costellazione | Axxell">
-<meta property="og:description" content="Sei mondi costruiti, uno per ogni settore. Al centro manca il tuo.">
+<meta property="og:description" content="Otto mondi su una giostra, uno per ogni settore. Al centro manca il tuo.">
 <meta property="og:url" content="https://axxell.ai/atelier">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -24,7 +24,11 @@
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%}
   body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
-    overflow:hidden;-webkit-font-smoothing:antialiased}
+    overflow:hidden;-webkit-font-smoothing:antialiased;
+    /* Lo scorrimento e' DIROTTATO sulla rotazione dell'anello: la pagina non
+       scorre, gira. Senza questi due il telefono si prende il gesto per se'
+       (trascinamento elastico, tira-per-ricaricare) e la giostra non si muove. */
+    touch-action:none;overscroll-behavior:none}
   canvas{display:block;width:100%;height:100%}
   #stage{position:fixed;inset:0}
 
@@ -81,10 +85,37 @@
     text-shadow:0 1px 14px rgba(4,5,10,.95);transition:color .3s ease}
   .lb.-hot b{color:var(--hot,#3ad8ff);letter-spacing:.46em;margin-right:-.46em}
   .lb.-hot span{color:rgba(223,228,238,.78)}
+  /* LA SCRITTA DEL VUOTO. E' l'unico elemento della scena senza colore, e la
+     sua scritta deve dirlo: piu' piccola, piu' spenta, in corsivo di peso e
+     non di forma. Si accende soltanto quando ci passi sopra — e allora e' un
+     invito, non un bottone. */
+  .lb.-void b{font-size:15px;color:rgba(240,240,246,.50)}
+  .lb.-void span{color:rgba(223,228,238,.34)}
+  .lb.-void.-hot b{color:#3ad8ff}
+  @media (max-width:760px){ .lb.-void b{font-size:10.5px} }
 
-  #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:6;
+  #hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
     font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
     color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
+
+  /* I FERMI DELLA GIOSTRA. Otto trattini: dicono in un colpo d'occhio quanti
+     mondi ci sono e a che punto del giro si e'. Ognuno si accende del colore
+     del proprio mondo, cosi' l'indicatore non e' un elemento in piu' ma la
+     stessa tavolozza dei portali, ridotta a otto righe. */
+  #dots{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:6;
+    display:flex;gap:9px;opacity:0;transition:opacity .45s ease}
+  #dots.-on{opacity:1}
+  #dots button{width:24px;height:2px;padding:0;border:0;border-radius:1px;
+    background:rgba(223,228,238,.20);cursor:pointer;
+    transition:background .35s ease,transform .35s cubic-bezier(.22,1,.36,1)}
+  #dots button:hover{background:rgba(223,228,238,.48)}
+  #dots button.-now{background:var(--now,#3ad8ff);transform:scaleY(2.4)}
+  #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
+  @media (max-width:600px){
+    #dots button{width:15px} #dots{gap:6px;bottom:52px}
+    /* su una riga sola: a capo finiva addosso ai fermi */
+    #hint{font-size:9px;letter-spacing:.1em;bottom:22px;white-space:nowrap}
+  }
 
   /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
   #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
@@ -150,6 +181,12 @@
   /* fino a che il sipario non parte, l'atrio non si vede: entra attraverso */
   #hero{opacity:0;transition:opacity .8s ease}
   body.-aperto #hero{opacity:1}
+  /* E QUANDO SE NE VA, DEVE SFUMARE.
+     `body.-aperto #hero` pesa (1,1,1) e `#hero.-off` pesa (1,1,0): finito il
+     sipario vinceva sempre il primo, quindi l'atrio restava a piena opacita'
+     e spariva di colpo al `display:none` dopo 600 ms. La dissolvenza c'era
+     nel CSS e non si e' mai vista. Questa riga rimette il peso a posto. */
+  body.-aperto #hero.-off{opacity:0}
 </style>
 </head>
 <body>
@@ -194,11 +231,12 @@
      video di attesa, è la stessa scena in cui si sta per entrare. -->
 <div id="hero">
   <p class="k">// atelier</p>
-  <h1>Sette mondi costruiti.<br>Al centro manca <em>il tuo</em>.</h1>
+  <h1>Otto mondi in giostra.<br>Al centro manca <em>il tuo</em>.</h1>
   <button id="go">Entra →</button>
 </div>
 <div id="labels"><div id="labelCam"></div></div>
-<p id="hint" style="opacity:0">passa sopra un mondo — clicca per entrare</p>
+<div id="dots" aria-label="I mondi"></div>
+<p id="hint" style="opacity:0">scorri per girare la giostra — clicca il mondo davanti</p>
 
 <div id="world" aria-hidden="true">
   <div class="veil"></div>
@@ -222,7 +260,7 @@
   var errBox = document.getElementById('err');
   if (typeof THREE === 'undefined'){
     errBox.style.display = 'grid';
-    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/lab/mappa.html), non con doppio clic dal Finder.';
+    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.';
     return;
   }
 
@@ -236,67 +274,115 @@
   /* `page` = il mondo ha una pagina sua. Chi ce l'ha si raggiunge navigando,
      sotto la copertura dello zoom; chi non ce l'ha ancora resta sul pannello
      provvisorio, cosi' la mappa e' completa anche a costruzione in corso. */
+  /* MISURA UNICA PER TUTTE LE LASTRE.
+     Nella costellazione ogni portale aveva la sua taglia: erano fermi, e la
+     differenza si leggeva come profondita'. In una giostra sfilano uno dietro
+     l'altro nello stesso posto, e la stessa differenza si legge come un
+     errore. Ed e' la misura del NUCLEO: ogni mondo e' grande esattamente
+     quanto lo slot che resta da riempire. */
+  /* La misura e' TARATA sulla composizione, non scelta a occhio. La lastra
+     davanti sta molto piu' vicina del nucleo (3.8 contro 5.9 unita'), quindi
+     e' ingrandita di una volta e mezza: con la misura del nucleo il suo bordo
+     basso finiva sotto ai fermi e il bordo alto si mangiava meta' del vuoto.
+     Questi due numeri tengono il bordo alto appena dentro il vuoto — cosi' il
+     vetro ha finalmente qualcosa da rifrangere — e il bordo basso sopra i
+     fermi. Cambiando `RING`, la distanza della camera o l'inclinazione, vanno
+     rifatti i conti. */
+  var CW = 1.32, CH = 0.825;
+
   var WORLDS = [
     { id:'il-prodotto', nome:'Il prodotto', sett:'retail, e-commerce',
       desc:'Chi compra da uno schermo non tocca niente. Deve poterlo guardare abbastanza da fidarsi.',
       col:[0.62,0.44,1.00], poster:'assets/il-prodotto.webp', video:'assets/sneaker.mp4',
-      page:'/atelier/il-prodotto',
-      pos:[-1.44, 0.50, 0.52], size:[1.28,0.80], rot:[0.02, 0.34] },
+      page:'/atelier/il-prodotto' },
 
-    /* Era «La notte — ristoranti, locali». Costruendolo si è visto che il
-       template (wanderlust) è fatto di paesi e fotografie di viaggio: la sua
+    /* Era «La notte — ristoranti, locali». Costruendolo si e' visto che il
+       template (wanderlust) e' fatto di paesi e fotografie di viaggio: la sua
        griglia sono Islanda, Giappone, Marocco. Forzarlo in una sala da pranzo
-       avrebbe prodotto una cosa incoerente, quindi il mondo è diventato quello
-       che il materiale dice davvero di essere. Il settore «ristoranti» resta
-       scoperto: serve un altro template. */
+       avrebbe prodotto una cosa incoerente, quindi il mondo e' diventato quello
+       che il materiale dice davvero di essere. La ristorazione l'ha poi presa
+       `altitude`, sotto. */
     { id:'il-viaggio', nome:'Il viaggio', sett:'turismo, ospitalità',
       desc:'Chi parte non compra un itinerario. Compra il ricordo che avrà al ritorno.',
       col:[0.96,0.94,0.90], poster:'assets/il-viaggio.jpg', video:'assets/starry.mp4',
-      page:'/atelier/il-viaggio', gain:0.92,
-      pos:[ 1.46, 0.56, 0.38], size:[1.24,0.78], rot:[0.03,-0.36] },
+      page:'/atelier/il-viaggio', gain:0.92 },
 
     { id:'la-macchina', nome:'La macchina', sett:'industria, B2B',
       desc:'Quello che fate non entra in una fotografia. Entra in un modello che si gira col dito.',
       col:[0.365,0.941,0.659], poster:'assets/industria.jpg', video:null,
-      page:'/atelier/la-macchina',
-      pos:[-1.58,-0.90,-0.58], size:[1.14,0.71], rot:[-0.06, 0.26] },
+      page:'/atelier/la-macchina' },
 
     { id:'il-dettaglio', nome:'Il dettaglio', sett:'artigianato, lusso',
       desc:'Nessuno nota il dettaglio. Tutti notano che c’era.',
-      /* Lumora è un mondo CHIARO con un solo accento arancio bruciato: il
-         portale prende quello, ed è l'unico caldo-terroso della mappa. */
+      /* Lumora e' un mondo CHIARO con un solo accento arancio bruciato: il
+         portale prende quello, ed e' l'unico caldo-terroso della giostra. */
       col:[0.98,0.55,0.28], poster:'assets/il-dettaglio.webp', video:null, gain:0.86,
-      page:'/atelier/il-dettaglio',
-      pos:[ 1.62,-0.94,-0.64], size:[1.16,0.73], rot:[-0.05,-0.28] },
+      page:'/atelier/il-dettaglio' },
 
     { id:'prima-e-dopo', nome:'Prima e dopo', sett:'edilizia, estetica',
       desc:'Il cliente non compra il lavoro. Compra la differenza fra le due fotografie.',
-      /* Il poster è una fotografia DI QUEL MONDO (il crinale nell'ora blu), non
-         un'immagine generica: il portale dev'essere una finestra su ciò che c'è
-         dentro. E il colore è quello della sua luce, l'ambra delle finestre
+      /* Il poster e' una fotografia DI QUEL MONDO (il crinale nell'ora blu), non
+         un'immagine generica: il portale dev'essere una finestra su cio' che c'e'
+         dentro. E il colore e' quello della sua luce, l'ambra delle finestre
          accese — l'unica cosa calda in un mondo per il resto freddo e chiaro. */
       col:[0.98,0.78,0.52], poster:'assets/prima-e-dopo.jpg', video:null, gain:0.78,
-      page:'/atelier/prima-e-dopo',
-      pos:[-0.78, 1.02,-1.80], size:[1.04,0.65], rot:[0.11, 0.12] },
+      page:'/atelier/prima-e-dopo' },
 
-    /* Settimo mondo. La ristorazione era rimasta scoperta quando wanderlust si è
-       rivelato un mondo di viaggio: `altitude` la copre esattamente — la sua
-       stessa scheda parla di «ospitalità silenziosa e costosa», di notte, con
-       una capsula di vetro per la richiesta. Che poi è il materiale da cui
-       nasceva già il capitolo 06 dell'atelier. */
     { id:'la-notte', nome:'La notte', sett:'ristoranti, locali',
       desc:'Alle undici di sera il tuo locale lavora ancora — ma il sito lavora da solo.',
       col:[0.97,0.78,0.48], poster:'assets/la-notte.webp', video:null,
-      page:'/atelier/la-notte',
-      pos:[-1.02,-1.24,-1.92], size:[1.00,0.63], rot:[-0.10, 0.12] },
+      page:'/atelier/la-notte' },
 
     { id:'lo-studio', nome:'Lo studio', sett:'professionisti',
       desc:'Un secondo e mezzo per capire di cosa vi occupate. Poi decide.',
       /* marcus-vane: nero cinematografico con un solo accento brace elettrica. */
       col:[1.00,0.42,0.17], poster:'assets/lo-studio.webp', video:null, gain:0.9,
-      page:'/atelier/lo-studio',
-      pos:[ 0.94,-1.26,-1.86], size:[1.02,0.64], rot:[-0.10,-0.10] }
+      page:'/atelier/lo-studio' },
+
+    /* L'OTTAVO, E L'UNICO CHE NON E' UN SETTORE.
+       Gli altri sette dicono «ecco come si vende in questo mestiere»; questo
+       apre la cassetta degli attrezzi — il disco volante sui quarantamila fili
+       d'erba, il robot che risponde al puntatore, il fluido, l'elica, la pietra
+       che si scopre. Sono i dodici capitoli del vecchio atelier, che non sono
+       stati buttati: vivono a /atelier/capitoli e da oggi hanno una porta.
+       Il poster e' un fotogramma vero del capitolo del disco, non un'immagine
+       di repertorio, e il colore e' il ciano del sito: l'unico portale che non
+       porta a un cliente immaginario ma a casa nostra.
+       `gain` alto perche' quel fotogramma e' quasi tutto notte. */
+    { id:'effetti-speciali', nome:'Effetti speciali', sett:'le tecniche, una per una',
+      desc:'Il disco volante, il robot, il fluido. Quello che c’è sotto agli altri sette.',
+      col:[0.23,0.85,1.00], poster:'assets/effetti-speciali.webp', video:null, gain:1.34,
+      page:'/atelier/capitoli' }
   ];
+  WORLDS.forEach(function(w, i){ w.idx = i; });
+
+  /* ══ L'ANELLO ══════════════════════════════════════════════
+     Il nucleo vuoto non e' piu' uno dei portali sparsi: e' L'ASSE. Gli otto
+     mondi stanno su una giostra inclinata che gli gira attorno, e lo
+     scorrimento la fa girare. Chi arriva di faccia si apre — il Fresnel del
+     vetro lo spalanca — e chi si volta si richiude a lastra: la gerarchia
+     non e' disegnata da nessuna parte, la fa il materiale.
+     L'inclinazione serve a due cose: tiene il centro sgombro (la meta' alta
+     dell'anello passa SOPRA il nucleo, non davanti) e fa incrociare la lastra
+     davanti con il bordo basso del vuoto, cosi' il vetro ha finalmente
+     qualcosa da rifrangere — il buco che sta dietro.
+     ════════════════════════════════════════════════════════ */
+  var NZ = -1.55;                                   // il centro dell'anello = il nucleo
+  var STEP = Math.PI*2 / WORLDS.length;
+  var RING = { r:2.26, cy:0.33, tilt:0.40 };
+  var RS = Math.sin(RING.tilt), RC = Math.cos(RING.tilt);
+
+  function ringAngle(i, sp){ return i*STEP + sp; }
+  function ringPlace(th, out){
+    var sn = Math.sin(th), cs = Math.cos(th);
+    return out.set(sn*RING.r, RING.cy - cs*RING.r*RS, NZ + cs*RING.r*RC);
+  }
+  /* Giostra vera: la lastra guarda IN FUORI, quindi ruota quanto l'anello.
+     Non e' un vezzo. Un carosello che tiene le card sempre di fronte e' un
+     muro che scorre; qui invece a mezzo giro la lastra e' di taglio e il
+     vetro si chiude, ed e' quello a dire senza parole quale mondo e' davanti. */
+  function ringYaw(th){ return th; }
+  function wrapPi(a){ a = (a + Math.PI) % (Math.PI*2); if (a < 0) a += Math.PI*2; return a - Math.PI; }
 
   var canvas   = document.getElementById('c');
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
@@ -362,13 +448,17 @@
   var pPos = new Float32Array(PN*3), pTgt = new Float32Array(PN*3),
       pSeed = new Float32Array(PN), pRole = new Float32Array(PN);
 
-  // le facce dei portali servono da bersaglio: un punto a caso sulla lastra,
-  // portato in coordinate di mondo con la stessa rotazione della card
+  /* Le facce dei portali servono da bersaglio: un punto a caso sulla lastra,
+     portato in coordinate di mondo. Si prendono le posizioni dell'anello A
+     GIRO FERMO (spin = 0), che sono quelle su cui le lastre traspaiono a fine
+     coreografia: l'ingresso avviene prima che la giostra si muova, e comunque
+     appena i portali sono formati queste particelle si spengono. */
+  var tmpP = new THREE.Vector3();
   function portalPoint(w, out){
-    var e = new THREE.Euler(w.rot[0], w.rot[1], 0);
-    out.set((Math.random()-0.5)*w.size[0]*0.94, (Math.random()-0.5)*w.size[1]*0.94, 0);
-    out.applyEuler(e);
-    out.x += w.pos[0]; out.y += w.pos[1]; out.z += w.pos[2];
+    var th = ringAngle(w.idx, 0);
+    out.set((Math.random()-0.5)*CW*0.94, (Math.random()-0.5)*CH*0.94, 0);
+    out.applyEuler(new THREE.Euler(0, ringYaw(th), 0));
+    out.add(ringPlace(th, tmpP));
     return out;
   }
   var tmpV = new THREE.Vector3();
@@ -451,7 +541,7 @@
 
   /* IL NUCLEO — lo slot vuoto. Contorno e basta: è l'unico elemento della
      scena senza colore e senza mondo, e non si riempie mai. */
-  var NZ = -1.55, NW = 1.62, NH = 1.01;
+  var NW = 1.62, NH = 1.01;
   function outlineGeo(w,h){
     var x=w/2, y=h/2;
     var g=new THREE.BufferGeometry();
@@ -597,7 +687,35 @@
   var scene = new THREE.Scene();
   scene.add(cards);
 
+  /* IL VUOTO E' UN PORTALE ANCHE LUI: si clicca, e porta a Parliamone.
+     Era la meta' mancante dell'idea — un contorno che dice «il tuo» e non
+     fa niente e' un disegno, non un invito. La lastra che raccoglie il clic
+     non si vede (`colorWrite:false`): esiste solo per il raggio del
+     puntatore, che gli oggetti nascosti invece non li colpisce. */
+  var voidHit = new THREE.Mesh(
+    new THREE.PlaneGeometry(NW, NH),
+    new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:false, transparent:true })
+  );
+  voidHit.position.z = NZ;
+  voidHit.userData.vuoto = true;
+  voidHit.renderOrder = -1;
+  scene.add(voidHit);
+
+  var voidAnchor = new THREE.Object3D();
+  voidAnchor.position.set(0, 0, NZ + 0.46);
+  scene.add(voidAnchor);
+
+  var voidLabel = document.createElement('div');
+  voidLabel.className = 'lb -void';
+  voidLabel.innerHTML = '<b>Il tuo</b><span>ancora da costruire</span>';
+  document.getElementById('labelCam').appendChild(voidLabel);
+  var voidHot = 0;
+
   var RES = new THREE.Vector2(1,1);
+  /* Un pixel nero, e serve davvero: e' quello che prende il posto della
+     texture della scena mentre si sta disegnando dentro alla scena. */
+  var vuota = new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1, THREE.RGBAFormat);
+  vuota.needsUpdate = true;
   var rt = new THREE.WebGLRenderTarget(2,2,{
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
     format:THREE.RGBAFormat, stencilBuffer:false, depthBuffer:true
@@ -614,7 +732,7 @@
 
     var uni = {
       tScene:{value:rt.texture}, tVideo:{value:tex}, uRes:{value:RES},
-      uVidAsp:{value:16/9}, uCardAsp:{value:w.size[0]/w.size[1]},
+      uVidAsp:{value:16/9}, uCardAsp:{value:CW/CH},
       uFlat:{value:0}, uHot:{value:0}, uDim:{value:1}, uReveal:{value:0},
       uCol:{value:new THREE.Vector3(w.col[0],w.col[1],w.col[2])}
     };
@@ -627,26 +745,33 @@
 
     var mat = new THREE.ShaderMaterial({
       uniforms:uni, vertexShader:VERT, fragmentShader:FRAG,
+      /* DUE LATI. Su una giostra meta' delle lastre e' girata di spalle: con
+         il taglio delle facce posteriori sparirebbero di colpo a meta' giro.
+         Viste da dietro il Fresnel le trova completamente chiuse — nessun
+         contenuto, solo rifrazione e bordo — che e' esattamente cio' che deve
+         essere il dorso di un portale. */
+      side:THREE.DoubleSide,
       transparent:true, depthWrite:false
     });
-    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(w.size[0], w.size[1]), mat);
-    mesh.position.set(w.pos[0], w.pos[1], w.pos[2]);
-    mesh.rotation.set(w.rot[0], w.rot[1], 0);
-    mesh.renderOrder = 10 + i;
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(CW, CH), mat);
+    ringPlace(ringAngle(i, 0), mesh.position);
+    mesh.rotation.set(0, ringYaw(ringAngle(i, 0)), 0);
+    /* NIENTE renderOrder. Prima era fisso (10+i) perche' le lastre erano
+       ferme; qui girano, e un ordine fisso farebbe disegnare una lastra
+       lontana SOPRA a una vicina a ogni mezzo giro. Lasciato a zero, three
+       riordina i trasparenti dal fondo per profondita' a ogni fotogramma. */
     mesh.userData.world = w;
     w.mesh = mesh; w.mat = mat; w.uni = uni;
-    w.home = mesh.position.clone();
     cards.add(mesh);
 
-    // il raggio verso il nucleo, che si ferma prima di entrarci
-    var from = new THREE.Vector3(w.pos[0], w.pos[1], w.pos[2]);
-    var to   = new THREE.Vector3(0,0,NZ);
-    var dir  = to.clone().sub(from).normalize();
-    var a = from.clone().addScaledVector(dir, Math.max(w.size[0],w.size[1])*0.52);
-    var bpt = to.clone().addScaledVector(dir, -0.92);
+    /* Il raggio verso il nucleo. Con l'anello questi diventano i raggi di una
+       ruota — ed e' letterale, non una metafora. Vanno riscritti a ogni
+       fotogramma perche' la lastra si sposta: due vertici per otto linee, il
+       costo e' nullo. */
     var sg = new THREE.BufferGeometry();
-    sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([a.x,a.y,a.z, bpt.x,bpt.y,bpt.z]),3));
+    sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6),3));
     var line = new THREE.Line(sg, spokeMat.clone());
+    line.frustumCulled = false;
     bg.add(line);
     spokes.push(line);
     w.spoke = line;
@@ -657,8 +782,10 @@
        eredita di suo posizione, INCLINAZIONE e scala, e la scritta si posa sul
        piano del portale invece di restare appiccicata allo schermo. Se la card
        è girata di tre quarti, lo è anche la scritta. */
-    w.fwd = new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(w.rot[0], w.rot[1], 0));
-    w.lift = 0.34 + w.size[0]*0.16;
+    w.fwd = new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(0, ringYaw(ringAngle(i,0)), 0));
+    w.face = 1;                       // quanto e' di faccia: cos dell'angolo sull'anello
+    w.lift = 0.34 + CW*0.16;
+    w.liftNow = w.lift;
     var anchor = new THREE.Object3D();
     anchor.position.set(0, 0, w.lift);
     mesh.add(anchor);
@@ -698,43 +825,156 @@
     videoOn = w;
     if (video.getAttribute('src') !== w.video){ video.src = w.video; }
     video.play().catch(function(){});
-    w.uni.tVideo.value = vtex;
+    /* LA TEXTURE SI ATTACCA SOLO QUANDO C'E' UN FOTOGRAMMA DA LEGGERE.
+       Assegnandola subito, three prova a caricare un video ancora vuoto e il
+       driver risponde `INVALID_VALUE: texImage2D: no video` — a ogni
+       fotogramma, finche' non arriva il primo. Non si perde niente ad
+       aspettare: fino a quel momento nella lastra resta il poster. */
+    if (video.readyState >= 2) w.uni.tVideo.value = vtex;
+    else video.addEventListener('loadeddata', function una(){
+      video.removeEventListener('loadeddata', una);
+      if (videoOn === w) w.uni.tVideo.value = vtex;
+    });
   }
 
   /* ======================================================================
-     4. DISPOSIZIONE MOBILE — il nucleo sta fermo, la costellazione gira.
-     Sei portali in profondità su 390 px sono sei francobolli: qui vanno su
-     un'orbita e si porta avanti uno per volta con lo swipe.
+     4. LA GIOSTRA — lo scorrimento fa girare l'anello.
+     Non c'e' una barra di scorrimento e la pagina non si muove di un pixel:
+     il gesto di scorrere viene dirottato sulla rotazione. E' la promessa che
+     il sito faceva gia' a parole nel capitolo dell'offerta — «un sito che si
+     attraversa, non uno che si sfoglia» — solo che qui l'asse non e'
+     verticale, e' l'anello.
+     Tre regole, e sono tutte e tre necessarie:
+       · finche' nessuno l'ha toccata la giostra gira DA SOLA, pianissimo.
+         Senza, nulla dice che si puo' girare: si vede una card e basta.
+       · appena la si prende in mano smette, e da li' in poi SCATTA sui suoi
+         fermi quando ci si ferma. Una giostra che si pianta a meta' fra due
+         mondi non ha scelto niente.
+       · lo scatto arriva DOPO il gesto, mai durante: 300 ms di silenzio.
      ====================================================================== */
-  var orbitIdx = 0;
-  function layout(){
-    if (!mobile){
-      WORLDS.forEach(function(w){ w.target = w.home.clone(); w.tScale = 1; });
-      return;
-    }
-    WORLDS.forEach(function(w, i){
-      var k = (i - orbitIdx + WORLDS.length) % WORLDS.length;
-      var a = (k / WORLDS.length) * Math.PI * 2 - Math.PI/2;
-      var front = k === 0;
-      w.target = new THREE.Vector3(Math.cos(a)*1.05, Math.sin(a)*0.95 - 0.15, front ? 0.7 : -1.1);
-      w.tScale = front ? 1.25 : 0.42;
-    });
+  var spin = 0, spinT = 0;            // dov'e' l'anello, e dove sta andando
+  var toccato = false;                // qualcuno l'ha presa in mano?
+  var lastInput = -1e9;
+  var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+
+  /* Quale mondo e' davanti: th = i*STEP + spin, e davanti c'e' chi ha th = 0. */
+  function frontIdx(){
+    var k = Math.round(-spin/STEP) % WORLDS.length;
+    return (k + WORLDS.length) % WORLDS.length;
   }
-  layout();
-  WORLDS.forEach(function(w){ w.mesh.position.copy(w.target); w.mesh.scale.setScalar(w.tScale); });
+  /* Il primo gesto di scorrimento ENTRA, non salta: chi arriva e scorre
+     subito deve vedere il tunnel fermarsi e la giostra comporsi, e' il
+     mezzo secondo per cui esiste tutta la scena. Ma un trackpad manda venti
+     eventi in un gesto solo, e se ognuno saltasse la coreografia non si
+     vedrebbe mai: si salta solo con un gesto NUOVO, dopo 800 ms. */
+  function svegliaGiostra(){
+    if (stage === 'hero'){ entra(); return true; }
+    if (stage === 'arrivo'){
+      if (performance.now() - arriveT > 800) skip();
+      return true;
+    }
+    return false;
+  }
+  function spingi(d){
+    if (openW) return;
+    toccato = true; lastInput = performance.now();
+    spinT += d;
+  }
+  /* Porta davanti un mondo preciso prendendo il giro piu' corto: si somma il
+     numero intero di giri che avvicina di piu' il bersaglio a dove siamo. */
+  function portaDavanti(i){
+    if (openW) return;
+    toccato = true;
+    lastInput = -1e9;                 // niente attesa: questo e' gia' un fermo
+    var t = -i*STEP;
+    spinT = t + Math.round((spinT - t)/(Math.PI*2))*Math.PI*2;
+  }
+
+  /* La rotellina e il trackpad. `deltaMode` va normalizzato: a righe (1) un
+     "clic" vale una manciata di pixel, a pagine (2) vale una schermata, e
+     senza questo conto lo stesso gesto gira di un dito su un portatile e di
+     mezzo giro su un mouse a scatti. */
+  window.addEventListener('wheel', function(e){
+    if (openW) return;
+    e.preventDefault();
+    if (svegliaGiostra()) return;
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
+    spingi(-d * unit * 0.0021);
+  }, {passive:false});
+
+  /* Il trascinamento, dito o mouse che sia. L'asse si decide al primo
+     movimento e non si cambia piu' idea: se no un gesto un po' storto fa
+     ballare l'anello avanti e indietro. */
+  window.addEventListener('pointerdown', function(e){
+    if (openW || e.button) return;
+    ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
+    dragging = true; dragId = e.pointerId;
+    dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
+  });
+  window.addEventListener('pointermove', function(e){
+    if (!dragging || e.pointerId !== dragId) return;
+    var dx = e.clientX - dragX, dy = e.clientY - dragY;
+    dragX = e.clientX; dragY = e.clientY;
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+    if (!dragAxis && dragMoved > 6) dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+    if (!dragAxis) return;
+    if (svegliaGiostra()) return;
+    /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
+       DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
+       Alzando lo spin la lastra davanti scorre a destra (la sua x e'
+       sin(th)*r, e in zero la derivata e' +r): quindi dito a sinistra =
+       spin che cala, cioe' `dx` cosi' com'e'. In verticale vale lo stesso
+       patto della rotellina: dito in su = come scorrere in giu' = avanti. */
+    spingi(dragAxis === 1 ? dx*0.0044 : dy*0.0044);
+  }, {passive:true});
+  function fineTrascino(){ if (dragging){ dragging = false; lastInput = performance.now(); } }
+  window.addEventListener('pointerup', fineTrascino);
+  window.addEventListener('pointercancel', fineTrascino);
+
+  window.addEventListener('keydown', function(e){
+    if (openW) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
+      e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
+      e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
+    } else if (k === 'Enter'){
+      if (svegliaGiostra()) return;
+      if (hot){ e.preventDefault(); enter(hot); }
+    }
+  });
+
+  /* I FERMI, in basso: otto trattini, uno per mondo, e si puo' saltare
+     direttamente a uno qualsiasi. In un carosello con otto posti il conto
+     di quanti ne restano non deve costare un giro completo per scoprirlo. */
+  var dotsEl = document.getElementById('dots');
+  WORLDS.forEach(function(w, i){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', w.nome + ' — ' + w.sett);
+    b.style.setProperty('--now', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    b.addEventListener('click', function(ev){ ev.stopPropagation(); portaDavanti(i); });
+    dotsEl.appendChild(b);
+    w.dot = b;
+  });
 
   if (mobile){
-    var sx0 = null;
-    window.addEventListener('touchstart', function(e){ sx0 = e.touches[0].clientX; }, {passive:true});
-    window.addEventListener('touchend', function(e){
-      if (sx0 === null || openW) return;
-      var dx = e.changedTouches[0].clientX - sx0; sx0 = null;
-      if (Math.abs(dx) < 40) return;
-      orbitIdx = (orbitIdx + (dx < 0 ? 1 : -1) + WORLDS.length) % WORLDS.length;
-      layout();
-      playOn(WORLDS[(orbitIdx) % WORLDS.length]);
-    }, {passive:true});
-    document.getElementById('hint').textContent = 'scorri per girare — tocca per entrare';
+    document.getElementById('hint').textContent = 'trascina per girare — tocca per entrare';
+  }
+
+  /* Il raggio, riscritto a ogni fotogramma: parte dal bordo della lastra e si
+     ferma appena fuori dal nucleo, senza mai entrarci. */
+  var spokeA = new THREE.Vector3(), spokeB = new THREE.Vector3(),
+      spokeD = new THREE.Vector3(), spokeC = new THREE.Vector3(0,0,NZ);
+  function aggiornaRaggio(w){
+    spokeD.copy(spokeC).sub(w.mesh.position).normalize();
+    spokeA.copy(w.mesh.position).addScaledVector(spokeD, CW*0.52);
+    spokeB.copy(spokeC).addScaledVector(spokeD, -0.92);
+    var arr = w.spoke.geometry.attributes.position.array;
+    arr[0]=spokeA.x; arr[1]=spokeA.y; arr[2]=spokeA.z;
+    arr[3]=spokeB.x; arr[4]=spokeB.y; arr[5]=spokeB.z;
+    w.spoke.geometry.attributes.position.needsUpdate = true;
   }
 
   /* ======================================================================
@@ -787,19 +1027,30 @@
   var ray = new THREE.Raycaster();
   var ptr = new THREE.Vector2(-2,-2);
   var mx=0, my=0, tmx=0, tmy=0;
-  var hot = null;                 // il mondo guardato
+  /* CHI E' A FUOCO NON LO DECIDE PIU' IL PUNTATORE, LO DECIDE LA GIOSTRA.
+     Nella costellazione i portali erano fermi e si sceglieva guardandoli; qui
+     c'e' sempre e solo un mondo davanti, ed e' quello. Il puntatore resta per
+     una cosa sola: sapere su quale lastra si e' cliccato. */
+  var hot = null;                 // il mondo davanti
+  var hotSince = 0;               // da quando: il precaricamento aspetta che ci si fermi
+  var overCard = null;            // la lastra sotto al puntatore, se c'e'
+  var bersagli = null;              // le lastre piu' il vuoto, in un colpo solo
+  function pick(){
+    if (!bersagli) bersagli = cards.children.concat([voidHit]);
+    ray.setFromCamera(ptr, camera);
+    var h = ray.intersectObjects(bersagli, false);
+    if (!h.length) return null;
+    return h[0].object.userData.vuoto ? 'vuoto' : h[0].object.userData.world;
+  }
   var openW = null;               // il mondo in cui si è entrati
   var zoom = 0, zoomT = 0;        // 0 = mappa, 1 = dentro
   var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
 
-  /* Rientrando da un mondo il suo portale resta acceso FINCHE' NON SI MUOVE
-     il puntatore. Senza questa guardia il raycast del primo fotogramma, con il
-     mouse fermo dov'era, non colpisce niente e lo spegne all'istante: si
-     tornava sempre su una mappa spenta, e il «ti riceve dov'eri» non si vedeva
-     mai. */
-  var pointerMoved = false;
+  /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
+     fuoco era il raycast, e il primo fotogramma col mouse fermo altrove
+     spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
+     davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
   window.addEventListener('pointermove', function(e){
-    pointerMoved = true;
     tmx = (e.clientX/window.innerWidth)*2-1;
     tmy = (e.clientY/window.innerHeight)*2-1;
     ptr.set(tmx, -tmy);
@@ -879,13 +1130,34 @@
     if (stage === 'hero'){ entra(); return; }
     if (stage === 'arrivo'){ skip(); return; }
     if (openW) return;
-    if (hot) enter(hot);
+    /* Un trascinamento finisce sempre con un clic: senza questa guardia
+       girare la giostra farebbe entrare nel mondo su cui si e' lasciato. */
+    if (dragMoved > 8){ dragMoved = 0; return; }
+    /* Si conta il colpo QUI e non nel fotogramma: il clic arriva subito dopo
+       il rilascio, prima che il ciclo di disegno abbia rifatto il raycast, e
+       con un tocco secco il risultato del fotogramma precedente e' vecchio. */
+    var w = pick();
+    if (!w) return;
+    if (w === 'vuoto'){ location.href = '/atelier/parliamone'; return; }
+    if (w === hot) enter(w); else portaDavanti(w.idx);
   });
 
+  /* Dove sta la lastra davanti, e quanto lontano bisogna stare per vederla
+     intera. Il campo visivo di three e' VERTICALE: su un telefono in piedi
+     l'apertura orizzontale e' meno di meta' di quella di un portatile, e con
+     una distanza fissa la card davanti usciva dallo schermo da tutti e due i
+     lati. La distanza quindi non e' un numero, e' un conto: quello che serve
+     perche' la larghezza della lastra piu' un margine ci stia. Sul desktop il
+     conto da' meno di 4.35 e vince il valore di partenza, quindi la
+     composizione tarata a mano non si muove di un pixel. */
+  var ZFRONT = NZ + RING.r*RC;
+  var MEZZOFOV = Math.tan(38*Math.PI/180/2);
   function resize(){
     var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
     renderer.setSize(w,h,false);
     camera.aspect = w/h; camera.updateProjectionMatrix();
+    CAM0.z = Math.max(4.35, ZFRONT + (CW*0.5 + 0.14)/(MEZZOFOV*camera.aspect));
+    DREF = CAM0.z - ZFRONT;
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
     fogMat.uniforms.uAspect.value = w/h;
@@ -928,7 +1200,11 @@
      `ppu` è la prospettiva diviso la distanza tipica della camera dalle card:
      così a quella profondità il testo esce grande quanto è scritto nel CSS, e
      resta proporzionato se la finestra cambia. */
-  var DREF = 4.35;
+  /* La distanza di riferimento per le scritte: quella della lastra davanti.
+     Se fosse fissa, sul telefono (dove la camera arretra) le scritte
+     arriverebbero rimpicciolite; cosi' escono sempre della misura scritta
+     nel CSS. La scrive `resize`, qui c'e' solo il primo valore. */
+  var DREF = CAM0.z - ZFRONT;
   var mCam = new THREE.Matrix4(), mObj = new THREE.Matrix4(), mScale = new THREE.Matrix4();
 
   function objMatrix(m){
@@ -962,16 +1238,60 @@
     }
     travel += speed * dt * 5.6;
 
+    /* LA GIOSTRA GIRA. Tre righe e tutta la pagina cambia natura. */
+    if (stage === 'mappa' && !openW){
+      if (!toccato) spinT -= 0.048*dt;                       // il giro d'invito
+      else if (!dragging && now - lastInput > 300){          // lo scatto sul fermo
+        var det = Math.round(spinT/STEP)*STEP;
+        spinT += (det - spinT)*Math.min(1, dt*7);
+      }
+    }
+    spin += (spinT - spin)*Math.min(1, dt*7.5);
+
+    /* Ogni lastra ripresa e rimessa sull'anello. `face` (il coseno
+       dell'angolo) e' il numero che poi decide tutto il resto: quanto la
+       lastra e' presente, se la sua scritta si legge, quale mondo e' a fuoco. */
+    WORLDS.forEach(function(w, i){
+      var th = ringAngle(i, spin);
+      ringPlace(th, w.mesh.position);
+      w.mesh.rotation.set(0, ringYaw(th), 0);
+      w.face = Math.cos(th);
+      w.fwd.set(Math.sin(th), 0, Math.cos(th));
+      // chi e' dietro arretra invece di sparire: l'anello si deve leggere intero
+      w.uni.uReveal.value = cardsIn * (0.18 + 0.82*(0.5 + 0.5*w.face));
+      /* LA SCRITTA SI STACCA DALLA LASTRA SOLO QUANDO LA GUARDI.
+         Lo scostamento lungo la normale e' quello che da' la parallasse, ma
+         su un anello la normale di una lastra di fianco punta di traverso e
+         la scritta veniva scagliata al bordo dello schermo, lontana dalla
+         propria card. Scalandolo per quanto la lastra e' di faccia, la
+         parallasse resta piena su chi e' davanti e si annulla sugli altri. */
+      w.liftNow = w.lift * Math.max(0.08, w.face*w.face);
+      w.anchorObj.position.z = w.liftNow;
+      aggiornaRaggio(w);
+    });
+
     mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
     zoom += (zoomT-zoom)*(zoomT > zoom ? 0.115 : 0.16);   // entra in ~600ms, esce in ~400
 
-    // messa a fuoco: chi sta sotto al puntatore
-    if (stage === 'mappa' && !openW && !mobile && (pointerMoved || !CAME_FROM)){
-      ray.setFromCamera(ptr, camera);
-      var hits = ray.intersectObjects(cards.children, false);
-      var nw = hits.length ? hits[0].object.userData.world : null;
-      if (nw !== hot){ hot = nw; playOn(hot); prefetch(hot); }
-      document.body.style.cursor = hot ? 'pointer' : '';
+    // a fuoco c'e' chi e' davanti, e basta
+    if (stage === 'mappa' && !openW){
+      var nw = WORLDS[frontIdx()];
+      if (nw !== hot){
+        hot = nw; hotSince = now; playOn(hot);
+        WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
+      }
+      /* PRECARICARE CHI PASSA E' UN'ALTRA COSA DA PRECARICARE CHI E' SCELTO.
+         Prima il precaricamento partiva al passaggio del puntatore, che e'
+         gia' una scelta; una giostra invece porta davanti tutti e otto i
+         mondi da sola, e precaricandoli tutti si scaricherebbe un megabyte
+         e mezzo di pagine a chi non ha ancora deciso niente. Si aspetta che
+         qualcuno abbia preso in mano la giostra E che sia rimasto fermo su
+         quel mondo mezzo secondo. */
+      if (toccato && hot && now - hotSince > 600) prefetch(hot);
+      if (!mobile && !dragging){
+        overCard = pick();
+        document.body.style.cursor = overCard ? 'pointer' : '';
+      }
     }
 
     /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
@@ -990,11 +1310,6 @@
     camera.lookAt(look);
 
     WORLDS.forEach(function(w){
-      if (mobile){
-        w.mesh.position.lerp(w.target, 0.12);
-        var s = w.mesh.scale.x + (w.tScale - w.mesh.scale.x)*0.12;
-        w.mesh.scale.setScalar(s);
-      }
       var isHot = (w === hot || w === openW);
       var u = w.uni;
       u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
@@ -1014,26 +1329,40 @@
     if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
     fogMat.uniforms.uTint.value.copy(tintCol);
     fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
-    if (!openW) document.getElementById('hint').style.opacity = (stage === 'mappa' ? spokeIn*0.9 : 0);
+    if (!openW){
+      document.getElementById('hint').style.opacity = (stage === 'mappa' ? spokeIn*0.9 : 0);
+      dotsEl.classList.toggle('-on', stage === 'mappa' && spokeIn > 0.5);
+    }
 
     fogMat.uniforms.uTime.value = t;
     var du = dustMat.uniforms;
     du.uTime.value = t; du.uTravel.value = travel; du.uAssign.value = assign;
     du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
-    WORLDS.forEach(function(w){ w.uni.uReveal.value = cardsIn; });
     var nfade = sstep((assign-0.35)/0.5);
-    nucleo.material.opacity = 0.9*(1-zoom*0.9)*nfade;
+    voidHot += (((overCard === 'vuoto' && !openW) ? 1 : 0) - voidHot)*0.12;
+    nucleo.material.opacity = (0.9 + voidHot*0.1)*(1-zoom*0.9)*nfade;
+    // da #dfe4ee al ciano del sito, senza passare per il bianco
+    nucleo.material.color.setRGB(0.874 - voidHot*0.644, 0.894 - voidHot*0.044, 0.933 + voidHot*0.067);
     voidFill.material.opacity = 0.72*nfade;
 
     if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
 
-    // --- due passaggi (vedi il commento in testa al file) ---
-    WORLDS.forEach(function(w){ w.uni.uFlat.value = 1; });
+    /* --- due passaggi (vedi il commento in testa al file) ---
+       IL PRIMO PASSAGGIO DEVE MOLLARE LA TEXTURE DEL BERSAGLIO.
+       Il passaggio piatto disegna DENTRO `rt`, ma i materiali avevano ancora
+       `tScene` legata a `rt.texture`: leggere e scrivere lo stesso allegato
+       e' un anello di retroazione, e il driver rispondeva
+       `GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and
+       active Texture` scartando la chiamata di disegno — a ogni fotogramma,
+       in silenzio, senza che si vedesse un errore in pagina. Il ramo piatto
+       dello shader quella texture non la legge nemmeno: basta staccarla per
+       il tempo del passaggio. */
+    WORLDS.forEach(function(w){ w.uni.uFlat.value = 1; w.uni.tScene.value = vuota; });
     renderer.setRenderTarget(rt);
     renderer.clear();
     renderer.render(bg, camera);
     renderer.render(scene, camera);
-    WORLDS.forEach(function(w){ w.uni.uFlat.value = 0; });
+    WORLDS.forEach(function(w){ w.uni.uFlat.value = 0; w.uni.tScene.value = rt.texture; });
     renderer.setRenderTarget(null);
     renderer.clear();
     renderer.render(bg, camera);
@@ -1052,6 +1381,7 @@
     var ppu = persp / DREF;
     // la scala dell'ancora entra nella matrice di mondo: va messa PRIMA
     WORLDS.forEach(function(w){ w.anchorObj.scale.setScalar(1/ppu); });
+    voidAnchor.scale.setScalar(1/ppu);
     scene.updateMatrixWorld(true);
     mCam.copy(camera.matrixWorldInverse).premultiply(mScale.makeScale(ppu,ppu,ppu));
     labelCam.style.transform =
@@ -1059,12 +1389,18 @@
       'translate(' + wh + 'px,' + hh + 'px)';
 
     WORLDS.forEach(function(w){
-      proj.copy(w.mesh.position).addScaledVector(w.fwd, w.lift).project(camera);
-      var vis = stage === 'mappa' && proj.z < 1 && !openW && zoom < 0.15;
+      proj.copy(w.mesh.position).addScaledVector(w.fwd, w.liftNow).project(camera);
+      /* Solo la meta' che guarda avanti. Una scritta appoggiata sul piano di
+         una lastra girata di spalle si leggerebbe allo specchio. */
+      var vis = stage === 'mappa' && proj.z < 1 && !openW && zoom < 0.15 && w.face > 0.10;
       w.label.style.transform = objMatrix(mObj.copy(w.anchorObj.matrixWorld));
       w.label.classList.toggle('-on', vis);
       w.label.classList.toggle('-hot', w === hot);
     });
+
+    voidLabel.style.transform = objMatrix(mObj.copy(voidAnchor.matrixWorld));
+    voidLabel.classList.toggle('-on', stage === 'mappa' && !openW && zoom < 0.15 && nfade > 0.5);
+    voidLabel.classList.toggle('-hot', voidHot > 0.5);
   }
   requestAnimationFrame(frame);
 
@@ -1073,7 +1409,13 @@
     var back = WORLDS.filter(function(x){ return x.id === CAME_FROM; })[0];
     if (back){
       stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+      /* La giostra e' gia' girata fin li': si esce dal mondo e lo si ritrova
+         davanti, fermo sul suo scatto. Ed e' gia' stata «toccata», quindi non
+         riparte il giro d'invito — quello e' per chi non ha ancora capito. */
+      spin = spinT = -back.idx*STEP;
+      toccato = true;
       hot = back; playOn(back);
+      WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === back); });
       var h = document.getElementById('hero');
       h.classList.add('-off'); h.style.display = 'none';
       if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
