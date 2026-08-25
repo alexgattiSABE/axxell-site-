@@ -9,6 +9,15 @@
   --nav-h:72px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+/* `hidden` deve vincere sempre, e per questo ha !important.
+   Il foglio del browser porta [hidden]{display:none} ma è UA: qualsiasi regola
+   d'autore lo batte, anche una a specificità più bassa. È successo davvero —
+   `.wc-form-ok{display:flex}` più in basso in sections.css teneva a schermo il
+   "Ricevuto. Ti rispondiamo entro un giorno lavorativo." del form di
+   parliamone.html PRIMA che qualcuno inviasse. Qui la regola è d'autore e
+   !important, così l'attributo nasconde davvero e la trappola non si ripete su
+   nessun altro elemento che nascondiamo da HTML o da JS. */
+[hidden]{display:none!important;}
 html{-webkit-font-smoothing:antialiased;}
 body{background:var(--bg);color:var(--white);font-family:var(--font);
   font-size:15px;line-height:1.6;overflow-x:hidden;}
@@ -142,6 +151,21 @@ nav.-away{transform:translateY(-101%);}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;
   padding:1rem .5rem;}
 .nav-links a:hover,.nav-links a.active{color:var(--cyan);}
+/* SUI TELEFONI STRETTI LA NAV NON CI STAVA.
+   Con 3rem di padding, 1.4rem di gap e il marchio a 22px il contenuto misura
+   ~434px: più largo di uno schermo da 320, 360 o 375. `space-between` non ha
+   niente da distribuire, il marchio finisce a filo di "Home" (misurati
+   entrambi a 133px, zero stacco) e "Parliamone" sfora a 385px — cioè fuori dal
+   bordo destro, e siccome il body ha overflow-x:hidden non lo si raggiungeva
+   nemmeno scorrendo: il CTA principale era tagliato a metà parola.
+   Qui il contenuto rientra: padding e gap più stretti, marchio a 18px, voci a
+   .8rem. Verificato a schermo a 320, 360, 375 e 390 px. */
+@media (max-width:560px){
+  nav{padding:0 1rem;gap:.75rem;}
+  .nav-logo svg{height:18px;}
+  .nav-links{gap:.35rem;}
+  .nav-links a{font-size:.8rem;padding:1rem .35rem;}
+}
 
 /* TIPOGRAFIA */
 .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;

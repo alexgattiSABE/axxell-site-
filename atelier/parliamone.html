@@ -32,8 +32,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260819g">
-<link rel="stylesheet" href="css/sections.css?v=20260819g">
+<link rel="stylesheet" href="css/base.css?v=20260824a">
+<link rel="stylesheet" href="css/sections.css?v=20260824a">
 </head>
 <body>
 
@@ -104,13 +104,26 @@
   </section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js" integrity="sha384-Vtbz3QbtSBqleuQry6kQy5smig1gPZCXUoTFN7RmN9QW47xpEDsV/J1w0Pw0rDJu" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260819g"></script>
-<script src="js/nav.js?v=20260819g"></script>
-<script src="js/form.js?v=20260819g"></script>
+<!-- LE LIBRERIE STANNO QUI DENTRO, NON PIU' SU UN CDN.
+     Prima arrivavano da cdn.jsdelivr.net e cdnjs.cloudflare.com. Con jsdelivr
+     irraggiungibile — una rete aziendale che filtra i CDN, un blocker
+     aggressivo, un disservizio — la pagina non degradava: restava NERA.
+     `ReferenceError: gsap is not defined`, il velo del loader non si toglieva
+     mai e sotto non si vedeva niente. Verificato bloccando il dominio e
+     ricaricando: schermo nero, zero testo.
+     Adesso sono file nostri, stessa origine: se risponde il sito rispondono
+     anche loro, e nessun terzo vede piu' l'IP di chi visita (che e' anche il
+     motivo GDPR). Sono i BYTE ESATTI che serviva il CDN — ognuno verificato
+     contro l'hash SRI che stava scritto qui sopra. Proprio per questo
+     `integrity` e `crossorigin` non ci sono piu': stessa origine, non c'e' un
+     terzo di cui fidarsi. Versioni e provenienza in vendor/README.md. -->
+<script src="vendor/gsap.min.js?v=20260824a"></script>
+<script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
+<script src="vendor/lenis.min.js?v=20260824a"></script>
+<script src="vendor/lottie_light.min.js?v=20260824a"></script>
+<script src="vendor/email.min.js?v=20260824a"></script>
+<script src="js/core.js?v=20260824a"></script>
+<script src="js/nav.js?v=20260824a"></script>
+<script src="js/form.js?v=20260824a"></script>
 </body>
 </html>

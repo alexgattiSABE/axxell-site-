@@ -748,7 +748,7 @@ WC.register('saucer', function(ctx){
   var disposables = [];
   var saucerMat = null, humanMat = null, saucerMesh = null, humanMesh = null;
 
-  fetchGlb(CONFIG.saucerSrc).then(function(o){
+  function loadSaucer(){ fetchGlb(CONFIG.saucerSrc).then(function(o){
     saucerMat = new THREE.MeshStandardMaterial({
       map: o.map, normalMap: o.normalMap, metalnessMap: o.mrMap, roughnessMap: o.mrMap,
       color: new THREE.Color(0xffffff).multiplyScalar(CONFIG.hullDark),
@@ -777,7 +777,7 @@ WC.register('saucer', function(ctx){
     saucerPivot.add(saucerMesh);
     saucerPivot.visible = true;
     disposables.push(o.geo, saucerMat);
-  }).catch(function(err){ console.error('[WC] disco non caricato:', err); });
+  }).catch(function(err){ console.error('[WC] disco non caricato:', err); }); }
 
   /* ==========================================================================
      7b. IL RAPITO — l'uomo che levita dentro il cono, come se il disco lo stesse
@@ -786,7 +786,7 @@ WC.register('saucer', function(ctx){
      passano davanti e dietro: è quello che lo mette DENTRO il fusto invece che
      appiccicato sopra.
      ========================================================================== */
-  fetchGlb(CONFIG.humanSrc).then(function(o){
+  function loadHuman(){ fetchGlb(CONFIG.humanSrc).then(function(o){
     humanMat = new THREE.MeshStandardMaterial({
       map: o.map, normalMap: o.normalMap, metalnessMap: o.mrMap, roughnessMap: o.mrMap,
       color: new THREE.Color(0xffffff).multiplyScalar(CONFIG.humanDark),
@@ -801,7 +801,33 @@ WC.register('saucer', function(ctx){
     humanPivot.add(humanMesh);
     humanPivot.visible = true;
     disposables.push(o.geo, humanMat);
-  }).catch(function(err){ console.error('[WC] rapito non caricato:', err); });
+  }).catch(function(err){ console.error('[WC] rapito non caricato:', err); }); }
+
+  /* I DUE GLB PESANO 2,3 MB, E NON SCENDONO PIU' AL PRIMO CARICAMENTO.
+     Stavano attaccati direttamente qui e partivano appena il modulo si
+     registrava: 1,8 MB di disco piu' 534 KB di uomo scaricati mentre chi
+     guarda e' ancora sull'hero, per una scena che sta a ventiquattromila pixel
+     di scroll piu' in giu'. Erano da soli i due terzi dei 3,8 MB del primo
+     caricamento — e sono anche l'unica cosa che smentiva la copy del capitolo
+     06, che promette che la scena si carica solo quando ci arrivi.
+     Il cancello e' lo stesso di js/robot.js, stesso margine di una schermata:
+     il modello e' gia' in piedi quando la sezione entra, invece di comparire
+     sotto gli occhi di chi guarda. Il resto della scena (fondo, erba, raggio)
+     non cambia: e' geometria generata qui, non pesa banda, e la sezione deve
+     restare viva anche prima che i modelli arrivino — i due pivot nascono
+     `visible = false` apposta. */
+  var modelsIo = null;
+  function loadModels(){ loadSaucer(); loadHuman(); }
+  if ('IntersectionObserver' in window) {
+    modelsIo = new IntersectionObserver(function(entries){
+      if (entries.some(function(e){ return e.isIntersecting; })) {
+        loadModels(); modelsIo.disconnect(); modelsIo = null;
+      }
+    }, { rootMargin: '100% 0px' });
+    modelsIo.observe(section);
+  } else {
+    loadModels();
+  }
 
   /* ==========================================================================
      PASSAGGIO FINALE — render target + bloom povero + grade.
@@ -1068,6 +1094,7 @@ WC.register('saucer', function(ctx){
 
   return function(){
     stop();
+    if (modelsIo) modelsIo.disconnect();
     stPin.kill(); stLife.kill();
     window.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVis);
