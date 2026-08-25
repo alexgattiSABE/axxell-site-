@@ -2,45 +2,158 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- BASE OBBLIGATORIA, non una comodità.
-     `vercel.json` alla radice ha `trailingSlash: false`, quindi in produzione
-     questa pagina vive a `/atelier` — SENZA la barra finale. Il
-     browser risolve gli indirizzi relativi rispetto all'ultimo segmento, che
-     lì non è una cartella: `css/base.css` diventa `/css/base.css` e va a
-     sbattere sulla radice del sito. Tutti i CSS, tutti i js e tutti gli asset
-     del capitolo danno 404 e resta lo scheletro HTML.
-     Verificato a schermo servendo la cartella come la serve Vercel, non
-     dedotto. Vale anche per le `fetch` dei modelli dentro js/. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- BASE OBBLIGATORIA, e qui serve piu' che altrove.
+     `vercel.json` ha `trailingSlash:false`, quindi questa pagina vive a
+     `/atelier`; ma ogni mondo vive un livello piu' in giu', a
+     `/atelier/la-notte`. Senza base, entrando da li'
+     `vendor/three.min.js` diventerebbe `/atelier/vendor/...`,
+     404, e resterebbe lo scheletro. Con la base gli indirizzi relativi
+     partono sempre da `/atelier/`, a qualunque profondita' si entri. -->
 <base href="/atelier/">
 <title>Atelier | Axxell</title>
-<meta name="description" content="Siti web su misura progettati e costruiti da Axxell. Questa pagina è il portfolio: ogni sezione dimostra una capacità diversa.">
+<meta name="description" content="Sei mondi costruiti, uno per ogni settore. Al centro manca il tuo.">
 <meta name="robots" content="index, follow">
 <link rel="icon" type="image/png" href="/favicon.png">
-<meta property="og:title" content="Atelier | Axxell">
-<meta property="og:description" content="Siti web su misura. Questa pagina è il portfolio.">
-<meta property="og:url" content="https://axxell.ai/atelier/">
+<meta property="og:title" content="La costellazione | Axxell">
+<meta property="og:description" content="Sei mondi costruiti, uno per ogni settore. Al centro manca il tuo.">
+<meta property="og:url" content="https://axxell.ai/atelier">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://axxell.ai/atelier/assets/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260819g">
-<link rel="stylesheet" href="css/sections.css?v=20260819g">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
+    overflow:hidden;-webkit-font-smoothing:antialiased}
+  canvas{display:block;width:100%;height:100%}
+  #stage{position:fixed;inset:0}
+
+  /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
+     superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
+     script proiettando il punto in basso di ogni portale. */
+  /* Nav propria e minima: il foglio del sito e' scritto per pagine che
+     scorrono, e questa non scorre. Stessi colori, stesse misure. */
+  #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
+    background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
+    transition:opacity .4s ease}
+  #nav.-hide{opacity:0;pointer-events:none}
+  .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
+  .nv-links{display:flex;list-style:none;gap:.3rem}
+  .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
+    letter-spacing:.1em;padding:.9rem .5rem;display:inline-block}
+  .nv-links a:hover,.nv-links a.active{color:#3ad8ff}
+  .nv-cta{border:1px solid rgba(240,240,246,.22);margin-left:.4rem}
+  #nav a:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+  @media (max-width:600px){ .nv-links a{font-size:9.5px;padding:.9rem .28rem} }
+
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+  #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
+    transform-style:preserve-3d}
+/* Le scritte stanno DAVANTI alle card, non sotto. Sono ancorate al centro
+     della lastra ma spostate verso di te lungo la sua normale: muovendo il
+     puntatore scorrono contro il proprio portale, ed è quella parallasse a
+     dare la profondità. Non toccano il vetro, quindi non vengono né rifratte
+     né smerigliate — l'obiezione che valeva per un testo APPOGGIATO sopra qui
+     non vale.
+     L'alone scuro dietro non è decorazione: sotto ci può passare un video
+     chiaro, e senza quello la scritta sparisce. */
+  /* La trasformazione la scrive lo script per intero: qui NIENTE transform,
+     se no sovrascrive la matrice 3D e la scritta torna piatta. */
+  .lb{position:absolute;top:0;left:0;text-align:center;transform-style:preserve-3d;
+    opacity:0;transition:opacity .35s ease;white-space:nowrap}
+  .lb.-on{opacity:1}
+  .lb::before{content:'';position:absolute;inset:-170% -34%;pointer-events:none;
+    background:radial-gradient(ellipse at center,
+      rgba(4,5,10,.60) 0%, rgba(4,5,10,.30) 46%, rgba(4,5,10,0) 74%)}
+  .lb b,.lb span{position:relative;display:block}
+  /* il margine negativo toglie lo spazio in coda che la spaziatura aggiunge
+     dopo l'ultima lettera: se no la scritta appare storta a sinistra */
+  .lb b{font-family:'Space Grotesk',system-ui,sans-serif;
+    font-weight:600;font-size:19px;letter-spacing:.34em;margin-right:-.34em;
+    color:#f0f0f6;text-transform:uppercase;
+    text-shadow:0 2px 20px rgba(4,5,10,.95);
+    transition:letter-spacing .35s cubic-bezier(.22,1,.36,1),color .3s ease}
+  .lb span{font-family:'DM Mono',ui-monospace,monospace;
+    font-size:9.5px;letter-spacing:.24em;margin-right:-.24em;margin-top:10px;
+    color:rgba(223,228,238,.54);text-transform:uppercase;
+    text-shadow:0 1px 14px rgba(4,5,10,.95);transition:color .3s ease}
+  .lb.-hot b{color:var(--hot,#3ad8ff);letter-spacing:.46em;margin-right:-.46em}
+  .lb.-hot span{color:rgba(223,228,238,.78)}
+
+  #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:6;
+    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
+
+  /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
+  #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
+    transition:opacity .28s ease;background:#04050a}
+  #world.-on{opacity:1;pointer-events:auto}
+  #world video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #world .veil{position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(4,5,10,.82) 0%,rgba(4,5,10,.25) 42%,rgba(4,5,10,.88) 100%)}
+  #world .copy{position:absolute;left:clamp(1.4rem,5vw,4rem);bottom:clamp(2rem,8vh,5rem);max-width:36ch}
+  #world .copy i{font-style:normal;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--hot,#3ad8ff)}
+  #world .copy h2{font-size:clamp(1.8rem,4.4vw,3.1rem);font-weight:400;line-height:1.05;
+    letter-spacing:.02em;margin:.5rem 0 .6rem;text-transform:uppercase}
+  #world .copy p{font-size:12.5px;color:rgba(223,228,238,.6);letter-spacing:.04em;line-height:1.7}
+  #world .exits{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
+  #world button{background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.26);
+    padding:9px 16px;font:inherit;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer}
+  #world button:hover{border-color:var(--hot,#3ad8ff);color:var(--hot,#3ad8ff)}
+  #world button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+
+  #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1.4rem;text-align:center;
+    padding:2rem;transition:opacity .5s ease;pointer-events:none}
+  #hero.-off{opacity:0}
+  #hero .k{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:#3ad8ff}
+  #hero h1{font-size:clamp(1.9rem,4.6vw,3.4rem);font-weight:400;line-height:1.16;
+    letter-spacing:.01em;text-transform:uppercase;
+    text-shadow:0 2px 30px rgba(4,5,10,.95)}
+  #hero h1 em{font-style:normal;color:#3ad8ff}
+  #hero button{pointer-events:auto;margin-top:.6rem;background:transparent;color:#dfe4ee;
+    border:1px solid rgba(223,228,238,.3);padding:11px 26px;font:inherit;font-size:11px;
+    letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+  #hero button:hover{border-color:#3ad8ff;color:#3ad8ff}
+  #hero button:focus-visible{outline:2px solid #3ad8ff;outline-offset:3px}
+
+  #err{position:fixed;inset:0;display:none;place-items:center;padding:32px;text-align:center;
+    color:#ff6b6b;font-size:13px;line-height:1.7;z-index:20}
+  @media (max-width:760px){ .lb b{font-size:11px} .lb span{font-size:9.5px} }
+</style>
+
+
+<style>
+  /* ── IL SIPARIO: il marchio si CONDENSA dal vapore ────────────────────────
+     Portato da `capitoli.html` (js/loader.js) SENZA il suo runtime: là
+     l'effetto girava dentro a `WC.register` e la sua linea del tempo era di
+     gsap. Qui non c'è né l'uno né l'altro — il vapore è tutto nel canvas, il
+     resto era orchestrazione, e si rifà in venti righe.
+     La regola che conta: il velo si alza e IL CONTENUTO ENTRA MENTRE SI ALZA,
+     non dopo. Il sipario che si scopre su una pagina già viva è un gesto solo;
+     aspettare che sia finito ne fa due. */
+  #velo{position:fixed;inset:0;z-index:10000;background:#04050a;
+    display:flex;align-items:center;justify-content:center}
+  #velo.-via{pointer-events:none}
+  #velo-inner{position:relative;z-index:1;transition:opacity .4s cubic-bezier(.4,0,1,1)}
+  #velo.-sfuma #velo-inner{opacity:0}
+  #velo canvas{display:block}
+  .velo-tenda{position:absolute;left:0;right:0;height:50.5%;background:#04050a;
+    transition:transform .9s cubic-bezier(.87,0,.13,1)}
+  .velo-t{top:0} .velo-b{bottom:0}
+  #velo.-sfuma .velo-t{transform:translateY(-100%)}
+  #velo.-sfuma .velo-b{transform:translateY(100%)}
+  /* fino a che il sipario non parte, l'atrio non si vede: entra attraverso */
+  #hero{opacity:0;transition:opacity .8s ease}
+  body.-aperto #hero{opacity:1}
+</style>
 </head>
 <body>
 
-<!-- IL MARCHIO, UNA VOLTA SOLA PER TUTTA LA PAGINA.
-     Sono i tracciati veri del logo (~/LOGO AXXELL.svg), orbita compresa. Prima
-     stavano nel <defs> del footer, che e' in fondo: il logo in nav li avrebbe
-     referenziati in avanti. Stanno qui, prima di tutti e due i posti che li
-     usano, e ognuno decide da se' come dipingerli — la nav li riempie, il
-     footer li lascia in contorno (`.wc-foot-t{fill:none}`) perche' li' dentro
-     ci scorre un gradiente.
-     ⚠️ `fill` NON sta piu' sul gruppo: se ce lo si rimette, la nav torna
-     invisibile. Lo decide chi fa <use>. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false"
      style="position:absolute;pointer-events:none;">
   <defs>
@@ -58,531 +171,1051 @@
         </g>
   </defs>
 </svg>
-
-<div class="wc-loader" id="wcLoader">
-  <!-- Il marchio si condensa dal vapore: un'onda passa da sinistra a destra e
-       dietro di se' lascia il logo. I pixel li da' `#wcAxxellMark` qui sopra —
-       gli stessi tracciati della nav e del footer, rasterizzati una volta sola
-       da js/loader.js. Niente Lottie e niente contatore: solo il logo. -->
-  <div class="wc-loader-inner">
-    <canvas class="wc-loader-vapour" id="wcLoaderVapour" aria-hidden="true"></canvas>
-  </div>
-  <div class="wc-curtain wc-curtain-t"></div>
-  <div class="wc-curtain wc-curtain-b"></div>
+<div id="velo" aria-hidden="true">
+  <div id="velo-inner"><canvas id="velo-vapore"></canvas></div>
+  <div class="velo-tenda velo-t"></div>
+  <div class="velo-tenda velo-b"></div>
 </div>
 
-<!-- IL CURSORE DEL SITO — quasi tutto spento, e non per caso.
-     Il puntatore custom era un ANELLO CON UN PUNTO DENTRO in nove capitoli su
-     dodici (`default`, `dot`, e una variante scura `light`), un
-     ROMBO in rotazione sul cap. 03, una BARRA DI LETTURA sul manifesto e una
-     FRECCIA sul cap. 07. Tolti tutti su richiesta: quelle sezioni adesso
-     dichiarano `data-cursor="hidden"` e mostrano il puntatore di sistema.
-     Resta acceso un solo stato, il `caret` del form (ora su parliamone.html),
-     che non è un
-     ornamento — dice dove si scrive.
-     Questi due nodi restano perché sono loro a portare il caret, e perché
-     ogni stato è ancora tutto in css/base.css: si riaccende un capitolo
-     rimettendogli il suo `data-cursor`, senza toccare altro. -->
-<div class="cursor" id="cur"></div>
-<div class="cursor-ring" id="curR"><span class="cursor-label" id="curLabel"></span></div>
-<!-- QUI C'ERANO LE TRE PALLINE DELLA SCIA (`.cursor-trail`): ognuna inseguiva
-     la precedente più lentamente, dietro l'anello che insegue il puntatore.
-     Tolte da tutto il sito su richiesta. Il codice che le muoveva è ancora in
-     js/cursor.js e non fa niente se non trova nodi: si riaccendono rimettendo
-     questi tre div. -->
 
-<nav>
-  <a href="/" class="nav-logo" aria-label="Axxell">
-    <svg viewBox="28 104 598 154" role="img" aria-hidden="true"><use href="#wcAxxellMark"/></svg>
-  </a>
-  <ul class="nav-links">
+<nav id="nav">
+  <a href="/" class="nv-logo">AXXELL</a>
+  <ul class="nv-links">
     <li><a href="/">Home</a></li>
-    <li><a href="/atelier/" class="active">Atelier</a></li>
-    <!-- Il pulsante dell'hero entra nel tunnel e non porta ai contatti:
-         senza questa voce la pagina non avrebbe una rotta verso il modulo da
-         nessun punto in cui ti trovi. Da quando il modulo ha una pagina sua
-         (parliamone.html) non e' piu' un'ancora ma un indirizzo: funziona
-         anche da fermo, si puo' mandare a qualcuno, e non obbliga a scorrere
-         otto capitoli per arrivarci. -->
-    <li><a href="/atelier/parliamone" class="nav-cta">Parliamone</a></li>
+    <li><a href="/atelier" class="active">Atelier</a></li>
+    <li><a href="/atelier/capitoli">Capitoli</a></li>
+    <li><a href="/atelier/parliamone" class="nv-cta">Parliamone</a></li>
   </ul>
 </nav>
 
-<main id="wc-main">
-  <!-- i capitoli vengono aggiunti dai Task 3-11 -->
-  <section class="wc-hero" id="cap01" data-cursor="hidden">
-    <div class="wc-hero-pin" id="wcHeroPin">
-      <canvas class="wc-tunnel" id="wcTunnel"></canvas>
-      <!-- Ogni `.wc-fly` è l'involucro che vola nel tunnel. Serve perché
-           l'entrata dal loader anima già `transform` sugli elementi dentro:
-           due animazioni sulla stessa proprietà dello stesso nodo si
-           sovrascrivono a vicenda. -->
-      <div class="wc-hero-content" id="wcHeroContent">
-        <div class="wc-fly"><p class="eyebrow">// 01 — Atelier</p></div>
-        <h1 class="wc-hero-title">Il sito non si racconta. Si attraversa.</h1>
-        <div class="wc-fly"><p class="lead">Questa pagina è il portfolio. Ogni sezione che scorri è una cosa che sappiamo fare, mostrata mentre la fa.</p></div>
-        <div class="wc-fly"><button type="button" class="wc-magnet wc-hover" id="wcHeroCta">Entra →</button></div>
-      </div>
-      <div class="wc-scroll-cue"><span></span></div>
+<div id="stage"><canvas id="c"></canvas></div>
+
+<!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
+     video di attesa, è la stessa scena in cui si sta per entrare. -->
+<div id="hero">
+  <p class="k">// atelier</p>
+  <h1>Sette mondi costruiti.<br>Al centro manca <em>il tuo</em>.</h1>
+  <button id="go">Entra →</button>
+</div>
+<div id="labels"><div id="labelCam"></div></div>
+<p id="hint" style="opacity:0">passa sopra un mondo — clicca per entrare</p>
+
+<div id="world" aria-hidden="true">
+  <div class="veil"></div>
+  <div class="copy">
+    <i id="wKick"></i>
+    <h2 id="wName"></h2>
+    <p id="wDesc"></p>
+    <div class="exits">
+      <button id="wNext">Il prossimo mondo →</button>
+      <button id="wTalk">Parliamone</button>
+      <button id="wBack">← Mappa</button>
     </div>
-  </section>
-
-  <!-- HELION — il volo continua. Sta QUI, fra il tunnel e il manifesto, perché
-       è la prosecuzione del tunnel: apre alla velocità con cui quello chiude
-       (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
-       fra due scene, decelera dentro una sola. -->
-  <section class="wc-warp" id="capWarp" data-cursor="hidden">
-    <!-- La costellazione entra solo DOPO la prima animazione. Fino a 0,26 la
-         scena è il tubo che si apre e decelera (`phaseMorphIn` in js/warp.js):
-         lì le stelle del cursore si sommavano alle particelle del volo e non
-         si capiva più cosa fosse cosa. Da lì in poi la scena si riordina e
-         l'effetto ha un fondo su cui leggersi. -->
-    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation"
-         data-cursor-fx-range="0.26,1">
-      <canvas id="wcWarpCanvas"></canvas>
-      <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
-           cambia forma, quindi il testo cambia con lei invece di scorrere via.
-           L'opacità la guida lo stesso valore che guida il riordino. -->
-      <div class="wc-warp-copy" id="wcWarpCopyA">
-        <p class="eyebrow">// Fuori dal tubo</p>
-        <h2>Poi si apre.</h2>
-      </div>
-      <div class="wc-warp-copy" id="wcWarpCopyB">
-        <p class="eyebrow">// La stessa materia</p>
-        <h2>E si riordina.</h2>
-        <p class="lead">Nessuna dissolvenza fra due scene: sono le stesse particelle del volo, ognuna con la sua destinazione già assegnata, che vanno a comporre l'elica.</p>
-      </div>
-      <div class="wc-warp-copy" id="wcWarpCopyC">
-        <p class="eyebrow">// E ancora</p>
-        <h2>Poi diventa altro.</h2>
-        <p class="lead">Terza forma, stesse particelle: una sfera e una galassia. Nessuna scena viene ricostruita, nessuna viene sostituita — quello che scorre è sempre lo stesso pugno di materia.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="wc-manifesto" id="cap02" data-cursor="hidden">
-    <!-- Qui c'era il poster "Blue Swirl" come sfondo. Tolto: il capitolo prima
-         è ora una scena 3D vera, e un'immagine ferma subito dopo si leggeva
-         come un passo indietro. Il manifesto torna a essere testo su nero.
-
-         Al posto del poster c'è ora una doppia elica di punti (js/dna.js): non
-         è un'immagine ferma ma una scena che scorre, e sta sulla destra, fuori
-         dalla colonna del testo. Il canvas è trasparente: il nero resta quello
-         della pagina. -->
-    <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
-         l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
-         dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
-    <!-- Qui c'erano l'elica di cursore (`data-cursor-fx="dna"`) e le parole
-         magnetiche (`data-magnetic-sel`). Tolti su richiesta: il capitolo ha
-         già la sua elica WebGL e le parole in spirale, e due eliche che
-         seguono il puntatore nella stessa schermata si disturbavano.
-         Si riaccendono rimettendo i due attributi qui sotto. -->
-    <div class="wc-manifesto-pin" id="wcManifestoPin">
-      <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
-      <p class="eyebrow">// 02 — Metodo</p>
-      <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
-      <!-- Le parole che scendono in spirale attorno all'elica. Il contenitore
-           resta vuoto nel markup: js/dna.js ci mette DUE copie di ogni parola, una
-           sotto il canvas e una sopra, per farle passare dietro all'elica.
-           Senza WebGL (o con reduced-motion) diventano una lista in fila qui
-           sotto, e sono l'unico posto in cui il capitolo dice di cosa è fatto. -->
-      <div class="wc-dna-orbit" id="wcDnaOrbit"></div>
-    </div>
-  </section>
-
-  <!-- VESPER — la sfera che si tocca. SPOSTATA QUI, subito dopo il capitolo
-       02, su richiesta: stava dopo Altitude, poco prima del disco volante.
-       La catena delle scene di particelle adesso è tutta di fila e senza
-       salti — tunnel (01) → helion/elica (warp) → elica del metodo (02) →
-       questa — e la pagina passa ai modelli 3D veri (ufo, robot) in un colpo
-       solo invece che tornando indietro di un passo a metà.
-       ⚠️ Il numero a schermo è stato scambiato con quello del fluido: vesper
-       è "// 03", il fluido "// 04". Gli `id` NON si toccano (capVesper resta
-       capVesper, cap03 resta cap03): ci sono agganciati i trigger in js/ e la
-       voce di menu. Numero a schermo e id qui non coincidono più — è già così
-       per cap05, ed è documentato in tutti e due i punti. -->
-  <section class="wc-vesper" id="capVesper" data-cursor="hidden">
-    <!-- I fantasmi specchiati solo sulla PRIMA sfera. L'orologio di vesper
-         ripiega il pin in tre terzi (sfera, galassia, cervello — vedi
-         `clockFromScroll` in js/vesper.js): il primo terzo è l'orb, ed è
-         l'unica forma su cui quattro cerchi concentrici hanno senso. Sulla
-         galassia e sul cervello erano solo quattro anelli in mezzo. -->
-    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror"
-         data-cursor-fx-range="0,0.34">
-      <canvas id="wcVesperCanvas"></canvas>
-      <div class="wc-vesper-copy">
-        <p class="eyebrow">// 03 — Materia</p>
-        <h2>Ventitremila punti,<br>e li sposti col dito.</h2>
-        <p class="lead">Non è un video di una sfera: è una sfera. Passaci sopra il cursore e la superficie si gonfia dove sei, resta indietro di un istante — come farebbe un liquido — e si riposa da sola quando ti fermi.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CAP. 03 — IL FLUIDO.
-       Qui c'era la colonna vertebrale in vetro. È stata tolta, non rotta:
-       `js/spine.js`, `assets/spine.glb` e `scripts/pack-spine-glb.js` restano
-       sul disco e sono ripristinabili. Poi la sezione è rimasta vuota per un
-       po', col solo splash di fluido e la copy nascosta; adesso il capitolo È
-       il fluido, e ha di nuovo un testo a schermo.
-
-       L'impaginazione è quella dell'hero di "flowstate", da cui viene la scena:
-       tutto in colonna al centro — pillola, titolo, sottotitolo — con la riga
-       di chiusura appoggiata in basso. Il testo è nostro. -->
-  <section class="wc-spine" id="cap03" data-cursor="hidden">
-    <div class="wc-spine-pin" id="wcSpinePin">
-      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto della
-           pagina in cui il cursore lo accende. Sta prima della copy, così il
-           testo gli passa davanti. -->
-      <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
-      <div class="wc-spine-copy">
-        <p class="eyebrow">// 04 — Fluido</p>
-        <h2>Venti passaggi di pressione,<br>sessanta volte al secondo.</h2>
-        <p class="lead">Non è un video di inchiostro. È un fluido che viene risolto mentre lo attraversi: il cursore non disegna la scia, spinge la velocità del campo — poi sono i vortici a decidere dove finisce il colore. Ti fermi, e continua da solo per un istante.</p>
-      </div>
-      <p class="wc-spine-foot">WebGL grezzo, nessuna libreria. Il solutore sta tutto in questa pagina.</p>
-      <!-- L'invito compare in fondo alla sequenza, quando i fuochi hanno
-           spazzato via testo e inchiostro e resta il nero. Da lì in poi il
-           capitolo lo muovi tu. `aria-hidden` perché è l'etichetta di un
-           gesto su un canvas che è già aria-hidden: senza il fluido non
-           vuol dire niente, e con reduced-motion non compare mai. -->
-      <p class="wc-spine-invite" id="wcSpineInvite" aria-hidden="true">Muovi il cursore</p>
-      <!-- E dopo che hai giocato un po', la consegna al capitolo successivo:
-           lì la stessa matematica non disegna più, deforma una fotografia.
-           Compare, resta il tempo di leggerla, e se ne va — vedi `next`/
-           `nextOut` in js/fluid.js. -->
-      <p class="wc-spine-next" id="wcSpineNext" aria-hidden="true">Bello vero?<br>Adesso proviamo con un&#39;immagine.</p>
-    </div>
-  </section>
-
-  <!-- ALTITUDE — il fondo che si piega sotto il dito.
-       Il video qui non è da guardare: è materia da deformare. Il fotogramma
-       diventa una texture e la texture si piega sotto il puntatore.
-
-       Il <video> vero sotto il canvas NON è di scorta: è la sorgente della
-       texture, e si vede finché il primo fotogramma non è salito sulla GPU.
-       Il canvas ci va sopra in dissolvenza — vedi `fade` in js/altitude.js. -->
-  <!-- `hidden` e non più `cross`: il mirino faceva da terzo puntatore sopra
-       un capitolo in cui il cursore È già il vortice. Qui il cursore del sito
-       si spegne e resta il fluido. -->
-  <section class="wc-alt" id="capAltitude" data-cursor="hidden">
-    <video id="wcAltVideo" class="wc-alt-video" muted loop playsinline
-           preload="none" poster="assets/starry-poster.webp" aria-hidden="true">
-      <source data-src="assets/starry.mp4" type="video/mp4">
-    </video>
-    <canvas id="wcAltCanvas" class="wc-alt-canvas" aria-hidden="true"></canvas>
-    <div class="wc-alt-copy">
-      <p class="eyebrow">// Il fondo non &egrave; un fondo</p>
-      <h2>Passa il dito,<br>e l'immagine si <em class="wc-serif">piega</em>.</h2>
-      <p class="lead">Non &egrave; un filtro appoggiato sopra il video: &egrave; un fluido risolto mentre lo attraversi, e ogni pixel campiona il fotogramma spostato dalla velocit&agrave; del flusso. I tre canali vengono presi a distanze diverse lungo quello spostamento — la frangia di colore ai bordi del vortice non &egrave; disegnata, &egrave; quello che fa una lente.</p>
-      <p class="wc-alt-foot">Ti fermi, e il cielo torna fermo.</p>
-    </div>
-  </section>
-
-  <!-- Qui c'era il carosello "// 04 — Movimento continuo": otto tessere con
-       gradienti CSS che scorrevano in loop e si potevano trascinare. Tolto.
-       Erano etichette di stile ("Editoriale", "Brutalista") senza niente
-       dietro, in una pagina in cui ogni altra sezione mostra una cosa vera
-       mentre la fa. Il trascinamento resta, ma sul robot del cap. 04, dove
-       c'è un oggetto vero da girare.
-       Recuperabile dal commit d80a4ca (sezione, js/carousel.js e il CSS
-       .wc-carousel/.wc-track/.wc-tile).
-
-       NUMERAZIONE: gli occhielli erano stati scalati di uno quando il carosello
-       è sparito, e sono tornati ai numeri di prima quando vesper ha preso il
-       posto libero — un capitolo tolto, uno aggiunto. Vesper poi si è spostata
-       su, subito dopo il cap. 02, e questo posto è tornato vuoto: qui adesso
-       non c'è più niente, si passa da Altitude al disco volante. Gli `id` non sono mai
-       stati toccati in nessuno dei due passaggi: restano cap05..cap07 perché ci
-       sono agganciati i trigger in js/. (cap08 era il modulo di contatto ed è
-       uscito da questa pagina: ora è parliamone.html.)
-       Vesper, essendo nuovo, ha un id parlante (capVesper) come le altre
-       sezioni aggiunte dopo la numerazione originale. -->
-
-  <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
-       con un modello 3D vero, e stando vicine si leggono come una coppia. -->
-  <!-- `data-cursor="hidden"`: in questo capitolo il cursore del sito (punto +
-       anello ciano) si spegne e resta SOLO l'anello elastico verde. Erano due
-       anelli concentrici che inseguivano lo stesso puntatore. -->
-  <section class="wc-saucer" id="capSaucer" data-cursor="hidden">
-    <!-- L'anello elastico verde: è il colore del raggio, non un accento
-           estraneo appoggiato sopra. Il disco intanto deriva col puntatore
-           — vedi la sezione DERIVA in js/saucer.js. -->
-      <div class="wc-saucer-pin" id="wcSaucerPin" data-cursor-fx="elastic">
-      <canvas id="wcSaucerCanvas"></canvas>
-      <div class="wc-saucer-copy">
-        <p class="eyebrow">// Notte</p>
-        <h2>Quarantamila fili d'erba,<br>una sola chiamata di disegno.</h2>
-        <p class="lead">Il prato non è una texture: sono fili veri, ognuno col suo vento e la sua inclinazione. Si accendono solo dove il raggio li tocca.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Cursore 'dot' e non più 'invert': quello faceva della sezione un disco
-       da 110 px che inseguiva il mouse sopra il modello. Via la palla, resta il
-       cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
-       quindi non si resta comunque senza.
-
-       QUI C'ERA LA TORCIA (`data-cursor-fx="torch"`): per rivelare doveva prima
-       coprire la sezione di nero all'85%, e il robot si vedeva solo dentro il
-       cono. Ora c'è il circuito: il modello non viene mai oscurato, e le tracce
-       si accendono al PASSAGGIO invece che sotto la posizione del puntatore —
-       fermi il mouse e non entra più corrente. La differenza è scritta in
-       testa a FX.circuit in js/cursorfx.js. -->
-  <section class="wc-robot" id="cap05" data-cursor="hidden">
-    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
-      <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
-           davanti in basso, sopra un velo, invece di dividere lo spazio a metà
-           come faceva la griglia di prima. -->
-      <div class="wc-robot-stage" id="wcRobotStage">
-        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
-      </div>
-      <div class="wc-robot-copy">
-        <p class="eyebrow">// 05 — Oggetti vivi</p>
-        <h2>Non un video.<br>Un modello che risponde.</h2>
-        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini. Dietro, il rame si accende dove passi — non dove ti fermi.</p>
-        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- LITHOS — il faro che scopre una seconda immagine.
-       Il meccanismo viene dalla specifica `Lithos.txt`; il testo NO. Quella
-       specifica descrive l'hero di un marchio di geologia inventato, con la
-       sua headline e il suo pulsante arancione: metterlo qui vorrebbe dire
-       mettere il marchio di un altro sul sito del cliente, in una pagina dove
-       ogni sezione dimostra invece una tecnica nostra. Qui la copy dice cosa
-       fa l'effetto, come fanno tutte le altre.
-       Le due immagini stavano su un CDN di terzi: scaricate in locale. -->
-  <section class="wc-lithos" id="capLithos" data-cursor="hidden">
-    <div class="wc-lithos-base" aria-hidden="true"></div>
-    <div class="wc-lithos-reveal" id="wcLithosReveal" aria-hidden="true"></div>
-    <div class="wc-lithos-copy">
-      <p class="eyebrow">// Due immagini, una sola</p>
-      <h2><span class="wc-serif">Sotto</span> ce n'è un'altra.</h2>
-      <p class="lead">Il puntatore non illumina: scopre. Sotto la prima immagine ce n'è una seconda, e il faro decide quanta se ne vede — con un ritardo, perché una lampada che segue il dito senza inerzia sembra un ritaglio.</p>
-    </div>
-  </section>
-
-  <!-- SNEAKER — sfondo video in loop.
-       I due <source> hanno data-src e non src: senza, il browser comincia a
-       scaricare appena incontra il tag, e `preload="none"` non lo ferma —
-       quell'attributo governa il buffering, non la scelta della sorgente.
-       È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
-       sezione scendono solo gli 83 KB del poster. -->
-  <!-- La scia di fiamme del cursore (`data-cursor-fx="fire"`) era qui: tolta.
-       Il capitolo è già un video acceso a tutto schermo. -->
-  <section class="wc-sneaker" id="capSneaker" data-cursor="hidden">
-    <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
-           preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
-      <source data-src="assets/sneaker.webm" type="video/webm">
-      <source data-src="assets/sneaker.mp4" type="video/mp4">
-    </video>
-    <div class="wc-sneaker-copy">
-      <p class="eyebrow">// Video, non decorazione</p>
-      <h2>Quarantadue megabyte<br>ne sono diventati uno e mezzo.</h2>
-      <p class="lead">Il master era 4K a 24 Mbps. Qui gira a 1080p in due formati, senza traccia audio, e non scende un byte finché non arrivi a questo punto della pagina. Un video di sfondo che si fa aspettare non è un video di sfondo.</p>
-    </div>
-  </section>
-
-
-  <!-- OROLOGIO — si smonta se scorri giù, si rimonta se torni su.
-
-       Sta subito dopo la sneaker perché sono i due capitoli in cui un oggetto
-       è la scena: là un fondo che gira da solo, qui un oggetto che non si
-       muove affatto finché non lo muovi tu.
-
-       È L'UNICO CAPITOLO SU FONDO CHIARO. Il resto della pagina è nero; qui la
-       parete sbianca per una schermata, l'inchiostro diventa scuro e sparisce
-       il ciano — su bianco non avrebbe contrasto e sarebbe l'unica macchia
-       fredda a tutto schermo.
-
-       NON È UN <video>. È una sequenza di fotogrammi disegnata su canvas: a
-       ogni posizione di scroll ne corrisponde UNO. Un filmato scrubbato su
-       questa pagina è già stato provato e tolto — cercare dentro un video
-       dipende da come il SERVER manda il file, e quando il server non manda le
-       richieste Range il capitolo resta fermo senza che niente lo dica.
-       Vedi l'intestazione di js/orologio.js.
-
-       LE COLONNE LATERALI SONO VUOTE APPOSTA. L'orologio è stato generato per
-       stare nel terzo centrale e le sorgenti sono state ricentrate al pixel
-       prima di girare il filmato: le due fasce ai lati sono lo spazio delle
-       frasi, e il canvas disegna in `contain` per non mangiarsele.
-
-       L'ARCO STA TUTTO NELLA DISCESA: a metà sezione l'orologio è
-       completamente aperto, e da lì in poi si richiude. Le finestre delle
-       frasi seguono quell'arco — una mentre si apre, una col pezzo fermo in
-       aria, una mentre si richiude, una a orologio di nuovo intero.
-
-       ⚠️ I TESTI QUI SOTTO SONO PROVVISORI, messi per verificare che
-       l'impaginazione regga. Le finestre (`data-in`/`data-out`, in frazioni
-       della corsa) invece sono vere: chi riscrive le frasi tocchi il testo,
-       non i numeri, finché non cambia il ritmo. -->
-  <section class="wc-orologio" id="capOrologio" data-cursor="hidden">
-    <div class="wc-orologio-pin" id="wcOroPin">
-      <canvas class="wc-oro-canvas" id="wcOroCanvas" aria-hidden="true"></canvas>
-      <!-- Il primo fotogramma, per chi ha il movimento ridotto: lì il canvas
-           non si accende e questa immagine resta al suo posto. -->
-      <img class="wc-oro-poster" src="assets/orologio/orologio-001.webp" alt="" aria-hidden="true">
-
-      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.04" data-out="0.24">
-        <p class="eyebrow">// Testo provvisorio</p>
-        <h2>Non parte.<br>Lo apri <em class="wc-serif">tu</em>.</h2>
-      </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.40" data-out="0.60">
-        <p>Testo provvisorio. Ogni pezzo si stacca alla quota che gli tocca, e si ferma dove ti fermi.</p>
-      </div>
-      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.68" data-out="0.86">
-        <p>Testo provvisorio. Torni indietro e si rimonta, nello stesso ordine, al contrario.</p>
-      </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.88" data-out="1.00">
-        <h2>Il tempo di questo<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
-        <p>Testo provvisorio.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
-       sfalda in galassia) era già migrata dentro capWarp come terza forma, e
-       quello che restava era un guscio: la sola copy, che per giunta
-       descriveva quello che capWarp fa davvero. Tolto su richiesta.
-       `js/particles.js` resta sul disco, come js/spine.js: si riaccende
-       rimettendo la sezione, il canvas #wcPartCanvas e lo <script>.
-       NB gli `id` degli altri capitoli non si toccano: a cap05/cap07 sono
-       agganciati i trigger in js/. -->
-  <section class="wc-process" id="cap07" data-cursor="hidden">
-    <div class="wc-process-pin" id="wcProcessPin">
-      <div class="wc-process-head">
-        <p class="eyebrow">// 07 — Processo</p>
-        <h2>Quattro passaggi.</h2>
-        <div class="wc-progress"><span id="wcProgressBar"></span></div>
-      </div>
-      <div class="wc-process-row" id="wcProcessRow">
-        <article class="wc-step"><span class="wc-step-n">01</span><h3>Ascolto</h3><p>Capiamo a chi parla il sito e cosa deve ottenere. Prima di qualsiasi pixel.</p></article>
-        <article class="wc-step"><span class="wc-step-n">02</span><h3>Direzione</h3><p>Definiamo tono, tipografia, colore e movimento. Una direzione sola, non tre da scegliere.</p></article>
-        <article class="wc-step"><span class="wc-step-n">03</span><h3>Costruzione</h3><p>Sviluppo su misura. Nessun tema comprato, nessun page builder.</p></article>
-        <article class="wc-step"><span class="wc-step-n">04</span><h3>Vita</h3><p>Messa online, misurazione, correzioni. Un sito è vivo o è un volantino.</p></article>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUI STAVA IL CAPITOLO 08, il modulo di contatto. Adesso e' una pagina
-       sua: `parliamone.html`. Era l'ultima cosa da leggere dopo otto schermate
-       di portfolio, e ci arrivava stanco — chi voleva scrivere doveva scorrere
-       tutto, chi guardava il portfolio se lo trovava in mezzo. Il markup e' lo
-       stesso, id compresi, cosi' js/form.js non e' cambiato di una riga: si e'
-       spostato, non riscritto.
-       Con lui se ne sono andati da questa pagina anche js/form.js e la
-       libreria emailjs, che qui non hanno piu' niente da fare. -->
-
-  <!-- L'OFFERTA — ultima sezione della pagina.
-       Il fondo è un loop di vetro viola: due formazioni ai lati e un vuoto
-       nero al centro, che nel filmato resta vuoto per tutti i 6,4 s. È lì che
-       va il testo, e per questo la sezione non ha né velo né riquadro — il
-       contrasto ce l'ha già di suo, perché al centro non passa niente.
-
-       È la CHIUSURA: chi ci arriva ha già scorso tutto il capitolo, e qui si
-       dice cosa si compra. Da quando il modulo ha una pagina sua il pulsante
-       non riporta più su a un'ancora ma ci porta — che è anche il motivo per
-       cui l'offerta può stare in fondo senza lasciare la pagina senza uscita. -->
-  <section class="wc-offer" id="capOffer" data-cursor="dot">
-    <video id="wcGlassVideo" class="wc-offer-video" muted loop playsinline
-           preload="none" poster="assets/glass-poster.webp" aria-hidden="true">
-      <source data-src="assets/glass.mp4" type="video/mp4">
-    </video>
-    <div class="wc-offer-copy">
-      <p class="eyebrow">// Che cosa ti resta in mano</p>
-      <h2>Un sito che si <em class="wc-serif">attraversa</em>,<br>non uno che si sfoglia.</h2>
-      <p class="lead">Quello che hai appena scorso non &egrave; una vetrina di effetti: &egrave; il modo in cui lavoriamo. Ogni capitolo di questa pagina &egrave; una tecnica che pu&ograve; finire nel tuo sito — scelta perch&eacute; serve a qualcosa, mai perch&eacute; fa impressione.</p>
-      <a href="/atelier/parliamone" class="wc-offer-cta wc-hover">Parliamone &rarr;</a>
-    </div>
-  </section>
-
-</main>
-
-<footer>
-  <!-- AXXELL in grande, e il cursore lo accende passandoci sopra.
-       Tre copie della stessa parola, sovrapposte, tutte in CONTORNO e mai
-       riempite — è il contorno a rendere leggibile il gradiente che ci scorre
-       dentro, un testo pieno lo mangerebbe:
-         1. il contorno spento, che compare solo al passaggio: dà un fondo su
-            cui il resto si stacca;
-         2. il contorno che SI DISEGNA, una volta, quando il footer entra in
-            quadro (stroke-dash animato);
-         3. il gradiente della pagina, ritagliato da una maschera radiale che
-            insegue il puntatore: è quello che si accende sotto il dito.
-       Il viewBox è fisso e il testo sta al centro in percentuale, quindi la
-       parola si ridimensiona da sola con la finestra senza una media query. -->
-  <div class="wc-footer-word" id="wcFooterWord">
-    <!-- Il logo VERO (~/LOGO AXXELL.svg), non un <text>: i tracciati sono quelli
-         del marchio, orbita compresa, e l'effetto corre sul loro contorno.
-         I dieci tracciati stanno UNA volta sola in <defs> e vengono richiamati
-         tre volte con <use>: senza, sarebbero trenta copie di path data in
-         mezzo alla pagina. Il `fill` originale del file è stato tolto — qui
-         nessuno dei tre strati è riempito, è il contorno a rendere leggibile
-         il gradiente che ci scorre dentro.
-         Il viewBox è ritagliato sul disegno (il file ne aveva uno più largo,
-         con dell'aria attorno): così il marchio occupa tutta la riga. -->
-    <svg viewBox="28 104 598 154" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <defs>
-        <linearGradient id="wcFootGrad" gradientUnits="userSpaceOnUse" x1="28" y1="104" x2="626" y2="258">
-          <stop offset="0%"   stop-color="#00d4ff"/>
-          <stop offset="38%"  stop-color="#8c7cff"/>
-          <stop offset="70%"  stop-color="#ff2bd6"/>
-          <stop offset="100%" stop-color="#00e8a2"/>
-        </linearGradient>
-        <!-- In unità del viewBox, non in percentuale: js/footer.js ci scrive
-             dentro le coordinate del puntatore convertite una volta sola. -->
-        <radialGradient id="wcFootReveal" gradientUnits="userSpaceOnUse"
-                        cx="327" cy="181" r="150">
-          <stop offset="0%"   stop-color="#fff"/>
-          <stop offset="100%" stop-color="#000"/>
-        </radialGradient>
-        <mask id="wcFootMask">
-          <rect x="0" y="0" width="700" height="400" fill="url(#wcFootReveal)"/>
-        </mask>
-      </defs>
-      <use class="wc-foot-t -base"   href="#wcAxxellMark"/>
-      <use class="wc-foot-t -draw"   href="#wcAxxellMark"/>
-      <use class="wc-foot-t -reveal" href="#wcAxxellMark"
-           stroke="url(#wcFootGrad)" mask="url(#wcFootMask)"/>
-    </svg>
   </div>
-  <div class="wc-footer-row">
-    <span>© 2026 Axxell AI</span>
-    <span>Reggio Emilia, Italia</span>
-    <a href="mailto:info@axxell.ai">info@axxell.ai</a>
-  </div>
-</footer>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js" integrity="sha384-xb96EMJeax+NLXMC88ZBa1xAeAW+kn+horHh/zFlbMLG2UPWhMJJSlv7fi57hS+Q" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js" integrity="sha384-JCMGAgtMgo/19ttIm8BSnUFxOA5KAxaKT7jZdTDtaL0df8+CHKRo9XFCmhsvUlXG" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js" integrity="sha384-lg3+EgIwmxYq9YD4ix279pdUEasqmOS17fF+2mI/NEg6JHkawYaWYpJ6nKZenPOy" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js" integrity="sha384-QsPhgdP78a1erQNT34dj/oyh7uPCXUnT/FkptUa/56LnSGsbTBmdiAOfB7j+8K4A" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
-<script src="js/core.js?v=20260819g"></script>
-<script src="js/glsl.js?v=20260819g"></script>
-<script src="js/nav.js?v=20260819g"></script>
-<script src="js/cursor.js?v=20260819g"></script>
-<script src="js/fluid.js?v=20260819g"></script>
-<script src="js/loader.js?v=20260819g"></script>
-<script src="js/tunnel.js?v=20260819g"></script>
-<script src="js/warp.js?v=20260819g"></script>
-<script src="js/manifesto.js?v=20260819g"></script>
-<script src="js/cursorfx.js?v=20260819g"></script>
-<script src="js/dna.js?v=20260819g"></script>
-<script src="js/headings.js?v=20260819g"></script>
-<script src="js/vesper.js?v=20260819g"></script>
-<script src="js/saucer.js?v=20260819g"></script>
-<script src="js/robot.js?v=20260819g"></script>
-<script src="js/horizontal.js?v=20260819g"></script>
-<script src="js/lithos.js?v=20260819g"></script>
-<script src="js/sneaker.js?v=20260819g"></script>
-<script src="js/orologio.js?v=20260819g"></script>
-<script src="js/altitude.js?v=20260819g"></script>
-<script src="js/offer.js?v=20260819g"></script>
-<script src="js/footer.js?v=20260819g"></script>
+<div id="err"></div>
+
+<script src="vendor/three.min.js?v=20260824a"></script>
+<script>
+(function(){
+  var errBox = document.getElementById('err');
+  if (typeof THREE === 'undefined'){
+    errBox.style.display = 'grid';
+    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/lab/mappa.html), non con doppio clic dal Finder.';
+    return;
+  }
+
+  /* ======================================================================
+     I SEI MONDI. Ognuno è un SETTORE, non una tecnica: è la condizione
+     dell'intero progetto. Il colore non è decorativo — è quello con cui il
+     mondo tinge la nebbia intorno a sé quando lo guardi, così il fondo resta
+     neutro e sono i portali a colorarlo.
+     `poster` è quello che si vede sempre; `video` parte solo al passaggio.
+     ====================================================================== */
+  /* `page` = il mondo ha una pagina sua. Chi ce l'ha si raggiunge navigando,
+     sotto la copertura dello zoom; chi non ce l'ha ancora resta sul pannello
+     provvisorio, cosi' la mappa e' completa anche a costruzione in corso. */
+  var WORLDS = [
+    { id:'il-prodotto', nome:'Il prodotto', sett:'retail, e-commerce',
+      desc:'Chi compra da uno schermo non tocca niente. Deve poterlo guardare abbastanza da fidarsi.',
+      col:[0.62,0.44,1.00], poster:'assets/il-prodotto.webp', video:'assets/sneaker.mp4',
+      page:'/atelier/il-prodotto',
+      pos:[-1.44, 0.50, 0.52], size:[1.28,0.80], rot:[0.02, 0.34] },
+
+    /* Era «La notte — ristoranti, locali». Costruendolo si è visto che il
+       template (wanderlust) è fatto di paesi e fotografie di viaggio: la sua
+       griglia sono Islanda, Giappone, Marocco. Forzarlo in una sala da pranzo
+       avrebbe prodotto una cosa incoerente, quindi il mondo è diventato quello
+       che il materiale dice davvero di essere. Il settore «ristoranti» resta
+       scoperto: serve un altro template. */
+    { id:'il-viaggio', nome:'Il viaggio', sett:'turismo, ospitalità',
+      desc:'Chi parte non compra un itinerario. Compra il ricordo che avrà al ritorno.',
+      col:[0.96,0.94,0.90], poster:'assets/il-viaggio.jpg', video:'assets/starry.mp4',
+      page:'/atelier/il-viaggio', gain:0.92,
+      pos:[ 1.46, 0.56, 0.38], size:[1.24,0.78], rot:[0.03,-0.36] },
+
+    { id:'la-macchina', nome:'La macchina', sett:'industria, B2B',
+      desc:'Quello che fate non entra in una fotografia. Entra in un modello che si gira col dito.',
+      col:[0.365,0.941,0.659], poster:'assets/industria.jpg', video:null,
+      page:'/atelier/la-macchina',
+      pos:[-1.58,-0.90,-0.58], size:[1.14,0.71], rot:[-0.06, 0.26] },
+
+    { id:'il-dettaglio', nome:'Il dettaglio', sett:'artigianato, lusso',
+      desc:'Nessuno nota il dettaglio. Tutti notano che c’era.',
+      /* Lumora è un mondo CHIARO con un solo accento arancio bruciato: il
+         portale prende quello, ed è l'unico caldo-terroso della mappa. */
+      col:[0.98,0.55,0.28], poster:'assets/il-dettaglio.webp', video:null, gain:0.86,
+      page:'/atelier/il-dettaglio',
+      pos:[ 1.62,-0.94,-0.64], size:[1.16,0.73], rot:[-0.05,-0.28] },
+
+    { id:'prima-e-dopo', nome:'Prima e dopo', sett:'edilizia, estetica',
+      desc:'Il cliente non compra il lavoro. Compra la differenza fra le due fotografie.',
+      /* Il poster è una fotografia DI QUEL MONDO (il crinale nell'ora blu), non
+         un'immagine generica: il portale dev'essere una finestra su ciò che c'è
+         dentro. E il colore è quello della sua luce, l'ambra delle finestre
+         accese — l'unica cosa calda in un mondo per il resto freddo e chiaro. */
+      col:[0.98,0.78,0.52], poster:'assets/prima-e-dopo.jpg', video:null, gain:0.78,
+      page:'/atelier/prima-e-dopo',
+      pos:[-0.78, 1.02,-1.80], size:[1.04,0.65], rot:[0.11, 0.12] },
+
+    /* Settimo mondo. La ristorazione era rimasta scoperta quando wanderlust si è
+       rivelato un mondo di viaggio: `altitude` la copre esattamente — la sua
+       stessa scheda parla di «ospitalità silenziosa e costosa», di notte, con
+       una capsula di vetro per la richiesta. Che poi è il materiale da cui
+       nasceva già il capitolo 06 dell'atelier. */
+    { id:'la-notte', nome:'La notte', sett:'ristoranti, locali',
+      desc:'Alle undici di sera il tuo locale lavora ancora — ma il sito lavora da solo.',
+      col:[0.97,0.78,0.48], poster:'assets/la-notte.webp', video:null,
+      page:'/atelier/la-notte',
+      pos:[-1.02,-1.24,-1.92], size:[1.00,0.63], rot:[-0.10, 0.12] },
+
+    { id:'lo-studio', nome:'Lo studio', sett:'professionisti',
+      desc:'Un secondo e mezzo per capire di cosa vi occupate. Poi decide.',
+      /* marcus-vane: nero cinematografico con un solo accento brace elettrica. */
+      col:[1.00,0.42,0.17], poster:'assets/lo-studio.webp', video:null, gain:0.9,
+      page:'/atelier/lo-studio',
+      pos:[ 0.94,-1.26,-1.86], size:[1.02,0.64], rot:[-0.10,-0.10] }
+  ];
+
+  var canvas   = document.getElementById('c');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x04050a, 1);
+  renderer.autoClear = false;
+
+  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  var CAM0 = new THREE.Vector3(0, 0, 4.35);
+  camera.position.copy(CAM0);
+
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
+
+  /* ======================================================================
+     1. IL MONDO DIETRO
+     ====================================================================== */
+  var bg = new THREE.Scene();
+
+  var fogMat = new THREE.ShaderMaterial({
+    depthTest:false, depthWrite:false,
+    uniforms:{ uTime:{value:0}, uAspect:{value:1}, uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.999,1.0); }',
+    fragmentShader:[
+      'varying vec2 vUv; uniform float uTime,uAspect,uTintStr; uniform vec3 uTint;',
+      'float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }',
+      'void main(){',
+      '  vec2 p=(vUv-0.5)*vec2(uAspect,1.0); float d=length(p);',
+      '  vec3 base=mix(vec3(0.055,0.052,0.085),vec3(0.010,0.011,0.021),smoothstep(0.0,0.95,d));',
+      '  base+=vec3(0.020,0.012,0.050)*(1.0-smoothstep(0.0,0.55,d));',
+      // il mondo guardato tinge la nebbia: il fondo resta neutro, sono i portali a colorarlo
+      '  base+=uTint*uTintStr*0.085*(1.0-smoothstep(0.0,1.05,d));',
+      '  base+=(h(gl_FragCoord.xy+uTime)-0.5)*0.012;',
+      '  gl_FragColor=vec4(base,1.0);',
+      '}'
+    ].join('\n')
+  });
+  var fog = new THREE.Mesh(new THREE.PlaneGeometry(2,2), fogMat);
+  fog.frustumCulled = false;
+  bg.add(fog);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LE PARTICELLE — UNA SOLA POPOLAZIONE, TRE DESTINI.
+
+     Questo è il pezzo che tiene insieme tutto il capitolo: NON esiste un
+     tunnel e poi una mappa. Esiste un solo sistema di punti, una sola camera,
+     e una sola scena. All'inizio i punti sfilano verso di te (il tunnel);
+     poi il viaggio rallenta fino a fermarsi, e ognuno raggiunge la
+     destinazione che aveva già assegnata dall'inizio:
+
+       ruolo 0 — l'85%: si allarga e diventa il pulviscolo di fondo;
+       ruolo 1 — il 12%: converge sulla superficie di uno dei sei portali e
+                 lì densifica finché il portale non traspare e lo sostituisce;
+       ruolo 2 — il resto: NON ha una destinazione. Resta a girare attorno al
+                 nucleo vuoto. Sono le uniche rimaste senza posto, ed è
+                 l'altra metà della frase che sta già scritta nel capitolo
+                 dell'elica: «ognuna con la sua destinazione già assegnata».
+
+     Non c'è niente da cucire fra tunnel e mappa perché non si taglia niente:
+     cambia solo `uAssign`, da 0 a 1. ══════════════════════════════════════ */
+  var PN = mobile ? 1500 : 3400;
+  var TUNNEL_LEN = 26.0;
+  var pPos = new Float32Array(PN*3), pTgt = new Float32Array(PN*3),
+      pSeed = new Float32Array(PN), pRole = new Float32Array(PN);
+
+  // le facce dei portali servono da bersaglio: un punto a caso sulla lastra,
+  // portato in coordinate di mondo con la stessa rotazione della card
+  function portalPoint(w, out){
+    var e = new THREE.Euler(w.rot[0], w.rot[1], 0);
+    out.set((Math.random()-0.5)*w.size[0]*0.94, (Math.random()-0.5)*w.size[1]*0.94, 0);
+    out.applyEuler(e);
+    out.x += w.pos[0]; out.y += w.pos[1]; out.z += w.pos[2];
+    return out;
+  }
+  var tmpV = new THREE.Vector3();
+  for (var i=0;i<PN;i++){
+    // posizione di partenza: sparsa nel tubo che sfila
+    var ang = Math.random()*6.283, rad = 0.9 + Math.pow(Math.random(),0.6)*4.6;
+    pPos[i*3]   = Math.cos(ang)*rad;
+    pPos[i*3+1] = Math.sin(ang)*rad*0.72;
+    pPos[i*3+2] = Math.random()*TUNNEL_LEN;
+    pSeed[i]    = Math.random();
+
+    var r = Math.random();
+    if (r < 0.12){                                   // sulla faccia di un portale
+      pRole[i] = 1;
+      var w = WORLDS[i % WORLDS.length];
+      portalPoint(w, tmpV);
+      pTgt[i*3]=tmpV.x; pTgt[i*3+1]=tmpV.y; pTgt[i*3+2]=tmpV.z;
+    } else if (r < 0.17){                            // senza destinazione, attorno al vuoto
+      pRole[i] = 2;
+      pTgt[i*3]=0; pTgt[i*3+1]=0; pTgt[i*3+2]=0;
+    } else {                                         // il fondo
+      pRole[i] = 0;
+      pTgt[i*3]   = (Math.random()-0.5)*15;
+      pTgt[i*3+1] = (Math.random()-0.5)*9;
+      pTgt[i*3+2] = (Math.random()-0.5)*7 - 1.8;
+    }
+  }
+  var pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+  pGeo.setAttribute('aTarget',  new THREE.BufferAttribute(pTgt,3));
+  pGeo.setAttribute('aSeed',    new THREE.BufferAttribute(pSeed,1));
+  pGeo.setAttribute('aRole',    new THREE.BufferAttribute(pRole,1));
+  pGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 40);
+
+  var dustMat = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    uniforms:{ uTime:{value:0}, uPr:{value:renderer.getPixelRatio()},
+               uTravel:{value:0}, uAssign:{value:0}, uSpeed:{value:1},
+               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN} },
+    vertexShader:[
+      'attribute vec3 aTarget; attribute float aSeed, aRole;',
+      'uniform float uTime,uPr,uTravel,uAssign,uSpeed,uCardsIn,uNZ,uLen;',
+      'varying float vA;',
+      'void main(){',
+      // dov'è mentre sfila: la z scorre e si riavvolge
+      '  vec3 sp = vec3(position.xy, mod(position.z + uTravel, uLen) - uLen*0.62);',
+      // ogni particella parte con un suo ritardo: l'assegnazione non è un salto
+      '  float d = clamp((uAssign - aSeed*0.26) / 0.74, 0.0, 1.0);',
+      '  d = d*d*(3.0-2.0*d);',
+      '  vec3 tgt = aTarget;',
+      '  if (aRole > 1.5){',                     // quelle senza posto: girano attorno al vuoto
+      '    float a = aSeed*6.283 + uTime*0.055;',
+      '    float rr = 0.95 + fract(aSeed*7.3)*0.8;',
+      '    tgt = vec3(cos(a)*rr, sin(a)*rr*0.58, uNZ + (fract(aSeed*13.1)-0.5)*0.4);',
+      '  }',
+      '  vec3 p = mix(sp, tgt, d);',
+      '  if (aRole < 0.5){',                     // il fondo respira piano
+      '    p.x += sin(uTime*0.11 + aSeed*6.28)*0.20*d;',
+      '    p.y += cos(uTime*0.09 + aSeed*11.0)*0.16*d;',
+      '  }',
+      '  vec4 mv = modelViewMatrix * vec4(p,1.0);',
+      '  float base = 0.16 + 0.5*(0.5+0.5*sin(uTime*0.5 + aSeed*19.0));',
+      '  vA = mix(0.85, base, d) * (0.35 + 0.65*uSpeed*0.0 + 0.65);',
+      // sulla faccia dei portali le particelle si spengono via via che il
+      // portale traspare: sono loro a diventarlo
+      '  if (aRole > 0.5 && aRole < 1.5) vA *= (1.0 - uCardsIn);',
+      '  gl_PointSize = (1.3 + 1.4*fract(aSeed*3.1) + uSpeed*2.6) * uPr * (3.4 / max(0.3, -mv.z));',
+      '  gl_Position = projectionMatrix * mv;',
+      '}'
+    ].join('\n'),
+    fragmentShader:[
+      'varying float vA;',
+      'void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;',
+      '  gl_FragColor=vec4(vec3(0.62,0.78,0.95), vA*(1.0-smoothstep(0.18,0.5,d))); }'
+    ].join('\n')
+  });
+  var dust = new THREE.Points(pGeo, dustMat);
+  dust.frustumCulled = false;
+  bg.add(dust);
+
+  /* IL NUCLEO — lo slot vuoto. Contorno e basta: è l'unico elemento della
+     scena senza colore e senza mondo, e non si riempie mai. */
+  var NZ = -1.55, NW = 1.62, NH = 1.01;
+  function outlineGeo(w,h){
+    var x=w/2, y=h/2;
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      -x,-y,0, x,-y,0,  x,-y,0, x,y,0,  x,y,0, -x,y,0,  -x,y,0, -x,-y,0
+    ]),3));
+    return g;
+  }
+  var nucleo = new THREE.LineSegments(outlineGeo(NW,NH),
+    new THREE.LineBasicMaterial({ color:0xdfe4ee, transparent:true, opacity:0.9 }));
+  nucleo.position.z = NZ;
+  /* Il vuoto va SCAVATO, non solo contornato: al centro la nebbia è più chiara
+     (vignettatura) e il contorno da solo si leggeva come un pannello pieno.
+     Questo velo scuro dietro lo riporta a essere un buco. */
+  var voidFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(NW, NH),
+    new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.72, depthWrite:false })
+  );
+  voidFill.position.z = NZ - 0.02;
+  bg.add(voidFill);
+  bg.add(nucleo);
+
+  /* I RAGGI — dai portali al nucleo, mai fra un portale e l'altro. Ognuno
+     afferma una cosa sola: questo mondo può diventare il tuo. */
+  var spokeMat = new THREE.LineBasicMaterial({ color:0x3ad8ff, transparent:true, opacity:0.22 });
+  var spokes = [];
+
+  /* ======================================================================
+     2. IL VETRO — materiale approvato il 24/08/2026. NON ritarare.
+     `uFlat` è l'unica aggiunta: a 1 il portale si disegna piatto, ed è la
+     versione che finisce nel render target per farsi vedere dagli altri.
+     ====================================================================== */
+  var TARATURA = { uFres:3.2, uOpen:0.75, uThick:0.056, uDisp:0.28,
+                   uBev:0.16, uRim:0.86, uGain:1.15, uPar:0.06, uBlur:1.0, uFrost:0.55 };
+
+  var VERT = [
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'void main(){',
+    '  vUv=uv;',
+    '  vec4 mv=modelViewMatrix*vec4(position,1.0);',
+    '  vView=-mv.xyz;',
+    '  vec3 T=normalize((modelViewMatrix*vec4(1.0,0.0,0.0,0.0)).xyz);',
+    '  vec3 B=normalize((modelViewMatrix*vec4(0.0,1.0,0.0,0.0)).xyz);',
+    '  vec3 N=normalize((modelViewMatrix*vec4(0.0,0.0,1.0,0.0)).xyz);',
+    '  vTBN=mat3(T,B,N);',
+    '  gl_Position=projectionMatrix*mv;',
+    '}'
+  ].join('\n');
+
+  var FRAG = [
+    'precision highp float;',
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'uniform sampler2D tScene,tVideo;',
+    'uniform vec2 uRes;',
+    'uniform float uFres,uOpen,uThick,uDisp,uBev,uRim,uGain,uPar,uBlur,uFrost;',
+    'uniform float uVidAsp,uCardAsp,uFlat,uHot,uDim,uReveal;',
+    'uniform vec3 uCol;',
+
+    'float sdBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r;',
+    '  return min(max(q.x,q.y),0.0)+length(max(q,0.0))-r; }',
+
+    'vec3 blurVid(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tVideo,uv).rgb;',
+    '  vec3 s=texture2D(tVideo,uv).rgb*0.28; float d=r*0.70710678;',
+    '  s+=texture2D(tVideo,uv+vec2( r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2(-r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0, r)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0,-r)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2( d, d)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2( d,-d)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2(-d, d)).rgb*0.09;',
+    '  s+=texture2D(tVideo,uv+vec2(-d,-d)).rgb*0.09;',
+    '  return s; }',
+
+    'vec3 blur9(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tScene,uv).rgb;',
+    '  vec3 s=texture2D(tScene,uv).rgb*0.28; float d=r*0.70710678;',
+    '  s+=texture2D(tScene,uv+vec2( r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0, r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0,-r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d,-d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d,-d)).rgb*0.09;',
+    '  return s; }',
+
+    'void main(){',
+    '  vec2 p=(vUv-0.5)*2.0; p.x*=uCardAsp;',
+    '  vec2 b=vec2(uCardAsp,1.0)-0.012; float rad=0.14;',
+    '  float sd=sdBox(p,b,rad);',
+    '  if(sd>0.0) discard;',
+
+    // normale dello smusso: un asse per volta, continua ovunque
+    '  vec2 tE=clamp((abs(p)-(b-uBev))/max(uBev,1e-4),0.0,1.0);',
+    '  tE=tE*tE*(3.0-2.0*tE);',
+    '  vec2 tilt=sign(p)*tE;',
+    '  float bend=clamp(max(abs(tilt.x),abs(tilt.y)),0.0,1.0);',
+    '  vec3 N=normalize(vTBN*normalize(vec3(tilt*1.35,1.0-bend*0.30)));',
+    '  vec3 V=normalize(vView);',
+
+    // il contenuto, smerigliato più verso il bordo
+    '  vec2 vuv=vUv; float k=uCardAsp/uVidAsp;',
+    '  if(k<1.0){ vuv.y=(vuv.y-0.5)*k+0.5; } else { vuv.x=(vuv.x-0.5)/k+0.5; }',
+    '  vuv-=vec2(V.x,V.y)*uPar;',
+    '  float frost=uFrost*(0.18+0.82*bend)*0.020;',
+    '  vec3 inside=blurVid(clamp(vuv,0.004,0.996),frost)*uGain;',
+
+    '  float f=pow(1.0-clamp(dot(N,V),0.0,1.0),uFres);',
+    '  float rim=smoothstep(0.055,0.0,-sd);',
+    '  float a=1.0-smoothstep(-0.006,0.0,sd);',
+
+    // passaggio piatto: nessuna lettura della scena, serve solo a farsi vedere
+    '  if(uFlat>0.5){',
+    '    vec3 fc=inside*0.85+uCol*rim*0.5;',
+    '    gl_FragColor=vec4(fc,a*0.9*uReveal); return;',
+    '  }',
+
+    '  vec2 suv=gl_FragCoord.xy/uRes;',
+    '  float rMask=mix(0.10,1.0,bend);',
+    '  vec2 off=N.xy*uThick*rMask;',
+    '  float br=uBlur*0.009;',
+    '  vec3 sR=blur9(suv+off*(1.0+uDisp),br);',
+    '  vec3 sG=blur9(suv+off,br);',
+    '  vec3 sB=blur9(suv+off*(1.0-uDisp),br);',
+    '  vec3 refr=vec3(sR.r,sG.g,sB.b);',
+
+    // uHot: quanto è "guardato". Apre di più e accende il bordo del suo colore.
+    '  float open=clamp((1.0-f)*(uOpen+uHot*0.16),0.0,1.0);',
+    '  vec3 col=mix(refr,inside*(1.0+uHot*0.22),open);',
+    '  col+=mix(vec3(0.42,0.78,0.95),uCol,uHot)*rim*(uRim+uHot*0.9)*(0.35+0.65*f);',
+    '  col+=vec3(0.10,0.16,0.24)*f*0.5;',
+    '  col*=uDim;',                       // gli altri portali arretrano
+    '  gl_FragColor=vec4(col,a*uReveal);',
+    '}'
+  ].join('\n');
+
+  /* ======================================================================
+     3. I PORTALI
+     ====================================================================== */
+  var loader = new THREE.TextureLoader();
+  var cards = new THREE.Group();
+  var scene = new THREE.Scene();
+  scene.add(cards);
+
+  var RES = new THREE.Vector2(1,1);
+  var rt = new THREE.WebGLRenderTarget(2,2,{
+    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+    format:THREE.RGBAFormat, stencilBuffer:false, depthBuffer:true
+  });
+
+  WORLDS.forEach(function(w, i){
+    var tex = loader.load(w.poster, function(t){
+      w.posterAsp = t.image.width / t.image.height;
+      w.mat.uniforms.uVidAsp.value = w.posterAsp;
+    });
+    tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+    tex.encoding = THREE.sRGBEncoding;
+    w.posterTex = tex;
+
+    var uni = {
+      tScene:{value:rt.texture}, tVideo:{value:tex}, uRes:{value:RES},
+      uVidAsp:{value:16/9}, uCardAsp:{value:w.size[0]/w.size[1]},
+      uFlat:{value:0}, uHot:{value:0}, uDim:{value:1}, uReveal:{value:0},
+      uCol:{value:new THREE.Vector3(w.col[0],w.col[1],w.col[2])}
+    };
+    Object.keys(TARATURA).forEach(function(k){ uni[k] = { value: TARATURA[k] }; });
+    /* Esposizione per mondo. La taratura del vetro non si tocca — questo è
+       l'unico numero che cambia da un portale all'altro, e serve perché un
+       contenuto girato di giorno in mezzo a cinque mondi notturni buca la
+       scena e si mangia l'attenzione che deve andare al centro. */
+    if (w.gain) uni.uGain.value = w.gain;
+
+    var mat = new THREE.ShaderMaterial({
+      uniforms:uni, vertexShader:VERT, fragmentShader:FRAG,
+      transparent:true, depthWrite:false
+    });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(w.size[0], w.size[1]), mat);
+    mesh.position.set(w.pos[0], w.pos[1], w.pos[2]);
+    mesh.rotation.set(w.rot[0], w.rot[1], 0);
+    mesh.renderOrder = 10 + i;
+    mesh.userData.world = w;
+    w.mesh = mesh; w.mat = mat; w.uni = uni;
+    w.home = mesh.position.clone();
+    cards.add(mesh);
+
+    // il raggio verso il nucleo, che si ferma prima di entrarci
+    var from = new THREE.Vector3(w.pos[0], w.pos[1], w.pos[2]);
+    var to   = new THREE.Vector3(0,0,NZ);
+    var dir  = to.clone().sub(from).normalize();
+    var a = from.clone().addScaledVector(dir, Math.max(w.size[0],w.size[1])*0.52);
+    var bpt = to.clone().addScaledVector(dir, -0.92);
+    var sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([a.x,a.y,a.z, bpt.x,bpt.y,bpt.z]),3));
+    var line = new THREE.Line(sg, spokeMat.clone());
+    bg.add(line);
+    spokes.push(line);
+    w.spoke = line;
+
+    /* L'ANCORA DELLA SCRITTA È UN FIGLIO DELLA CARD.
+       Non un punto proiettato: un oggetto agganciato alla lastra, spostato di
+       `lift` lungo il suo asse z locale — che è la normale della card. Così
+       eredita di suo posizione, INCLINAZIONE e scala, e la scritta si posa sul
+       piano del portale invece di restare appiccicata allo schermo. Se la card
+       è girata di tre quarti, lo è anche la scritta. */
+    w.fwd = new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(w.rot[0], w.rot[1], 0));
+    w.lift = 0.34 + w.size[0]*0.16;
+    var anchor = new THREE.Object3D();
+    anchor.position.set(0, 0, w.lift);
+    mesh.add(anchor);
+    w.anchorObj = anchor;
+
+    // etichetta in DOM
+    var el = document.createElement('div');
+    el.className = 'lb';
+    el.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    el.innerHTML = '<b></b><span></span>';
+    el.querySelector('b').textContent = w.nome;
+    el.querySelector('span').textContent = w.sett;
+    /* DENTRO al nodo camera, non dentro al contenitore della prospettiva:
+       è quel nodo a portare la matrice della camera, e una scritta appesa
+       fuori non la riceve — resta con la sola matrice dell'ancora, che vale
+       1/ppu, e collassa in mezzo pixel. */
+    document.getElementById('labelCam').appendChild(el);
+    w.label = el;
+  });
+
+  /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
+  var video = document.createElement('video');
+  video.muted = true; video.loop = true; video.playsInline = true;
+  video.setAttribute('playsinline',''); video.preload = 'auto';
+  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(video);
+  var vtex = new THREE.VideoTexture(video);
+  vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
+  vtex.format = THREE.RGBFormat; vtex.encoding = THREE.sRGBEncoding;
+  var videoOn = null;
+
+  function playOn(w){
+    if (videoOn === w) return;
+    if (videoOn){ videoOn.uni.tVideo.value = videoOn.posterTex;
+                  videoOn.uni.uVidAsp.value = videoOn.posterAsp || 16/9; videoOn = null; }
+    if (!w || !w.video) { video.pause(); return; }
+    videoOn = w;
+    if (video.getAttribute('src') !== w.video){ video.src = w.video; }
+    video.play().catch(function(){});
+    w.uni.tVideo.value = vtex;
+  }
+
+  /* ======================================================================
+     4. DISPOSIZIONE MOBILE — il nucleo sta fermo, la costellazione gira.
+     Sei portali in profondità su 390 px sono sei francobolli: qui vanno su
+     un'orbita e si porta avanti uno per volta con lo swipe.
+     ====================================================================== */
+  var orbitIdx = 0;
+  function layout(){
+    if (!mobile){
+      WORLDS.forEach(function(w){ w.target = w.home.clone(); w.tScale = 1; });
+      return;
+    }
+    WORLDS.forEach(function(w, i){
+      var k = (i - orbitIdx + WORLDS.length) % WORLDS.length;
+      var a = (k / WORLDS.length) * Math.PI * 2 - Math.PI/2;
+      var front = k === 0;
+      w.target = new THREE.Vector3(Math.cos(a)*1.05, Math.sin(a)*0.95 - 0.15, front ? 0.7 : -1.1);
+      w.tScale = front ? 1.25 : 0.42;
+    });
+  }
+  layout();
+  WORLDS.forEach(function(w){ w.mesh.position.copy(w.target); w.mesh.scale.setScalar(w.tScale); });
+
+  if (mobile){
+    var sx0 = null;
+    window.addEventListener('touchstart', function(e){ sx0 = e.touches[0].clientX; }, {passive:true});
+    window.addEventListener('touchend', function(e){
+      if (sx0 === null || openW) return;
+      var dx = e.changedTouches[0].clientX - sx0; sx0 = null;
+      if (Math.abs(dx) < 40) return;
+      orbitIdx = (orbitIdx + (dx < 0 ? 1 : -1) + WORLDS.length) % WORLDS.length;
+      layout();
+      playOn(WORLDS[(orbitIdx) % WORLDS.length]);
+    }, {passive:true});
+    document.getElementById('hint').textContent = 'scorri per girare — tocca per entrare';
+  }
+
+  /* ======================================================================
+     5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
+     ====================================================================== */
+  /* ══════════════════════════════════════════════════════════════════════
+     GLI STADI. `hero` → `arrivo` → `mappa`. Non sono scene diverse: è lo
+     stesso frame, con tre numeri che si muovono.
+     ══════════════════════════════════════════════════════════════════════ */
+  /* UN INDIRIZZO PER MONDO, SUL PATH.
+     Si condivide, il tasto indietro funziona, e Google indicizza sette pagine
+     invece di una. Il rewrite che serve sta in vercel.json: senza, un ingresso
+     diretto su /atelier/la-notte darebbe 404. */
+  var ROOT = '/atelier';
+  function worldFromPath(){
+    var parts = location.pathname.replace(/\/+$/,'').split('/');
+    var last = parts[parts.length-1];
+    return (last === 'atelier' || last === '') ? '' : last;
+  }
+
+  /* SI TORNA DA UN MONDO: la coreografia d'ingresso e' roba da prima visita.
+     Chi rientra dalla pagina di un mondo trova la mappa gia' composta, col
+     portale da cui e' uscito acceso e un filo piu' avanti. Il parametro lo
+     mette il link «Mappa» delle pagine dei mondi. */
+  var CAME_FROM = (function(){
+    try { return new URLSearchParams(location.search).get('da') || ''; }
+    catch(e){ return ''; }
+  })();
+
+  var stage = 'hero';
+  var travel = 0, speed = 1;      // quanto scorre il tunnel, e a che velocità
+  var assign = 0;                 // 0 = sfila, 1 = tutti a destinazione
+  var cardsIn = 0;                // i portali traspaiono dentro agli ammassi
+  var spokeIn = 0;                // i raggi si disegnano per ultimi
+  var arriveT = 0;
+
+  function entra(){
+    if (stage !== 'hero') { skip(); return; }
+    stage = 'arrivo'; arriveT = performance.now();
+    document.getElementById('hero').classList.add('-off');
+    setTimeout(function(){ var h=document.getElementById('hero'); if(h) h.style.display='none'; }, 600);
+  }
+  // Alla terza volta la meraviglia è un pedaggio: un secondo clic salta in fondo.
+  function skip(){
+    if (stage !== 'arrivo') return;
+    speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; stage = 'mappa';
+  }
+  document.getElementById('go').addEventListener('click', function(e){ e.stopPropagation(); entra(); });
+
+  var ray = new THREE.Raycaster();
+  var ptr = new THREE.Vector2(-2,-2);
+  var mx=0, my=0, tmx=0, tmy=0;
+  var hot = null;                 // il mondo guardato
+  var openW = null;               // il mondo in cui si è entrati
+  var zoom = 0, zoomT = 0;        // 0 = mappa, 1 = dentro
+  var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
+
+  /* Rientrando da un mondo il suo portale resta acceso FINCHE' NON SI MUOVE
+     il puntatore. Senza questa guardia il raycast del primo fotogramma, con il
+     mouse fermo dov'era, non colpisce niente e lo spegne all'istante: si
+     tornava sempre su una mappa spenta, e il «ti riceve dov'eri» non si vedeva
+     mai. */
+  var pointerMoved = false;
+  window.addEventListener('pointermove', function(e){
+    pointerMoved = true;
+    tmx = (e.clientX/window.innerWidth)*2-1;
+    tmy = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(tmx, -tmy);
+  }, {passive:true});
+
+  ['pointerdown','keydown','touchstart'].forEach(function(ev){
+    window.addEventListener(ev, function(){ video.play().catch(function(){}); }, {once:true});
+  });
+
+  var prefetched = {};
+  function prefetch(w){
+    if (!w || !w.page || prefetched[w.id]) return;
+    prefetched[w.id] = 1;
+    var l = document.createElement('link');
+    l.rel = 'prefetch'; l.href = w.page; l.as = 'document';
+    document.head.appendChild(l);
+  }
+
+  function enter(w, push){
+    if (!w || openW) return;
+    openW = w; zoomT = 1;
+    playOn(w);
+
+    /* IL MONDO E' UNA PAGINA: lo zoom non e' una transizione DECORATIVA, e' la
+       copertura del caricamento. Si parte, e quando il portale ha riempito il
+       quadro — cioe' quando fuori non si vede piu' niente — si naviga. Il
+       precaricamento e' partito al passaggio del puntatore, quindi a quel punto
+       la pagina c'e' gia'. */
+    if (w.page){
+      document.getElementById('hint').style.opacity = 0;
+      document.getElementById('nav').classList.add('-hide');
+      setTimeout(function(){ location.href = w.page; }, 520);
+      return;
+    }
+    var el = document.getElementById('world');
+    el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
+    document.getElementById('wKick').textContent = '// ' + w.sett;
+    document.getElementById('wName').textContent = w.nome;
+    document.getElementById('wDesc').textContent = w.desc;
+    var vv = el.querySelector('video');
+    if (vv) vv.remove();
+    if (w.video){
+      var v2 = document.createElement('video');
+      v2.muted = true; v2.loop = true; v2.playsInline = true; v2.setAttribute('playsinline','');
+      v2.src = w.video; el.insertBefore(v2, el.firstChild); v2.play().catch(function(){});
+    }
+    setTimeout(function(){ el.classList.add('-on'); el.setAttribute('aria-hidden','false'); }, 380);
+    document.getElementById('hint').style.opacity = 0;
+    document.getElementById('nav').classList.add('-hide');
+    if (push !== false && window.history && history.pushState) history.pushState({w:w.id}, '', ROOT + '/' + w.id);
+  }
+  function leave(pop){
+    if (!openW) return;
+    var el = document.getElementById('world');
+    el.classList.remove('-on'); el.setAttribute('aria-hidden','true');
+    var vv = el.querySelector('video'); if (vv) vv.remove();
+    hot = openW; openW = null; zoomT = 0;
+    document.getElementById('hint').style.opacity = '';
+    document.getElementById('nav').classList.remove('-hide');
+    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT);
+  }
+  window.addEventListener('popstate', function(e){
+    var id = worldFromPath();
+    var w = WORLDS.filter(function(x){ return x.id === id; })[0];
+    if (w && !openW) enter(w, false);
+    else if (!w && openW) leave(true);
+  });
+  document.getElementById('wBack').addEventListener('click', function(){ leave(); });
+  document.getElementById('wTalk').addEventListener('click', function(){ leave(); });
+  document.getElementById('wNext').addEventListener('click', function(){
+    var i = WORLDS.indexOf(openW); leave();
+    setTimeout(function(){ enter(WORLDS[(i+1)%WORLDS.length]); }, 420);
+  });
+  window.addEventListener('keydown', function(e){ if (e.key === 'Escape') leave(); });
+
+  window.addEventListener('click', function(){
+    if (stage === 'hero'){ entra(); return; }
+    if (stage === 'arrivo'){ skip(); return; }
+    if (openW) return;
+    if (hot) enter(hot);
+  });
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
+    renderer.setSize(w,h,false);
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+    rt.setSize(Math.round(w*pr), Math.round(h*pr));
+    RES.set(Math.round(w*pr), Math.round(h*pr));
+    fogMat.uniforms.uAspect.value = w/h;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var proj = new THREE.Vector3();
+  var labelsEl = document.getElementById('labels');
+  var labelCam = document.getElementById('labelCam');
+  var lastPersp = -1;
+  /* I numeri della matrice vanno scritti SENZA notazione esponenziale.
+     `+v.toFixed(6)` torna a essere un numero, e JavaScript stampa i valori
+     molto piccoli come `4e-06`: in CSS non è un numero valido, quindi il
+     browser scarta l'INTERA dichiarazione `transform` — in silenzio, senza un
+     errore in console. Il risultato era la trasformata della camera che non
+     veniva applicata per niente e le scritte che sparivano.
+     Qui esce sempre una stringa in notazione decimale, e sotto la soglia si
+     scrive zero. */
+  function n(v){
+    if (!isFinite(v) || Math.abs(v) < 1e-5) return '0';
+    return v.toFixed(5);
+  }
+  function camMatrix(m){
+    var e = m.elements;
+    return 'matrix3d(' + [n(e[0]),n(-e[1]),n(e[2]),n(e[3]),
+                          n(e[4]),n(-e[5]),n(e[6]),n(e[7]),
+                          n(e[8]),n(-e[9]),n(e[10]),n(e[11]),
+                          n(e[12]),n(-e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  /* IL CSS3D LAVORA IN PIXEL, LA SCENA IN UNITÀ — E I DUE LATI DEVONO
+     ANNULLARSI.
+     Il layer DOM tratta un'unità di mondo come UN PIXEL. Con card larghe 1.3
+     unità le scritte collassano in due pixel al centro e spariscono; e se si
+     corregge solo da una parte, escono specchiate e fuori posto (provato).
+     La conversione va fatta DUE VOLTE, in versi opposti: la camera viene
+     ingrandita di `ppu`, l'ancora della scritta rimpicciolita di `1/ppu`.
+     Nel prodotto il fattore sparisce, e resta solo l'effetto voluto — quanti
+     pixel di testo stanno in un'unità di mondo.
+     `ppu` è la prospettiva diviso la distanza tipica della camera dalle card:
+     così a quella profondità il testo esce grande quanto è scritto nel CSS, e
+     resta proporzionato se la finestra cambia. */
+  var DREF = 4.35;
+  var mCam = new THREE.Matrix4(), mObj = new THREE.Matrix4(), mScale = new THREE.Matrix4();
+
+  function objMatrix(m){
+    var e = m.elements;
+    return 'translate(-50%,-50%)matrix3d(' +
+      [n(e[0]),n(e[1]),n(e[2]),n(e[3]),
+       n(-e[4]),n(-e[5]),n(-e[6]),n(-e[7]),
+       n(e[8]),n(e[9]),n(e[10]),n(e[11]),
+       n(e[12]),n(e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  var t0 = performance.now(), tPrev = t0;
+  function sstep(x){ x = x < 0 ? 0 : (x > 1 ? 1 : x); return x*x*(3-2*x); }
+
+  function frame(){
+    requestAnimationFrame(frame);
+    var now = performance.now();
+    var t = (now-t0)/1000;
+    var dt = Math.min(0.05, (now-tPrev)/1000); tPrev = now;
+
+    /* La coreografia. Cinque numeri, nessun taglio: il tunnel rallenta, le
+       particelle raggiungono la destinazione che avevano gia', i portali
+       traspaiono dentro agli ammassi che si sono formati, e i raggi si
+       disegnano per ultimi. Chi torna una seconda volta salta con un clic. */
+    if (stage === 'arrivo'){
+      var e = now - arriveT;
+      speed   = 1 - sstep(e/900);
+      assign  = sstep((e-550)/1250);
+      cardsIn = sstep((e-1250)/800);
+      spokeIn = sstep((e-1800)/700);
+      if (e > 2500) stage = 'mappa';
+    }
+    travel += speed * dt * 5.6;
+
+    mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
+    zoom += (zoomT-zoom)*(zoomT > zoom ? 0.115 : 0.16);   // entra in ~600ms, esce in ~400
+
+    // messa a fuoco: chi sta sotto al puntatore
+    if (stage === 'mappa' && !openW && !mobile && (pointerMoved || !CAME_FROM)){
+      ray.setFromCamera(ptr, camera);
+      var hits = ray.intersectObjects(cards.children, false);
+      var nw = hits.length ? hits[0].object.userData.world : null;
+      if (nw !== hot){ hot = nw; playOn(hot); prefetch(hot); }
+      document.body.style.cursor = hot ? 'pointer' : '';
+    }
+
+    /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
+       vicini si muovono più dei lontani senza doverlo scrivere da nessuna
+       parte. Entrando, va incontro al portale scelto. */
+    var tx = mx*0.42, ty = -my*0.26, tz = CAM0.z;
+    var look = new THREE.Vector3(0,0,-0.6);
+    if (openW){
+      var wp = openW.mesh.position;
+      tx = wp.x*zoom + tx*(1-zoom);
+      ty = wp.y*zoom + ty*(1-zoom);
+      tz = CAM0.z*(1-zoom) + (wp.z + 0.52)*zoom;
+      look.set(wp.x*zoom, wp.y*zoom, -0.6*(1-zoom) + wp.z*zoom);
+    }
+    camera.position.set(tx, ty, tz);
+    camera.lookAt(look);
+
+    WORLDS.forEach(function(w){
+      if (mobile){
+        w.mesh.position.lerp(w.target, 0.12);
+        var s = w.mesh.scale.x + (w.tScale - w.mesh.scale.x)*0.12;
+        w.mesh.scale.setScalar(s);
+      }
+      var isHot = (w === hot || w === openW);
+      var u = w.uni;
+      u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
+      var dimT = (hot || openW) ? (isHot ? 1 : 0.42) : 1;
+      u.uDim.value += (dimT - u.uDim.value)*0.10;
+      w.spoke.material.opacity += (((isHot?0.75:( (hot||openW)?0.08:0.22 ))*spokeIn - w.spoke.material.opacity))*0.12;
+      w.spoke.material.color.setRGB(
+        0.23 + (w.col[0]-0.23)*u.uHot.value,
+        0.85 + (w.col[1]-0.85)*u.uHot.value,
+        1.00 + (w.col[2]-1.00)*u.uHot.value);
+    });
+
+    // la nebbia prende il colore del mondo guardato
+    var target = hot || openW;
+    var ts = target ? 1 : 0;
+    tintStr += (ts - tintStr)*0.08;
+    if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
+    fogMat.uniforms.uTint.value.copy(tintCol);
+    fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
+    if (!openW) document.getElementById('hint').style.opacity = (stage === 'mappa' ? spokeIn*0.9 : 0);
+
+    fogMat.uniforms.uTime.value = t;
+    var du = dustMat.uniforms;
+    du.uTime.value = t; du.uTravel.value = travel; du.uAssign.value = assign;
+    du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
+    WORLDS.forEach(function(w){ w.uni.uReveal.value = cardsIn; });
+    var nfade = sstep((assign-0.35)/0.5);
+    nucleo.material.opacity = 0.9*(1-zoom*0.9)*nfade;
+    voidFill.material.opacity = 0.72*nfade;
+
+    if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
+
+    // --- due passaggi (vedi il commento in testa al file) ---
+    WORLDS.forEach(function(w){ w.uni.uFlat.value = 1; });
+    renderer.setRenderTarget(rt);
+    renderer.clear();
+    renderer.render(bg, camera);
+    renderer.render(scene, camera);
+    WORLDS.forEach(function(w){ w.uni.uFlat.value = 0; });
+    renderer.setRenderTarget(null);
+    renderer.clear();
+    renderer.render(bg, camera);
+    renderer.render(scene, camera);
+
+    /* LE SCRITTE, IN 3D VERO.
+       Stesso conto che fa il CSS3DRenderer di three: la prospettiva del
+       contenitore viene dalla matrice di proiezione, il nodo camera porta
+       l'inversa della matrice della camera, e ogni scritta porta la matrice di
+       mondo della propria ancora. Il risultato è testo DOM — quindi nitido a
+       qualsiasi risoluzione — che però giace sul piano della sua card e ne
+       segue l'inclinazione. La y va negata passando da mondo a schermo. */
+    var hh = window.innerHeight * 0.5, wh = window.innerWidth * 0.5;
+    var persp = camera.projectionMatrix.elements[5] * hh;
+    if (persp !== lastPersp){ labelsEl.style.perspective = persp + 'px'; lastPersp = persp; }
+    var ppu = persp / DREF;
+    // la scala dell'ancora entra nella matrice di mondo: va messa PRIMA
+    WORLDS.forEach(function(w){ w.anchorObj.scale.setScalar(1/ppu); });
+    scene.updateMatrixWorld(true);
+    mCam.copy(camera.matrixWorldInverse).premultiply(mScale.makeScale(ppu,ppu,ppu));
+    labelCam.style.transform =
+      'translateZ(' + persp + 'px)' + camMatrix(mCam) +
+      'translate(' + wh + 'px,' + hh + 'px)';
+
+    WORLDS.forEach(function(w){
+      proj.copy(w.mesh.position).addScaledVector(w.fwd, w.lift).project(camera);
+      var vis = stage === 'mappa' && proj.z < 1 && !openW && zoom < 0.15;
+      w.label.style.transform = objMatrix(mObj.copy(w.anchorObj.matrixWorld));
+      w.label.classList.toggle('-on', vis);
+      w.label.classList.toggle('-hot', w === hot);
+    });
+  }
+  requestAnimationFrame(frame);
+
+  // se si arriva con un indirizzo già puntato a un mondo, ci si entra
+  if (CAME_FROM){
+    var back = WORLDS.filter(function(x){ return x.id === CAME_FROM; })[0];
+    if (back){
+      stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+      hot = back; playOn(back);
+      var h = document.getElementById('hero');
+      h.classList.add('-off'); h.style.display = 'none';
+      if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
+    }
+  }
+
+  var initial = worldFromPath();
+  if (initial){
+    var w0 = WORLDS.filter(function(x){ return x.id === initial; })[0];
+    if (w0) setTimeout(function(){ enter(w0, false); }, 600);
+  }
+
+})();
+</script>
+
+<script>
+/* IL SIPARIO — il marchio si condensa dal vapore.
+ * Portato da js/loader.js, che girava dentro a `WC.register` con una linea del
+ * tempo di gsap. Qui non c'è né l'uno né l'altro: il vapore è tutto nel canvas.
+ * Il conto non è stato toccato — è quello, comprese le tre cose che nel file
+ * originale sono segnate come imparate a caro prezzo:
+ *   · una particella = UN pixel (sottocampionare fa tornare il grigio o la scaletta);
+ *   · la distanza di nascita va AL QUADRATO (se no il vapore scopre un rettangolo);
+ *   · il fronte va sfasato lungo l'altezza (se no l'onda è una riga verticale).
+ */
+(function(){
+  var velo = document.getElementById('velo');
+  var cv   = document.getElementById('velo-vapore');
+  var mark = document.getElementById('wcAxxellMark');
+  if (!velo) return;
+
+  var finito = false;
+  function apri(){
+    if (finito) return; finito = true;
+    velo.classList.add('-via');
+    velo.style.display = 'none';
+    document.body.classList.add('-aperto');
+    document.body.style.overflow = '';
+  }
+  /* Il velo si alza e l'atrio entra NEL MENTRE: si sblocca all'inizio
+     dell'uscita, non alla sua fine. */
+  function alza(){
+    velo.classList.add('-sfuma');
+    document.body.classList.add('-aperto');
+    setTimeout(apri, 950);
+  }
+
+  var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (ridotto || !cv || !mark){ apri(); return; }
+
+  document.body.style.overflow = 'hidden';
+
+  var VB = { x:28, y:104, w:598, h:154 };
+  var cssW = Math.min(window.innerWidth * 0.7, 620), cssH = cssW * VB.h / VB.w;
+  var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  var W = Math.round(cssW*dpr), H = Math.round(cssH*dpr);
+  cv.style.width = cssW+'px'; cv.style.height = cssH+'px';
+  cv.width = W; cv.height = H;
+  var g = cv.getContext('2d');
+  if (!g){ apri(); return; }
+
+  var img = new Image();
+  /* Un sipario che non finisce è una pagina che non esiste: se la
+     rasterizzazione fallisce, si alza lo stesso. */
+  img.onerror = function(){ apri(); };
+  img.onload = function(){
+    var ink;
+    try { g.drawImage(img,0,0,W,H); ink = g.getImageData(0,0,W,H).data; }
+    catch(e){ apri(); return; }
+    g.clearRect(0,0,W,H);
+    costruisci(ink);
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+VB.x+' '+VB.y+' '+VB.w+' '+VB.h+
+    '" width="'+W+'" height="'+H+'"><g fill="#ffffff">'+mark.innerHTML+'</g></svg>');
+
+  var SPREAD = 0.34, N = 0, ox,oy,sx,sy,oa,ph,jt, frame=null, buf=null, onda=0;
+
+  function costruisci(ink){
+    var idx=[];
+    for (var y=0;y<H;y++) for (var x=0;x<W;x++){
+      var a = ink[(y*W+x)*4+3];
+      if (a > 8) idx.push(x,y,a);          // soglia bassa: il contorno È l'antialiasing
+    }
+    N = idx.length/3;
+    if (!N){ apri(); return; }
+    ox=new Float32Array(N); oy=new Float32Array(N); sx=new Float32Array(N);
+    sy=new Float32Array(N); oa=new Float32Array(N); ph=new Float32Array(N); jt=new Float32Array(N);
+    var SC = Math.max(18, H*0.55);
+    for (var i=0;i<N;i++){
+      var X=idx[i*3], Y=idx[i*3+1];
+      ox[i]=X; oy[i]=Y; oa[i]=idx[i*3+2]/255;
+      var r=Math.random(); r*=r;                       // al quadrato: nuvola, non scatola
+      var an=Math.random()*6.28318;
+      sx[i]=X+Math.cos(an)*r*SC*0.55;
+      sy[i]=Y+Math.sin(an)*r*SC*0.40 - r*SC*0.95;      // nasce in alto e scende
+      ph[i]=Math.random()*6.28318;
+      jt[i]=Math.sin(Y*0.021)*0.055 + Math.sin(Y*0.007+2.1)*0.035 + (Math.random()-0.5)*0.05;
+    }
+    frame = g.createImageData(W,H); buf = new Uint32Array(frame.data.buffer);
+    t0 = performance.now();
+    requestAnimationFrame(disegna);
+  }
+
+  var DUR = 3400, t0 = 0, partito = false;
+  function easeInOutQuad(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function smooth(a,b,v){ var t=(v-a)/(b-a); t=t<0?0:t>1?1:t; return t*t*(3-2*t); }
+
+  function disegna(){
+    if (finito) return;
+    var now = performance.now();
+    var p = Math.min(1, (now - t0) / DUR);
+    onda = easeInOutQuad(p) * (1 + SPREAD);
+    if (p >= 1 && !partito){ partito = true; setTimeout(alza, 350); }
+    if (!partito) requestAnimationFrame(disegna);
+    else requestAnimationFrame(disegna);
+
+    buf.fill(0);
+    var t = now * 0.001;
+    for (var i=0;i<N;i++){
+      var u = (onda - (ox[i]/W + jt[i])) / SPREAD;   // il segno conta: si forma DIETRO l'onda
+      if (u <= 0) continue;
+      if (u > 1) u = 1;
+      var settle = smooth(0.34,1.0,u);
+      var veil   = smooth(0.0,0.20,u) * (1-settle);
+      var px = sx[i] + (ox[i]-sx[i])*settle;
+      var py = sy[i] + (oy[i]-sy[i])*settle;
+      var wob = (1-settle)*6;                        // il tremolio muore col posarsi
+      px += Math.sin(t*2.1 + ph[i])*wob;
+      py += Math.cos(t*1.7 + ph[i]*1.3)*wob*0.7;
+      var alpha = oa[i]*(settle + veil*0.32);
+      if (alpha <= 0.004) continue;
+      var X = px|0, Y = py|0;
+      if (X<0||Y<0||X>=W||Y>=H) continue;
+      var o = Y*W+X;
+      var acc = (buf[o]>>>24)/255 + alpha;           // si sommano: la nebbia si addensa
+      if (acc > 1) acc = 1;
+      buf[o] = ((acc*255)<<24) | (255<<16) | (255<<8) | 255;
+    }
+    g.putImageData(frame,0,0);
+  }
+})();
+</script>
 </body>
 </html>
