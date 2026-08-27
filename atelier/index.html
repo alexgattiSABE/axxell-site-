@@ -387,34 +387,46 @@
      ═════════════════════════════════════════════════════════════════════ */
   var NZ = -1.55;                       // dove gira lo sciame senza destinazione
   var STEP = 1;                         // l'unita' di scorrimento e' UNA lastra
-  var DECK = { xmax:5.6, xstep:1.35, zstep:0.85, z0:0.90, y0:0.06,
-               yaw:0.26, ondaY:0.26, ondaR:0.045, coda:3.7, fine:4.5 };
+  /* ══ LA ROTONDA (Mirror Hall) ══════════════════════════════════════════
+     Le nove lastre non stanno piu' su una fila a ventaglio: stanno su un
+     ANELLO, e la camera e' AL CENTRO che guarda in fuori. Chi e' davanti
+     (u=0) sta a (0, cardY, -R), di faccia; girando l'anello gli altri mondi
+     arrivano davanti. Si vede l'arco che ti sta di fronte (~5 lastre); gli
+     altri sono dietro le tue spalle e si scoprono girando — e' il patto della
+     rotonda, scelto sapendo il compromesso.
+     Le lastre restano PIATTE e tangenti all'anello (non incurvate come le
+     card di Mirror Hall): incurvarle romperebbe la normale dello smusso del
+     vetro, la taratura del 24/08. La pozza riflettente sta sotto, alla quota
+     y=0, e le lastre sono alzate a `cardY` perche' stiano sopra il pelo. */
+  var RING = { R:6.6, cardY:1.18, camH:0.92, lookY:0.98 };
+  var TWO_PI_N = 2*Math.PI / WORLDS.length;
 
   function wrapN(u, n){ u = (u + n*0.5) % n; if (u < 0) u += n; return u - n*0.5; }
   /* Quanti posti separano una lastra da quello davanti, col segno e col giro
      corto: e' il numero da cui discende tutto il resto. */
   function deckU(i, pos){ return wrapN(i - pos, WORLDS.length); }
+  /* La posizione sull'anello. theta cresce con u; chi e' davanti (u=0) sta a
+     (0,cardY,-R) e la camera al centro lo guarda in faccia. */
   function deckPlace(u, out){
-    var au = Math.abs(u), sg = u < 0 ? -1 : (u > 0 ? 1 : 0);
-    return out.set(
-      sg * DECK.xmax * Math.tanh(au*DECK.xstep/DECK.xmax),
-      DECK.y0 + Math.sin(u*1.9)*DECK.ondaY,     // l'onda rompe la fila perfetta
-      DECK.z0 - au*DECK.zstep
-    );
+    var th = u * TWO_PI_N;
+    return out.set(RING.R*Math.sin(th), RING.cardY, -RING.R*Math.cos(th));
   }
-  function deckYaw(u){ return u * DECK.yaw; }
-  function deckRoll(u){ return Math.sin(u*1.3) * DECK.ondaR; }
-  /* La prospettiva ingrandisce gia' chi e' davanti; questo aggiunge lo
-     scatto, cosi' la lastra a fuoco si stacca invece di essere solo piu'
-     vicina. */
-  function deckScale(u){ return 0.72 + 0.28*Math.exp(-u*u/1.1); }
-  /* In coda la lastra si spegne, ed e' li' che la fila si riavvolge: il salto
-     da un capo all'altro deve avvenire dove non si vede. A riposo la piu'
-     lontana sta al posto 4 e si vede ancora — il ricambio succede solo
-     mentre si sta scorrendo. */
+  /* La lastra guarda il centro: la sua normale (+Z locale) punta alla camera.
+     rotation.y = -theta. E la `fwd` calcolata a valle come
+     (sin(yaw),0,cos(yaw)) torna la normale giusta. */
+  function deckYaw(u){ return -u * TWO_PI_N; }
+  function deckRoll(u){ return 0; }              // su un anello non serve rollio
+  /* Tutte le lastre sono alla stessa distanza dal centro, quindi alla stessa
+     misura: e' la rotonda di Mirror Hall. Il mondo a fuoco non si stacca per
+     grandezza ma perche' e' centrato, piu' acceso (uHot) e nominato dalla
+     didascalia. */
+  function deckScale(u){ return 1; }
+  /* Chi si volta di spalle sparisce. Dietro la camera non si vedrebbe
+     comunque, ma questo spegne DOLCEMENTE l'arco posteriore ai lati invece di
+     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te. */
   function deckFade(u){
-    var au = Math.abs(u);
-    return au <= DECK.coda ? 1 : Math.max(0, 1 - (au-DECK.coda)/(DECK.fine-DECK.coda));
+    var c = Math.cos(u * TWO_PI_N);
+    return c <= -0.1 ? 0 : (c >= 0.35 ? 1 : (c + 0.1) / 0.45);
   }
 
   var canvas   = document.getElementById('c');
@@ -423,8 +435,11 @@
   renderer.setClearColor(0x04050a, 1);
   renderer.autoClear = false;
 
-  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-  var CAM0 = new THREE.Vector3(0, 0, 6.20);
+  var camera = new THREE.PerspectiveCamera(66, 1, 0.1, 240);
+  /* La camera sta AL CENTRO dell'anello e guarda in fuori. Un filo di z
+     positivo per non stare esattamente sul perno; `resize()` la fa arretrare
+     su schermo stretto perche' la lastra davanti ci stia comunque. */
+  var CAM0 = new THREE.Vector3(0, RING.camH, 0.001);
   camera.position.copy(CAM0);
 
   var mobile = window.matchMedia('(max-width:760px)').matches ||
@@ -596,9 +611,16 @@
      (`uOpen` 0.46), rifrange su tutta la superficie e non solo al bordo, e
      ha un velo lattiginoso (`uMilk`) che ne fa una lastra invece di una
      finestra. Quello che c'e' dentro si INTUISCE. */
+  /* DE-SFOCO (27/08): la fila di lastre sovrapposte chiedeva un vetro con un
+     CORPO fitto per non essere nove cornici; ma nella rotonda, e con la
+     richiesta esplicita di «vedere il contenuto», quel velo era troppo. I tre
+     numeri che nascondono il contenuto scendono: `uInside` (velo al centro)
+     0.30→0.12, `uMilk` (corpo lattiginoso) 0.38→0.20, `uFrost` (smeriglia al
+     bordo) 0.85→0.52. Rifrazione e trasmissione restano: e' ancora vetro, si
+     vede solo cosa c'e' dentro. */
   var TARATURA = { uFres:2.2, uOpen:0.56, uThick:0.022, uDisp:0.26,
                    uBev:0.16, uRim:0.62, uGain:1.28, uPar:0.06, uBlur:0.60,
-                   uFrost:0.85, uInside:0.30, uMilk:0.38, uThru:0.60 };
+                   uFrost:0.52, uInside:0.12, uMilk:0.20, uThru:0.60 };
 
   var VERT = [
     'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
@@ -972,6 +994,134 @@
     });
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     3.5 LA POZZA RIFLETTENTE — presa da Mirror Hall.
+     Riflessione planare vera: una camera SPECCHIATA rispetto al pelo
+     dell'acqua rende la scena in un bersaglio, e l'acqua lo campiona con le
+     UV increspate dalle onde. Le lastre e il pulviscolo si specchiano; la
+     scia sotto il puntatore lascia cerchi che si allargano.
+     L'acqua e' quasi nera e prende un soffio del COLORE DEL MONDO che guardi
+     (mai bianca): e' la luce delle lastre che si versa nell'acqua, la firma
+     di Mirror Hall. Il riflesso legge le lastre PIATTE (il loro contenuto),
+     non il vetro che rifrange: cosi' non si innesca nessun anello di
+     retroazione e il passaggio costa poco (bassa risoluzione).
+     ══════════════════════════════════════════════════════════════════════ */
+  var pozzaOn = true;
+  var ridottoMoto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var WATER = { deep:[0.015,0.019,0.038], reflBright:0.46, ripScale: ridottoMoto?0:0.95,
+                ripDistort:0.06, glint:0.05, fresnel:2.4, reflScale: mobile?0.42:0.6 };
+  var TRAIL_N = 12;
+  var trail = [];
+  for (var _t=0; _t<TRAIL_N; _t++) trail.push(new THREE.Vector3(0,0,-1000));
+  var reflectRT = new THREE.WebGLRenderTarget(2,2,{ minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, depthBuffer:true });
+  var reflectCam = new THREE.PerspectiveCamera();
+  var texMatrix = new THREE.Matrix4();
+  var waterUni = {
+    tReflect:{value:reflectRT.texture}, uTexMatrix:{value:texMatrix}, uTime:{value:0},
+    uCamPos:{value:new THREE.Vector3()},
+    uDeep:{value:new THREE.Vector3(WATER.deep[0],WATER.deep[1],WATER.deep[2])},
+    uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0},
+    uReflBright:{value:WATER.reflBright}, uRipScale:{value:WATER.ripScale},
+    uRipDistort:{value:WATER.ripDistort}, uGlint:{value:WATER.glint},
+    uFresnel:{value:WATER.fresnel}, uTrail:{value:trail}
+  };
+  var water = new THREE.Mesh(new THREE.PlaneGeometry(400,400), new THREE.ShaderMaterial({
+    uniforms: waterUni,
+    vertexShader: `precision highp float; uniform mat4 uTexMatrix; varying vec4 vRefl; varying vec3 vWpos;
+      void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vWpos = wp.xyz; vRefl = uTexMatrix*vec4(position,1.0);
+        gl_Position = projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `precision highp float;
+      #define TRAIL_N ${TRAIL_N}
+      uniform sampler2D tReflect; uniform float uTime,uReflBright,uRipScale,uRipDistort,uGlint,uFresnel,uTintStr;
+      uniform vec3 uCamPos,uDeep,uTint; uniform vec3 uTrail[TRAIL_N];
+      varying vec4 vRefl; varying vec3 vWpos;
+      void wave(vec2 p, vec2 d, float k, float w, float a, inout vec2 grad){ grad += a*k*cos(dot(d,p)*k+uTime*w)*d; }
+      void main(){
+        vec2 p=vWpos.xz; vec2 grad=vec2(0.0); float A=uRipScale;
+        wave(p, normalize(vec2( 1.0, 0.35)),1.7,1.30,0.045*A,grad);
+        wave(p, normalize(vec2(-0.6, 1.0 )),2.4,1.05,0.034*A,grad);
+        wave(p, normalize(vec2( 0.4,-1.0 )),3.6,1.70,0.022*A,grad);
+        wave(p, normalize(vec2(-1.0,-0.2 )),5.1,2.20,0.013*A,grad);
+        float crest=0.0;
+        for(int i=0;i<TRAIL_N;i++){
+          vec3 e=uTrail[i]; float age=uTime-e.z;
+          if(age>0.0 && age<2.4){
+            float d=distance(p,e.xy); float rad=age*2.1;
+            float band=exp(-pow((d-rad)*3.2,2.0)); float decay=(1.0-age/2.4);
+            vec2 dir = d>1e-4 ? (p-e.xy)/d : vec2(0.0);
+            grad += dir*(-sin((d-rad)*9.0)*9.0*band*decay*0.010*A);
+            crest += cos((d-rad)*9.0)*band*decay;
+          }
+        }
+        vec3 N=normalize(vec3(-grad.x,1.0,-grad.y));
+        vec3 V=normalize(uCamPos-vWpos);
+        vec2 ruv=vRefl.xy/vRefl.w; ruv += N.xz*uRipDistort;
+        vec3 refl=texture2D(tReflect, clamp(ruv,0.001,0.999)).rgb * uReflBright;
+        float fres=0.02+0.95*pow(1.0-clamp(dot(V,N),0.0,1.0),uFresnel);
+        vec3 deep = uDeep + uTint*uTintStr*0.14;               // un soffio del colore del mondo
+        vec3 col = mix(deep, refl, fres);
+        vec3 gdir=normalize(vec3(0.2,1.0,-0.3)); vec3 H=normalize(gdir+V);
+        float spec=pow(clamp(dot(N,H),0.0,1.0),200.0);
+        col += (vec3(0.36,0.5,0.7)+uTint*0.6) * spec * uGlint; // il luccichio prende il colore
+        col += refl*max(crest,0.0)*0.09;                       // la cresta porta il riflesso
+        float dist=length(vWpos.xz-uCamPos.xz);
+        col = mix(col, uDeep, smoothstep(20.0,70.0,dist));     // sfuma al buio in lontananza
+        gl_FragColor=vec4(col,1.0);
+      }`
+  }));
+  water.rotation.x = -Math.PI/2;
+  water.position.y = 0;                    // il pelo dell'acqua alla quota zero
+  scene.add(water);
+
+  /* La camera specchiata, con il ritaglio obliquo del piano vicino (la
+     matematica del Reflector di three): non tocca i numeri delle onde, li
+     legge soltanto per specchiare. Rende bg + lastre PIATTE, senza l'acqua. */
+  var _rN=new THREE.Vector3(),_rW=new THREE.Vector3(),_cW=new THREE.Vector3(),_rrot=new THREE.Matrix4();
+  var _la=new THREE.Vector3(),_vw=new THREE.Vector3(),_tg=new THREE.Vector3(),
+      _q=new THREE.Vector4(),_cl=new THREE.Vector4(),_pl=new THREE.Plane();
+  function updateReflection(){
+    _rW.setFromMatrixPosition(water.matrixWorld); _cW.setFromMatrixPosition(camera.matrixWorld);
+    _rrot.extractRotation(water.matrixWorld); _rN.set(0,0,1).applyMatrix4(_rrot);
+    _vw.subVectors(_rW,_cW); if(_vw.dot(_rN)>0) return;      // camera sotto il pelo: niente
+    _vw.reflect(_rN).negate().add(_rW);
+    _rrot.extractRotation(camera.matrixWorld);
+    _la.set(0,0,-1).applyMatrix4(_rrot).add(_cW);
+    _tg.subVectors(_rW,_la).reflect(_rN).negate().add(_rW);
+    reflectCam.position.copy(_vw); reflectCam.up.set(0,1,0).applyMatrix4(_rrot).reflect(_rN); reflectCam.lookAt(_tg);
+    reflectCam.far=camera.far; reflectCam.updateMatrixWorld(); reflectCam.projectionMatrix.copy(camera.projectionMatrix);
+    texMatrix.set(0.5,0,0,0.5, 0,0.5,0,0.5, 0,0,0.5,0.5, 0,0,0,1);
+    texMatrix.multiply(reflectCam.projectionMatrix); texMatrix.multiply(reflectCam.matrixWorldInverse); texMatrix.multiply(water.matrixWorld);
+    _pl.setFromNormalAndCoplanarPoint(_rN,_rW).applyMatrix4(reflectCam.matrixWorldInverse);
+    _cl.set(_pl.normal.x,_pl.normal.y,_pl.normal.z,_pl.constant);
+    var M=reflectCam.projectionMatrix;
+    _q.x=(Math.sign(_cl.x)+M.elements[8])/M.elements[0]; _q.y=(Math.sign(_cl.y)+M.elements[9])/M.elements[5];
+    _q.z=-1.0; _q.w=(1.0+M.elements[10])/M.elements[14];
+    _cl.multiplyScalar(2.0/_cl.dot(_q));
+    M.elements[2]=_cl.x; M.elements[6]=_cl.y; M.elements[10]=_cl.z+1.0; M.elements[14]=_cl.w;
+    water.visible=false;
+    WORLDS.forEach(function(w){ w.uni.uFlat.value=1; w.uni.tScene.value=vuota; });
+    renderer.setRenderTarget(reflectRT); renderer.clear();
+    renderer.render(bg, reflectCam); renderer.render(scene, reflectCam);
+    WORLDS.forEach(function(w){ w.uni.uFlat.value=0; w.uni.tScene.value=rt.texture; });
+    water.visible=true;
+  }
+
+  /* La scia: il puntatore stira l'acqua. Si proietta il raggio sul piano y=0
+     e si timbra un cerchio nell'anello dei dodici. */
+  var _wr=new THREE.Raycaster();
+  var trailHead=0, lastWx=1e9, lastWz=1e9;
+  function dropRipple(){
+    if (!pozzaOn || ridottoMoto) return;
+    _wr.setFromCamera(ptr, camera);
+    var rd=_wr.ray.direction, ro=_wr.ray.origin;
+    if (rd.y > -1e-4) return;
+    var tt=(0-ro.y)/rd.y; if (tt<=0 || tt>90) return;
+    var wx=ro.x+rd.x*tt, wz=ro.z+rd.z*tt;
+    if (Math.hypot(wx-lastWx, wz-lastWz) < 0.14) return;
+    trail[trailHead].set(wx, wz, waterUni.uTime.value);
+    trailHead=(trailHead+1)%TRAIL_N; lastWx=wx; lastWz=wz;
+  }
+
   /* ======================================================================
      4. LA GIOSTRA — lo scorrimento fa girare l'anello.
      Non c'e' una barra di scorrimento e la pagina non si muove di un pixel:
@@ -1189,6 +1339,10 @@
 
   function enter(w, push){
     if (!w || openW) return;
+    /* Nella rotonda si entra in chi e' davanti; ma da URL/popstate il mondo
+       puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
+       dentro, se no la camera parte verso una lastra di fianco. */
+    if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
     openW = w; zoomT = 1;
     playOn(w);
 
@@ -1268,29 +1422,30 @@
      perche' la larghezza della lastra piu' un margine ci stia. Sul desktop il
      conto da' meno di 4.35 e vince il valore di partenza, quindi la
      composizione tarata a mano non si muove di un pixel. */
-  var ZFRONT = DECK.z0;
-  var MEZZOFOV = Math.tan(38*Math.PI/180/2);
+  var ZFRONT = -RING.R;                 // la lastra davanti sta a z = -R
+  var MEZZOFOV = Math.tan(66*Math.PI/180/2);
   function resize(){
     var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
     renderer.setSize(w,h,false);
     camera.aspect = w/h; camera.updateProjectionMatrix();
-    /* In verticale la fila va stretta: la lastra davanti riempie comunque la
-       larghezza, e col passo del desktop le vicine finiscono tutte dietro di
-       lei. Passo piu' corto = si affacciano ai due lati, che e' l'unico modo
-       per far vedere su un telefono che la fila continua. */
-    DECK.xstep = camera.aspect < 1 ? 0.95 : 1.35;
-    CAM0.z = Math.max(6.20, ZFRONT + (CW*0.5 + (camera.aspect < 1 ? 0.05 : 0.16))/(MEZZOFOV*camera.aspect));
-    DREF = CAM0.z - ZFRONT;
-    /* Su schermo verticale l'elenco non ci sta di fianco al mazzo: va sotto,
-       dove di spazio ce n'e' in avanzo, e ingrandito perche' li' la camera e'
-       molto piu' lontana. Li' non finisce dietro alle lastre, quindi la
-       rifrazione del testo e' un effetto da schermo largo — sul telefono
-       resta quello che serve davvero, l'elenco leggibile. */
-    if (camera.aspect < 1){ idxMesh.position.set(0, -2.25, -1.00); idxMesh.scale.setScalar(1.40); }
-    else { idxMesh.position.set(-2.62, -1.12, -2.00); idxMesh.scale.setScalar(1); }
+    /* Il campo visivo di three e' VERTICALE: su un telefono in piedi
+       l'apertura orizzontale e' meno di meta' di quella di un portatile. La
+       camera al centro dell'anello arretra un filo verso +z su schermo
+       stretto perche' la lastra davanti ci stia intera coi suoi margini; sul
+       desktop il conto da' meno di zero e la camera resta sul perno. */
+    var need = (CW*0.5 + (camera.aspect < 1 ? 0.22 : 0.30)) / (MEZZOFOV*camera.aspect);
+    CAM0.z = Math.max(0.001, need - RING.R);
+    DREF = RING.R + CAM0.z;             // distanza camera → lastra davanti
+    /* L'elenco «CHE COSA CERCHI?» resta a lato, ma SOPRA il pelo dell'acqua
+       (y positivo) perche' non anneghi nella pozza; su telefono va sotto le
+       lastre e ingrandito. Rifinitura nella milestone della pozza. */
+    if (camera.aspect < 1){ idxMesh.position.set(0, 0.30, -3.60); idxMesh.scale.setScalar(1.30); }
+    else { idxMesh.position.set(-3.30, 0.70, -3.40); idxMesh.scale.setScalar(1); }
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
     fogMat.uniforms.uAspect.value = w/h;
+    // il riflesso a risoluzione ridotta: costa poco e l'acqua lo increspa
+    reflectRT.setSize(Math.max(2, Math.round(w*pr*WATER.reflScale)), Math.max(2, Math.round(h*pr*WATER.reflScale)));
   }
   window.addEventListener('resize', resize);
   resize();
@@ -1334,7 +1489,7 @@
      Se fosse fissa, sul telefono (dove la camera arretra) le scritte
      arriverebbero rimpicciolite; cosi' escono sempre della misura scritta
      nel CSS. La scrive `resize`, qui c'e' solo il primo valore. */
-  var DREF = CAM0.z - ZFRONT;
+  var DREF = RING.R + CAM0.z;
   var mCam = new THREE.Matrix4(), mObj = new THREE.Matrix4(), mScale = new THREE.Matrix4();
 
   function objMatrix(m){
@@ -1427,14 +1582,20 @@
     /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
        vicini si muovono più dei lontani senza doverlo scrivere da nessuna
        parte. Entrando, va incontro al portale scelto. */
-    var tx = mx*0.42, ty = -my*0.26, tz = CAM0.z;
-    var look = new THREE.Vector3(0,0,-0.6);
+    /* La camera sta al centro dell'anello e guarda verso la lastra davanti
+       (0, lookY, -R). Il puntatore la sposta appena — la parallasse viene da
+       se'. Entrando, vola incontro al portale scelto (che a quel punto e' gia'
+       quello davanti) e finisce appena davanti a lui. */
+    var tx = mx*0.34, ty = RING.camH - my*0.18, tz = CAM0.z;
+    var look = new THREE.Vector3(0, RING.lookY, -RING.R);
     if (openW){
       var wp = openW.mesh.position;
       tx = wp.x*zoom + tx*(1-zoom);
       ty = wp.y*zoom + ty*(1-zoom);
-      tz = CAM0.z*(1-zoom) + (wp.z + 0.52)*zoom;
-      look.set(wp.x*zoom, wp.y*zoom, -0.6*(1-zoom) + wp.z*zoom);
+      tz = (wp.z + 0.62)*zoom + CAM0.z*(1-zoom);
+      look.set(wp.x*zoom + 0*(1-zoom),
+               wp.y*zoom + RING.lookY*(1-zoom),
+               wp.z*zoom + (-RING.R)*(1-zoom));
     }
     camera.position.set(tx, ty, tz);
     camera.lookAt(look);
@@ -1474,22 +1635,35 @@
 
     if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
 
-    /* --- due passaggi (vedi il commento in testa al file) ---
-       IL PRIMO PASSAGGIO DEVE MOLLARE LA TEXTURE DEL BERSAGLIO.
-       Il passaggio piatto disegna DENTRO `rt`, ma i materiali avevano ancora
-       `tScene` legata a `rt.texture`: leggere e scrivere lo stesso allegato
-       e' un anello di retroazione, e il driver rispondeva
-       `GL_INVALID_OPERATION: Feedback loop formed between Framebuffer and
-       active Texture` scartando la chiamata di disegno — a ogni fotogramma,
-       in silenzio, senza che si vedesse un errore in pagina. Il ramo piatto
-       dello shader quella texture non la legge nemmeno: basta staccarla per
-       il tempo del passaggio. */
+    // LA POZZA: onde, colore del mondo guardato, e la scia del puntatore.
+    if (pozzaOn){
+      if (!ridottoMoto) waterUni.uTime.value = t;
+      waterUni.uCamPos.value.copy(camera.position);
+      waterUni.uTint.value.copy(tintCol);
+      waterUni.uTintStr.value = tintStr*(1-zoom);
+      dropRipple();
+    }
+
+    /* --- TRE passaggi ora ---
+       (A) il RIFLESSO: camera specchiata rispetto al pelo → reflectRT, con
+           bg + lastre PIATTE. Va per primo, cosi' l'acqua legge un bersaglio
+           fresco e non uno vecchio di un fotogramma.
+       (B) il PIATTO → rt: bg + lastre piatte, SENZA acqua — e' la sorgente da
+           cui il vetro rifrange. Il feedback loop di `tScene` resta
+           scongiurato mollando la texture per il tempo del passaggio (come
+           prima; vedi il commento in testa al file).
+       (C) il FINALE → schermo: bg + acqua + lastre che rifrangono. */
+    if (pozzaOn) updateReflection();
+
+    water.visible = false;
     WORLDS.forEach(function(w){ w.uni.uFlat.value = 1; w.uni.tScene.value = vuota; });
     renderer.setRenderTarget(rt);
     renderer.clear();
     renderer.render(bg, camera);
     renderer.render(scene, camera);
     WORLDS.forEach(function(w){ w.uni.uFlat.value = 0; w.uni.tScene.value = rt.texture; });
+
+    water.visible = pozzaOn;
     renderer.setRenderTarget(null);
     renderer.clear();
     renderer.render(bg, camera);
