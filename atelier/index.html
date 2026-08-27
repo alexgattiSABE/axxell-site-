@@ -98,23 +98,47 @@
     font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
     color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
 
-  /* I FERMI DELLA GIOSTRA. Otto trattini: dicono in un colpo d'occhio quanti
-     mondi ci sono e a che punto del giro si e'. Ognuno si accende del colore
-     del proprio mondo, cosi' l'indicatore non e' un elemento in piu' ma la
-     stessa tavolozza dei portali, ridotta a otto righe. */
-  #dots{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:6;
-    display:flex;gap:9px;opacity:0;transition:opacity .45s ease}
-  #dots.-on{opacity:1}
-  #dots button{width:24px;height:2px;padding:0;border:0;border-radius:1px;
-    background:rgba(223,228,238,.20);cursor:pointer;
-    transition:background .35s ease,transform .35s cubic-bezier(.22,1,.36,1)}
-  #dots button:hover{background:rgba(223,228,238,.48)}
-  #dots button.-now{background:var(--now,#3ad8ff);transform:scaleY(2.4)}
+  /* LA FOCUS CAPTION — le scritte come in Mirror Hall.
+     Non piu' un'etichetta appesa a ogni card (nella rotonda sono nove e si
+     accavallano): una sola didascalia in basso al centro che segue il mondo
+     davanti. Contatore, NOME grande che si scambia col blur-rise, settore, e
+     sotto i fermi a capsula. Tutto DOM, nitido, sopra il canvas. */
+  #focus{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:6;
+    width:92%;display:flex;flex-direction:column;align-items:center;gap:11px;
+    text-align:center;opacity:0;transition:opacity .5s ease;pointer-events:none}
+  #focus.-on{opacity:1}
+  #focus .counter{display:flex;align-items:baseline;gap:7px;
+    font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.16em}
+  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px;
+    text-shadow:0 0 16px rgba(58,216,255,.4)}
+  #focus .counter i{color:rgba(190,214,246,.34);font-style:normal}
+  #focus .counter .tot{color:rgba(190,214,246,.5)}
+  #focus .fname{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
+    font-size:clamp(21px,3.2vw,34px);letter-spacing:.16em;margin-right:-.16em;
+    text-transform:uppercase;color:#f0f0f6;line-height:1;
+    text-shadow:0 2px 30px rgba(4,5,10,.92);will-change:transform,opacity,filter}
+  /* IL VUOTO: l'unica scritta senza colore, in corsivo di peso e non di forma. */
+  #focus .fname.-void{color:rgba(240,240,246,.58);font-weight:500;font-style:italic}
+  @keyframes focusSwap{
+    from{opacity:0;transform:translateY(9px);filter:blur(5px)}
+    to{opacity:1;transform:none;filter:blur(0)}}
+  #focus .fname.-swap{animation:focusSwap .5s cubic-bezier(.22,.61,.36,1) both}
+  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;
+    letter-spacing:.26em;margin-right:-.26em;margin-top:-2px;text-transform:uppercase;
+    color:rgba(223,228,238,.55)}
+  /* I FERMI, a capsula come in Mirror Hall: un punto per mondo che quando e'
+     davanti sboccia in una capsula del colore del mondo. */
+  #dots{display:flex;align-items:center;gap:9px;margin-top:3px}
+  #dots button{width:5px;height:5px;padding:0;border:0;border-radius:4px;
+    background:rgba(176,204,244,.26);cursor:pointer;pointer-events:auto;
+    transition:width .5s cubic-bezier(.22,.61,.36,1),background .5s ease,box-shadow .5s ease}
+  #dots button:hover{background:rgba(176,204,244,.52)}
+  #dots button.-now{width:22px;background:var(--now,#3ad8ff);
+    box-shadow:0 0 12px rgba(58,216,255,.55)}
   #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
   @media (max-width:600px){
-    #dots button{width:15px} #dots{gap:6px;bottom:52px}
-    /* su una riga sola: a capo finiva addosso ai fermi */
-    #hint{font-size:9px;letter-spacing:.1em;bottom:22px;white-space:nowrap}
+    #focus{bottom:44px} #dots button.-now{width:18px}
+    #hint{font-size:9px;letter-spacing:.1em;bottom:20px;white-space:nowrap}
   }
 
   /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
@@ -235,7 +259,12 @@
   <button id="go">Entra →</button>
 </div>
 <div id="labels"><div id="labelCam"></div></div>
-<div id="dots" aria-label="I mondi"></div>
+<div id="focus" aria-live="polite">
+  <div class="counter"><span class="num" id="fNum">01</span><i>/</i><span class="tot" id="fTot">09</span></div>
+  <div class="fname" id="fName">Il prodotto</div>
+  <div class="fsub" id="fSub">retail, e-commerce</div>
+  <div id="dots" aria-label="I mondi"></div>
+</div>
 <p id="hint" style="opacity:0">scorri per cambiare mondo — clicca quello davanti</p>
 
 <div id="world" aria-hidden="true">
@@ -868,19 +897,11 @@
     mesh.add(anchor);
     w.anchorObj = anchor;
 
-    // etichetta in DOM
-    var el = document.createElement('div');
-    el.className = w.vuoto ? 'lb -void' : 'lb';
-    el.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
-    el.innerHTML = '<b></b><span></span>';
-    el.querySelector('b').textContent = w.nome;
-    el.querySelector('span').textContent = w.sett;
-    /* DENTRO al nodo camera, non dentro al contenitore della prospettiva:
-       è quel nodo a portare la matrice della camera, e una scritta appesa
-       fuori non la riceve — resta con la sola matrice dell'ancora, che vale
-       1/ppu, e collassa in mezzo pixel. */
-    document.getElementById('labelCam').appendChild(el);
-    w.label = el;
+    /* NIENTE PIU' ETICHETTA PER-CARD. Nella rotonda le nove scritte
+       appese alle lastre si accavallano; il nome del mondo davanti lo dice
+       ora la focus-caption in basso, come in Mirror Hall. L'ancora resta
+       (inerte) per non toccare oltre. */
+    w.label = null;
   });
 
   /* ══ L'INDICE — ED E' TESTO CHE STA DENTRO ALLA SCENA ═════════════════
@@ -1247,6 +1268,23 @@
     document.getElementById('hint').textContent = 'trascina per cambiare mondo — tocca per entrare';
   }
 
+  /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
+     blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
+  var focusEl = document.getElementById('focus');
+  var fNameEl = document.getElementById('fName'),
+      fSubEl  = document.getElementById('fSub'),
+      fNumEl  = document.getElementById('fNum');
+  document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
+  function aggiornaFocus(w){
+    if (!w) return;
+    fNameEl.textContent = w.nome;
+    fNameEl.classList.toggle('-void', !!w.vuoto);
+    fSubEl.textContent = w.sett;
+    fNumEl.textContent = String(w.idx+1).padStart(2,'0');
+    focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // riavvia l'animazione di scambio
+    fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
+  }
 
   /* ======================================================================
      5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
@@ -1439,8 +1477,15 @@
     /* L'elenco «CHE COSA CERCHI?» resta a lato, ma SOPRA il pelo dell'acqua
        (y positivo) perche' non anneghi nella pozza; su telefono va sotto le
        lastre e ingrandito. Rifinitura nella milestone della pozza. */
-    if (camera.aspect < 1){ idxMesh.position.set(0, 0.30, -3.60); idxMesh.scale.setScalar(1.30); }
-    else { idxMesh.position.set(-3.30, 0.70, -3.40); idxMesh.scale.setScalar(1); }
+    /* Su desktop l'elenco sta a SINISTRA, sopra il pelo dell'acqua, girato
+       verso il centro cosi' la camera-al-perno lo legge di faccia invece che
+       di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
+       IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
+    if (camera.aspect < 1){
+      idxMesh.position.set(0, 1.78, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.66);
+    } else {
+      idxMesh.position.set(-2.55, 2.05, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.82);
+    }
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
     fogMat.uniforms.uAspect.value = w/h;
@@ -1561,6 +1606,7 @@
       if (nw !== hot){
         hot = nw; hotSince = now; playOn(hot);
         WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
+        aggiornaFocus(hot);
         idxDisegna();
       }
       /* PRECARICARE CHI PASSA E' UN'ALTRA COSA DA PRECARICARE CHI E' SCELTO.
@@ -1620,7 +1666,7 @@
     fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
     if (!openW){
       document.getElementById('hint').style.opacity = (stage === 'mappa' ? spokeIn*0.9 : 0);
-      dotsEl.classList.toggle('-on', stage === 'mappa' && spokeIn > 0.5);
+      focusEl.classList.toggle('-on', stage === 'mappa' && spokeIn > 0.5);
     }
 
     /* L'elenco compare quando la fila si e' composta e si ritira entrando
@@ -1669,40 +1715,9 @@
     renderer.render(bg, camera);
     renderer.render(scene, camera);
 
-    /* LE SCRITTE, IN 3D VERO.
-       Stesso conto che fa il CSS3DRenderer di three: la prospettiva del
-       contenitore viene dalla matrice di proiezione, il nodo camera porta
-       l'inversa della matrice della camera, e ogni scritta porta la matrice di
-       mondo della propria ancora. Il risultato è testo DOM — quindi nitido a
-       qualsiasi risoluzione — che però giace sul piano della sua card e ne
-       segue l'inclinazione. La y va negata passando da mondo a schermo. */
-    var hh = window.innerHeight * 0.5, wh = window.innerWidth * 0.5;
-    var persp = camera.projectionMatrix.elements[5] * hh;
-    if (persp !== lastPersp){ labelsEl.style.perspective = persp + 'px'; lastPersp = persp; }
-    var ppu = persp / DREF;
-    // la scala dell'ancora entra nella matrice di mondo: va messa PRIMA
-    /* L'ancora e' figlia della lastra, e la lastra ora ha una scala sua:
-       va divisa via, se no la scritta della lastra davanti e' piu' grande
-       di quella delle altre e il CSS non comanda piu' niente. */
-    WORLDS.forEach(function(w){ w.anchorObj.scale.setScalar(1/(ppu*w.mesh.scale.x)); });
-    scene.updateMatrixWorld(true);
-    mCam.copy(camera.matrixWorldInverse).premultiply(mScale.makeScale(ppu,ppu,ppu));
-    labelCam.style.transform =
-      'translateZ(' + persp + 'px)' + camMatrix(mCam) +
-      'translate(' + wh + 'px,' + hh + 'px)';
-
-    WORLDS.forEach(function(w){
-      proj.copy(w.mesh.position).addScaledVector(w.fwd, w.liftNow).project(camera);
-      /* Nove scritte tutte insieme sono rumore, e nella fila si accavallano
-         sulle lastre dei vicini. Si vede il nome di chi e' davanti — e di
-         quello che stai indicando, cosi' si sa dove si sta per andare
-         prima di andarci. */
-      var vis = stage === 'mappa' && proj.z < 1 && !openW && zoom < 0.15 &&
-                (w === hot || w === overCard);
-      w.label.style.transform = objMatrix(mObj.copy(w.anchorObj.matrixWorld));
-      w.label.classList.toggle('-on', vis);
-      w.label.classList.toggle('-hot', w === hot || w === overCard);
-    });
+    /* Le scritte per-card in 3D non esistono piu': il nome del mondo davanti
+       lo porta la focus-caption in basso (aggiornaFocus), come in Mirror
+       Hall. Tolto con loro tutto l'apparato CSS3D di proiezione. */
   }
   requestAnimationFrame(frame);
 
@@ -1718,6 +1733,7 @@
       toccato = true;
       hot = back; playOn(back);
       WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === back); });
+      aggiornaFocus(back);
       var h = document.getElementById('hero');
       h.classList.add('-off'); h.style.display = 'none';
       if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
