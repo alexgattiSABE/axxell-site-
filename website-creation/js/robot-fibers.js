@@ -201,7 +201,14 @@ WC.robotFibers = (function () {
       c.multiplyScalar(1 / bin.length);
       slices.push({ point: c, verts: bin });
     });
-    return slices.length >= 3 ? slices : null;
+    if (slices.length < 3) return null;
+    // Task 7 (nit): `armLen` (già calcolato sopra per il binning) viaggia
+    // appeso all'array — un array resta un oggetto normale in JS, la
+    // proprietà extra non disturba `.length`/`.forEach`/`.map` di chi lo
+    // consuma — così buildArm() lo rilegge invece di ricalcolare
+    // `shoulder.distanceTo(wrist)`, la stessa identica distanza.
+    slices.armLen = armLen;
+    return slices;
   }
 
   // Spinge ogni centroide verso l'esterno lungo `dir` (fissa per braccio:
@@ -256,8 +263,7 @@ WC.robotFibers = (function () {
     var slices = sliceArm(meshes, shoulder, wrist, SLICE_COUNT);
     if (!slices) return false;
 
-    var armLen = shoulder.distanceTo(wrist);
-    var radius = armLen * TUBE_RADIUS_FACTOR;
+    var radius = slices.armLen * TUBE_RADIUS_FACTOR;
     // Direzione fissa per braccio: lontano dal busto (X, segno secondo il
     // lato) e un po' verso la camera (+Z, la camera sta su +Z guardando
     // verso l'origine — vedi mount() in robot.js). Non ruota fetta per

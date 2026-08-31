@@ -128,6 +128,32 @@ if (LENS_POINT_RAW !== undefined) {
 //    di robot.js (0.15/frame in salita).
 const ARM_SIDE = process.env.ROBOT_SHOT_ARM === 'left' ? 'left'
   : (process.env.ROBOT_SHOT_ARM === 'right' ? 'right' : null);
+// Estensioni Task 7 (interazione+levitazione+drag+reduced-motion+cleanup):
+//  - ROBOT_SHOT_REDUCED=1: emula `prefers-reduced-motion: reduce` PRIMA
+//    della navigazione (page.emulateMedia). robot.js deve bailare prima di
+//    allocare nulla di WebGL (ctx.motionOk===false, vedi mount()): niente
+//    window.__robot, niente <canvas>, resta la card statica con l'hint di
+//    fallback. Salta l'attesa/poll di window.__robot (non comparirà mai) e
+//    le interazioni via env che seguono (tutte no-op senza __robot).
+//  - ROBOT_SHOT_DRAG=<px totali>: dopo il mount normale, simula un vero
+//    trascinamento (page.mouse.down/move/up, non un evento sintetico) sulla
+//    banda alta dello stage (stessa banda "libera" di ROBOT_SHOT_POINTER,
+//    vedi sotto — .wc-robot-copy non la intercetta), muovendo il mouse di
+//    <px totali> in orizzontale su alcuni step. Verifica che
+//    window.__robot.wrap.rotation.y sia cambiato per davvero attraverso i
+//    listener pointerdown/pointermove reali di robot.js — non un override
+//    JS diretto.
+//  - ROBOT_SHOT_LEAK=1: dopo il mount normale, forza un ciclo
+//    teardown+remount USANDO lo stesso meccanismo reale del sito
+//    (gsap.matchMedia in core.js si ri-esegue quando cambia l'esito di una
+//    query — vedi STATO/core.js): emula reduced-motion (→ teardown di
+//    robot.js, la cleanup unificata del Task 7 gira) poi lo disattiva (→
+//    nuovo mount da zero). Verifica: nessun canvas duplicato, window.__robot
+//    resettato durante il teardown, poi ripopolato dopo il remount, nessun
+//    errore di pagina.
+const REDUCED = process.env.ROBOT_SHOT_REDUCED === '1';
+const DRAG_PX = process.env.ROBOT_SHOT_DRAG !== undefined ? Number(process.env.ROBOT_SHOT_DRAG) : null;
+const LEAK_CHECK = process.env.ROBOT_SHOT_LEAK === '1';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -196,6 +222,14 @@ async function main(){
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
+    // Task 7: reduced-motion PRIMA della navigazione — deve essere la
+    // condizione che core.js/robot.js vedono già al primo boot (gsap
+    // matchMedia legge `prefers-reduced-motion` all'avvio), non qualcosa
+    // che scatta a pagina già caricata.
+    if (REDUCED) {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+    }
+
     // Task 2: se richiesto, setta il flag PRIMA che qualunque script di
     // pagina giri (addInitScript esegue ad ogni navigazione, prima del
     // <script> della pagina) — robot.js lo legge dentro mount(), che
@@ -214,7 +248,13 @@ async function main(){
     });
 
     page.on('console', (msg) => {
-      consoleMsgs.push({ type: msg.type(), text: msg.text() });
+      // location().url porta l'URL della risorsa per i "Failed to load
+      // resource" generati dal browser — msg.text() per quei messaggi è
+      // un testo generico senza URL (verificato: non basta un match su
+      // testo per isolare i 404 noti sotto, serve la location).
+      let loc = null;
+      try { loc = msg.location(); } catch (_) { /* ignore */ }
+      consoleMsgs.push({ type: msg.type(), text: msg.text(), url: loc && loc.url });
     });
 
     page.on('pageerror', (err) => {
@@ -266,13 +306,105 @@ async function main(){
         else el.scrollIntoView({ block: 'center' });
       });
 
-      // Aspetta window.__robot (poll, timeout ~30s)
-      const deadline = Date.now() + 30000;
-      while (Date.now() < deadline) {
+      if (REDUCED) {
+        // Task 7: reduced-motion → NIENTE si monta (ctx.motionOk===false in
+        // robot.js, controllato prima di qualunque new THREE.WebGLRenderer).
+        // window.__robot non comparirà mai: un poll di 30s sarebbe solo
+        // tempo sprecato ad aspettare qualcosa che per design non arriva.
+        // Un'attesa fissa basta a lasciare girare fail()/l'IntersectionObserver.
+        await page.waitForTimeout(2000);
         robotReady = await page.evaluate(() => !!(window.__robot && window.__robot.model));
-        if (robotReady) break;
+      } else {
+        // Aspetta window.__robot (poll, timeout ~30s)
+        const deadline = Date.now() + 30000;
+        while (Date.now() < deadline) {
+          robotReady = await page.evaluate(() => !!(window.__robot && window.__robot.model));
+          if (robotReady) break;
+          await page.waitForTimeout(250);
+        }
+      }
+    }
+
+    // Task 7: sotto reduced-motion deve restare la card statica — nessun
+    // canvas montato, lo stage marcato -failed, l'hint di fallback ancora
+    // nel DOM (fail() lo scrive PRIMA di rimuoverlo — hint.remove() gira
+    // solo nel percorso di successo del caricamento GLB).
+    let staticCardInfo = null;
+    if (REDUCED) {
+      staticCardInfo = await page.evaluate(() => {
+        const stg = document.getElementById('wcRobotStage');
+        const hnt = document.getElementById('wcRobotHint');
+        return {
+          failed: stg ? stg.classList.contains('-failed') : null,
+          hint: hnt ? hnt.textContent : null,
+          canvasCount: stg ? stg.querySelectorAll('canvas').length : null,
+        };
+      });
+    }
+
+    // Task 7: drag-to-rotate REALE (page.mouse.down/move/up, non un
+    // override JS di wrap.rotation.y) — verifica che i listener
+    // pointerdown/pointermove di robot.js siano davvero agganciati.
+    // Banda alta dello stage, stessa di ROBOT_SHOT_POINTER sopra: libera su
+    // tutta la larghezza, .wc-robot-copy non la intercetta lì.
+    let dragInfo = null;
+    if (DRAG_PX !== null && !Number.isNaN(DRAG_PX) && robotReady) {
+      const rotBefore = await page.evaluate(() => (window.__robot && window.__robot.wrap) ? window.__robot.wrap.rotation.y : null);
+      const vw = await page.evaluate(() => window.innerWidth);
+      const vh = await page.evaluate(() => window.innerHeight);
+      const startX = vw * 0.3, y = vh * 0.22;
+      await page.mouse.move(startX, y, { steps: 5 });
+      await page.mouse.down();
+      await page.mouse.move(startX + DRAG_PX, y, { steps: 16 });
+      await page.mouse.up();
+      // Lascia girare qualche frame di inerzia/ritorno prima di leggere.
+      await page.waitForTimeout(300);
+      const rotAfter = await page.evaluate(() => (window.__robot && window.__robot.wrap) ? window.__robot.wrap.rotation.y : null);
+      dragInfo = { rotBefore, rotAfter };
+    }
+
+    // Task 7: leak check — ricicla il meccanismo REALE di teardown/remount
+    // (gsap.matchMedia in core.js si ri-esegue quando cambia l'esito di una
+    // query — vedi core.js): emula reduced-motion (→ teardown di robot.js,
+    // la cleanup unificata del Task 7 gira) poi lo disattiva (→ nuovo mount
+    // da zero, l'IntersectionObserver riparte e la sezione è già in vista).
+    let leakInfo = null;
+    if (LEAK_CHECK && robotReady) {
+      const canvasBefore = await page.evaluate(() => document.querySelectorAll('#wcRobotStage canvas').length);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.waitForTimeout(800); // il 'change' della media query + il teardown sincrono di gsap.matchMedia
+      const afterTeardown = await page.evaluate(() => ({
+        robotUndefined: window.__robot === undefined,
+        canvasCount: document.querySelectorAll('#wcRobotStage canvas').length,
+      }));
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      // Effetto collaterale NOTO e non specifico del robot: ogni ciclo di
+      // gsap.matchMedia in core.js distrugge/ricrea Lenis (destroyLenis()
+      // nel cleanup, initLenis() nel nuovo context) — Lenis tiene lo scroll
+      // "vero" del browser vicino a 0 e finge lo scroll via CSS, quindi
+      // distruggerlo a metà sessione fa scattare window.scrollY al suo
+      // valore nativo reale, ben lontano da cap05: l'IntersectionObserver
+      // di robot.js smette di vedere la sezione come intersecante (verificato
+      // isolando il problema: stesso comportamento su QUALUNQUE sezione
+      // WC, non solo il robot) e mount() non riparte finché non arriva un
+      // altro scroll. In un browser vero basterebbe lo scroll successivo
+      // dell'utente; qui lo si rifà esplicito, stesso schema del mount
+      // iniziale sopra.
+      await page.evaluate(() => {
+        const el = document.getElementById('cap05');
+        if (!el) return;
+        if (window.WC && window.WC.lenis) window.WC.lenis.scrollTo(el, { immediate: true });
+        else el.scrollIntoView({ block: 'center' });
+      });
+      let remounted = false;
+      const remountDeadline = Date.now() + 15000;
+      while (Date.now() < remountDeadline) {
+        remounted = await page.evaluate(() => !!(window.__robot && window.__robot.model));
+        if (remounted) break;
         await page.waitForTimeout(250);
       }
+      const afterRemount = await page.evaluate(() => document.querySelectorAll('#wcRobotStage canvas').length);
+      leakInfo = { canvasBefore, afterTeardown, remounted, afterRemountCanvasCount: afterRemount };
     }
 
     // Task 3: inquadra da vicino la testa (bbox di parts.head), camera
@@ -447,6 +579,10 @@ async function main(){
           ? r.fibers.object.children[0].children[0].material.uniforms.uSurge.value : null,
         fiberSurgeR: (r.fibers && r.fibers.object && r.fibers.object.children[1] && r.fibers.object.children[1].children[0])
           ? r.fibers.object.children[1].children[0].material.uniforms.uSurge.value : null,
+        // Task 7: levitazione (bob sinusoidale su Y) + drag (rotation.y)
+        // dell'intero robot — diagnostica per lo screenshot finale.
+        wrapPosY: r.wrap ? r.wrap.position.y : null,
+        wrapRotY: r.wrap ? r.wrap.rotation.y : null,
       };
     });
 
@@ -460,7 +596,19 @@ async function main(){
     // ---- Report ----
     const hostList = Array.from(hosts).sort();
     const forbidden = hostList.filter((h) => /spline\.design$/i.test(h) || /(^|\.)unpkg\.com$/i.test(h));
-    const consoleErrors = consoleMsgs.filter((m) => m.type === 'error');
+    // Task 7: sotto reduced-motion, `.wc-alt`/`.wc-offer` (altri capitoli,
+    // non il robot) passano a un poster CSS statico — `css/sections.css`
+    // referenzia `url(assets/starry-poster.webp)`/`glass-poster.webp`
+    // RELATIVO AL FILE CSS (quindi risolve a `css/assets/...`), ma i file
+    // veri stanno in `website-creation/assets/...`: 404, mai emerso prima
+    // perché nessun harness aveva mai esercitato prefers-reduced-motion.
+    // Bug pre-esistente, non introdotto da questo task e fuori scope
+    // (questo task tocca solo js/robot.js) — escluso qui esplicitamente
+    // (non silenziosamente: resta comunque loggato sopra in --- CONSOLE ---)
+    // così non si confonde con una regressione del robot. Segnalato nel
+    // report come concern.
+    const KNOWN_UNRELATED_404 = /starry-poster\.webp|glass-poster\.webp/;
+    const consoleErrors = consoleMsgs.filter((m) => m.type === 'error' && !KNOWN_UNRELATED_404.test(m.url || ''));
 
     console.log('--- HOST CONTATTATI ---');
     hostList.forEach((h) => console.log(' -', h));
@@ -475,6 +623,15 @@ async function main(){
     console.log('--- WINDOW.__ROBOT ---', robotReady ? 'PRESENTE' : 'ASSENTE');
     if (robotState) {
       console.log('--- ROBOT STATE (Task 4) ---', JSON.stringify(robotState));
+    }
+    if (staticCardInfo) {
+      console.log('--- STATIC CARD (Task 7, reduced-motion) ---', JSON.stringify(staticCardInfo));
+    }
+    if (dragInfo) {
+      console.log('--- DRAG (Task 7) ---', JSON.stringify(dragInfo));
+    }
+    if (leakInfo) {
+      console.log('--- LEAK CHECK (Task 7) ---', JSON.stringify(leakInfo));
     }
     console.log('--- SCREENSHOT ---', OUT_SHOT);
 
@@ -491,9 +648,39 @@ async function main(){
       console.error('FAIL: errori di pagina (uncaught):', pageErrors.join(' | '));
       failed = true;
     }
-    if (!VESPER && !robotReady) {
+    if (!VESPER && !REDUCED && !robotReady) {
       console.error('FAIL: window.__robot non è comparso entro il timeout');
       failed = true;
+    }
+    if (REDUCED) {
+      if (robotReady) {
+        console.error('FAIL: reduced-motion ma window.__robot è comparso comunque');
+        failed = true;
+      }
+      if (!staticCardInfo || !staticCardInfo.failed || staticCardInfo.canvasCount !== 0) {
+        console.error('FAIL: reduced-motion non mostra la card statica attesa:', JSON.stringify(staticCardInfo));
+        failed = true;
+      }
+    }
+    if (dragInfo) {
+      if (dragInfo.rotBefore === null || dragInfo.rotAfter === null || dragInfo.rotBefore === dragInfo.rotAfter) {
+        console.error('FAIL: il drag non ha ruotato wrap.rotation.y:', JSON.stringify(dragInfo));
+        failed = true;
+      }
+    }
+    if (leakInfo) {
+      if (!leakInfo.afterTeardown.robotUndefined || leakInfo.afterTeardown.canvasCount !== 0) {
+        console.error('FAIL: teardown non pulito (window.__robot o canvas residuo):', JSON.stringify(leakInfo.afterTeardown));
+        failed = true;
+      }
+      if (!leakInfo.remounted) {
+        console.error('FAIL: nessun remount dopo il teardown');
+        failed = true;
+      }
+      if (leakInfo.afterRemountCanvasCount !== 1) {
+        console.error('FAIL: canvas duplicato/assente dopo il remount:', leakInfo.afterRemountCanvasCount);
+        failed = true;
+      }
     }
 
     if (failed) {

@@ -35,6 +35,29 @@ WC.register('robot', function(ctx){
     stage.classList.add('-failed');
   }
 
+  // Task 7: cleanup unificato. Un solo helper che attraversa un Object3D e
+  // smaltisce geometrie e materiali (array di materiali incluso) — lo
+  // riusa il teardown finale (sotto) per il MODELLO (corpo/braccia in
+  // carbonio, testa in vetro: headGroup è figlio di `model`, quindi anche
+  // il vetro ci rientra), per il BRAIN e per le FIBRE. `.dispose()` su una
+  // risorsa già smaltita è un no-op sicuro in three.js (spara solo
+  // l'evento 'dispose'), quindi se due chiamate si sovrappongono — es. il
+  // brain e le fibre sono ENTRAMBI già discendenti di `model` nella
+  // gerarchia attuale, quindi disposeObject3D(model) da solo li
+  // coprirebbe già — non è un problema. Le chiamate restano comunque
+  // esplicite e separate: non fanno affidamento su quella gerarchia, così
+  // restano corrette anche se un task futuro riparenta brain/fibre altrove.
+  function disposeObject3D(root){
+    if (!root) return;
+    root.traverse(function (obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(function (m) { m.dispose(); });
+        else obj.material.dispose();
+      }
+    });
+  }
+
   function mount(){
     if (mounted) return;
     mounted = true;
@@ -67,6 +90,46 @@ WC.register('robot', function(ctx){
     cleanups.push(function () {
       stage.removeEventListener('mousemove', onPointerMove);
       stage.removeEventListener('mouseleave', onPointerLeave);
+    });
+
+    // Task 7: drag-to-rotate dell'intero robot. pointerdown parte sullo
+    // stage (altrimenti un drag iniziato sulla card di testo farebbe
+    // scorrere la pagina invece di girare il modello); pointermove/up
+    // restano su `window`, non su `stage` — durante un trascinamento il
+    // cursore esce spesso dai bordi dello stage e il drag non deve
+    // interrompersi lì. La rotazione va DIRETTAMENTE su wrap.rotation.y,
+    // letta via window.__robot per closure (wrap non esiste finché il GLB
+    // non è caricato — stesso motivo per cui tick() sotto legge sempre
+    // window.__robot invece di chiudere sulla variabile locale). Additiva
+    // rispetto a headGroup.rotation (Task 4): quella ruota la sola testa
+    // DENTRO al gruppo che gira con `wrap`, le due rotazioni si sommano
+    // senza conflitti. `dragVel` resta il delta dell'ultimo movimento; dopo
+    // il rilascio tick() lo fa decadere (inerzia) mentre un ritorno morbido
+    // verso 0 riporta il robot a fronte — vedi tick() più sotto.
+    var drag = { active: false, lastX: 0 };
+    var dragVel = 0;
+    function onDragStart(e) {
+      drag.active = true;
+      drag.lastX = e.clientX;
+      dragVel = 0;
+    }
+    function onDragMove(e) {
+      if (!drag.active) return;
+      var dx = e.clientX - drag.lastX;
+      drag.lastX = e.clientX;
+      var delta = dx * 0.005;
+      dragVel = delta;
+      var robot = window.__robot;
+      if (robot && robot.wrap) robot.wrap.rotation.y += delta;
+    }
+    function onDragEnd() { drag.active = false; }
+    stage.addEventListener('pointerdown', onDragStart);
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragEnd);
+    cleanups.push(function () {
+      stage.removeEventListener('pointerdown', onDragStart);
+      window.removeEventListener('pointermove', onDragMove);
+      window.removeEventListener('pointerup', onDragEnd);
     });
 
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -108,6 +171,10 @@ WC.register('robot', function(ctx){
       wrap.add(model);
       scene.add(wrap);
       var maxDim = Math.max(s.x, s.y, s.z);
+      // Task 7: ampiezza della levitazione, proporzionale alla scala reale
+      // del GLB (che non è in unità "piccole", vedi cam.near/far sotto) —
+      // un valore fisso sarebbe invisibile o esagerato a seconda del modello.
+      var bobAmount = maxDim * 0.02;
       cam.position.set(0, 0, maxDim * 1.6);
       cam.lookAt(0, 0, 0);
       // Il GLB estratto non è in unità "piccole": la camera va piazzata a
@@ -313,10 +380,11 @@ WC.register('robot', function(ctx){
       var lensHitPos = new THREE.Vector3();
       var lensActive = 0;
       // Task 6: surge delle fibre per braccio (0..1, smorzato) — stesso
-      // Raycaster riusato, un'altra intersezione per frame contro
-      // parts.armL/armR separatamente. Persistono fuori da tick() (come
-      // lensActive) per lo smoothing esponenziale frame-su-frame.
-      var armNdc = new THREE.Vector2();
+      // Raycaster riusato (Task 7: stesso RAGGIO della lente Lithos sotto,
+      // niente secondo setFromCamera — il puntatore è lo stesso NDC per i
+      // due test, cambiano solo gli oggetti intersecati), un'intersezione
+      // per frame contro parts.armL/armR separatamente. Persistono fuori da
+      // tick() (come lensActive) per lo smoothing esponenziale frame-su-frame.
       var surgeL = 0, surgeR = 0;
       (function tick(){
         raf = requestAnimationFrame(tick);
@@ -352,17 +420,23 @@ WC.register('robot', function(ctx){
           robot.headGroup.rotation.y += (targetYaw - robot.headGroup.rotation.y) * 0.12;
           robot.headGroup.rotation.x += (targetPitch - robot.headGroup.rotation.x) * 0.12;
         }
-        // Task 5b: raycast del cursore sulle mesh testa. Solo col puntatore
-        // REALE attivo (pointer.x/y sono già NDC rispetto allo stage, la
-        // stessa camera che renderizza lo stage: si passano diretti al
-        // Raycaster, flip di segno su y come da convenzione NDC three.js).
-        // Nessun hit (cursore fuori dalla testa, o fuori dallo stage) →
-        // il target di attivazione scende a 0, la lente si chiude morbida.
+        // Task 7 (nit): un solo setFromCamera per frame quando il puntatore
+        // è attivo — lente Lithos (testa) e surge delle fibre (braccia)
+        // testano oggetti DIVERSI ma partono dallo STESSO NDC (pointer.x/y
+        // rispetto allo stage, la stessa camera che renderizza lo stage,
+        // flip di segno su y come da convenzione NDC three.js): il secondo
+        // setFromCamera di Task 6 era una ricomputazione ridondante dello
+        // stesso raggio, non un raggio diverso.
+        if (pointer.active) {
+          lensNdc.set(pointer.x, -pointer.y);
+          raycaster.setFromCamera(lensNdc, cam);
+        }
+        // Task 5b: raycast del cursore sulle mesh testa. Nessun hit
+        // (cursore fuori dalla testa, o fuori dallo stage) → il target di
+        // attivazione scende a 0, la lente si chiude morbida.
         if (robot && robot.glass && robot.parts && robot.parts.head && robot.parts.head.length) {
           var lensTargetActive = 0;
           if (pointer.active) {
-            lensNdc.set(pointer.x, -pointer.y);
-            raycaster.setFromCamera(lensNdc, cam);
             var hits = raycaster.intersectObjects(robot.parts.head, false);
             if (hits.length) {
               lensTargetActive = 1;
@@ -390,14 +464,35 @@ WC.register('robot', function(ctx){
         if (robot && robot.fibers && robot.parts) {
           var armLHit = false, armRHit = false;
           if (pointer.active) {
-            armNdc.set(pointer.x, -pointer.y);
-            raycaster.setFromCamera(armNdc, cam);
             if (robot.parts.armL.length && raycaster.intersectObjects(robot.parts.armL, false).length) armLHit = true;
             if (robot.parts.armR.length && raycaster.intersectObjects(robot.parts.armR, false).length) armRHit = true;
           }
           surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
           surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
           robot.fibers.update(dt, surgeL, surgeR);
+        }
+        // Task 7: levitazione + drag-to-rotate di TUTTO il robot (`wrap`,
+        // il gruppo che contiene `model` — vedi mount() sopra), ultimo
+        // step prima del render così legge lo stato di drag più fresco
+        // possibile (i listener pointermove/up di sopra girano fuori dal
+        // loop rAF). Bob verticale sinusoidale, lento e leggero (non deve
+        // competere con la testa che segue il cursore). Rotazione: mentre
+        // si trascina la rotazione è già scritta direttamente in
+        // onDragMove (sopra); qui, SOLO a riposo (drag non attivo), la
+        // velocità residua dell'ultimo movimento (`dragVel`) decade
+        // (inerzia) e un piccolo richiamo verso 0 riporta il robot a
+        // fronte — "ritorno morbido", non un aggancio rigido: durante il
+        // decadimento dell'inerzia il richiamo è già presente ma debole
+        // (0.02/frame), lascia che l'inerzia "giri" ancora un po' prima
+        // di riassestarsi. Additiva rispetto a headGroup.rotation (Task
+        // 4): quella ruota la sola testa dentro a `wrap`.
+        if (robot && robot.wrap) {
+          robot.wrap.position.y = Math.sin((now - clockStart) / 1000 * 0.8) * bobAmount;
+          if (!drag.active) {
+            robot.wrap.rotation.y += dragVel;
+            dragVel *= 0.9;
+            robot.wrap.rotation.y += (0 - robot.wrap.rotation.y) * 0.02;
+          }
         }
         renderer.render(scene, cam);
       })();
@@ -412,14 +507,24 @@ WC.register('robot', function(ctx){
     cleanups.push(function(){
       torn = true;
       draco.dispose();
-      renderer.dispose();
-      // Task 5b: l'envMap del vetro testa è una CanvasTexture creata ad-hoc
-      // (robot-materials.js), non gestita da nessun altro loader/cache —
-      // va smaltita qui insieme al resto, altrimenti resta un WebGLTexture
-      // orfano ad ogni mount/unmount della sezione.
-      if (window.__robot && window.__robot.glass && window.__robot.glass.userData.envMap) {
-        window.__robot.glass.userData.envMap.dispose();
+      // Task 7: smaltimento GPU unificato. Se il GLB non è mai arrivato a
+      // caricare (fail() nel ramo di errore di gltf.load, o teardown prima
+      // che load() risolva) window.__robot resta undefined: non c'è nulla
+      // da attraversare, solo renderer/canvas da smaltire sotto.
+      var robot = window.__robot;
+      if (robot) {
+        disposeObject3D(robot.model);
+        if (robot.brain && robot.brain.points) disposeObject3D(robot.brain.points);
+        if (robot.fibers && robot.fibers.object) disposeObject3D(robot.fibers.object);
+        // L'envMap del vetro testa è una CanvasTexture creata ad-hoc
+        // (robot-materials.js), non gestita da nessun altro loader/cache né
+        // toccata da disposeObject3D (che smaltisce geometrie/materiali, non
+        // le texture referenziate dentro le uniform di uno ShaderMaterial) —
+        // va smaltita qui a parte, altrimenti resta un WebGLTexture orfano
+        // ad ogni mount/unmount della sezione.
+        if (robot.glass && robot.glass.userData.envMap) robot.glass.userData.envMap.dispose();
       }
+      renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
       if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;
     });
