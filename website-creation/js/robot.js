@@ -236,13 +236,18 @@ WC.register('robot', function(ctx){
             var brain = WC.pointBrain.create({ count: 4000, radius: headRadius * 0.42, color: 0x8bd6ff });
             var craniumOffset = headSizeLocal.y * 0.35;
             brain.points.position.copy(headCenterLocal).add(new THREE.Vector3(0, craniumOffset, 0));
-            // Draw order: il vetro (Task 3) è transparent + depthWrite:false, non
-            // scrive profondità e quindi NON occlude il brain; i punti sono
-            // additivi, aggiungono luce sopra a ciò che c'è dietro. renderOrder
-            // default (0) li lascia interlacciare per z col guscio di vetro — la
-            // lettura più corretta di "cervello dentro il vetro". Verificato a
-            // schermo (task5-brain-on) che sono visibili attraverso il vetro
-            // aperto e spenti col vetro chiuso.
+            // Draw order (Task 5b): il vetro (transparent+depthWrite:false)
+            // e il brain (THREE.Points, additivo, anch'esso
+            // transparent+depthWrite:false) finiscono entrambi nella coda
+            // "trasparenti" di three.js, che li ordina per distanza
+            // centro-oggetto dalla camera — non per pixel, quindi inaffidabile
+            // per decidere chi sta sopra. `parts.head.forEach` in
+            // robot-materials.js applyTo() assegna `renderOrder = 2` al
+            // guscio di vetro (> del default 0 del brain), forzando SEMPRE
+            // guscio-dopo-brain nella coda: il suo alpha per-pixel (alto fuori
+            // dalla lente, quasi nullo dentro) fa da maschera, e il cervello
+            // resta visibile solo attraverso la finestra trasparente della
+            // lente Lithos che segue il cursore sopra la testa.
             headGroup.add(brain.points);
 
             // Taratura della dimensione dei punti. Nello shader del brain
@@ -312,8 +317,10 @@ WC.register('robot', function(ctx){
             // .wc-robot-copy intercetterebbe al centro.
             targetYaw = robot.hold.yaw || 0;
             targetPitch = robot.hold.pitch || 0;
-            robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
-          } else {
+          }
+          if (!pointer.active) {
+            // hold e "nessun input" decadono faceAmount a 0 allo stesso modo
+            // (diagnostica dell'harness: non pilota più vetro/brain).
             robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
           }
           robot.headGroup.rotation.y += (targetYaw - robot.headGroup.rotation.y) * 0.12;

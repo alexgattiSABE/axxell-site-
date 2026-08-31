@@ -152,7 +152,11 @@ WC.robotMaterials = (function () {
     // fuori resta uBaseAlpha (visore opaco). uLensActive porta l'intero
     // effetto a 0 quando il cursore non è sulla testa.
     '  float d = distance(vWorldPos, uLensPos);',
-    '  float lens = uLensActive * smoothstep(uLensRadius, uLensRadius * 0.5, d);',
+    // smoothstep vuole edge0 < edge1: 1.0 - smoothstep(raggio*0.5, raggio, d)
+    // dà lo stesso falloff (1 al centro dove d è piccolo, 0 fuori dal raggio)
+    // di smoothstep(raggio, raggio*0.5, d) ma con edge in ordine crescente
+    // (edge0>edge1 non è garantito dallo spec GLSL, anche se funzionava).
+    '  float lens = uLensActive * (1.0 - smoothstep(uLensRadius * 0.5, uLensRadius, d));',
     '  float alpha = mix(uBaseAlpha, uMinAlpha, lens);',
     '  gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));',
     '}'

@@ -73,11 +73,14 @@ const FOCUS_HEAD = process.env.ROBOT_SHOT_FOCUS_HEAD === '1';
 // Estensioni Task 5 (cervello dentro la testa):
 //  - ROBOT_SHOT_HOLD=<json>: imposta window.__robot.hold prima dello
 //    screenshot, un override deterministico che il loop di robot.js consuma
-//    quando il puntatore NON è attivo — {"yaw":0.45,"pitch":0,"face":0.8}.
-//    Serve a mettere la testa in una posa stabile (girata + che "guarda", cioè
-//    faceAmount alto) senza dover combattere l'overlay .wc-robot-copy che
-//    intercetta i mousemove al centro dello stage. Applicato dopo che
-//    window.__robot è pronto; si attende la convergenza dello smoothing.
+//    quando il puntatore NON è attivo — {"yaw":0.45,"pitch":0}. Serve a
+//    mettere la testa in una posa stabile (girata di lato) senza dover
+//    combattere l'overlay .wc-robot-copy che intercetta i mousemove al
+//    centro dello stage. Applicato dopo che window.__robot è pronto; si
+//    attende la convergenza dello smoothing. Nota (Task 5b): un campo
+//    "face" nell'oggetto è ora ignorato — il ramo hold di robot.js fa
+//    decadere faceAmount a 0 incondizionatamente, il reveal del vetro/brain
+//    è pilotato dalla lente Lithos via raycast, non più da faceAmount.
 //  - ROBOT_SHOT_VESPER=1: flusso ALTERNATIVO che verifica il capVesper (il
 //    cervello di Vesper, da cui il point-brain è estratto) invece del robot:
 //    scrolla in capVesper a una frazione del suo range di pin
@@ -334,11 +337,12 @@ async function main(){
       await page.waitForTimeout(1800);
     }
 
-    // Task 5: posa deterministica della testa (hold) — la testa "guarda"
-    // (faceAmount alto) ed eventualmente è girata di lato, senza puntatore
-    // reale (che l'overlay .wc-robot-copy intercetterebbe al centro). Il loop
-    // di robot.js, quando il puntatore non è attivo, consuma window.__robot.hold
-    // {yaw,pitch,face}. Si attende la convergenza dello smoothing esponenziale.
+    // Task 5: posa deterministica della testa (hold) — la testa è girata di
+    // lato senza puntatore reale (che l'overlay .wc-robot-copy intercetterebbe
+    // al centro). Il loop di robot.js, quando il puntatore non è attivo,
+    // consuma window.__robot.hold {yaw,pitch} (un eventuale campo "face" è
+    // ignorato dal Task 5b — vedi nota sopra). Si attende la convergenza
+    // dello smoothing esponenziale.
     if (HOLD) {
       await page.evaluate((h) => { if (window.__robot) window.__robot.hold = h; }, HOLD);
       await page.waitForTimeout(1800);
