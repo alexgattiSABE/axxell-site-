@@ -202,11 +202,10 @@ WC.register('robot', function(ctx){
         window.__robot.parts = parts;
 
         // Materiali: carbonio su corpo/braccia, visore scuro con envMap +
-        // lente Lithos sulla testa (Task 3, corretto in Task 5b — vedi
-        // robot-materials.js). `mats.glass` è lo ShaderMaterial le cui
-        // uniform pilotiamo qui sotto: uTime nel loop di render,
-        // uLensActive/uLensPos dal raycast del cursore sulla testa (tick()
-        // più sotto), uLensRadius impostato subito dopo, sotto.
+        // reveal a tutta testa (RITOCCO 2 — vedi robot-materials.js).
+        // `mats.glass` è lo ShaderMaterial le cui uniform pilotiamo qui sotto:
+        // uTime nel loop di render, uReveal (0..1) dal raycast del cursore
+        // sulla testa (tick() più sotto).
         if (WC.robotMaterials) {
           // `renderer` serve al carbonio per prefiltrare l'envMap via PMREM
           // (riflesso lucido sul corpo scuro — vedi robot-materials.js).
@@ -286,26 +285,10 @@ WC.register('robot', function(ctx){
 
           window.__robot.headGroup = headGroup;
 
-          // Task 5b: raggio della lente Lithos sul vetro (§2 della spec),
-          // 0.18 * dimensione mondo della testa. headBox è ancora quello
-          // WORLD calcolato sopra (prima della creazione di headGroup): la
-          // dimensione non cambia quando la testa ruota, resta valido.
-          if (window.__robot.glass) {
-            var headWorldSize = headBox.getSize(new THREE.Vector3());
-            var headWorldMax = Math.max(headWorldSize.x, headWorldSize.y, headWorldSize.z);
-            // 0.18 (partenza da spec) rivelava quasi tutta la cupola in un
-            // colpo solo (il brain ha raggio ~0.21*headWorldMax, comparabile
-            // al lens radius risultante: la finestra "morbida" arrivava a
-            // coprire l'intera nuvola). 0.11 tarato a schermo (task5b-lens):
-            // resta una finestra LOCALE — si vede chiaramente lo spostamento
-            // fra due punti diversi della testa (task5b-lens2).
-            window.__robot.glass.uniforms.uLensRadius.value = headWorldMax * 0.11;
-          }
-
           // Task 5: il point-brain DENTRO la testa. Stesso helper del cervello
           // di Vesper (WC.pointBrain, js/pointbrain.js). Parentato a headGroup,
-          // si muove in sincrono con la testa; si accende solo sotto la lente
-          // Lithos che segue il cursore (Task 5b — vedi tick() più sotto).
+          // si muove in sincrono con la testa; si accende col reveal a tutta
+          // testa quando il cursore ci passa sopra (RITOCCO 2 — vedi tick()).
           if (WC.pointBrain) {
             // Centro e raggio della testa in coordinate LOCALI di headGroup, non
             // mondo: headGroup ha solo posizione, ma `model` può portare una
@@ -322,15 +305,22 @@ WC.register('robot', function(ctx){
             var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
             var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
 
-            // Task 5b (correzione utente): il centro del bbox testa è tirato
-            // in basso, all'altezza della mascella, perché il bbox include il
-            // collo (vedi robot-parts.js — il cluster "testa" è casco+collo).
-            // Si sposta verso l'alto, dentro la calotta cranica, di una quota
-            // proporzionale all'altezza della testa. Raggio leggermente
-            // ridotto (0.42 invece di 0.5) così la nuvola sta dentro la
-            // cupola senza sconfinare verso guance/mascella.
-            var brainRadius = headRadius * 0.42;
-            var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * 0.35, 0));
+            // RITOCCO 2 (correzione utente): ora il reveal è a TUTTA testa —
+            // si vede il cervello INTERO, non più una macchia sotto la lente —
+            // quindi il cervello va INGRANDITO e CENTRATO per riempire
+            // l'interno della testa e leggere chiaramente come cervello
+            // (emisferi + cervelletto), non piccolo nella calotta.
+            //   - raggio: 0.66 del raggio-testa (era 0.42) → occupa gran parte
+            //     del volume interno. headRadius è ricavato dal bbox testa che
+            //     include il collo, quindi 0.66 riempie la calotta cranica
+            //     senza sfondare la silhouette del visore (tarato a schermo,
+            //     ref2-head-reveal).
+            //   - offset verticale ridotto (0.22 invece di 0.35 dell'altezza):
+            //     il bbox testa è tirato in basso dal collo, un piccolo
+            //     rialzo centra il cervello nel cranio; troppo alto (0.35) lo
+            //     spingeva contro la calotta ora che è grande.
+            var brainRadius = headRadius * 0.66;
+            var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * 0.22, 0));
             // Taratura della dimensione dei punti. Nello shader del brain
             // gl_PointSize ≈ uSize * 200 / (-mv.z), con -mv.z ≈ distanza
             // camera→testa in unità MONDO. Il modello non è in unità "piccole"
@@ -348,8 +338,8 @@ WC.register('robot', function(ctx){
             // "trasparenti" di three.js, ordinata per distanza centro-oggetto
             // — non per pixel. `renderOrder = 2` sul guscio di vetro (in
             // robot-materials.js) forza SEMPRE guscio-dopo-brain: il suo alpha
-            // per-pixel fa da maschera, il cervello si vede solo attraverso la
-            // finestra della lente Lithos.
+            // globale (uReveal) fa da maschera — a riposo opaco copre il
+            // cervello, rivelato lo lascia vedere su tutta la testa.
             function placeBrain(brain) {
               brain.points.position.copy(brainPos);
               brain.uniforms.uSize.value = brainUSize;
@@ -415,21 +405,22 @@ WC.register('robot', function(ctx){
       var raf;
       var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
       var lastTick = clockStart;
-      // Task 5b: la lente Lithos. Un solo Raycaster riusato ogni frame (niente
-      // allocazioni), il punto colpito in MONDO e un fattore di attivazione
-      // smorzato (0..1, esponenziale come rotazione/faceAmount) — sia il
-      // vetro (uLensActive/uLensPos) sia il brain (update(dt, reveal))
-      // seguono questo stesso segnale, così si accendono/spengono insieme.
+      // RITOCCO 2: reveal a TUTTA testa. Un solo Raycaster riusato ogni frame
+      // (niente allocazioni); se il cursore colpisce una qualunque mesh della
+      // testa, un fattore smorzato `hoverHead` (0..1, esponenziale come
+      // rotazione/faceAmount) sale a 1 — sia il vetro (uReveal, uguale su
+      // tutta la testa) sia il brain (update(dt, reveal)) seguono questo
+      // stesso segnale, così il visore diventa trasparente e il cervello
+      // intero si accende insieme.
       var raycaster = new THREE.Raycaster();
       var lensNdc = new THREE.Vector2();
-      var lensHitPos = new THREE.Vector3();
-      var lensActive = 0;
+      var hoverHead = 0;
       // Task 6: surge delle fibre per braccio (0..1, smorzato) — stesso
-      // Raycaster riusato (Task 7: stesso RAGGIO della lente Lithos sotto,
+      // Raycaster riusato (Task 7: stesso raggio del reveal testa sotto,
       // niente secondo setFromCamera — il puntatore è lo stesso NDC per i
       // due test, cambiano solo gli oggetti intersecati), un'intersezione
       // per frame contro parts.armL/armR separatamente. Persistono fuori da
-      // tick() (come lensActive) per lo smoothing esponenziale frame-su-frame.
+      // tick() (come hoverHead) per lo smoothing esponenziale frame-su-frame.
       var surgeL = 0, surgeR = 0;
       (function tick(){
         raf = requestAnimationFrame(tick);
@@ -466,7 +457,7 @@ WC.register('robot', function(ctx){
           robot.headGroup.rotation.x += (targetPitch - robot.headGroup.rotation.x) * 0.12;
         }
         // Task 7 (nit): un solo setFromCamera per frame quando il puntatore
-        // è attivo — lente Lithos (testa) e surge delle fibre (braccia)
+        // è attivo — reveal testa e surge delle fibre (braccia)
         // testano oggetti DIVERSI ma partono dallo STESSO NDC (pointer.x/y
         // rispetto allo stage, la stessa camera che renderizza lo stage,
         // flip di segno su y come da convenzione NDC three.js): il secondo
@@ -476,31 +467,28 @@ WC.register('robot', function(ctx){
           lensNdc.set(pointer.x, -pointer.y);
           raycaster.setFromCamera(lensNdc, cam);
         }
-        // Task 5b: raycast del cursore sulle mesh testa. Nessun hit
-        // (cursore fuori dalla testa, o fuori dallo stage) → il target di
-        // attivazione scende a 0, la lente si chiude morbida.
+        // RITOCCO 2: raycast del cursore sulle mesh testa. Un hit su una
+        // QUALSIASI mesh della testa alza il target a 1 → il visore diventa
+        // trasparente su TUTTA la testa (uReveal, uguale ovunque). Nessun hit
+        // (cursore fuori dalla testa, o fuori dallo stage) → target 0, il
+        // visore torna scuro/opaco morbidamente.
         if (robot && robot.glass && robot.parts && robot.parts.head && robot.parts.head.length) {
-          var lensTargetActive = 0;
-          if (pointer.active) {
-            var hits = raycaster.intersectObjects(robot.parts.head, false);
-            if (hits.length) {
-              lensTargetActive = 1;
-              lensHitPos.copy(hits[0].point);
-            }
+          var hoverTarget = 0;
+          if (pointer.active && raycaster.intersectObjects(robot.parts.head, false).length) {
+            hoverTarget = 1;
           }
-          lensActive += (lensTargetActive - lensActive) * 0.18;
-          robot.glass.uniforms.uLensActive.value = lensActive;
-          robot.glass.uniforms.uLensPos.value.copy(lensHitPos);
+          hoverHead += (hoverTarget - hoverHead) * 0.18;
+          robot.glass.uniforms.uReveal.value = hoverHead;
         }
-        // Task 5b: il brain si accende SOLO sotto la lente (stesso segnale
-        // smorzato di sopra), non più legato a faceAmount. update() fa
-        // respirare i punti e pilota opacità/emissione con reveal (0 =
-        // spento/invisibile — visore chiuso, niente cervello in vista).
+        // RITOCCO 2: il brain si accende con lo STESSO segnale del reveal a
+        // tutta testa (non più la lente locale, non legato a faceAmount).
+        // update() fa respirare i punti e pilota opacità/emissione con reveal
+        // (0 = spento/invisibile — visore scuro, niente cervello in vista).
         if (robot && robot.brain) {
-          robot.brain.update(dt, lensActive);
+          robot.brain.update(dt, hoverHead);
         }
         // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
-        // volta — a differenza della lente Lithos (una sola zona, la testa)
+        // volta — a differenza del reveal testa (una sola zona, la testa)
         // qui servono DUE segnali indipendenti, uno per braccio, così il
         // fascio che si accende è solo quello sotto il cursore. Salita
         // rapida (0.15/frame) quando il cursore è sopra, decadimento lento

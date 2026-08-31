@@ -301,7 +301,7 @@ WC.pointBrain = (function () {
    * da sé la sua coreografia — il robot passa queste uniform a create() e usa
    * l'update(dt, reveal) incluso: iTime/iAlpha/uExplode vengono guidate da lì
    * (uExplode resta 0, i punti riposano sulla superficie; iAlpha = reveal
-   * della lente Lithos). uSize di partenza è quella di Vesper (0.067) ma il
+   * a tutta testa). uSize di partenza è quella di Vesper (0.067) ma il
    * robot la sovrascrive in base alla distanza reale della camera. */
   function vesperBrainUniforms() {
     return {

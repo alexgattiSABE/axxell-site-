@@ -1,5 +1,5 @@
 /* CAP 05 — materiali del robot (carbonio su corpo/braccia, visore scuro con
- * lente Lithos sulla testa).
+ * reveal a tutta testa sulla testa).
  *
  * Carbonio "come lo Spline" (correzione utente ref1): MeshStandardMaterial
  * scuro (near-black), poco ruvido e molto metallico, con una .normalMap a
@@ -20,15 +20,15 @@
  * vettore di riflessione `reflect(-V,N)`. È il riflesso — non lo
  * schiarimento del tinta — a rendere leggibile il vetro sul nero.
  *
- * Il reveal del cervello non è più un'apertura globale (uOpen): è una LENTE
- * LOCALE alla Lithos. robot.js fa il raycast del cursore sulle mesh della
- * testa ogni frame e passa qui il punto colpito (uLensPos, mondo) più un
- * fattore di attivazione smorzato (uLensActive, 0..1). Il fragment calcola
- * la distanza dal punto e apre una finestra morbida (smoothstep su
- * uLensRadius) SOLO lì: alpha scende, il vetro diventa trasparente e lascia
- * vedere il cervello sotto; il resto della testa resta il visore scuro
- * opaco. Fuori dalla testa (nessun hit) uLensActive tende a 0 e tutto torna
- * opaco.
+ * Reveal A TUTTA TESTA (correzione utente RITOCCO 2, 2026-08-31): la lente
+ * LOCALE alla Lithos (finestra per-fragment attorno al punto del cursore)
+ * faceva leggere il cervello come "una macchia di puntini" — non si vedeva
+ * mai la forma intera. Sostituita da un reveal GLOBALE: robot.js fa il
+ * raycast del cursore sulle mesh della testa ogni frame e, se colpisce, alza
+ * un fattore smorzato `uReveal` (0..1) UGUALE su tutto il vetro. A 0 il
+ * visore è scuro/opaco (envMap + rim Fresnel); a 1 è trasparente su TUTTA la
+ * testa e lascia vedere il cervello INTERO sotto. Nessun calcolo di distanza
+ * per-fragment: un solo `mix(uBaseAlpha, uMinAlpha, uReveal)`.
  */
 window.WC = window.WC || {};
 
@@ -190,15 +190,13 @@ WC.robotMaterials = (function () {
     'uniform float uTime;',
     'uniform sampler2D uEnvMap;',
     'uniform float uEnvIntensity;',
-    // alpha a riposo (visore chiuso, opaco) e alpha dentro la lente (quasi
-    // trasparente, lascia vedere il cervello).
+    // alpha a riposo (visore chiuso, opaco) e alpha rivelato (quasi
+    // trasparente, lascia vedere il cervello intero).
     'uniform float uBaseAlpha;',
     'uniform float uMinAlpha;',
-    // lente Lithos: attiva 0..1 (smorzata in robot.js), centro in MONDO,
-    // raggio del falloff morbido.
-    'uniform float uLensActive;',
-    'uniform vec3 uLensPos;',
-    'uniform float uLensRadius;',
+    // reveal globale 0..1 (smorzato in robot.js dal raycast sulla testa):
+    // 0 = visore opaco, 1 = trasparente su TUTTA la testa.
+    'uniform float uReveal;',
     // equirettangolare: u = azimuth attorno a Y, v = polare (0=su, 1=giù).
     'vec2 equirectUv(vec3 dir) {',
     '  float u = atan(dir.z, dir.x) / (2.0 * PI) + 0.5;',
@@ -219,17 +217,10 @@ WC.robotMaterials = (function () {
     '  vec3 base = uTint * (0.8 + 0.5 * fres);',
     '  vec3 rim = vec3(0.62, 0.75, 0.92) * (fres * fres) * 0.45;',
     '  vec3 col = base + envColor * uEnvIntensity + rim + shimmer;',
-    // lente Lithos: finestra morbida centrata su uLensPos (mondo), raggio
-    // uLensRadius; dentro l'alpha scende a uMinAlpha (quasi trasparente),
-    // fuori resta uBaseAlpha (visore opaco). uLensActive porta l'intero
-    // effetto a 0 quando il cursore non è sulla testa.
-    '  float d = distance(vWorldPos, uLensPos);',
-    // smoothstep vuole edge0 < edge1: 1.0 - smoothstep(raggio*0.5, raggio, d)
-    // dà lo stesso falloff (1 al centro dove d è piccolo, 0 fuori dal raggio)
-    // di smoothstep(raggio, raggio*0.5, d) ma con edge in ordine crescente
-    // (edge0>edge1 non è garantito dallo spec GLSL, anche se funzionava).
-    '  float lens = uLensActive * (1.0 - smoothstep(uLensRadius * 0.5, uLensRadius, d));',
-    '  float alpha = mix(uBaseAlpha, uMinAlpha, lens);',
+    // Reveal globale: uReveal 0 → uBaseAlpha (visore opaco), 1 → uMinAlpha
+    // (trasparente su TUTTA la testa, cervello intero visibile). Nessun
+    // calcolo per-fragment: lo stesso alpha ovunque sul vetro.
+    '  float alpha = mix(uBaseAlpha, uMinAlpha, clamp(uReveal, 0.0, 1.0));',
     '  gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));',
     '}'
   ].join('\n');
@@ -285,14 +276,12 @@ WC.robotMaterials = (function () {
           // stacking "over" di più layer trasparenti alza comunque
           // l'opacità percepita — vedi side:FrontSide sotto.
           uBaseAlpha: { value: opts.baseAlpha !== undefined ? opts.baseAlpha : 0.93 },
-          // Bassa: dentro la lente deve lasciar vedere il cervello anche
-          // sommando 2-3 mesh sovrapposte nella cupola. Tarata a schermo.
+          // Bassa: rivelato deve lasciar vedere il cervello anche sommando
+          // 2-3 mesh sovrapposte nella cupola. Tarata a schermo.
           uMinAlpha: { value: opts.minAlpha !== undefined ? opts.minAlpha : 0.045 },
-          uLensActive: { value: 0 },
-          uLensPos: { value: new THREE.Vector3(1e6, 1e6, 1e6) },
-          // Placeholder: robot.js lo sovrascrive con 0.18 * dimensione
-          // mondo della testa, appena la testa è nota (mount()).
-          uLensRadius: { value: opts.lensRadius !== undefined ? opts.lensRadius : 1.0 }
+          // Reveal globale 0..1: robot.js lo smorza dal raycast sulla testa
+          // (0 = opaco fuori dalla testa, 1 = trasparente su tutta la testa).
+          uReveal: { value: 0 }
         },
         vertexShader: VERT,
         fragmentShader: FRAG,
@@ -316,8 +305,8 @@ WC.robotMaterials = (function () {
       var glass = this.glassHead({ tint: 0x05070b });
       parts.head.forEach(function (m) {
         m.material = glass;
-        // Task 5b: la lente Lithos maschera lo spazio via l'ALPHA del vetro
-        // (opaco fuori dalla lente, quasi trasparente dentro) — ma perché
+        // Il reveal a tutta testa maschera lo spazio via l'ALPHA del vetro
+        // (opaco a riposo, quasi trasparente quando uReveal→1) — ma perché
         // funzioni il vetro deve essere disegnato DOPO il brain, non prima.
         // Entrambi transparent+depthWrite:false: senza un renderOrder
         // esplicito three.js li ordina per distanza CENTRO-oggetto dalla
@@ -327,10 +316,10 @@ WC.robotMaterials = (function () {
         // schermo: senza questo, il brain intero restava visibile anche
         // fuori dalla lente (il guscio, disegnato PRIMA, non lo copriva più
         // in nessun punto). renderOrder=2 (> del default 0 del brain, vedi
-        // robot.js) forza SEMPRE guscio-dopo-brain: dove il guscio è opaco
-        // (fuori lente) lo ricopre, dove è quasi trasparente (dentro lente)
-        // lo lascia passare — la lettura "cervello dentro il vetro,
-        // acceso solo sotto la lente" torna corretta.
+        // robot.js) forza SEMPRE guscio-dopo-brain: a riposo il guscio opaco
+        // ricopre il cervello, con uReveal→1 il guscio trasparente lo lascia
+        // passare su TUTTA la testa — la lettura "cervello intero dentro il
+        // vetro quando ci passi sopra" torna corretta.
         m.renderOrder = 2;
       });
       return { glass: glass, carbon: carb };

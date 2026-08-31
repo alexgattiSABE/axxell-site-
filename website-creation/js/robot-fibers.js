@@ -120,6 +120,18 @@ WC.robotFibers = (function () {
   // se quel nodo non si trovasse in un GLB futuro — volutamente generosa
   // (non deve mai essere il taglio "vero" usato oggi).
   var ARM_CLAMP_END = 0.875;
+  // RITOCCO 2 (correzione utente, dopo TRE derive): la fibra dell'avambraccio
+  // sul braccio "surgiato" ha continuato a tagliare verso l'anca — la posa
+  // mano-al-fianco + il glow additivo la fanno leggere come staccata, e la
+  // sezione del basso avambraccio è dove l'offset-di-superficie è meno
+  // affidabile. Decisione: PULIZIA > COPERTURA. Si accorcia la corsa: la fibra
+  // parte dalla spalla e si FERMA ben sopra il polso/l'anca, intorno al gomito
+  // (parte alta + solo la porzione superiore dell'avambraccio), dove resta
+  // inequivocabilmente sull'arto. Frazione del taglio-polso REALE
+  // (findWristCut): 0.72 → finisce circa al gomito (il gomito, joints, è a
+  // ~0.68 del taglio-polso), un filo oltre. Abbassare ancora (verso 0.6, solo
+  // braccio alto) se dovesse ancora sbandare.
+  var ARM_END_FRACTION = 0.72;
 
   var VERT = [
     'varying vec2 vUv;',
@@ -281,8 +293,10 @@ WC.robotFibers = (function () {
     if (armLenFull < 1e-4) return null; // giunti degeneri (braccio vuoto)
     axis.normalize();
     // Fix drift: affettiamo solo fino al polso vero (findWristCut), non
-    // fino al fondo del bbox (che include la mano).
-    var armLen = findWristCut(meshes, shoulder, axis, armLenFull, model);
+    // fino al fondo del bbox (che include la mano). RITOCCO 2: e ci fermiamo
+    // ancora prima (ARM_END_FRACTION del taglio-polso), intorno al gomito,
+    // così la fibra resta chiaramente sull'arto e non taglia verso l'anca.
+    var armLen = findWristCut(meshes, shoulder, axis, armLenFull, model) * ARM_END_FRACTION;
 
     var verts = sampleArmVertices(meshes, model);
     if (verts.length < sliceCount * 3) return null; // troppo pochi vertici per un binning affidabile
