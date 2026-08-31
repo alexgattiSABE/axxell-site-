@@ -113,6 +113,15 @@ WC.register('robot', function(ctx){
         var parts = WC.robotParts.split(model);
         window.__robot.parts = parts;
 
+        // Materiali (Task 3): carbonio su corpo/braccia, vetro Fresnel
+        // sulla testa. `mats.glass` è lo ShaderMaterial la cui uniform
+        // uOpen/uTime pilotiamo qui sotto (uTime nel loop di render,
+        // uOpen arriverà da un'interazione nei task successivi).
+        if (WC.robotMaterials) {
+          var mats = WC.robotMaterials.applyTo(parts);
+          window.__robot.glass = mats.glass;
+        }
+
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
         // testa/braccia/corpo con colori piatti (MeshBasicMaterial, non
         // sensibile alla luce) così lo screenshot dell'harness mostra
@@ -129,8 +138,13 @@ WC.register('robot', function(ctx){
       }
 
       var raf;
+      var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
       (function tick(){
         raf = requestAnimationFrame(tick);
+        if (window.__robot && window.__robot.glass) {
+          var now = (window.performance && performance.now) ? performance.now() : Date.now();
+          window.__robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
+        }
         renderer.render(scene, cam);
       })();
       cleanups.push(function(){ cancelAnimationFrame(raf); });

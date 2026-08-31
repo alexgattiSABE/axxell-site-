@@ -36,9 +36,30 @@ const DEFAULT_OUT = '/Users/alexgatti/axxell-site-/.superpowers/sdd/2026-08-31-r
 //    robot.js monti (per la tinteggiatura head/body/arm di Step 3)
 //  - ROBOT_SHOT_ANGLE=34: ruota il gruppo del robot di 45° su Y prima
 //    dello screenshot (vista 3/4), invece del fronte di default
+// Estensioni Task 3 (minime, sopra l'harness invariato di Task 1/2):
+//  - ROBOT_SHOT_ROT_DEG=<n>: ruota il gruppo `wrap` di n gradi su Y prima
+//    dello screenshot (generalizza ROBOT_SHOT_ANGLE=34, che resta un
+//    alias per 45° per compatibilità)
+//  - ROBOT_SHOT_OPEN=<0..1>: forza window.__robot.glass.uniforms.uOpen
+//    al valore dato prima dello screenshot (materiale vetro, Task 3)
+//  - ROBOT_SHOT_FOCUS_HEAD=1: prima di ruotare/impostare uOpen, sposta la
+//    camera (fissa, stesso schema di ANGLE_34/ROT_DEG che invece ruotano
+//    `wrap`) a inquadrare da vicino il solo bbox di parts.head, così la
+//    verifica del materiale vetro non dipende dall'inquadratura a corpo
+//    intero decisa in Task 1. Applicato PRIMA della rotazione, cosà la
+//    rotazione via ROT_DEG porta la testa già inquadrata "di taglio"
+//    rispetto a una camera che resta ferma — stessa logica dell'interazione
+//    reale (camera ferma, il gruppo ruota).
 const OUT_SHOT = process.env.ROBOT_SHOT_OUT || DEFAULT_OUT;
 const DEBUG_PARTS = process.env.ROBOT_SHOT_DEBUG_PARTS === '1';
 const ANGLE_34 = process.env.ROBOT_SHOT_ANGLE === '34';
+const ROT_DEG = process.env.ROBOT_SHOT_ROT_DEG !== undefined
+  ? Number(process.env.ROBOT_SHOT_ROT_DEG)
+  : (ANGLE_34 ? 45 : null);
+const OPEN_VAL = process.env.ROBOT_SHOT_OPEN !== undefined
+  ? Number(process.env.ROBOT_SHOT_OPEN)
+  : null;
+const FOCUS_HEAD = process.env.ROBOT_SHOT_FOCUS_HEAD === '1';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -166,13 +187,46 @@ async function main(){
       await page.waitForTimeout(250);
     }
 
-    // Task 2: vista 3/4 — ruota il gruppo `wrap` (non la camera: più
-    // semplice, e non tocca near/far calcolati su model space) di 45° su
-    // Y prima dello screenshot finale.
-    if (ANGLE_34) {
+    // Task 3: inquadra da vicino la testa (bbox di parts.head), camera
+    // ferma — PRIMA di applicare la rotazione, così ROT_DEG ruota la testa
+    // già inquadrata rispetto a una camera fissa (stesso schema
+    // dell'interazione reale: la camera non si muove, ruota il modello).
+    if (FOCUS_HEAD) {
       await page.evaluate(() => {
-        if (window.__robot && window.__robot.wrap) window.__robot.wrap.rotation.y = Math.PI / 4;
+        if (!window.__robot || !window.__robot.parts || !window.__robot.camera) return;
+        var box = new THREE.Box3();
+        window.__robot.parts.head.forEach(function (m) { box.union(new THREE.Box3().setFromObject(m)); });
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var maxDim = Math.max(size.x, size.y, size.z);
+        var cam = window.__robot.camera;
+        var dist = maxDim * 2.3;
+        cam.position.set(center.x, center.y, center.z + dist);
+        cam.lookAt(center);
+        cam.near = Math.max(0.01, dist / 1000);
+        cam.far = dist * 20;
+        cam.updateProjectionMatrix();
       });
+    }
+
+    // Task 2/3: vista ruotata — ruota il gruppo `wrap` (non la camera: più
+    // semplice, e non tocca near/far calcolati su model space) di N gradi
+    // su Y prima dello screenshot finale (default Task 2: 45° fisso via
+    // ROBOT_SHOT_ANGLE=34; Task 3: qualunque angolo via ROBOT_SHOT_ROT_DEG,
+    // per portare la testa "di taglio" rispetto alla camera).
+    if (ROT_DEG !== null && !Number.isNaN(ROT_DEG)) {
+      await page.evaluate((deg) => {
+        if (window.__robot && window.__robot.wrap) window.__robot.wrap.rotation.y = deg * Math.PI / 180;
+      }, ROT_DEG);
+    }
+
+    // Task 3: forza l'uniform uOpen del vetro testa (0=chiuso/scuro,
+    // 1=aperto/trasparente) prima dello screenshot, per isolare l'effetto
+    // dallo stato di interazione (che arriva in un task successivo).
+    if (OPEN_VAL !== null && !Number.isNaN(OPEN_VAL)) {
+      await page.evaluate((v) => {
+        if (window.__robot && window.__robot.glass) window.__robot.glass.uniforms.uOpen.value = v;
+      }, OPEN_VAL);
     }
 
     // Un giro di render in più prima dello screenshot.
