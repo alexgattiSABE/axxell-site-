@@ -1203,10 +1203,15 @@
   /* Il coefficiente NON e' piu' quello della giostra (0.0026, tarato per un
      anello che scattava sul fermo piu' vicino dopo il gesto): li' un gesto
      "grosso" poteva anche superare una card, tanto lo scatto finale
-     correggeva. Qui non c'e' nessuno scatto — la card dove il gesto ti
-     lascia e' quella buona — quindi il passo deve restare leggibile: un
-     colpo di rotellina "pieno" (~1200 unita', la stessa entita' con cui la
-     verifica a schermo lo simula) avanza di UNA card, non di tre. */
+     correggeva. Qui, DURANTE il gesto, non c'e' nessuno scatto — la card dove
+     il gesto ti lascia e' quella buona — quindi il passo deve restare
+     leggibile: un colpo di rotellina "pieno" (~1200 unita', la stessa entita'
+     con cui la verifica a schermo lo simula) avanza di UNA card, non di tre.
+     (fix round 1) Lo scatto torna SOLO DOPO che il gesto e' finito e la mano
+     e' ferma da `SETTLE_MS` — vedi «LO SCATTO SUL FERMO» piu' sotto nel
+     `frame()`: serve al controller (Task 5) per accendere l'effetto sulla
+     card a fuoco, che altrimenti con `spin` frazionario non si sveglia mai
+     scorrendo di rotellina/trascino. */
   window.addEventListener('wheel', function(e){
     if (openW || !WC.motionOk) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -1643,6 +1648,29 @@
        `window.__effettiHelixScroll` più sotto), quindi lo scatto non è solo
        delle card — è anche il modo in cui l'elica smette di "girare da
        sola" quando il moto non è gradito. */
+    /* LO SCATTO SUL FERMO (fix round 1 — review Task 5).
+       Il commento sul coefficiente della rotellina, qui sopra, spiegava perché
+       la card originaria NON avesse uno scatto: «la card dove il gesto ti
+       lascia è quella buona». Ma il gate di pieno-fuoco del controller (più
+       sotto, Task 5) richiede `spin` intero — e uno scorrimento libero
+       (rotellina/trascino) lascia `spin` frazionario per sempre, perché non
+       c'era nulla a riportarlo su un fermo. Frecce e fermi/elenco (`STEP=1`,
+       `portaDavanti`) arrivano già interi: solo la rotellina/il trascino ne
+       restavano fuori. Si prende in prestito ESATTAMENTE il meccanismo della
+       home (`index.html` — «lo scatto sul fermo», sezione 4 del suo frame):
+       dopo `SETTLE_MS` di silenzio (la stessa soglia del gate, sotto) e senza
+       trascino in corso, si ammorbidisce **`spinT`** — il bersaglio che `spin`
+       insegue subito dopo, qui sotto, con lo smorzamento di Task 3/4 (mai
+       `spin` stesso, per non spezzare quell'inseguimento) — verso l'intero più
+       vicino. Compatibile con l'accumulatore infinito di Task 4 senza alcun
+       clamp: `spinT` può valere un milione, `Math.round` di un numero enorme
+       resta un numero enorme — nessun avvolgimento da gestire qui, come già
+       per `wrapN` sulle card. */
+    if (!openW && toccato && !dragging && now - lastInput > SETTLE_MS){
+      var det = Math.round(spinT);
+      spinT += (det - spinT)*Math.min(1, dt*7);
+    }
+
     if (WC.motionOk){
       spin += (spinT - spin)*Math.min(1, dt*7.5);
     } else if (spin !== spinT){
