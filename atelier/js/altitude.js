@@ -39,21 +39,44 @@
  * e non una soglia netta: un bordo duro trasforma la separazione dei colori
  * in fili rossi e verdi visibili invece che in rifrazione.
  */
-WC.register('altitude', function(ctx){
-  var canvas  = document.getElementById('wcAltCanvas');
-  var section = document.getElementById('capAltitude');
-  var video   = document.getElementById('wcAltVideo');
-  if (!canvas || !section || !video) return;
+/* ── DOPPIO USO (Task 6) ─────────────────────────────────────────────────────
+ * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): il
+ * fluido vive dentro `#capAltitude`, con lo ScrollTrigger di sezione a
+ * pinnare/accendere/spegnere — montaggio storico, invariato. (B)
+ * `atelier/effetti.html`: niente sezione; il controller monta canvas+video
+ * dentro `#stage-live` e li pilota via `WC.effects.altitude.start(container)`/
+ * `.stop()` — nessuno ScrollTrigger.
+ *
+ * IL VIDEO: `assets/starry.mp4` è H.264, che swiftshader (headless, questa
+ * verifica) non decodifica — atteso, non un difetto (vedi task-6-brief.md).
+ * `assets/starry.webm` (VP9) è stato aggiunto come SECONDA `<source>`: i
+ * browser veri (che decodificano l'H.264 in hardware) prendono la prima e
+ * vedono lo stesso video di sempre; solo dove l'H.264 non c'è si cade sul
+ * WebM — è così che il montaggio esterno riesce a mostrare il video anche
+ * sotto swiftshader.
+ *
+ * Il corpo è racchiuso in `mountAltitude(ctx, cfg)`: `cfg.canvas`/`cfg.video`
+ * sono gli elementi su cui disegnare, `cfg.section` esiste solo nel montaggio
+ * legacy, `cfg.external` distingue i due rami SOLO in coda. `resizeCanvas()`
+ * legge `canvas.clientWidth/clientHeight` (mai `section`), quindi non serve
+ * nessun `rectEl` in più: il layout del `container` esterno basta da solo. */
+(function(){
+function mountAltitude(ctx, cfg){
+  var section  = cfg.section || null;
+  var canvas   = cfg.canvas;
+  var video    = cfg.video;
+  var external = !!cfg.external;
+  if (!canvas || !video || (!external && !section)) return null;
 
   // Reduced-motion: niente simulazione e niente video in movimento. Resta il
   // poster, che il tag mostra da sé, e la copy sopra.
-  if (!ctx.motionOk) { section.classList.add('-static'); return; }
+  if (!ctx.motionOk) { if (section) section.classList.add('-static'); return null; }
 
   // Su telefono il fluido non parte: sono venti passaggi di pressione per
   // fotogramma e non c'è un puntatore da seguire. Resta il video, che è
   // comunque la metà della scena.
   var mobile = window.innerWidth <= 900 || matchMedia('(pointer:coarse)').matches;
-  if (mobile) { section.classList.add('-plain'); }
+  if (mobile && section) { section.classList.add('-plain'); }
 
   /* Numeri del template, non i nostri: `FLUID_CONFIG` di hero-media.tsx.
    * Sono diversi da quelli del cap. 03 perché servono a un'altra cosa — CURL
@@ -876,6 +899,40 @@ WC.register('altitude', function(ctx){
     clearSim();
   }
 
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller. `start()`/
+   * `stop()` sono le STESSE funzioni del ramo legacy — caricano il video,
+   * fanno partire il solutore, lo svuotano allo stop — solo che qui a
+   * chiamarle è l'API esterna invece di uno ScrollTrigger di sezione. */
+  if (external){
+    var wantRun = false;
+    var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
+    document.addEventListener('visibilitychange', onVisE);
+    return {
+      start: function(){ wantRun = true; start(); },
+      stop:  function(){ wantRun = false; stop(); },
+      resize: function(){ if (resizeCanvas()) initFramebuffers(); },
+      dispose: function(){
+        stop();
+        document.removeEventListener('visibilitychange', onVisE);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('mouseout', onLeave);
+        if (dye) dye.destroy();
+        if (velocity) velocity.destroy();
+        if (pressure) pressure.destroy();
+        if (divergence) divergence.destroy();
+        if (curl) curl.destroy();
+        gl.deleteTexture(videoTex);
+        gl.deleteBuffer(quadBuffer);
+        gl.deleteBuffer(quadIndex);
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
   // Il video comincia a scendere mezza schermata prima, come la sneaker: il
   // capitolo deve avere già un cielo quando ci arrivi.
   var stPre = ScrollTrigger.create({
@@ -914,4 +971,57 @@ WC.register('altitude', function(ctx){
     var lose = gl.getExtension('WEBGL_lose_context');
     if (lose) lose.loseContext();
   };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta video+canvas
+ * dentro il `container` che gli passa il controller. */
+WC.register('altitude', function(ctx){
+  var canvas  = document.getElementById('wcAltCanvas');
+  var section = document.getElementById('capAltitude');
+  var video   = document.getElementById('wcAltVideo');
+  if (!canvas || !section || !video) return;
+  return mountAltitude(ctx, { canvas: canvas, section: section, video: video, external: false });
 });
+
+WC.effects = WC.effects || {};
+WC.effects.altitude = (function(){
+  var inst = null, host = null;
+  return {
+    start: function(container){
+      // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
+      // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
+      // fa dipingere sopra i canvas congelati degli altri (vedi la nota
+      // gemella in js/saucer.js). `position:absolute` invece di `relative`:
+      // serve comunque da riferimento ai figli assoluti (video/canvas), ma in
+      // più stacca l'host dal FLUSSO — niente più figli-100%-altezza che si
+      // spingono a vicenda fuori dal riquadro visibile.
+      if (inst){ container.appendChild(host); inst.start(); return; }
+      host = document.createElement('div');
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;';
+      var vid = document.createElement('video');
+      vid.muted = true; vid.loop = true; vid.playsInline = true; vid.preload = 'none';
+      vid.setAttribute('aria-hidden', 'true');
+      vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      // Stesso ordine del markup legacy: mp4 prima (i browser veri lo prendono,
+      // decodificato in hardware), webm dopo — è il fallback che copre swiftshader.
+      var s1 = document.createElement('source');
+      s1.type = 'video/mp4'; s1.setAttribute('data-src', 'assets/starry.mp4');
+      var s2 = document.createElement('source');
+      s2.type = 'video/webm'; s2.setAttribute('data-src', 'assets/starry.webm');
+      vid.appendChild(s1); vid.appendChild(s2);
+      var canv = document.createElement('canvas');
+      canv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+      host.appendChild(vid); host.appendChild(canv);
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountAltitude(ctx, { canvas: canv, video: vid, section: null, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();
+})();

@@ -43,11 +43,33 @@
  * L'ultima fetta di scroll non alimenta il clock ma l'OUTRO, cioè l'uscita del
  * cervello mentre la sezione dopo sale a coprire (il pin è `pinSpacing:false`).
  */
-WC.register('vesper', function(ctx){
-  var section = document.getElementById('capVesper');
-  var pin     = document.getElementById('wcVesperPin');
-  var canvas  = document.getElementById('wcVesperCanvas');
-  if (!section || !pin || !canvas) return;
+/* ── DOPPIO USO (Task 6) ─────────────────────────────────────────────────────
+ * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): la
+ * scena vive dentro `#capVesper`, l'orologio 0→4 lo guida lo ScrollTrigger di
+ * sezione (pin + outro dopo lo sgancio) — montaggio storico, invariato. (B)
+ * `atelier/effetti.html`: niente sezione, niente scroll; il controller monta
+ * il canvas dentro `#stage-live` e lo pilota via
+ * `WC.effects.vesper.start(container)`/`.stop()`.
+ *
+ * SENZA SCROLL, `progressTarget` resta 0: la scena non passa mai all'atto
+ * galassia/cervello e mostra SOLO l'orb (`clockFromScroll` non viene mai
+ * chiamata — nessuna reinvenzione della curva). È «Il modello»: la sfera che
+ * si raduna (l'INTRO, già a tempo — `startIntro()`) e vive di suo (spin,
+ * "olio" del cursore), esattamente come appare all'inizio del capitolo 04.
+ * `outro` resta 0 (la sua unica sorgente, `stOutro`, è uno ScrollTrigger
+ * legacy-only), quindi `handoff=1` per sempre: l'orb non sfuma mai via.
+ *
+ * Il corpo è racchiuso in `mountVesper(ctx, cfg)`: `cfg.canvas` è la tela,
+ * `cfg.rectEl` l'elemento da cui si misura, `cfg.section`/`cfg.pin` esistono
+ * solo nel montaggio legacy, `cfg.external` distingue i due rami SOLO in coda. */
+(function(){
+function mountVesper(ctx, cfg){
+  var section  = cfg.section || null;
+  var pin      = cfg.pin || null;
+  var canvas   = cfg.canvas;
+  var external = !!cfg.external;
+  var rectEl   = cfg.rectEl || pin;    // da cosa si misura la tela
+  if (!canvas || !rectEl) return null;
 
   var G = WC.glsl;
   var cleanups = [];
@@ -55,8 +77,8 @@ WC.register('vesper', function(ctx){
   // Reduced-motion o niente WebGL: resta la copy, che è già la versione
   // leggibile del capitolo.
   if (!ctx.motionOk || typeof THREE === 'undefined') {
-    section.classList.add('-static');
-    return;
+    if (section) section.classList.add('-static');
+    return null;
   }
 
   /* ==========================================================================
@@ -232,11 +254,11 @@ WC.register('vesper', function(ctx){
   var camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
   camera.position.set(0, 0, tier.orbCamZ + INTRO_DOLLY);
 
-  // Il puntatore in NDC relativo al pin: il canvas non è tutta la pagina, e
-  // usare le coordinate di finestra sposterebbe il contatto di mezza sezione.
+  // Il puntatore in NDC relativo al riquadro: il canvas non è tutta la pagina,
+  // e usare le coordinate di finestra sposterebbe il contatto di mezza sezione.
   var ptrX = 0, ptrY = 0, hasPointer = false;
   var onMove = function(e){
-    var r = pin.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     ptrX = ((e.clientX - r.left) / r.width) * 2 - 1;
     ptrY = -(((e.clientY - r.top) / r.height) * 2 - 1);
     hasPointer = true;
@@ -1060,7 +1082,7 @@ WC.register('vesper', function(ctx){
   var centre = new THREE.Vector3(), camLocal = new THREE.Vector3();
 
   function resize(){
-    var r = pin.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     size.w = Math.max(1, r.width); size.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, tier.dpr);
     renderer.setPixelRatio(dpr);
@@ -1266,6 +1288,42 @@ WC.register('vesper', function(ctx){
 
   resize();
 
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller.
+   * `progressTarget` non si tocca — resta 0, quindi la scena resta per sempre
+   * sull'orb (vedi il commento in testa al file). `startIntro()` fa arrivare
+   * i punti al primo `start()`; l'istanza vive fra un fuoco e l'altro come
+   * `saucer` — `stop()` ferma solo il rAF, non ricarica né il cervello né la
+   * galassia. */
+  if (external){
+    var wantRun = false;
+    var onResizeE = function(){ resize(); };
+    var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
+    window.addEventListener('resize', onResizeE);
+    document.addEventListener('visibilitychange', onVisE);
+    cleanups.push(function(){
+      stop();
+      brainAborted = true;
+      window.removeEventListener('resize', onResizeE);
+      document.removeEventListener('visibilitychange', onVisE);
+      orbGeo.dispose(); orbMaterial.dispose();
+      galSphere.dispose(); galMaterial.dispose();
+      if (brainGeo) brainGeo.dispose();
+      brainMaterial.dispose();
+      atmoGeo.dispose(); atmoPoints.material.dispose();
+      backdrop.geometry.dispose(); backdrop.material.dispose();
+      heroLine.geometry.dispose(); heroLine.material.dispose();
+      renderer.dispose();
+    });
+    return {
+      start: function(){ wantRun = true; startIntro(); resize(); start(); },
+      stop:  function(){ wantRun = false; stop(); },
+      resize: resize,
+      dispose: function(){ cleanups.forEach(function(f){ f(); }); }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
   var stPin = ScrollTrigger.create({
     trigger: section, start: 'top top', end: 'bottom bottom',
     pin: pin, pinSpacing: false, anticipatePin: 1,
@@ -1319,4 +1377,41 @@ WC.register('vesper', function(ctx){
   });
 
   return function(){ cleanups.forEach(function(f){ f(); }); };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta la scena su
+ * una tela creata dentro il `container` che gli passa il controller. */
+WC.register('vesper', function(ctx){
+  var section = document.getElementById('capVesper');
+  var pin     = document.getElementById('wcVesperPin');
+  var canvas  = document.getElementById('wcVesperCanvas');
+  if (!section || !pin || !canvas) return;
+  return mountVesper(ctx, { section: section, pin: pin, canvas: canvas, external: false });
 });
+
+WC.effects = WC.effects || {};
+WC.effects.vesper = (function(){
+  var inst = null, host = null;
+  return {
+    start: function(container){
+      // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
+      // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
+      // fa dipingere sopra i canvas congelati degli altri (vedi la nota
+      // gemella in js/saucer.js).
+      if (inst){ container.appendChild(host); inst.start(); return; }
+      host = document.createElement('canvas');
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountVesper(ctx, { section: null, pin: null, canvas: host,
+                                rectEl: container, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();
+})();

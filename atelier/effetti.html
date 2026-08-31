@@ -357,6 +357,17 @@
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
      PRIMA dell'inline: il controller lo cerca in WC.effects. -->
 <script src="js/saucer.js?v=20260831a"></script>
+<!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
+     dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
+     js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
+     invece che a scroll) e «La piega» (altitude, il fluido sopra il video —
+     l'H.264 non decodifica sotto swiftshader headless, atteso). Nessuna delle
+     tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
+     servono per registrare i tre handle esterni su WC.effects, che il
+     controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/vesper.js?v=20260831a"></script>
+<script src="js/orologio.js?v=20260831a"></script>
+<script src="js/altitude.js?v=20260831a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
@@ -1600,9 +1611,11 @@
      (window.EffettiController): gli si passano la STESSA camera e lo STESSO
      renderer dello stage — così proietta il rettangolo della card con la
      matrice con cui la card è disegnata — più `#stage-live` e la misura del
-     piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili: oggi solo
-     `saucer` (WC.effects.saucer), gli altri restano poster. La soglia di sosta è
-     ~250ms, come il «toccato && fermo» della home. */
+     piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili — Task 5
+     `saucer`, Task 6 `vesper`/`orologio`/`altitude` (tutti su `WC.effects`,
+     popolato dai rispettivi js/<modulo>.js caricati qui sotto PRIMA di questo
+     inline) — gli altri (sneaker, warp, lithos) restano poster. La soglia di
+     sosta è ~250ms, come il «toccato && fermo» della home. */
   var STAGE_LIVE = document.getElementById('stage-live');
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)

@@ -1185,13 +1185,21 @@ WC.register('saucer', function(ctx){
 });
 
 WC.effects = WC.effects || {};
+/* Task 6 nota: `#stage-live` è ORA condiviso da PIÙ effetti pilotabili
+ * (vesper/orologio/altitude si aggiungono a saucer), ognuno con la sua
+ * istanza tenuta viva nel proprio modulo (niente ricarico asset a ogni
+ * fuoco — vedi sopra). Un'istanza congelata NON si stacca dal DOM da sola:
+ * `container.appendChild(host)` a ogni `start()` (anche quando `inst` esiste
+ * già) la sposta in coda ai figli di `#stage-live`, così l'ultimo effetto
+ * risvegliato dipinge SEMPRE sopra i canvas congelati degli altri — stesso
+ * meccanismo, in ciascuno dei quattro moduli pilotabili. */
 WC.effects.saucer = (function(){
   var inst = null, host = null;
   return {
     start: function(container){
-      if (inst){ inst.start(); return; }
+      if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('canvas');
-      host.style.width = '100%'; host.style.height = '100%'; host.style.display = 'block';
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountSaucer(ctx, { section: null, pin: null, canvas: host,

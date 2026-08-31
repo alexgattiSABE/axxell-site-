@@ -35,13 +35,29 @@
  * Il capitolo non si accende finché non è arrivato tutto: mezzo smontaggio con
  * i buchi è peggio di un'attesa.
  */
-WC.register('orologio', function(ctx){
-  var sec    = document.getElementById('capOrologio');
-  var pin    = document.getElementById('wcOroPin');
-  var canvas = document.getElementById('wcOroCanvas');
-  if (!sec || !pin || !canvas) return;
+/* ── DOPPIO USO (Task 6) ─────────────────────────────────────────────────────
+ * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): la
+ * sequenza vive dentro `#capOrologio`, pinnata e guidata dallo SCROLL via
+ * ScrollTrigger — montaggio storico, invariato. (B) `atelier/effetti.html`:
+ * niente sezione, niente scroll; il controller monta il canvas dentro
+ * `#stage-live` e lo pilota via `WC.effects.orologio.start(container)`/`.stop()`.
+ * Senza scroll da leggere, l'apertura/chiusura la guida un tween GSAP proprio
+ * (stesso triangolo `tri = 1 - |2t-1|` dell'`onUpdate` originale, letto in loop
+ * invece che dal progresso del pin) — l'unica differenza reale fra i due rami.
+ *
+ * Il corpo è racchiuso in `mountOrologio(ctx, cfg)`: `cfg.canvas` è la tela,
+ * `cfg.rectEl` l'elemento da cui si misura, `cfg.section`/`cfg.pin` esistono
+ * solo nel montaggio legacy, `cfg.external` distingue i due rami SOLO in coda. */
+(function(){
+function mountOrologio(ctx, cfg){
+  var sec      = cfg.section || null;
+  var pin      = cfg.pin || null;
+  var canvas   = cfg.canvas;
+  var external = !!cfg.external;
+  var rectEl   = cfg.rectEl || pin;      // da cosa si misura la tela
+  if (!canvas || !rectEl) return null;
 
-  var says = Array.prototype.slice.call(sec.querySelectorAll('.wc-oro-say'));
+  var says = sec ? Array.prototype.slice.call(sec.querySelectorAll('.wc-oro-say')) : [];
 
   /* ⚠️ QUESTI DUE NUMERI LI SCRIVE LO SCRIPT DI PACK, non si toccano a mano:
    * `scripts/pack-orologio.md` dice come si rigenerano. FRAMES deve essere il
@@ -56,12 +72,12 @@ WC.register('orologio', function(ctx){
   };
 
   var ctx2d = canvas.getContext('2d');
-  if (!ctx2d) return;
+  if (!ctx2d) return null;
 
   /* Senza movimento non si scarica un fotogramma: resta il primo, statico, e
    * le frasi diventano una lista sotto. Un capitolo che senza movimento non
    * dice più niente sarebbe un capitolo vuoto, e un capitolo vuoto è un bug. */
-  if (!ctx.motionOk) { sec.classList.add('-static'); return; }
+  if (!ctx.motionOk) { if (sec) sec.classList.add('-static'); return null; }
 
   // ------------------------------------------------------------ caricamento
   var imgs = new Array(FRAMES), got = 0, ready = false, started = false;
@@ -75,11 +91,11 @@ WC.register('orologio', function(ctx){
       im.decoding = 'async';
       im.onload = function(){
         imgs[i] = im;
-        if (++got === FRAMES) { ready = true; sec.classList.add('-ready'); draw(); }
+        if (++got === FRAMES) { ready = true; if (sec) sec.classList.add('-ready'); draw(); }
       };
       /* Un fotogramma che non arriva non deve bloccare tutto il capitolo: si
        * conta lo stesso, e `pick()` più sotto ripiega sul più vicino che c'è. */
-      im.onerror = function(){ if (++got === FRAMES) { ready = true; sec.classList.add('-ready'); draw(); } };
+      im.onerror = function(){ if (++got === FRAMES) { ready = true; if (sec) sec.classList.add('-ready'); draw(); } };
       im.src = SRC(i);
     })(i);
   }
@@ -89,7 +105,7 @@ WC.register('orologio', function(ctx){
 
   function resize(){
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var r = pin.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     W = Math.max(1, Math.round(r.width  * dpr));
     H = Math.max(1, Math.round(r.height * dpr));
     canvas.width = W; canvas.height = H;
@@ -130,6 +146,47 @@ WC.register('orologio', function(ctx){
   // -------------------------------------------------------------- timeline
   var state = { t: 0 };
 
+  /* Il triangolo, condiviso dai due rami: `t=0` orologio intero, `t=0.5`
+   * completamente aperto, `t=1` di nuovo intero — stesso conto dell'`onUpdate`
+   * originale, estratto perché il montaggio esterno lo pilota da un tween
+   * proprio invece che dal progresso dello ScrollTrigger. */
+  function applyT(){
+    var tri = 1 - Math.abs(state.t * 2 - 1);
+    var i = Math.round(tri * (FRAMES - 1));
+    if (i < 0) i = 0; else if (i > FRAMES - 1) i = FRAMES - 1;
+    if (i === want) return;
+    want = i;
+    if (want !== shown) draw();
+  }
+
+  var onResize = function(){ resize(); };
+  window.addEventListener('resize', onResize);
+  cleanups.push(function(){ window.removeEventListener('resize', onResize); });
+  resize();
+
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger: qui il tempo lo fa un tween GSAP
+   * proprio invece dello scroll. `load()` parte subito (il risveglio È già il
+   * «sei arrivato», come per `saucer`/Task 5); il tween resta creato ma in
+   * pausa finché il controller non chiama `start()`, e VIVE fra un fuoco e
+   * l'altro — `stop()` lo mette in pausa, non lo distrugge, così l'orologio
+   * riprende da dove si era fermato invece di ripartire da capo. */
+  if (external){
+    load();
+    var extTl = gsap.timeline({ repeat: -1, paused: true });
+    extTl.to(state, { t: 1, duration: 7, ease: 'none', onUpdate: applyT }, 0);
+    return {
+      start: function(){ resize(); extTl.play(); },
+      stop:  function(){ extTl.pause(); },
+      resize: resize,
+      dispose: function(){
+        extTl.pause(); extTl.kill();
+        cleanups.forEach(function(f){ f(); });
+      }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
   var tl = gsap.timeline({
     scrollTrigger: {
       trigger: sec,
@@ -151,25 +208,7 @@ WC.register('orologio', function(ctx){
     }
   });
 
-  tl.to(state, {
-    t: 1, duration: 1, ease: 'none',
-    onUpdate: function(){
-      /* ANDATA E RITORNO, in discesa. `state.t` va da 0 a 1 lungo la corsa;
-       * l'indice del fotogramma ci sale sopra come un triangolo:
-       *   t = 0    -> fotogramma 0        orologio intero
-       *   t = 0.5  -> ultimo fotogramma   completamente aperto
-       *   t = 1    -> fotogramma 0        di nuovo intero
-       * `1 - |2t - 1|` è quel triangolo. Ogni fotogramma viene mostrato due
-       * volte, una per ramo, e la corsa per ramo è metà — per questo la
-       * sezione è alta il doppio di quanto servirebbe a una passata sola. */
-      var tri = 1 - Math.abs(state.t * 2 - 1);
-      var i = Math.round(tri * (FRAMES - 1));
-      if (i < 0) i = 0; else if (i > FRAMES - 1) i = FRAMES - 1;
-      if (i === want) return;
-      want = i;
-      if (want !== shown) draw();
-    }
-  }, 0);
+  tl.to(state, { t: 1, duration: 1, ease: 'none', onUpdate: applyT }, 0);
 
   /* LE FRASI. Ognuna ha la sua finestra lungo la corsa, e le dissolvenze
    * stanno DENTRO la finestra: una frase che sfuma fuori tempo sfumerebbe
@@ -195,11 +234,6 @@ WC.register('orologio', function(ctx){
     onEnter: load, onEnterBack: load
   });
 
-  var onResize = function(){ resize(); };
-  window.addEventListener('resize', onResize);
-  cleanups.push(function(){ window.removeEventListener('resize', onResize); });
-  resize();
-
   sec.classList.add('-live');
 
   return function(){
@@ -210,4 +244,41 @@ WC.register('orologio', function(ctx){
     gsap.set(says, { clearProps: 'opacity,transform' });
     sec.classList.remove('-live', '-ready');
   };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta la sequenza su
+ * una tela creata dentro il `container` che gli passa il controller. */
+WC.register('orologio', function(ctx){
+  var sec    = document.getElementById('capOrologio');
+  var pin    = document.getElementById('wcOroPin');
+  var canvas = document.getElementById('wcOroCanvas');
+  if (!sec || !pin || !canvas) return;
+  return mountOrologio(ctx, { section: sec, pin: pin, canvas: canvas, external: false });
 });
+
+WC.effects = WC.effects || {};
+WC.effects.orologio = (function(){
+  var inst = null, host = null;
+  return {
+    start: function(container){
+      // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
+      // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
+      // fa dipingere sopra i canvas congelati degli altri (vedi la nota
+      // gemella in js/saucer.js).
+      if (inst){ container.appendChild(host); inst.start(); return; }
+      host = document.createElement('canvas');
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountOrologio(ctx, { section: null, pin: null, canvas: host,
+                                  rectEl: container, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();
+})();

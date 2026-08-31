@@ -139,8 +139,14 @@
      schermo di quei quattro punti — a pieno fuoco la card è frontale, quindi è un
      rettangolo netto.
 
-     Solo gli effetti presenti in `effects` (oggi `saucer`) si svegliano; per gli
-     altri il controller è un no-op e resta il poster (Task 6–7 li aggiungono). */
+     Solo gli effetti presenti in `effects` si svegliano; per gli altri il
+     controller è un no-op e resta il poster. Ogni handle si registra da sé, nel
+     proprio js/<modulo>.js (`WC.effects.<modulo> = {start,stop,resize}`), non
+     qui: `effects` è `WC.effects` per riferimento (vedi la creazione del
+     controller in effetti.html), quindi un modulo caricato prima dell'inline
+     compare già pronto. Task 5 ha aggiunto `saucer`; Task 6 `vesper`,
+     `orologio`, `altitude` — questo file non cambia per registrarli, cambia
+     solo l'elenco degli script caricati in effetti.html. */
   function createController(deps){
     var THREE = deps.THREE, camera = deps.camera, renderer = deps.renderer;
     var stageLive = deps.stageLive, effects = deps.effects || {};
