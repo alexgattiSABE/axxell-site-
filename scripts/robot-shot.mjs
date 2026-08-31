@@ -117,6 +117,17 @@ if (LENS_POINT_RAW !== undefined) {
   if (parts.length === 2 && parts.every((n) => !Number.isNaN(n))) LENS_POINT = { x: parts[0], y: parts[1] };
   else console.error('ROBOT_SHOT_LENS_POINT non è "x,y" valido:', LENS_POINT_RAW);
 }
+// Estensione Task 6 (fibre luminose nelle braccia):
+//  - ROBOT_SHOT_ARM=<left|right>: muove il mouse REALE sopra la proiezione a
+//    schermo del gomito (parts.joints.elbowL/elbowR, world→NDC→pixel via la
+//    stessa camera/canvas che renderizza lo stage) di quel braccio — a
+//    differenza di ROBOT_SHOT_LENS_POINT (pixel assoluti scelti a mano per la
+//    testa), qui il punto è CALCOLATO dalla geometria reale, quindi resta
+//    valido anche se l'inquadratura cambia. Applicato dopo ROT_DEG/FOCUS_HEAD
+//    (stessa camera ferma), poi aspetta la convergenza del surge esponenziale
+//    di robot.js (0.15/frame in salita).
+const ARM_SIDE = process.env.ROBOT_SHOT_ARM === 'left' ? 'left'
+  : (process.env.ROBOT_SHOT_ARM === 'right' ? 'right' : null);
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -337,6 +348,49 @@ async function main(){
       await page.waitForTimeout(1800);
     }
 
+    // Task 6: proietta un punto SULLA mesh del braccio richiesto (non sul
+    // giunto `elbow*` di WC.robotParts.split: quel giunto è il centro X/Z
+    // del bbox dell'INTERO braccio, una linea verticale approssimata che
+    // ancora bene le curve delle fibre ma NON segue la piega reale del
+    // modello — verificato: un raycast lì per la maggior parte del
+    // percorso MANCA la mesh vera, che si piega in X. Il centro del bbox di
+    // una singola mesh-braccio invece è affidabile — verificato su tutte e
+    // 13 le mesh di un lato, hit garantito. Si sceglie la mesh il cui
+    // centro Y è più vicino al gomito (metà del braccio, non spalla/mano)
+    // così il punto legge come "cursore a metà braccio".
+    if (ARM_SIDE) {
+      const pt = await page.evaluate((side) => {
+        const r = window.__robot;
+        if (!r || !r.parts || !r.camera) return null;
+        const arr = side === 'left' ? r.parts.armL : r.parts.armR;
+        const joints = r.parts.joints;
+        if (!arr || !arr.length || !joints) return null;
+        const targetY = (side === 'left' ? joints.elbowL : joints.elbowR).y;
+        var best = null, bestDist = Infinity;
+        arr.forEach(function (m) {
+          var c = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3());
+          var d = Math.abs(c.y - targetY);
+          if (d < bestDist) { bestDist = d; best = c; }
+        });
+        if (!best) return null;
+        const stage = document.getElementById('wcRobotStage');
+        const rect = stage.getBoundingClientRect();
+        const ndc = best.clone().project(r.camera);
+        return {
+          x: rect.left + (ndc.x * 0.5 + 0.5) * rect.width,
+          y: rect.top + (1 - (ndc.y * 0.5 + 0.5)) * rect.height,
+        };
+      }, ARM_SIDE);
+      if (pt) {
+        await page.mouse.move(pt.x, pt.y, { steps: 12 });
+        // Convergenza del surge esponenziale (+= (1-surge)*0.15 per frame
+        // in salita, robot.js) — margine largo come le altre attese sopra.
+        await page.waitForTimeout(2200);
+      } else {
+        console.error('ROBOT_SHOT_ARM: nessun punto sulla mesh trovato per lato', ARM_SIDE);
+      }
+    }
+
     // Task 5: posa deterministica della testa (hold) — la testa è girata di
     // lato senza puntatore reale (che l'overlay .wc-robot-copy intercetterebbe
     // al centro). Il loop di robot.js, quando il puntatore non è attivo,
@@ -384,6 +438,15 @@ async function main(){
         uLensPos: (r.glass && r.glass.uniforms.uLensPos) ? r.glass.uniforms.uLensPos.value.toArray() : null,
         uLensRadius: (r.glass && r.glass.uniforms.uLensRadius) ? r.glass.uniforms.uLensRadius.value : null,
         brainAlpha: (r.brain && r.brain.uniforms && r.brain.uniforms.iAlpha) ? r.brain.uniforms.iAlpha.value : null,
+        // Task 6: surge delle fibre — letto direttamente dalle uniform dei
+        // due ShaderMaterial (uno per braccio, vedi robot-fibers.js), non da
+        // uno stato esposto apposta: robot.js tiene surgeL/surgeR chiuse
+        // nella closure di tick(), l'unico segnale osservabile da fuori è
+        // quello che arriva a fibers.update() ogni frame.
+        fiberSurgeL: (r.fibers && r.fibers.object && r.fibers.object.children[0] && r.fibers.object.children[0].children[0])
+          ? r.fibers.object.children[0].children[0].material.uniforms.uSurge.value : null,
+        fiberSurgeR: (r.fibers && r.fibers.object && r.fibers.object.children[1] && r.fibers.object.children[1].children[0])
+          ? r.fibers.object.children[1].children[0].material.uniforms.uSurge.value : null,
       };
     });
 

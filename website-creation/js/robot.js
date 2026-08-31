@@ -145,6 +145,21 @@ WC.register('robot', function(ctx){
           window.__robot.glass = mats.glass;
         }
 
+        // Task 6: le fibre luminose nelle braccia ("i fasci"). Costruite
+        // subito da `parts.joints` (Task 2, già in coordinate MODEL-LOCALI:
+        // lo split gira dopo la centratura di `model` qui sopra) — nessuna
+        // dipendenza da headGroup/materiali. Figlie di `model`, lo stesso
+        // parent delle mesh-braccio (gerarchia piatta, vedi robot-parts.js):
+        // restano incollate alle braccia sotto qualunque rotazione futura di
+        // `wrap` (drag, Task 7). Il surge per lato (0..1, "la corrente si
+        // accende dove passi") è pilotato dal raycast del cursore sulle
+        // mesh-braccio in tick(), più sotto.
+        if (WC.robotFibers && parts.joints) {
+          var fibers = WC.robotFibers.create(parts.joints);
+          model.add(fibers.object);
+          window.__robot.fibers = fibers;
+        }
+
         // Task 4: la testa (parts.head, incluso il collo — vedi
         // robot-parts.js) passa da figlia diretta di `model` a figlia di un
         // headGroup pivotato al collo (bottom-center del bbox unito della
@@ -292,6 +307,12 @@ WC.register('robot', function(ctx){
       var lensNdc = new THREE.Vector2();
       var lensHitPos = new THREE.Vector3();
       var lensActive = 0;
+      // Task 6: surge delle fibre per braccio (0..1, smorzato) — stesso
+      // Raycaster riusato, un'altra intersezione per frame contro
+      // parts.armL/armR separatamente. Persistono fuori da tick() (come
+      // lensActive) per lo smoothing esponenziale frame-su-frame.
+      var armNdc = new THREE.Vector2();
+      var surgeL = 0, surgeR = 0;
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
@@ -353,6 +374,25 @@ WC.register('robot', function(ctx){
         // spento/invisibile — visore chiuso, niente cervello in vista).
         if (robot && robot.brain) {
           robot.brain.update(dt, lensActive);
+        }
+        // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
+        // volta — a differenza della lente Lithos (una sola zona, la testa)
+        // qui servono DUE segnali indipendenti, uno per braccio, così il
+        // fascio che si accende è solo quello sotto il cursore. Salita
+        // rapida (0.15/frame) quando il cursore è sopra, decadimento lento
+        // (0.05/frame) quando se ne va — "la corrente si accende dove
+        // passi" (copy §5) e si spegne morbida, non di scatto.
+        if (robot && robot.fibers && robot.parts) {
+          var armLHit = false, armRHit = false;
+          if (pointer.active) {
+            armNdc.set(pointer.x, -pointer.y);
+            raycaster.setFromCamera(armNdc, cam);
+            if (robot.parts.armL.length && raycaster.intersectObjects(robot.parts.armL, false).length) armLHit = true;
+            if (robot.parts.armR.length && raycaster.intersectObjects(robot.parts.armR, false).length) armRHit = true;
+          }
+          surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
+          surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
+          robot.fibers.update(dt, surgeL, surgeR);
         }
         renderer.render(scene, cam);
       })();
