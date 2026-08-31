@@ -145,17 +145,22 @@ WC.register('robot', function(ctx){
           window.__robot.glass = mats.glass;
         }
 
-        // Task 6: le fibre luminose nelle braccia ("i fasci"). Costruite
-        // subito da `parts.joints` (Task 2, già in coordinate MODEL-LOCALI:
-        // lo split gira dopo la centratura di `model` qui sopra) — nessuna
-        // dipendenza da headGroup/materiali. Figlie di `model`, lo stesso
-        // parent delle mesh-braccio (gerarchia piatta, vedi robot-parts.js):
-        // restano incollate alle braccia sotto qualunque rotazione futura di
-        // `wrap` (drag, Task 7). Il surge per lato (0..1, "la corrente si
-        // accende dove passi") è pilotato dal raycast del cursore sulle
-        // mesh-braccio in tick(), più sotto.
+        // Task 6 (rework): le fibre luminose nelle braccia ("i fasci").
+        // robot-fibers.js ora ricava il percorso dalle mesh-braccio VERE
+        // (`parts.armL`/`parts.armR`, campionate e affettate lungo l'asse
+        // spalla→polso) e lo spinge sulla superficie visibile del braccio —
+        // `parts.joints` (Task 2, coordinate MODEL-LOCALI: lo split gira
+        // dopo la centratura di `model` qui sopra) resta il seme dell'asse,
+        // non più il percorso stesso (vedi robot-fibers.js per il perché:
+        // i giunti da soli danno una linea verticale dritta, non la vera
+        // piega del braccio). Nessuna dipendenza da headGroup/materiali.
+        // Figlie di `model`, lo stesso parent delle mesh-braccio (gerarchia
+        // piatta, vedi robot-parts.js): restano incollate alle braccia sotto
+        // qualunque rotazione futura di `wrap` (drag, Task 7). Il surge per
+        // lato (0..1, "la corrente si accende dove passi") è pilotato dal
+        // raycast del cursore sulle mesh-braccio in tick(), più sotto.
         if (WC.robotFibers && parts.joints) {
-          var fibers = WC.robotFibers.create(parts.joints);
+          var fibers = WC.robotFibers.create({ joints: parts.joints, armL: parts.armL, armR: parts.armR });
           model.add(fibers.object);
           window.__robot.fibers = fibers;
         }
