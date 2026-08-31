@@ -115,6 +115,107 @@
      senza reimportare i numeri. Parte dai valori tarati qui sopra. */
   root.__HELIX_TUNE = { A: TUNE.A, R: TUNE.R, turns: TUNE.turns, climb: TUNE.climb, yTop: TUNE.yTop };
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     IL CONTROLLER SVEGLIA / CONGELA (Task 5)
+     ══════════════════════════════════════════════════════════════════════════
+     La regola di ferro dell'atelier: un solo effetto (un solo contesto WebGL)
+     vivo per volta; l'elica è l'asse sempre acceso. Il meccanismo:
+
+       · `#stage-live` è un contenitore HTML assoluto SOPRA la tela dello stage,
+         riposizionato OGNI fotogramma sul rettangolo PROIETTATO della card a
+         fuoco. La card a fuoco è portata frontale+centrata (Task 3), quindi il
+         suo rettangolo proiettato è un quadro pulito sullo schermo.
+       · `wake(record, mesh)` monta la tela dell'effetto dentro `#stage-live` e
+         chiama il suo `start(container)`; `freeze()` chiama `stop()`, nasconde
+         il layer e lascia visibile sotto il poster congelato della card.
+       · Si sveglia SOLO a pieno fuoco (`atFullFocus`): la card ferma da ~250ms e
+         centrata (`face≈1`). Mentre si scorre, tutte le card mostrano il poster.
+
+     LA PROIEZIONE È QUELLA DELLA SCENA, non una inventata: si prendono i quattro
+     angoli del piano della card (CW×CH in coordinate locali), li si porta in
+     mondo con `mesh.matrixWorld` e li si proietta con LA STESSA camera dello
+     stage (`v.project(camera)`), gli stessi `matrixWorldInverse`/`projectionMatrix`
+     con cui lo stage disegna la card. Il riquadro che ne esce è il bounding box a
+     schermo di quei quattro punti — a pieno fuoco la card è frontale, quindi è un
+     rettangolo netto.
+
+     Solo gli effetti presenti in `effects` (oggi `saucer`) si svegliano; per gli
+     altri il controller è un no-op e resta il poster (Task 6–7 li aggiungono). */
+  function createController(deps){
+    var THREE = deps.THREE, camera = deps.camera, renderer = deps.renderer;
+    var stageLive = deps.stageLive, effects = deps.effects || {};
+    var hw = (deps.cardW || 2.95) / 2, hh = (deps.cardH || 1.84) / 2;
+    var v = new THREE.Vector3();
+    var corners = [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
+    var awakeId = null;               // modulo dell'effetto sveglio, o null
+    var lastW = 0, lastH = 0;
+
+    function helix(){ return root.WC && root.WC.helix; }
+
+    function place(mesh){
+      camera.updateMatrixWorld();
+      mesh.updateWorldMatrix(true, false);
+      var el = renderer.domElement;
+      var W = el.clientWidth || window.innerWidth;
+      var H = el.clientHeight || window.innerHeight;
+      var minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+      for (var i = 0; i < 4; i++){
+        v.set(corners[i][0], corners[i][1], 0).applyMatrix4(mesh.matrixWorld).project(camera);
+        var sx = (v.x * 0.5 + 0.5) * W;
+        var sy = (1 - (v.y * 0.5 + 0.5)) * H;
+        if (sx < minx) minx = sx; if (sx > maxx) maxx = sx;
+        if (sy < miny) miny = sy; if (sy > maxy) maxy = sy;
+      }
+      var w = Math.max(1, maxx - minx), h = Math.max(1, maxy - miny);
+      stageLive.style.left = minx + 'px';
+      stageLive.style.top = miny + 'px';
+      stageLive.style.width = w + 'px';
+      stageLive.style.height = h + 'px';
+      // Ridimensiona la tela dell'effetto solo quando il riquadro cambia misura
+      // (a ogni frame è sprecato): al primo posizionamento e a ogni resize.
+      if (Math.abs(w - lastW) > 1 || Math.abs(h - lastH) > 1){
+        lastW = w; lastH = h;
+        var api = effects[awakeId];
+        if (api && api.resize) api.resize();
+      }
+    }
+
+    function wake(record, mesh){
+      var api = effects[record.modulo];
+      if (!api) return;
+      stageLive.hidden = false;
+      lastW = lastH = 0;              // forza un resize al primo place()
+      awakeId = record.modulo;
+      place(mesh);                    // posiziona PRIMA che l'effetto misuri
+      api.start(stageLive);
+      var hx = helix(); if (hx && hx.throttle) hx.throttle(true);
+    }
+
+    function freeze(){
+      if (!awakeId) return;
+      var api = effects[awakeId];
+      if (api && api.stop) api.stop();
+      awakeId = null;
+      stageLive.hidden = true;
+      var hx = helix(); if (hx && hx.throttle) hx.throttle(false);
+    }
+
+    return {
+      awake: function(){ return awakeId; },
+      freeze: freeze,
+      tick: function(now, focusMesh, focusRecord, atFullFocus){
+        var wired = focusRecord && effects[focusRecord.modulo];
+        if (atFullFocus && wired && focusMesh){
+          if (awakeId !== focusRecord.modulo){ freeze(); wake(focusRecord, focusMesh); }
+          place(focusMesh);
+        } else if (awakeId){
+          freeze();
+        }
+      }
+    };
+  }
+  root.EffettiController = { create: createController };
+
   /* ── IL GUSCIO WC (per i task successivi) ──────────────────────────────────
      Il controller sveglia/congela degli effetti (Task 5–7) troverà qui la sua
      casa. Oggi non serve un runtime: i dati sono già esposti sopra. Si registra

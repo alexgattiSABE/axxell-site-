@@ -45,11 +45,29 @@
  * i conti del file. Senza, il quadro è un altro: le lampade non alonano e i verdi
  * restano slavati.
  */
-WC.register('saucer', function(ctx){
-  var section = document.getElementById('capSaucer');
-  var pin     = document.getElementById('wcSaucerPin');
-  var canvas  = document.getElementById('wcSaucerCanvas');
-  if (!section || !pin || !canvas) return;
+/* ── DOPPIO USO (Task 5) ────────────────────────────────────────────────────
+ * Questo modulo serve DUE padroni, e il corpo della scena è lo stesso per
+ * entrambi. (A) `capitoli.html` (legacy): la scena vive dentro la sua sezione
+ * `#capSaucer`, si pinna e si accende/spegne da sola con lo ScrollTrigger di
+ * sezione — è il montaggio storico, invariato. (B) `atelier/effetti.html`: non
+ * c'è nessuna sezione; il controller sveglia/congela (js/effetti-deck.js) monta
+ * il canvas del disco dentro `#stage-live` e lo pilota a comando via
+ * `WC.effects.saucer.start(container)` / `.stop()` — nessuno ScrollTrigger.
+ *
+ * Il corpo è racchiuso in `mountSaucer(ctx, cfg)`: `cfg.canvas` è la tela su cui
+ * disegnare, `cfg.rectEl` l'elemento da cui misurarla, `cfg.section`/`cfg.pin`
+ * esistono solo nel montaggio legacy, `cfg.external` distingue i due rami SOLO
+ * in coda (avvio + tear-down). Tutto ciò che sta in mezzo — scena, shader,
+ * frame — è identico per i due usi: il ramo esterno è una guardia, non una
+ * riscrittura. */
+(function(){
+function mountSaucer(ctx, cfg){
+  var section = cfg.section || null;
+  var pin     = cfg.pin || null;
+  var canvas  = cfg.canvas;
+  var external = !!cfg.external;
+  var rectEl  = cfg.rectEl || pin;     // da cosa si misura la tela
+  if (!canvas || !rectEl) return null;
 
   var G = WC.glsl;
 
@@ -111,7 +129,7 @@ WC.register('saucer', function(ctx){
     fogDensity: 0.048
   };
 
-  if (!ctx.motionOk || typeof THREE === 'undefined') { section.classList.add('-static'); return; }
+  if (!ctx.motionOk || typeof THREE === 'undefined') { if (section) section.classList.add('-static'); return null; }
 
   var wide   = window.innerWidth;
   var mobile = wide <= 640;
@@ -818,7 +836,11 @@ WC.register('saucer', function(ctx){
      `visible = false` apposta. */
   var modelsIo = null;
   function loadModels(){ loadSaucer(); loadHuman(); }
-  if ('IntersectionObserver' in window) {
+  // Il cancello a una schermata di distanza esiste solo dove c'è una sezione da
+  // osservare (legacy). Nel montaggio esterno (effetti.html) il disco si monta
+  // solo quando il controller lo sveglia — che È già il momento «sei arrivato»
+  // — quindi i modelli si caricano subito.
+  if (section && 'IntersectionObserver' in window) {
     modelsIo = new IntersectionObserver(function(entries){
       if (entries.some(function(e){ return e.isIntersecting; })) {
         loadModels(); modelsIo.disconnect(); modelsIo = null;
@@ -952,11 +974,12 @@ WC.register('saucer', function(ctx){
   var rect = { w: 1, h: 1 }, dpr = 1;
   var running = false, raf = 0, last = performance.now(), started = performance.now();
   var tmx = 0, tmy = 0, mx = 0, my = 0;
+  var wantRun = false;                 // solo esterno: se il controller lo vuole vivo
 
   var _v0 = new THREE.Vector3(), _v1 = new THREE.Vector3();
 
   function resize(){
-    var r = pin.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     rect.w = Math.max(1, r.width); rect.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, maxDpr);
     renderer.setPixelRatio(dpr);
@@ -1073,8 +1096,54 @@ WC.register('saucer', function(ctx){
     tmy = (e.clientY / window.innerHeight) * 2 - 1;
   };
 
-  section.classList.add('-live');
+  // La distruzione delle risorse WebGL è identica per i due montaggi: si tiene
+  // in un solo posto e la chiamano entrambi i tear-down.
+  function disposeAll(){
+    if (modelsIo){ modelsIo.disconnect(); modelsIo = null; }
+    [grassMat, groundMat, mistMat, brightMat, blurMat, outMat,
+     cone.material, core.material, pool.material, halo.material, bgMesh.material
+    ].forEach(function(m){ m.dispose(); });
+    [grass, ground, cone, core, pool, halo, bgMesh, quadMesh].forEach(function(o){
+      if (o.geometry) o.geometry.dispose();
+    });
+    mistLayers.forEach(function(m){ m.geometry.dispose(); });
+    disposables.forEach(function(d){ d.dispose(); });
+    loadedTex.forEach(function(t){ t.dispose(); });
+    blobUrls.forEach(function(u){ URL.revokeObjectURL(u); });
+    grassDiff.dispose(); grassAlphaT.dispose();
+    rtScene.dispose(); rtA.dispose(); rtB.dispose();
+    renderer.dispose();
+  }
+
   resize();
+
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller. Lo scroll
+   * non c'è, quindi `scrollTarget=1` all'avvio accende il raggio (e con lui il
+   * rapito) subito. Si restituisce un'API — start/stop/resize — invece del
+   * tear-down: l'oggetto vive quanto la pagina, sveglio o congelato a comando. */
+  if (external){
+    var onResizeE = function(){ resize(); };
+    var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
+    window.addEventListener('resize', onResizeE);
+    document.addEventListener('visibilitychange', onVisE);
+    if (ctx.desktop) window.addEventListener('pointermove', onMove, { passive: true });
+    return {
+      start: function(){ wantRun = true; scrollTarget = 1; resize(); start(); },
+      stop:  function(){ wantRun = false; stop(); },
+      resize: resize,
+      dispose: function(){
+        stop();
+        window.removeEventListener('resize', onResizeE);
+        document.removeEventListener('visibilitychange', onVisE);
+        window.removeEventListener('pointermove', onMove);
+        disposeAll();
+      }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
+  section.classList.add('-live');
 
   var stPin = ScrollTrigger.create({
     trigger: section, start: 'top top', end: 'bottom bottom',
@@ -1094,24 +1163,44 @@ WC.register('saucer', function(ctx){
 
   return function(){
     stop();
-    if (modelsIo) modelsIo.disconnect();
     stPin.kill(); stLife.kill();
     window.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('pointermove', onMove);
-    [grassMat, groundMat, mistMat, brightMat, blurMat, outMat,
-     cone.material, core.material, pool.material, halo.material, bgMesh.material
-    ].forEach(function(m){ m.dispose(); });
-    [grass, ground, cone, core, pool, halo, bgMesh, quadMesh].forEach(function(o){
-      if (o.geometry) o.geometry.dispose();
-    });
-    mistLayers.forEach(function(m){ m.geometry.dispose(); });
-    disposables.forEach(function(d){ d.dispose(); });
-    loadedTex.forEach(function(t){ t.dispose(); });
-    blobUrls.forEach(function(u){ URL.revokeObjectURL(u); });
-    grassDiff.dispose(); grassAlphaT.dispose();
-    rtScene.dispose(); rtA.dispose(); rtB.dispose();
-    renderer.dispose();
+    disposeAll();
     section.classList.remove('-live');
   };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta il disco su una
+ * tela creata dentro il `container` che gli passa il controller. */
+WC.register('saucer', function(ctx){
+  var section = document.getElementById('capSaucer');
+  var pin     = document.getElementById('wcSaucerPin');
+  var canvas  = document.getElementById('wcSaucerCanvas');
+  if (!section || !pin || !canvas) return;   // pagina senza la sezione: no-op
+  return mountSaucer(ctx, { section: section, pin: pin, canvas: canvas, external: false });
 });
+
+WC.effects = WC.effects || {};
+WC.effects.saucer = (function(){
+  var inst = null, host = null;
+  return {
+    start: function(container){
+      if (inst){ inst.start(); return; }
+      host = document.createElement('canvas');
+      host.style.width = '100%'; host.style.height = '100%'; host.style.display = 'block';
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountSaucer(ctx, { section: null, pin: null, canvas: host,
+                                rectEl: container, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();
+})();

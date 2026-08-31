@@ -763,8 +763,19 @@ WC.register('dna', function(ctx){
     renderer.render(scene, camera);
   }
 
+  /* STROZZATURA A ~30fps (Task 5) — SOLO standalone.
+   * Quando un effetto WebGL è a pieno fuoco (effetti.html) ci sono tre contesti
+   * GL che si contendono la GPU: stage, elica e disco. L'elica è l'ASSE, non il
+   * protagonista del momento, quindi si può assottigliare a metà cadenza —
+   * salta un fotogramma sì e uno no — finché l'effetto è vivo. È un'assicurazione
+   * a basso costo; la si toglie appena l'effetto si congela. `throttled` lo
+   * accende/spegne il controller via `WC.helix.throttle(bool)`, e la guardia è
+   * legata a `standalone`: il manifesto (`!standalone`) non la vede mai. */
+  var throttled = false, throttleFlip = false;
+
   function frame(){
     raf = requestAnimationFrame(frame);
+    if (standalone && throttled){ throttleFlip = !throttleFlip; if (throttleFlip) return; }
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
@@ -987,6 +998,14 @@ WC.register('dna', function(ctx){
 
   function start(){ if (running) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
   function stop(){ if (!running) return; running = false; cancelAnimationFrame(raf); }
+
+  /* L'unica leva pubblica dell'elica, e SOLO da standalone (è l'asse di
+   * effetti.html; il manifesto non la espone). Il controller degli effetti la
+   * usa per assottigliare la cadenza mentre un disco è a fuoco. */
+  if (standalone) {
+    WC.helix = { throttle: function(on){ throttled = !!on; } };
+    cleanups.push(function(){ if (WC.helix && WC.helix.throttle) { WC.helix.throttle(false); WC.helix = null; } });
+  }
 
   resize();
 

@@ -43,6 +43,17 @@
      non deve intercettare i click destinati al bottone dell'atrio. */
   #helixStage{position:fixed;inset:0;z-index:2;pointer-events:none}
 
+  /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
+     che il controller (js/effetti-deck.js) riposiziona ogni fotogramma sul
+     rettangolo proiettato della card davanti: sopra la tela dello stage (dove
+     vive il poster congelato) e sopra l'elica, ma SOTTO nav/etichette/didascalia.
+     Quando nessun effetto è sveglio è `hidden` e non c'è nulla: si vede il
+     poster. `pointer-events:none` perché il clic sulla card (entrare nel mondo)
+     lo intercetta lo stage sotto, non questo. */
+  #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
+    pointer-events:none;overflow:hidden}
+  #stage-live canvas{display:block;width:100%;height:100%}
+
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
      (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
      documento, `document.documentElement.scrollHeight` non supera mai
@@ -280,6 +291,11 @@
   <canvas id="helixCanvas"></canvas>
 </div>
 
+<!-- IL LAYER VIVO (Task 5): il controller ci monta dentro la tela dell'effetto
+     a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
+     `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
+<div id="stage-live" hidden></div>
+
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
 <div id="hero">
@@ -336,6 +352,11 @@
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
 <script src="js/effetti-deck.js?v=20260831a"></script>
+<!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
+     quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
+     WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
+     PRIMA dell'inline: il controller lo cerca in WC.effects. -->
+<script src="js/saucer.js?v=20260831a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
@@ -1570,6 +1591,23 @@
   var t0 = performance.now(), tPrev = t0;
   function sstep(x){ x = x < 0 ? 0 : (x > 1 ? 1 : x); return x*x*(3-2*x); }
 
+  /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Vive in js/effetti-deck.js
+     (window.EffettiController): gli si passano la STESSA camera e lo STESSO
+     renderer dello stage — così proietta il rettangolo della card con la
+     matrice con cui la card è disegnata — più `#stage-live` e la misura del
+     piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili: oggi solo
+     `saucer` (WC.effects.saucer), gli altri restano poster. La soglia di sosta è
+     ~250ms, come il «toccato && fermo» della home. */
+  var STAGE_LIVE = document.getElementById('stage-live');
+  var SETTLE_MS = 250;
+  var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
+    ? window.EffettiController.create({
+        THREE: THREE, camera: camera, renderer: renderer,
+        stageLive: STAGE_LIVE, effects: (WC.effects || {}),
+        cardW: CW, cardH: CH, settleMs: SETTLE_MS
+      })
+    : null;
+
   function frame(){
     requestAnimationFrame(frame);
     var now = performance.now();
@@ -1724,6 +1762,24 @@
     du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
 
     if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
+
+    /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Si sveglia l'effetto della card
+       davanti SOLO a pieno fuoco: ferma da ~250ms (spinT raggiunto e nessun
+       gesto in corso da SETTLE_MS) e centrata (frazione di `spin` presso lo zero
+       → face≈1). Mentre si scorre — o dentro un mondo (openW) — nulla è sveglio
+       e tutte le card mostrano il poster. Un solo effetto per volta lo garantisce
+       il controller stesso (freeze del precedente prima del wake del nuovo). */
+    if (deckCtl){
+      if (DECK_ON && stage === 'mappa' && !openW){
+        var _frac = Math.abs(spin - Math.round(spin));
+        var _settled = !dragging && Math.abs(spinT - spin) < 0.02 && (now - lastInput) > SETTLE_MS;
+        var _full = _settled && _frac < 0.045;   // face≈1
+        var _hw = WORLDS[frontIdx()];
+        deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
+      } else {
+        deckCtl.tick(now, null, null, false);
+      }
+    }
 
     /* --- UN SOLO PASSAGGIO (Task 1) ---
        Qui c'erano tre passate: (A) il RIFLESSO, camera specchiata rispetto
