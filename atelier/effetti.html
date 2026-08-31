@@ -332,6 +332,10 @@
 <script src="js/core.js?v=20260824a"></script>
 <script src="js/glsl.js?v=20260824a"></script>
 <script src="js/dna.js?v=20260824a"></script>
+<!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
+     sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
+     window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
+<script src="js/effetti-deck.js?v=20260831a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
@@ -347,7 +351,21 @@
      prossimi task, ma non vengono chiamate finche' questo resta a false.
      Con DECK_ON=false lo stage e' vuoto: solo lo sfondo (nebbia+pulviscolo),
      la nav, nessun portale, nessuna didascalia a fuoco. */
-  var DECK_ON = false;
+  /* Task 3 — IL MAZZO È ACCESO. Le 7 card degli effetti si costruiscono e
+     cavalcano l'elica (window.helixPlace), guidate dallo scroll globale come
+     l'asse centrale. */
+  var DECK_ON = true;
+
+  /* ⚠️ LA MINA DELLO SCROLL (Task 2→3). La giostra di index.html dirottava la
+     rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
+     e bloccava lo scroll della pagina. Task 2 ha legato l'elica allo scroll
+     GLOBALE (Lenis su desktop, scrollY nativo altrove) tramite #scrollSpacer;
+     riaccendere quel dirottamento qui RI-bloccherebbe la pagina e fermerebbe
+     l'elica. Quindi la giostra-scroll resta SPENTA (`RING_SCROLL=false`): niente
+     preventDefault, niente spingi(); il disco legge lo STESSO progresso globale
+     che muove l'elica (vedi `deckScrollProgress()` e il blocco in frame()), così
+     elica e card scorrono insieme su una sola sorgente. */
+  var RING_SCROLL = false;
 
   /* ======================================================================
      I SEI MONDI. Ognuno è un SETTORE, non una tecnica: è la condizione
@@ -371,84 +389,14 @@
      il vetro non ha niente da rifrangere e torna a essere una cornice. */
   var CW = 2.95, CH = 1.84;
 
-  var WORLDS = [
-    { id:'il-prodotto', nome:'Il prodotto', sett:'retail, e-commerce',
-      desc:'Chi compra da uno schermo non tocca niente. Deve poterlo guardare abbastanza da fidarsi.',
-      /* `gain` basso: questo poster e' l'unico su fondo BIANCO, e al guadagno
-         di base diventa una lastra accesa in mezzo a otto notturne. */
-      col:[0.62,0.44,1.00], poster:'assets/il-prodotto.webp', video:'assets/sneaker.mp4',
-      page:'/atelier/il-prodotto', gain:0.72, gainVid:1.30 },
-
-    /* Era «La notte — ristoranti, locali». Costruendolo si e' visto che il
-       template (wanderlust) e' fatto di paesi e fotografie di viaggio: la sua
-       griglia sono Islanda, Giappone, Marocco. Forzarlo in una sala da pranzo
-       avrebbe prodotto una cosa incoerente, quindi il mondo e' diventato quello
-       che il materiale dice davvero di essere. La ristorazione l'ha poi presa
-       `altitude`, sotto. */
-    { id:'il-viaggio', nome:'Il viaggio', sett:'turismo, ospitalità',
-      desc:'Chi parte non compra un itinerario. Compra il ricordo che avrà al ritorno.',
-      col:[0.96,0.94,0.90], poster:'assets/il-viaggio.jpg', video:'assets/starry.mp4',
-      page:'/atelier/il-viaggio', gain:0.92 },
-
-    { id:'la-macchina', nome:'La macchina', sett:'industria, B2B',
-      desc:'Quello che fate non entra in una fotografia. Entra in un modello che si gira col dito.',
-      col:[0.365,0.941,0.659], poster:'assets/industria.jpg', video:null,
-      page:'/atelier/la-macchina' },
-
-    { id:'il-dettaglio', nome:'Il dettaglio', sett:'artigianato, lusso',
-      desc:'Nessuno nota il dettaglio. Tutti notano che c’era.',
-      /* Lumora e' un mondo CHIARO con un solo accento arancio bruciato: il
-         portale prende quello, ed e' l'unico caldo-terroso della giostra. */
-      col:[0.98,0.55,0.28], poster:'assets/il-dettaglio.webp', video:null, gain:0.86,
-      page:'/atelier/il-dettaglio' },
-
-    { id:'prima-e-dopo', nome:'Prima e dopo', sett:'edilizia, estetica',
-      desc:'Il cliente non compra il lavoro. Compra la differenza fra le due fotografie.',
-      /* Il poster e' una fotografia DI QUEL MONDO (il crinale nell'ora blu), non
-         un'immagine generica: il portale dev'essere una finestra su cio' che c'e'
-         dentro. E il colore e' quello della sua luce, l'ambra delle finestre
-         accese — l'unica cosa calda in un mondo per il resto freddo e chiaro. */
-      col:[0.98,0.78,0.52], poster:'assets/prima-e-dopo.jpg', video:null, gain:0.78,
-      page:'/atelier/prima-e-dopo' },
-
-    { id:'la-notte', nome:'La notte', sett:'ristoranti, locali',
-      desc:'Alle undici di sera il tuo locale lavora ancora — ma il sito lavora da solo.',
-      col:[0.97,0.78,0.48], poster:'assets/la-notte.webp', video:null,
-      page:'/atelier/la-notte' },
-
-    { id:'lo-studio', nome:'Lo studio', sett:'professionisti',
-      desc:'Un secondo e mezzo per capire di cosa vi occupate. Poi decide.',
-      /* marcus-vane: nero cinematografico con un solo accento brace elettrica. */
-      col:[1.00,0.42,0.17], poster:'assets/lo-studio.webp', video:null, gain:0.9,
-      page:'/atelier/lo-studio' },
-
-    /* L'OTTAVO, E L'UNICO CHE NON E' UN SETTORE.
-       Gli altri sette dicono «ecco come si vende in questo mestiere»; questo
-       apre la cassetta degli attrezzi — il disco volante sui quarantamila fili
-       d'erba, il robot che risponde al puntatore, il fluido, l'elica, la pietra
-       che si scopre. Sono i dodici capitoli del vecchio atelier, che non sono
-       stati buttati: vivono a /atelier/capitoli e da oggi hanno una porta.
-       Il poster e' un fotogramma vero del capitolo del disco, non un'immagine
-       di repertorio, e il colore e' il ciano del sito: l'unico portale che non
-       porta a un cliente immaginario ma a casa nostra.
-       `gain` alto perche' quel fotogramma e' quasi tutto notte. */
-    { id:'effetti-speciali', nome:'Effetti speciali', sett:'le tecniche, una per una',
-      desc:'Il disco volante, il robot, il fluido. Quello che c’è sotto agli altri sette.',
-      col:[0.23,0.85,1.00], poster:'assets/effetti-speciali.webp', video:null, gain:1.34,
-      page:'/atelier/capitoli' },
-
-    /* LA NONA, ED E' VUOTA.
-       Prima il posto vuoto era il perno dell'anello, al centro, e chi voleva
-       arrivarci doveva accorgersene. In una fila non c'e' un centro: c'e' un
-       ULTIMO POSTO, e lasciarlo vuoto dice la stessa cosa in modo piu' netto
-       — si scorrono otto mondi costruiti e si arriva a una lastra dentro cui
-       non c'e' niente. E' l'unica senza contenuto: il vetro c'e', si vede
-       attraverso, dentro non c'e' ancora niente da vedere. */
-    { id:'il-tuo', vuoto:true, nome:'Il tuo', sett:'ancora da costruire',
-      desc:'Gli altri otto esistono. Questo no — per adesso.',
-      col:[0.23,0.85,1.00], poster:null, video:null,
-      page:'/atelier/parliamone' }
-  ];
+  /* Task 3 — LA SORGENTE DEI DATI È window.EFFETTI (7 effetti), non più la
+     lista dei 9 mondi. Vive in js/effetti-deck.js, caricato prima di questo
+     script. Il resto del mazzo (mesh, vetro, focus, trattini) continua a
+     leggere `WORLDS`: qui è solo un alias del nuovo array, così il blocco
+     ereditato non va riscritto. I record hanno `col` e `poster` come i mondi;
+     `sett` è aliasato a `tipo` dentro effetti-deck.js per la focus-caption e
+     i trattini. Niente `vuoto`/`page`/`video`: le card sono poster di vetro. */
+  var WORLDS = window.EFFETTI;
   WORLDS.forEach(function(w, i){ w.idx = i; });
 
   /* ══ IL MAZZO ═════════════════════════════════════════════════════════
@@ -490,11 +438,15 @@
   /* Quanti posti separano una lastra da quello davanti, col segno e col giro
      corto: e' il numero da cui discende tutto il resto. */
   function deckU(i, pos){ return wrapN(i - pos, WORLDS.length); }
-  /* La posizione sull'anello. theta cresce con u; chi e' davanti (u=0) sta a
-     (0,cardY,-R) e la camera al centro lo guarda in faccia. */
+  /* Task 3 — LA POSIZIONE NON È PIÙ SULL'ANELLO, È SULL'ELICA.
+     La vecchia deckPlace disponeva le lastre su un anello attorno alla camera
+     (out.set(R·sinθ, cardY, −R·cosθ)). Ora delega a window.helixPlace, che le
+     fa salire lungo l'elica dell'asse centrale (vedi js/effetti-deck.js). Resta
+     una funzione locale così i tre punti di chiamata (portalPoint, costruzione
+     card, frame()) non cambiano. deckYaw/deckScale/deckFade restano quelli
+     dell'anello, ereditati. */
   function deckPlace(u, out){
-    var th = u * TWO_PI_N;
-    return out.set(RING.R*Math.sin(th), RING.cardY, -RING.R*Math.cos(th));
+    return window.helixPlace(u, out);
   }
   /* La lastra guarda il centro: la sua normale (+Z locale) punta alla camera.
      rotation.y = -theta. E la `fwd` calcolata a valle come
@@ -1103,6 +1055,19 @@
      ====================================================================== */
   var spin = 0, spinT = 0;            // dov'e' l'anello, e dove sta andando
   var toccato = false;                // qualcuno l'ha presa in mano?
+
+  /* Task 3 — LA SORGENTE DELLO SCROLL, LA STESSA DELL'ELICA.
+     dna.js legge il progresso globale così: Lenis su desktop (`WC.lenis.progress`,
+     già 0..1), altrove lo scroll nativo `scrollY/(scrollHeight−innerHeight)`.
+     Lo rifacciamo qui identico, così l'elica e il disco leggono lo STESSO
+     numero e scorrono insieme. #scrollSpacer (400vh) dà l'altezza da scorrere. */
+  function deckScrollProgress(){
+    var c = function(x){ return x < 0 ? 0 : (x > 1 ? 1 : x); };
+    if (typeof WC !== 'undefined' && WC.lenis && typeof WC.lenis.progress === 'number')
+      return c(WC.lenis.progress);
+    var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    return c(window.scrollY / max);
+  }
   var lastInput = -1e9;
   var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
 
@@ -1125,7 +1090,10 @@
     return false;
   }
   function spingi(d){
-    if (openW) return;
+    /* Task 3 — la giostra-scroll è spenta: il disco lo muove lo scroll globale
+       (vedi frame()), non questi input. Guardia su RING_SCROLL così rotellina,
+       trascino e frecce non fanno scroll in competizione. */
+    if (openW || !RING_SCROLL) return;
     toccato = true; lastInput = performance.now();
     spinT += d;
   }
@@ -1144,10 +1112,11 @@
      mezzo giro su un mouse a scatti. */
   window.addEventListener('wheel', function(e){
     if (openW) return;
-    // Il mazzo e' spento (Task 2, atelier/effetti): niente da dirottare, lo
-    // scroll passa alla pagina — che ora ha un'altezza vera da scorrere
-    // (#scrollSpacer) e un asse (l'elica) che legge quel progresso.
-    if (DECK_ON) e.preventDefault();
+    // Task 3: il mazzo è acceso ma la giostra-scroll NO (RING_SCROLL=false):
+    // lo scroll resta della PAGINA — #scrollSpacer le dà l'altezza, l'elica e
+    // il disco leggono quel progresso globale. Niente preventDefault qui, o si
+    // ribloccherebbe la pagina e l'elica si fermerebbe.
+    if (DECK_ON && RING_SCROLL) e.preventDefault();
     if (svegliaGiostra()) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
@@ -1187,9 +1156,9 @@
     if (openW) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
-      if (DECK_ON) e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
+      if (DECK_ON && RING_SCROLL) e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
     } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
-      if (DECK_ON) e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
+      if (DECK_ON && RING_SCROLL) e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
     } else if (k === 'Enter'){
       if (svegliaGiostra()) return;
       if (hot){ e.preventDefault(); enter(hot); }
@@ -1408,18 +1377,48 @@
      composizione tarata a mano non si muove di un pixel. */
   var ZFRONT = -RING.R;                 // la lastra davanti sta a z = -R
   var MEZZOFOV = Math.tan(66*Math.PI/180/2);
+
+  /* Task 3 — SU RITRATTO SI STRINGE IL PASSO DELL'ELICA.
+     Il campo visivo di three è verticale: su un telefono in piedi l'apertura
+     ORIZZONTALE è meno di metà di quella del desktop, e le card sparse di lato
+     (A·sin(phase)) sbordano. Come resize() stringe la giostra nella home, qui
+     si stringono apertura (A) e salita (climb) — R e turns restano — così in
+     quadro ne restano 3–4 accumulate verso il fuga invece di uscire ai lati.
+     I numeri base sono quelli tarati in js/effetti-deck.js; qui si scalano. */
+  var HELIX_BASE = null;
+  function helixTune(){
+    if (!HELIX_BASE) HELIX_BASE = {
+      A:window.__HELIX_TUNE.A, R:window.__HELIX_TUNE.R, turns:window.__HELIX_TUNE.turns,
+      climb:window.__HELIX_TUNE.climb, yTop:window.__HELIX_TUNE.yTop
+    };
+    var b = HELIX_BASE, t = window.__HELIX_TUNE;
+    var portrait = (window.innerWidth / window.innerHeight) < 1;
+    t.A     = b.A     * (portrait ? 0.66 : 1);
+    t.climb = b.climb * (portrait ? 0.82 : 1);
+    t.yTop  = b.yTop  * (portrait ? 0.90 : 1);
+    t.R     = b.R;
+    t.turns = b.turns;
+  }
+
   function resize(){
     var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
     renderer.setSize(w,h,false);
     camera.aspect = w/h; camera.updateProjectionMatrix();
+    helixTune();
     /* Il campo visivo di three e' VERTICALE: su un telefono in piedi
        l'apertura orizzontale e' meno di meta' di quella di un portatile. La
        camera al centro dell'anello arretra un filo verso +z su schermo
        stretto perche' la lastra davanti ci stia intera coi suoi margini; sul
        desktop il conto da' meno di zero e la camera resta sul perno. */
     var need = (CW*0.5 + (camera.aspect < 1 ? 0.22 : 0.30)) / (MEZZOFOV*camera.aspect);
-    CAM0.z = Math.max(0.001, need - RING.R);
-    DREF = RING.R + CAM0.z;             // distanza camera → lastra davanti
+    /* Task 3 — la lastra davanti non sta più a z=−R (anello) ma a z=−R+A
+       (elica: il punto più vicino della spirale). La camera arretra quel tanto
+       che serve perché la card ci stia coi margini: distanza = CAM0.z + (R−A).
+       Su ritratto `need` cresce (FOV orizzontale stretto) e la camera arretra
+       parecchio; su desktop il conto è ~0 e resta sul perno. */
+    var hz = window.__HELIX_TUNE, front = hz.R - hz.A;
+    CAM0.z = Math.max(0.001, need - front);
+    DREF = front + CAM0.z;              // distanza camera → lastra davanti
     /* L'elenco «CHE COSA CERCHI?» resta a lato, ma SOPRA il pelo dell'acqua
        (y positivo) perche' non anneghi nella pozza; su telefono va sotto le
        lastre e ingrandito. Rifinitura nella milestone della pozza. */
@@ -1512,13 +1511,14 @@
     }
     travel += speed * dt * 5.6;
 
-    /* LA FILA SCORRE. */
-    if (stage === 'mappa' && !openW){
-      if (!toccato) spinT += 0.075*dt;                       // lo scorrimento d'invito
-      else if (!dragging && now - lastInput > 300){          // lo scatto sul fermo
-        var det = Math.round(spinT);
-        spinT += (det - spinT)*Math.min(1, dt*7);
-      }
+    /* LA FILA SCORRE — SULLO SCROLL GLOBALE (Task 3).
+       Non più il giro d'invito + lo scatto sul fermo della giostra: il disco
+       legge il progresso globale (0..1) e lo mappa sull'intera fila di card,
+       così l'elica e le card avanzano insieme sulla stessa sorgente. Con N=7
+       card, progress 0→prima card a fuoco, progress 1→ultima. Lo smorzamento
+       resta, per un movimento morbido. */
+    if (!openW){
+      spinT = deckScrollProgress() * (WORLDS.length - 1);
     }
     spin += (spinT - spin)*Math.min(1, dt*7.5);
 
@@ -1645,6 +1645,18 @@
     renderer.render(bg, camera);
     if (DECK_ON) renderer.render(scene, camera);
   }
+  /* Task 3 — IL DISCO PARTE GIÀ COMPOSTO.
+     La coreografia atrio→tunnel→mappa (con il giro d'invito) era della giostra;
+     qui l'elica è l'asse sempre vivo e le card la cavalcano da subito, guidate
+     dallo scroll globale. Si salta dritti a 'mappa' — così `cardsIn=1` rivela
+     le card e il fuoco si accende — e si nasconde l'atrio, che parlava dei 9
+     mondi e coprirebbe la scena. */
+  if (DECK_ON){
+    stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+    var heroEl = document.getElementById('hero');
+    if (heroEl){ heroEl.classList.add('-off'); heroEl.style.display = 'none'; }
+  }
+
   requestAnimationFrame(frame);
 
   // se si arriva con un indirizzo già puntato a un mondo, ci si entra
