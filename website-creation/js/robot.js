@@ -208,8 +208,11 @@ WC.register('robot', function(ctx){
         // uLensActive/uLensPos dal raycast del cursore sulla testa (tick()
         // più sotto), uLensRadius impostato subito dopo, sotto.
         if (WC.robotMaterials) {
-          var mats = WC.robotMaterials.applyTo(parts);
+          // `renderer` serve al carbonio per prefiltrare l'envMap via PMREM
+          // (riflesso lucido sul corpo scuro — vedi robot-materials.js).
+          var mats = WC.robotMaterials.applyTo(parts, renderer);
           window.__robot.glass = mats.glass;
+          window.__robot.carbon = mats.carbon;
         }
 
         // Task 6 (rework): le fibre luminose nelle braccia ("i fasci").
@@ -320,35 +323,71 @@ WC.register('robot', function(ctx){
             // proporzionale all'altezza della testa. Raggio leggermente
             // ridotto (0.42 invece di 0.5) così la nuvola sta dentro la
             // cupola senza sconfinare verso guance/mascella.
-            var brain = WC.pointBrain.create({ count: 4000, radius: headRadius * 0.42, color: 0x8bd6ff });
-            var craniumOffset = headSizeLocal.y * 0.35;
-            brain.points.position.copy(headCenterLocal).add(new THREE.Vector3(0, craniumOffset, 0));
-            // Draw order (Task 5b): il vetro (transparent+depthWrite:false)
-            // e il brain (THREE.Points, additivo, anch'esso
-            // transparent+depthWrite:false) finiscono entrambi nella coda
-            // "trasparenti" di three.js, che li ordina per distanza
-            // centro-oggetto dalla camera — non per pixel, quindi inaffidabile
-            // per decidere chi sta sopra. `parts.head.forEach` in
-            // robot-materials.js applyTo() assegna `renderOrder = 2` al
-            // guscio di vetro (> del default 0 del brain), forzando SEMPRE
-            // guscio-dopo-brain nella coda: il suo alpha per-pixel (alto fuori
-            // dalla lente, quasi nullo dentro) fa da maschera, e il cervello
-            // resta visibile solo attraverso la finestra trasparente della
-            // lente Lithos che segue il cursore sopra la testa.
-            headGroup.add(brain.points);
-
+            var brainRadius = headRadius * 0.42;
+            var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * 0.35, 0));
             // Taratura della dimensione dei punti. Nello shader del brain
             // gl_PointSize ≈ uSize * 200 / (-mv.z), con -mv.z ≈ distanza
             // camera→testa in unità MONDO. Il modello non è in unità "piccole"
             // (la camera sta a maxDim*1.6, vedi sopra), quindi la uSize di
-            // default (tarata su Vesper: camera vicina, raggio ~1) renderebbe
-            // punti invisibili. La lego alla distanza reale così legge a qualunque
-            // scala del GLB.
+            // Vesper (0.067: camera vicina, raggio ~1) renderebbe punti
+            // invisibili. La lego alla distanza reale così legge a qualunque
+            // scala del GLB — è l'UNICO aggiustamento rispetto a Vesper.
             var headCenterWorld = headGroup.localToWorld(headCenterLocal.clone());
             var camDist = cam.position.distanceTo(headCenterWorld);
-            brain.uniforms.uSize.value = 4 * camDist / 200;
+            var brainUSize = 4 * camDist / 200;
 
-            window.__robot.brain = brain;
+            // Draw order (Task 5b): il vetro (transparent+depthWrite:false) e
+            // il brain (THREE.Points, additivo, anch'esso
+            // transparent+depthWrite:false) finiscono entrambi nella coda
+            // "trasparenti" di three.js, ordinata per distanza centro-oggetto
+            // — non per pixel. `renderOrder = 2` sul guscio di vetro (in
+            // robot-materials.js) forza SEMPRE guscio-dopo-brain: il suo alpha
+            // per-pixel fa da maschera, il cervello si vede solo attraverso la
+            // finestra della lente Lithos.
+            function placeBrain(brain) {
+              brain.points.position.copy(brainPos);
+              brain.uniforms.uSize.value = brainUSize;
+              headGroup.add(brain.points);
+              window.__robot.brain = brain;
+            }
+
+            // ref1 (correzione utente): il cervello del robot ora campiona LA
+            // STESSA mesh cotta di Vesper (assets/brain-mesh.bin) con la STESSA
+            // palette (WC.pointBrain.vesperBrainUniforms), così legge IDENTICO
+            // a quello di Vesper — non più una nuvola procedurale generica.
+            // Il fetch è asincrono ma dentro il flusso torn-guarded del mount:
+            // se il teardown è già scattato (torn) o la mesh non arriva, si
+            // ripiega sulla nuvola procedurale (comportamento precedente),
+            // senza mai crashare. Il brain, appena creato, è aggiunto a
+            // headGroup (figlio di model) e smaltito dal teardown unificato.
+            fetch('assets/brain-mesh.bin').then(function (res) {
+              if (!res.ok) throw new Error('brain mesh: ' + res.status + ' ' + res.statusText);
+              return res.arrayBuffer();
+            }).then(function (buf) {
+              if (torn || !window.__robot) return;
+              var decoded = WC.pointBrain.decodeBrainMesh(buf);
+              var srcGeo = new THREE.BufferGeometry();
+              srcGeo.setAttribute('position', new THREE.BufferAttribute(decoded.positions, 3));
+              srcGeo.setIndex(new THREE.BufferAttribute(decoded.indices, 1));
+              var brain = WC.pointBrain.create({
+                // ~stessa DENSITÀ di Vesper (baseline tier: 26000 punti sulla
+                // stessa mesh) così la forma reale del cervello legge fitta
+                // come là, non rada come i 4000 procedurali di prima.
+                count: 24000,
+                radius: brainRadius,
+                sampleFrom: new THREE.Mesh(srcGeo),
+                uniforms: WC.pointBrain.vesperBrainUniforms()
+              });
+              srcGeo.dispose();
+              placeBrain(brain);
+            }).catch(function (err) {
+              if (torn || !window.__robot) return;
+              // Fallback: nuvola procedurale azzurra (come prima) — la sezione
+              // resta in piedi anche se la mesh non carica. console.warn (non
+              // error) così l'harness resta "console-clean".
+              console.warn('[robot] mesh del cervello non caricata, uso la nuvola procedurale:', err);
+              placeBrain(WC.pointBrain.create({ count: 4000, radius: brainRadius, color: 0x8bd6ff }));
+            });
           }
         }
 
@@ -523,6 +562,15 @@ WC.register('robot', function(ctx){
         // va smaltita qui a parte, altrimenti resta un WebGLTexture orfano
         // ad ogni mount/unmount della sezione.
         if (robot.glass && robot.glass.userData.envMap) robot.glass.userData.envMap.dispose();
+        // Stesso ragionamento per il carbonio (Task ref1): normalMap +
+        // envMap sono CanvasTexture/PMREM create ad-hoc in robot-materials.js,
+        // non toccate da disposeObject3D (che smaltisce geometrie/materiali,
+        // non le texture referenziate da un materiale) — vanno smaltite qui a
+        // parte, altrimenti restano WebGLTexture orfane ad ogni mount/unmount.
+        if (robot.carbon) {
+          if (robot.carbon.userData.normalMap) robot.carbon.userData.normalMap.dispose();
+          if (robot.carbon.userData.envMap) robot.carbon.userData.envMap.dispose();
+        }
       }
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);

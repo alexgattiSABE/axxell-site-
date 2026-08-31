@@ -115,8 +115,12 @@ WC.robotFibers = (function () {
         uSurge: { value: 0 },
         uSpeed: { value: 0.22 },
         uBaseline: { value: 0.16 },
-        uColorCold: { value: new THREE.Vector3(1.0, 0.63, 0.38) },  // ~0xffa060, rame
-        uColorHot: { value: new THREE.Vector3(1.0, 0.93, 0.8) }
+        // Azzurro del sito (correzione utente ref1): non più rame. ~0x3fb9ff,
+        // l'azzurro dell'eyebrow "// 05" e del cervello — legge con più
+        // carattere del più chiaro 0x8bd6ff in additivo sul corpo scuro.
+        uColorCold: { value: new THREE.Vector3(0.247, 0.725, 1.0) },  // ~0x3fb9ff, azzurro
+        // Sul surge sale verso un ciano quasi bianco (non più bianco caldo).
+        uColorHot: { value: new THREE.Vector3(0.75, 0.95, 1.0) }
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -211,15 +215,49 @@ WC.robotFibers = (function () {
     return slices;
   }
 
-  // Spinge ogni centroide verso l'esterno lungo `dir` (fissa per braccio:
-  // lontano dal busto, un po' verso la camera) di una distanza pari
-  // all'estensione reale della fetta in quella direzione (percentile
-  // robusto delle proiezioni dei suoi vertici, vedi SURFACE_PERCENTILE),
-  // più una piccola spinta extra così il tubo (che ha un suo raggio) sporge
-  // per lo più FUORI dalla mesh — leggibile — invece che restarne per metà
-  // dentro.
-  function offsetToSurface(slices, dir, extraPush) {
+  // FIX drift (correzione utente ref1): la direzione verso l'esterno NON è
+  // più fissa per braccio. Una direzione fissa va bene sul braccio che si
+  // piega "come previsto", ma DERIVA (la fibra esce dalla superficie) sul
+  // braccio che si piega diversamente — la sua faccia esterna cambia
+  // orientamento lungo la piega, la direzione fissa no.
+  //
+  // Ora, PER OGNI fetta, si ricava la direzione esterna dall'asse del
+  // braccio in quel punto: la componente di (centroide − puntoSull'AsseA quel
+  // t) perpendicolare all'asse, normalizzata. È il vettore con cui il
+  // baricentro reale della sezione si scosta dalla corda dritta spalla→polso,
+  // cioè verso la faccia CONVESSA (esterna) della piega in quel punto — segue
+  // la piega su entrambe le braccia. Dove la piega è trascurabile (fetta
+  // quasi sulla corda) il vettore è ~nullo e non affidabile: si ripiega su un
+  // riferimento stabile (la vecchia direzione fissa, resa perpendicolare
+  // all'asse). La soglia è RELATIVA alla dimensione della fetta (RMS dei
+  // vertici attorno al centroide) perché il modello non è in unità "piccole".
+  function computeOutwardDirs(slices, axis, shoulder, fallbackDir) {
     return slices.map(function (s) {
+      var t = s.point.clone().sub(shoulder).dot(axis);
+      var axisPoint = shoulder.clone().addScaledVector(axis, t);
+      var perp = s.point.clone().sub(axisPoint);
+      perp.addScaledVector(axis, -perp.dot(axis)); // togli ogni residuo assiale
+      var spreadSq = 0;
+      s.verts.forEach(function (v) { spreadSq += v.distanceToSquared(s.point); });
+      var spread = Math.sqrt(spreadSq / s.verts.length); // raggio RMS della fetta
+      if (perp.length() >= spread * 0.35) return perp.normalize();
+      // bow trascurabile → riferimento fisso reso perpendicolare all'asse
+      var fb = fallbackDir.clone();
+      fb.addScaledVector(axis, -fb.dot(axis));
+      if (fb.lengthSq() < 1e-8) fb.copy(fallbackDir);
+      return fb.normalize();
+    });
+  }
+
+  // Spinge ogni centroide verso l'esterno lungo la SUA direzione per-fetta
+  // (dirs[i], vedi computeOutwardDirs) di una distanza pari all'estensione
+  // reale della fetta in quella direzione (percentile robusto delle proiezioni
+  // dei suoi vertici, vedi SURFACE_PERCENTILE), più una piccola spinta extra
+  // così il tubo (che ha un suo raggio) sporge per lo più FUORI dalla mesh —
+  // leggibile — invece che restarne per metà dentro.
+  function offsetToSurface(slices, dirs, extraPush) {
+    return slices.map(function (s, i) {
+      var dir = dirs[i];
       var proj = s.verts.map(function (v) { return v.clone().sub(s.point).dot(dir); })
         .sort(function (a, b) { return a - b; });
       var idx = Math.min(proj.length - 1, Math.floor(proj.length * SURFACE_PERCENTILE));
@@ -231,10 +269,10 @@ WC.robotFibers = (function () {
   // Costruisce il fascio di 2 tubi vicini (fascio stretto, non barre
   // larghe) attorno alla polilinea "in superficie": ad ogni punto calcola
   // la tangente locale (differenza coi vicini) e una direzione "laterale"
-  // (perpendicolare sia alla tangente sia a `dir`, cioè che cammina lungo
-  // la superficie, non sopra/sotto) su cui sposta i due fili di un piccolo
-  // offset simmetrico.
-  function buildArmFibers(surfacePoints, dir, radius, material, group) {
+  // (perpendicolare sia alla tangente sia alla direzione esterna PER-FETTA
+  // `dirs[i]`, cioè che cammina lungo la superficie, non sopra/sotto) su cui
+  // sposta i due fili di un piccolo offset simmetrico.
+  function buildArmFibers(surfacePoints, dirs, radius, material, group) {
     if (surfacePoints.length < 3) return;
     var sideOffset = radius * 3.0;
     [-1, 1].forEach(function (sign) {
@@ -243,7 +281,7 @@ WC.robotFibers = (function () {
         var next = surfacePoints[Math.min(surfacePoints.length - 1, i + 1)];
         var tangent = new THREE.Vector3().subVectors(next, prev);
         if (tangent.lengthSq() < 1e-8) tangent.set(0, 1, 0); else tangent.normalize();
-        var side = new THREE.Vector3().crossVectors(tangent, dir);
+        var side = new THREE.Vector3().crossVectors(tangent, dirs[i]);
         if (side.lengthSq() < 1e-8) side.set(1, 0, 0); else side.normalize();
         return p.clone().addScaledVector(side, sign * sideOffset);
       });
@@ -264,18 +302,20 @@ WC.robotFibers = (function () {
     if (!slices) return false;
 
     var radius = slices.armLen * TUBE_RADIUS_FACTOR;
-    // Direzione fissa per braccio: lontano dal busto (X, segno secondo il
-    // lato) e un po' verso la camera (+Z, la camera sta su +Z guardando
-    // verso l'origine — vedi mount() in robot.js). Non ruota fetta per
-    // fetta (una normale locale vera richiederebbe una vera mesh di
-    // sezione, non disponibile): per un braccio che si piega soprattutto
-    // in X (vedi nota Task 2/task-2-report.md) resta una buona
-    // approssimazione della faccia esterna/frontale visibile.
+    // Riferimento fisso (SOLO fallback ora, vedi computeOutwardDirs): lontano
+    // dal busto (X, segno secondo il lato) e un po' verso la camera (+Z, la
+    // camera sta su +Z guardando verso l'origine — vedi mount() in robot.js).
+    // La vera direzione esterna la calcola computeOutwardDirs PER-FETTA
+    // dall'asse del braccio, e ripiega su questo riferimento solo dove la
+    // piega è trascurabile — così la fibra segue la faccia esterna su
+    // ENTRAMBE le braccia, anche quella che si piega diversamente.
     var side = shoulder.x < 0 ? -1 : 1;
-    var dir = new THREE.Vector3(side * 0.55, 0.05, 0.85).normalize();
+    var fallbackDir = new THREE.Vector3(side * 0.55, 0.05, 0.85).normalize();
 
-    var surfacePoints = offsetToSurface(slices, dir, radius * 0.6);
-    buildArmFibers(surfacePoints, dir, radius, material, group);
+    var axis = new THREE.Vector3().subVectors(wrist, shoulder).normalize();
+    var dirs = computeOutwardDirs(slices, axis, shoulder, fallbackDir);
+    var surfacePoints = offsetToSurface(slices, dirs, radius * 0.6);
+    buildArmFibers(surfacePoints, dirs, radius, material, group);
     return true;
   }
 

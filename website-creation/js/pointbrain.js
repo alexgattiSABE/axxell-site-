@@ -273,6 +273,72 @@ WC.pointBrain = (function () {
     };
   }
 
+  /* Decodifica del contenitore cotto del cervello di Vesper (VBRN):
+   * VERBATIM da decodeBrainMesh in js/vesper.js — 'VBRN' + versione + conteggi,
+   * posizioni int16 (frazioni del raggio unitario) e indici uint16. Spostata
+   * qui così anche il robot (js/robot.js) può campionare LA STESSA mesh cotta
+   * (assets/brain-mesh.bin) di Vesper e leggere identico, invece della nuvola
+   * procedurale generica. Vesper continua a usare la sua copia locale. */
+  function decodeBrainMesh(buffer) {
+    var view = new DataView(buffer);
+    if (view.getUint32(0, true) !== 0x4e524256) throw new Error('brain mesh: magic errato');
+    if (view.getUint32(4, true) !== 1) throw new Error('brain mesh: versione non supportata');
+    var vertexCount = view.getUint32(8, true);
+    var indexCount = view.getUint32(12, true);
+    var quantised = new Int16Array(buffer, 16, vertexCount * 3);
+    var positions = new Float32Array(vertexCount * 3);
+    for (var k = 0; k < positions.length; k++) positions[k] = quantised[k] / 32767;
+    var indexBase = 16 + vertexCount * 3 * 2;
+    var indices = new Uint16Array(buffer.slice(indexBase, indexBase + indexCount * 2));
+    return { positions: positions, indices: indices };
+  }
+
+  /* Le uniform del cervello di Vesper — la sua PALETTE esatta (gradiente
+   * viola→menta, sinapsi, ecc.), copiata verbatim da BRAIN/brainUniforms in
+   * js/vesper.js. Serve al robot per rendere il cervello AESTHETICAMENTE
+   * IDENTICO a quello di Vesper (correzione utente ref1: prima usava una
+   * nuvola procedurale con tinta unica). A differenza di Vesper — che pilota
+   * da sé la sua coreografia — il robot passa queste uniform a create() e usa
+   * l'update(dt, reveal) incluso: iTime/iAlpha/uExplode vengono guidate da lì
+   * (uExplode resta 0, i punti riposano sulla superficie; iAlpha = reveal
+   * della lente Lithos). uSize di partenza è quella di Vesper (0.067) ma il
+   * robot la sovrascrive in base alla distanza reale della camera. */
+  function vesperBrainUniforms() {
+    return {
+      iTime:              { value: 0 },
+      iAlpha:             { value: 0 },
+      iResolutionY:       { value: 720 },
+      uCool:              { value: toVec3('#582eff') },
+      uWarm:              { value: toVec3('#52ffa5') },
+      uEdgeColor:         { value: toVec3('#582eff') },
+      uCenterColor:       { value: toVec3('#000000') },
+      uSynapse:           { value: toVec3('#eafff8') },
+      uDeepColor:         { value: toVec3('#02040e') },
+      uCursorColor:       { value: toVec3('#6bfdff') },
+      uHighlightColor:    { value: toVec3('#2563eb') },
+      uCenterRadius:      { value: 0.37 },
+      uCenterFalloff:     { value: 4 },
+      uSize:              { value: 0.067 },
+      uSynapseRate:       { value: 0.1 },
+      uFlowSpeed:         { value: 2.3 },
+      uFlowAmount:        { value: 0.025 },
+      uGlow:              { value: 1.4 },
+      uDepthDarkness:     { value: 1 },
+      uOcclusionStrength: { value: 0 },
+      uHighlightPos:      { value: new THREE.Vector3(0, 0, 0) },
+      uHighlightRadius:   { value: 0.6 },
+      uHighlightStrength: { value: 0 },
+      uFocusFadeStrength: { value: 0.55 },
+      uIsolateStrength:   { value: 0.88 },
+      uExplode:           { value: 0 },
+      uExplodeDist:       { value: 5 },
+      uMouse:             { value: new THREE.Vector2(-10, -10) },
+      uCursor:            { value: 0 },
+      uAspect:            { value: 1 },
+      uCursorRadius:      { value: 0.1 }
+    };
+  }
+
   function createMaterial(uniforms) {
     return new THREE.ShaderMaterial({
       uniforms: uniforms,
@@ -345,6 +411,8 @@ WC.pointBrain = (function () {
     create: create,
     sampleSurface: sampleSurface,
     sampleCloud: sampleCloud,
-    createMaterial: createMaterial
+    createMaterial: createMaterial,
+    decodeBrainMesh: decodeBrainMesh,
+    vesperBrainUniforms: vesperBrainUniforms
   };
 })();

@@ -1,9 +1,13 @@
 /* CAP 05 — materiali del robot (carbonio su corpo/braccia, visore scuro con
  * lente Lithos sulla testa).
  *
- * Carbonio: MeshStandardMaterial scuro, poco ruvido, abbastanza metallico —
- * risponde alle luci già in scena (HemisphereLight + DirectionalLight,
- * robot.js) leggendo come fibra di carbonio, non plastica opaca.
+ * Carbonio "come lo Spline" (correzione utente ref1): MeshStandardMaterial
+ * scuro (near-black), poco ruvido e molto metallico, con una .normalMap a
+ * TRAMA ESAGONALE procedurale (la "fibra") e una .envMap da studio prefiltrata
+ * PMREM (riflesso lucido) — legge come carbonio scuro lucido e riflettente,
+ * non come plastica grigia piatta. Vedi carbon()/buildCarbonNormalMap()/
+ * buildCarbonEnvMap(). Le due texture sono smaltite nel teardown di robot.js
+ * (via userData, come l'envMap del vetro testa).
  *
  * Vetro testa (CORREZIONE utente 2026-08-31 — vedi
  * docs/superpowers/specs/2026-08-31-robot-cervello-vesper-design.md §2/§3):
@@ -47,6 +51,74 @@ WC.robotMaterials = (function () {
    * la porzione anteriore, che legge come lo sweep del riferimento senza
    * bisogno di geometria di scena reale (fuori scope, YAGNI di questo task).
    */
+  /* Normal map procedurale a trama di carbonio: tre onde piane a 60° sommate
+   * danno un reticolo ESAGONALE (l'interferenza triangolare classica), da cui
+   * si ricava un campo di altezza e quindi le normali per differenze finite.
+   * Il pattern è PERIODICO (freq intera) e le differenze usano indici
+   * wrap-around, quindi la texture è tileabile senza cuciture — necessario
+   * perché va ripetuta molte volte sul corpo per leggere come micro-trama
+   * fitta e non come esagoni giganti. */
+  function buildCarbonNormalMap() {
+    var size = 128;
+    var freq = 6;                 // celle esagonali per tile
+    var TWO_PI = Math.PI * 2;
+    var height = new Float32Array(size * size);
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        var fx = x / size, fy = y / size;
+        var a = Math.cos(TWO_PI * freq * fx);
+        var b = Math.cos(TWO_PI * freq * (0.5 * fx + fy));
+        var c = Math.cos(TWO_PI * freq * (0.5 * fx - fy));
+        height[y * size + x] = a + b + c; // ~[-3,3]
+      }
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var img = ctx.createImageData(size, size);
+    var strength = 1.1;
+    for (var yy = 0; yy < size; yy++) {
+      for (var xx = 0; xx < size; xx++) {
+        var xl = (xx - 1 + size) % size, xr = (xx + 1) % size;
+        var yu = (yy - 1 + size) % size, yd = (yy + 1) % size;
+        var dx = (height[yy * size + xr] - height[yy * size + xl]) * 0.5;
+        var dy = (height[yd * size + xx] - height[yu * size + xx]) * 0.5;
+        var nx = -dx * strength, ny = -dy * strength, nz = 1.0;
+        var inv = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
+        var i = (yy * size + xx) * 4;
+        img.data[i]     = Math.round((nx * inv * 0.5 + 0.5) * 255);
+        img.data[i + 1] = Math.round((ny * inv * 0.5 + 0.5) * 255);
+        img.data[i + 2] = Math.round((nz * inv * 0.5 + 0.5) * 255);
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    var tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(8, 8);        // micro-trama fitta sul corpo
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /* envMap per il CORPO in carbonio: lo stesso gradiente da studio del vetro
+   * testa (buildEnvMap, equirettangolare), ma prefiltrato via PMREMGenerator
+   * così un MeshStandardMaterial lo campiona correttamente in base alla
+   * rugosità (riflesso lucido leggibile, non un ambiente piatto). Se il
+   * renderer/PMREM non è disponibile si ripiega sull'equirect grezzo (three
+   * r128 lo campiona comunque come riflesso, solo meno accurato). Il
+   * chiamante deve smaltire la texture ritornata nel teardown. */
+  function buildCarbonEnvMap(renderer) {
+    var equirect = buildEnvMap();
+    if (renderer && THREE.PMREMGenerator) {
+      var pmrem = new THREE.PMREMGenerator(renderer);
+      var rt = pmrem.fromEquirectangular(equirect);
+      pmrem.dispose();
+      equirect.dispose();        // consumata dal PMREM, non più utile
+      return rt.texture;
+    }
+    return equirect;
+  }
+
   function buildEnvMap() {
     var w = 256, h = 128;
     var canvas = document.createElement('canvas');
@@ -163,12 +235,35 @@ WC.robotMaterials = (function () {
   ].join('\n');
 
   return {
-    carbon: function () {
-      return new THREE.MeshStandardMaterial({
+    /* Carbonio "come lo Spline" (correzione utente 2026-08-31): non più un
+     * MeshStandardMaterial piatto (leggeva come plastica grigia opaca), ma un
+     * carbonio scuro LUCIDO e RIFLETTENTE — resta near-black, non schiarito:
+     *  - .normalMap: trama esagonale procedurale (buildCarbonNormalMap) →
+     *    micro-superficie intrecciata, la "fibra";
+     *  - .envMap: gradiente da studio prefiltrato PMREM (buildCarbonEnvMap) →
+     *    il corpo scuro cattura la luce e riflette invece di leggere piatto;
+     *  - roughness bassa + metalness alta → il riflesso legge come vetro/
+     *    carbonio lucido, non come plastica.
+     * Le due texture vanno smaltite nel teardown (robot.js le legge da
+     * userData, come fa già per l'envMap del vetro testa). */
+    carbon: function (opts) {
+      opts = opts || {};
+      var mat = new THREE.MeshStandardMaterial({
         color: 0x0b0d10,
-        roughness: 0.42,
-        metalness: 0.55
+        roughness: 0.30,
+        metalness: 0.72
       });
+      var normalMap = buildCarbonNormalMap();
+      mat.normalMap = normalMap;
+      mat.normalScale = new THREE.Vector2(0.35, 0.35);
+      var envMap = buildCarbonEnvMap(opts.renderer);
+      mat.envMap = envMap;
+      mat.envMapIntensity = 1.1;
+      // Per il dispose in robot.js (Material.dispose() NON smaltisce le sue
+      // texture): stesse chiavi userData del vetro testa.
+      mat.userData.normalMap = normalMap;
+      mat.userData.envMap = envMap;
+      return mat;
     },
 
     buildEnvMap: buildEnvMap,
@@ -215,8 +310,8 @@ WC.robotMaterials = (function () {
       return mat;
     },
 
-    applyTo: function (parts) {
-      var carb = this.carbon();
+    applyTo: function (parts, renderer) {
+      var carb = this.carbon({ renderer: renderer });
       parts.body.concat(parts.armL, parts.armR).forEach(function (m) { m.material = carb; });
       var glass = this.glassHead({ tint: 0x05070b });
       parts.head.forEach(function (m) {
@@ -238,7 +333,7 @@ WC.robotMaterials = (function () {
         // acceso solo sotto la lente" torna corretta.
         m.renderOrder = 2;
       });
-      return { glass: glass };
+      return { glass: glass, carbon: carb };
     }
   };
 })();
