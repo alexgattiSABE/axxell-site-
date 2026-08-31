@@ -368,6 +368,16 @@
 <script src="js/vesper.js?v=20260831a"></script>
 <script src="js/orologio.js?v=20260831a"></script>
 <script src="js/altitude.js?v=20260831a"></script>
+<!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
+     (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
+     vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
+     WebGL del volo/DNA/vesper di cap. 02, non testo DOM: vedi la nota sul
+     record del mazzo in testa a js/warp.js). Nessuna delle due sezioni
+     esiste qui, quindi l'init WC di ciascuna è un no-op innocuo; servono per
+     registrare i due handle esterni su WC.effects, che il controller sveglia
+     dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/lithos.js?v=20260831a"></script>
+<script src="js/warp.js?v=20260831a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
@@ -1614,8 +1624,9 @@
      piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili — Task 5
      `saucer`, Task 6 `vesper`/`orologio`/`altitude` (tutti su `WC.effects`,
      popolato dai rispettivi js/<modulo>.js caricati qui sotto PRIMA di questo
-     inline) — gli altri (sneaker, warp, lithos) restano poster. La soglia di
-     sosta è ~250ms, come il «toccato && fermo» della home. */
+     inline) — Task 7 aggiunge `warp`/`lithos`; resta poster solo `sneaker`
+     (nessuna sezione statica per lui in questa sotto-costellazione). La
+     soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
   var STAGE_LIVE = document.getElementById('stage-live');
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)

@@ -40,15 +40,35 @@
  * muove, non come l'osservatore che avanza. Le stelle sono la cosa ferma
  * rispetto a cui si misura tutto il resto — e restano lì anche quando, nei
  * capitoli dopo, questa stessa materia si riordinerà in altre forme.
- */
-WC.register('warp', function(ctx){
-  var section = document.getElementById('capWarp');
-  var pin     = document.getElementById('wcWarpPin');
-  var canvas  = document.getElementById('wcWarpCanvas');
-  var copyA   = document.getElementById('wcWarpCopyA');
-  var copyB   = document.getElementById('wcWarpCopyB');
-  var copyC   = document.getElementById('wcWarpCopyC');
-  if (!section || !pin || !canvas) return;
+ *
+ * ── DOPPIO USO (Task 7) ─────────────────────────────────────────────────────
+ * Stesso schema di `mountSaucer`/`mountOrologio`/`mountVesper`/`mountAltitude`
+ * (Task 5–6): il corpo (shader/particelle/frame) è invariato, solo capo
+ * (`cfg` al posto degli `id` letti da `document`) e coda (`cfg.external`
+ * biforca PRIMA del montaggio legacy) sono nuovi. `rectEl` sostituisce `pin`
+ * nella sola `resize()`.
+ *
+ * ⚠️ NOTA SUL RECORD DEL MAZZO (`js/effetti-deck.js`): la card «Il testo»
+ * (id `warp`) porta `modulo:'warp'` e `render:'dom'`, ma QUESTA scena — il
+ * volo/DNA/vesper di cap. 02 — è WebGL, non testo DOM: non esiste nel
+ * repository nessun modulo di testo DOM chiamato `warp`. Il poster della
+ * card (`assets/effetti/warp.webp`, catturato nel Task 3 da questa stessa
+ * sezione) lo conferma: è la sfera-costellazione della SCENA qui sotto, non
+ * una riga di testo. Il campo `render` non è mai letto dal controller né da
+ * `effetti.html` (solo `modulo` conta per il risveglio): risvegliare QUESTA
+ * scena sotto quella card riproduce fedelmente ciò che il suo stesso poster
+ * mostra già, invece di inventare un settimo effetto DOM di testo mai
+ * scritto. Segnalato in dettaglio nel report del Task 7. */
+function mountWarp(ctx, cfg){
+  var external = !!cfg.external;
+  var section = cfg.section || null;   // solo legacy
+  var pin     = cfg.pin || null;       // solo legacy (pinning ScrollTrigger)
+  var rectEl  = cfg.rectEl;            // pin (legacy) o #stage-live (esterno)
+  var canvas  = cfg.canvas;
+  var copyA   = cfg.copyA || null;
+  var copyB   = cfg.copyB || null;
+  var copyC   = cfg.copyC || null;
+  if (!canvas || !rectEl || (!external && (!section || !pin))) return null;
 
   var G = WC.glsl;
 
@@ -163,7 +183,7 @@ WC.register('warp', function(ctx){
   var C_GAL = G.hexToVec3('#582EFF');
 
   var reduced = !ctx.motionOk || typeof THREE === 'undefined';
-  if (reduced) { section.classList.add('-static'); return; }
+  if (reduced) { if (section) section.classList.add('-static'); return null; }
 
   var wide   = window.innerWidth;
   var mobile = wide <= 640;
@@ -545,7 +565,7 @@ WC.register('warp', function(ctx){
   var mx = 0, my = 0, tmx = 0, tmy = 0;
 
   function resize(){
-    var r = pin.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     rect.w = Math.max(1, r.width); rect.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, maxDpr);
     renderer.setPixelRatio(dpr);
@@ -622,8 +642,60 @@ WC.register('warp', function(ctx){
     tmy = -(e.clientY / window.innerHeight - 0.5) * 2;
   };
 
-  section.classList.add('-live');
+  // La distruzione delle risorse WebGL è identica per i due montaggi (schema
+  // di js/saucer.js, Task 5 §disposeAll): un solo posto, la chiamano entrambi
+  // i tear-down.
+  function disposeAll(){
+    sGeo.dispose(); sMat.dispose();
+    stars.geo.dispose(); stars.mat.dispose();
+    dust.geo.dispose(); dust.mat.dispose();
+    renderer.dispose();
+  }
+
   resize();
+
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger da leggere: qui il progresso lo fa
+   * un tween GSAP proprio, stesso schema di `mountOrologio` (Task 6) — un
+   * oggetto di appoggio (`driver`) invece dello `state.t` dell'orologio,
+   * perché qui il progresso alimenta `scrollTarget`, non una scena a stati.
+   * Il tween resta creato ma in pausa finché il controller non chiama
+   * `start()`, e VIVE fra un fuoco e l'altro: `stop()` lo mette in pausa (non
+   * lo distrugge), quindi il volo riprende da dove si era fermato invece di
+   * ripartire dal tubo ogni volta. `repeat:-1` senza `yoyo`: al giro il
+   * progresso torna di scatto a 0 (stesso compromesso, non ritarato con cura
+   * estetica, del tween di `orologio` — vedi il concern gemello nel report
+   * del Task 6). */
+  if (external){
+    var driver = { v: 0 };
+    var extTl = gsap.timeline({ repeat: -1, paused: true });
+    extTl.to(driver, {
+      v: 1, duration: 26, ease: 'none',
+      onUpdate: function(){ scrollTarget = driver.v; }
+    }, 0);
+    var onResizeE = function(){ resize(); };
+    var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
+    var wantRun = false;
+    window.addEventListener('resize', onResizeE);
+    document.addEventListener('visibilitychange', onVisE);
+    if (ctx.desktop) window.addEventListener('pointermove', onMove, { passive: true });
+    return {
+      start: function(){ wantRun = true; resize(); extTl.play(); start(); },
+      stop:  function(){ wantRun = false; extTl.pause(); stop(); },
+      resize: resize,
+      dispose: function(){
+        stop();
+        extTl.pause(); extTl.kill();
+        window.removeEventListener('resize', onResizeE);
+        document.removeEventListener('visibilitychange', onVisE);
+        window.removeEventListener('pointermove', onMove);
+        disposeAll();
+      }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
+  section.classList.add('-live');
 
   var stPin = ScrollTrigger.create({
     trigger: section, start: 'top top', end: 'bottom bottom',
@@ -647,10 +719,48 @@ WC.register('warp', function(ctx){
     window.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVis);
     document.removeEventListener('mousemove', onMove);
-    sGeo.dispose(); sMat.dispose();
-    stars.geo.dispose(); stars.mat.dispose();
-    dust.geo.dispose(); dust.mat.dispose();
-    renderer.dispose();
+    disposeAll();
     section.classList.remove('-live');
   };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta il volo su una
+ * tela creata dentro il `container` che gli passa il controller (vedi la nota
+ * sul record del mazzo, in testa al file). */
+WC.register('warp', function(ctx){
+  var section = document.getElementById('capWarp');
+  var pin     = document.getElementById('wcWarpPin');
+  var canvas  = document.getElementById('wcWarpCanvas');
+  var copyA   = document.getElementById('wcWarpCopyA');
+  var copyB   = document.getElementById('wcWarpCopyB');
+  var copyC   = document.getElementById('wcWarpCopyC');
+  if (!section || !pin || !canvas) return;
+  return mountWarp(ctx, { section: section, pin: pin, rectEl: pin, canvas: canvas,
+                           copyA: copyA, copyB: copyB, copyC: copyC, external: false });
 });
+
+WC.effects = WC.effects || {};
+/* Vedi la nota gemella in js/saucer.js (Task 6, §4): `container.appendChild(host)`
+ * a OGNI `start()`, anche quando `inst` esiste già, sposta l'host in coda ai
+ * figli di `#stage-live` — l'ultimo effetto risvegliato dipinge sempre sopra i
+ * fermi-immagine congelati degli altri. */
+WC.effects.warp = (function(){
+  var inst = null, host = null;
+  return {
+    start: function(container){
+      if (inst){ container.appendChild(host); inst.start(); return; }
+      host = document.createElement('canvas');
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountWarp(ctx, { section: null, pin: null, canvas: host,
+                               rectEl: container, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();

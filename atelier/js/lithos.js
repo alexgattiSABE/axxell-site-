@@ -27,11 +27,21 @@
  * dispositivo di puntamento fine, il faro si muove da solo su una figura di
  * Lissajous — due seni con periodi incommensurabili, che non si richiude mai
  * su sé stessa e non fa un giro riconoscibile.
- */
-WC.register('lithos', function(ctx){
-  var section = document.getElementById('capLithos');
-  var reveal  = document.getElementById('wcLithosReveal');
-  if (!section || !reveal) return;
+ *
+ * ── DOPPIO USO (Task 7) ─────────────────────────────────────────────────────
+ * Il corpo (frame/place/Lissajous/pointer) è invariato: solo capo (`cfg` al
+ * posto degli `id` letti da `document`) e coda (`cfg.external` biforca PRIMA
+ * del montaggio legacy) sono nuovi — stesso schema di `mountSaucer`/
+ * `mountOrologio`/`mountAltitude`/`mountVesper` (Task 5–6). `rectEl` è la
+ * sezione in legacy, `#stage-live` nel montaggio esterno: è sia la fonte della
+ * misura (Lissajous, centro iniziale) sia il nodo su cui ascoltare il
+ * puntatore — nei due rami la stessa variabile, come nel resto dell'atelier. */
+function mountLithos(ctx, cfg){
+  var external = !!cfg.external;
+  var section  = cfg.section || null;   // solo legacy: classList/ScrollTrigger
+  var reveal   = cfg.reveal;
+  var rectEl   = cfg.rectEl;            // section (legacy) o #stage-live (esterno)
+  if (!reveal || !rectEl) return null;
 
   var G = WC.glsl;
 
@@ -58,7 +68,7 @@ WC.register('lithos', function(ctx){
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
     if (auto) {
-      var r = section.getBoundingClientRect();
+      var r = rectEl.getBoundingClientRect();
       var t = now / 1000;
       // Periodi non commensurabili: la figura non si richiude, quindi il
       // percorso non si riconosce come un ciclo.
@@ -80,7 +90,7 @@ WC.register('lithos', function(ctx){
 
   var onMove = function(e){
     if (auto) return;
-    var r = section.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     tx = e.clientX - r.left;
     ty = e.clientY - r.top;
     if (!has) {                 // primo movimento: niente scivolata dall'angolo
@@ -91,11 +101,48 @@ WC.register('lithos', function(ctx){
   // Il faro parte dal centro, se no la prima cosa che si vede è la seconda
   // immagine incollata nell'angolo in alto a sinistra.
   (function(){
-    var r = section.getBoundingClientRect();
+    var r = rectEl.getBoundingClientRect();
     sx = tx = r.width / 2; sy = ty = r.height / 2;
     place(sx, sy);
   })();
 
+  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+   * Nessuna sezione, nessuno ScrollTrigger: il faro è sveglio/congelato a
+   * comando del controller. `--lr` va sul `reveal` stesso (non su un
+   * antenato): la `mask-image` che lo legge sta sullo stesso elemento, quindi
+   * risolve la custom property anche senza cascata da una sezione. Il
+   * puntatore si ascolta SOLO fra uno `start()` e uno `stop()` — "gestisce il
+   * puntatore solo quando è a fuoco" del brief — non sempre come in legacy
+   * (lì la sezione esiste comunque solo mentre è nel viewport). */
+  if (external){
+    reveal.style.setProperty('--lr', R + 'px');
+    var wantRun = false;
+    var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
+    document.addEventListener('visibilitychange', onVisE);
+    return {
+      start: function(){
+        wantRun = true;
+        if (!auto) rectEl.addEventListener('mousemove', onMove);
+        start();
+      },
+      stop: function(){
+        wantRun = false;
+        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+        stop();
+      },
+      // Nessuna misura in cache da ricalcolare: la rect si legge live a ogni
+      // fotogramma (Lissajous) o a ogni evento (puntatore). Esposto per
+      // simmetria con gli altri handle — il controller lo chiama solo se c'è.
+      resize: function(){},
+      dispose: function(){
+        stop();
+        document.removeEventListener('visibilitychange', onVisE);
+        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+      }
+    };
+  }
+
+  /* ── MONTAGGIO LEGACY (capitoli.html) — invariato ─────────────────────────*/
   section.classList.add('-live');
   section.style.setProperty('--lr', R + 'px');
 
@@ -115,4 +162,53 @@ WC.register('lithos', function(ctx){
     document.removeEventListener('visibilitychange', onVis);
     section.classList.remove('-live');
   };
+}
+
+/* ── I DUE PADRONI ───────────────────────────────────────────────────────────
+ * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * è un no-op innocuo. Esterno: un handle recuperabile che monta le due
+ * fotografie (base + rivelata, mascherata) dentro il `container` che gli passa
+ * il controller — niente CSS esterno da caricare, gli stili sono inline
+ * perché `effetti.html` non importa `css/sections.css`. */
+WC.register('lithos', function(ctx){
+  var section = document.getElementById('capLithos');
+  var reveal  = document.getElementById('wcLithosReveal');
+  if (!section || !reveal) return;
+  return mountLithos(ctx, { section: section, reveal: reveal, rectEl: section, external: false });
 });
+
+WC.effects = WC.effects || {};
+/* Vedi la nota gemella in js/saucer.js (Task 6, §4): `container.appendChild(host)`
+ * a OGNI `start()`, anche quando `inst` esiste già, sposta l'host in coda ai
+ * figli di `#stage-live` — l'ultimo effetto risvegliato dipinge sempre sopra i
+ * fermi-immagine congelati degli altri. */
+WC.effects.lithos = (function(){
+  var inst = null, host = null, reveal = null;
+  return {
+    start: function(container){
+      if (inst){ container.appendChild(host); inst.start(); return; }
+      host = document.createElement('div');
+      host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;pointer-events:auto;';
+      var base = document.createElement('div');
+      base.style.cssText = 'position:absolute;inset:0;background-position:center;background-size:cover;'
+        + 'background-repeat:no-repeat;filter:brightness(1.42) contrast(1.04);'
+        + 'background-image:url(assets/lithos0.webp);';
+      reveal = document.createElement('div');
+      reveal.style.cssText = 'position:absolute;inset:0;background-position:center;background-size:cover;'
+        + 'background-repeat:no-repeat;filter:brightness(1.42) contrast(1.04);'
+        + 'background-image:url(assets/lithos1.webp);--lx:50%;--ly:50%;--lr:260px;'
+        + '-webkit-mask-image:radial-gradient(circle var(--lr) at var(--lx) var(--ly),'
+        + '#000 0%,#000 42%,rgba(0,0,0,.55) 70%,transparent 100%);'
+        + 'mask-image:radial-gradient(circle var(--lr) at var(--lx) var(--ly),'
+        + '#000 0%,#000 42%,rgba(0,0,0,.55) 70%,transparent 100%);';
+      host.appendChild(base); host.appendChild(reveal);
+      container.appendChild(host);
+      var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
+      inst = mountLithos(ctx, { section: null, reveal: reveal, rectEl: container, external: true });
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      inst.start();
+    },
+    stop:   function(){ if (inst) inst.stop(); },
+    resize: function(){ if (inst) inst.resize(); }
+  };
+})();
