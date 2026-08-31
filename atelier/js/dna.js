@@ -30,7 +30,32 @@ WC.register('dna', function(ctx){
   var pin     = document.getElementById('wcManifestoPin');
   var canvas  = document.getElementById('wcDnaCanvas');
   var orbitEl = document.getElementById('wcDnaOrbit');
-  if (!section || !pin || !canvas) return;
+
+  /* RI-COLLOCAZIONE (Task 2, atelier/effetti.html). Il montaggio di default
+   * resta questo: sezione + pin + canvas del manifesto trovati per id, con
+   * l'offset a destra, le parole in orbita, lo ScrollTrigger della sezione.
+   * Se quel terzetto non c'è in pagina si cerca un elemento generico
+   * `[data-role="helix-stage"]`: fa lui da PIN (la size del canvas viene dal
+   * suo rettangolo, esattamente come per il manifesto) e da contenitore per
+   * il canvas dell'elica. In quel montaggio — `standalone` — l'elica sta al
+   * CENTRO (offsetX = 0, vedi CONFIG più sotto), non ci sono parole in
+   * orbita (erano pensate per stare accanto alla colonna di testo del
+   * manifesto, qui non c'è) e non c'è una sezione da pinnare: lo scroll che
+   * la muove è quello GLOBALE della pagina, non quello di una sezione. */
+  var standalone = false;
+  if (!section || !pin || !canvas) {
+    var mountEl = document.querySelector('[data-role="helix-stage"]');
+    if (!mountEl) return;
+    standalone = true;
+    pin = mountEl;
+    canvas = mountEl.querySelector('canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      mountEl.appendChild(canvas);
+    }
+    orbitEl = null; // niente parole in orbita fuori dal manifesto
+  }
 
   // Le parole in orbita attorno all'elica. Ogni parola esiste in DUE copie, una
   // sotto il canvas e una sopra, che si scambiano l'opacità a seconda di dove
@@ -89,9 +114,13 @@ WC.register('dna', function(ctx){
     return 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
   }
 
-  // Reduced-motion o niente WebGL: il capitolo resta com'era, testo su nero, e
-  // le parole diventano una lista in fila sotto il manifesto — leggibile, ferma.
-  if (!ctx.motionOk || typeof THREE === 'undefined') {
+  // Reduced-motion o niente WebGL: il capitolo (manifesto) resta com'era,
+  // testo su nero, e le parole diventano una lista in fila sotto il
+  // manifesto — leggibile, ferma. Fuori dal manifesto (montaggio standalone)
+  // reduced-motion NON spegne l'elica: è l'asse centrale della pagina, non
+  // un capitolo che si può saltare — resta un asse presente ma FERMO finché
+  // non si scorre (`reducedStandalone` più sotto decide come).
+  if ((!ctx.motionOk && !standalone) || typeof THREE === 'undefined') {
     canvas.style.display = 'none';
     if (orbitEl) {
       orbitEl.classList.add('-static');
@@ -104,6 +133,7 @@ WC.register('dna', function(ctx){
     }
     return;
   }
+  var reducedStandalone = standalone && !ctx.motionOk;
 
   if (orbitEl) {
     var back  = document.createElement('div'); back.className  = 'wc-dna-layer -back';
@@ -275,6 +305,23 @@ WC.register('dna', function(ctx){
     // 2.2 la porta circa 220 px a destra del centro — fuori dalla colonna.
     offsetX: 2.2
   };
+
+  if (standalone) {
+    /* TINTA CIANO (Task 2, atelier/effetti.html) — via CONFIG, mai nello
+     * shader: qui l'elica è l'asse della scena, non un capitolo a sé con le
+     * sue quattro fermate cromatiche, quindi le quattro fermate diventano
+     * gradazioni dello stesso ciano del sito (`#3ad8ff`, lo stesso `--hot`
+     * di nav e capsule) invece di blu→verd'acqua→viola→rosso. Restano
+     * SCURE come le originali — la fusione è additiva, vedi il commento sul
+     * CONFIG qui sopra — e la progressione buio→chiaro è la stessa. */
+    CONFIG.colorLow  = '#04222e';
+    CONFIG.colorAqua = '#08475c';
+    CONFIG.colorHigh = '#0d7e9e';
+    CONFIG.colorRed  = '#18c9f2';
+    // Al centro, non a destra: qui l'elica non condivide lo spazio con una
+    // colonna di testo — è lei l'asse della pagina.
+    CONFIG.offsetX = 0;
+  }
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true,
                                            powerPreference: 'high-performance' });
@@ -527,15 +574,46 @@ WC.register('dna', function(ctx){
     camera.updateProjectionMatrix();
   }
 
+  /* MONTAGGIO STANDALONE — lo scroll che muove l'elica è quello GLOBALE
+   * della pagina, non quello di una sezione pinnata (qui non ce n'è una).
+   * Il canale preferito è Lenis: il core lo mette su `WC.lenis` solo su
+   * desktop con motion consentito, e il suo getter `.progress` è già
+   * `scroll/limite` in 0..1. Altrove — mobile, o reduced-motion, dove
+   * `WC.lenis` resta null — lo scroll è quello nativo del browser e si
+   * calcola a mano sull'altezza scorribile del documento. */
+  function globalScrollProgress(){
+    if (WC.lenis) return G.clamp01(WC.lenis.progress);
+    var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    return G.clamp01(window.scrollY / max);
+  }
+
+  /* UN SOLO FOTOGRAMMA, per il montaggio standalone in reduced-motion: niente
+   * `requestAnimationFrame` che si riproponga da solo, niente smorzamento nel
+   * tempo (`scroll` è già stato portato al target da chi chiama), niente
+   * parallasse del cursore. Si ridisegna solo perché qualcosa di esplicito è
+   * cambiato — lo scroll, il resize — mai da sé. */
+  function renderOnce(){
+    uniforms.uAppear.value = 1;
+    camera.position.set(0, 0, 8.67);
+    camera.lookAt(0, 0, 0);
+    group.position.y = -scroll * CONFIG.scrollClimb;
+    group.rotation.y = scroll * (CONFIG.spin + CONFIG.scrollSpin);
+    atmo.step(scroll * CONFIG.scrollAtmoTime, camera, dpr, size.h);
+    renderer.render(scene, camera);
+  }
+
   function frame(){
     raf = requestAnimationFrame(frame);
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
+    if (standalone) scrollTarget = globalScrollProgress();
     scroll += (scrollTarget - scroll) * G.damp(0.12, dt);
     // La comparsa segue lo scroll: legata all'orologio, avrebbe continuato a
-    // schiarire da sola dopo che il dito si è fermato.
-    appear = G.clamp01(scroll / 0.05);
+    // schiarire da sola dopo che il dito si è fermato. Fuori dal manifesto
+    // l'elica non ha un momento di ingresso da rivelare: è l'asse della
+    // pagina, dev'esserci già al primo fotogramma.
+    appear = standalone ? 1 : G.clamp01(scroll / 0.05);
 
     // `uTime` e `uTwist` NON si toccano più a ogni frame: sono la forma, e la
     // forma è quella. Restano al valore che hanno preso alla costruzione.
@@ -735,36 +813,59 @@ WC.register('dna', function(ctx){
 
   resize();
 
-  /* PIN. Qui prima c'era il contrario, e il commento diceva che bloccare il
-   * manifesto a schermo lo avrebbe trasformato in una sosta. Vale se durante la
-   * sosta non succede niente: qui in quei 160svh il testo si accende parola per
-   * parola, le spire si stringono e sedici parole scendono in spirale. Non è
-   * una sosta, è il tempo del capitolo — e senza pin non c'era modo di darglielo,
-   * perché il canvas scorreva via insieme alla sezione.
-   *
-   * `pinSpacing: false` come in tutti gli altri capitoli della pagina: lo spazio
-   * di scroll ce l'ha già la sezione (260svh in sections.css), e lasciare che
-   * ScrollTrigger ne aggiunga altro darebbe una schermata vuota in fondo. */
-  var stPin = ScrollTrigger.create({
-    trigger: section, start: 'top top', end: 'bottom bottom',
-    pin: pin, pinSpacing: false, anticipatePin: 1,
-    onUpdate: function(self){ scrollTarget = self.progress; }
-  });
-  // Il loop vive e muore con la sezione in quadro: il pin misura il progresso,
-  // questo accende e spegne. Sono due cose diverse e vogliono due trigger —
-  // il pin comincia quando la sezione tocca il bordo alto, ma il canvas si deve
-  // vedere già da quando entra dal basso.
-  var stLife = ScrollTrigger.create({
-    trigger: section, start: 'top bottom', end: 'bottom top',
-    onToggle: function(self){ self.isActive ? start() : stop(); }
-  });
+  var stPin = null, stLife = null, onScroll = null;
 
-  var onResize = function(){ resize(); };
+  if (!standalone) {
+    /* PIN. Qui prima c'era il contrario, e il commento diceva che bloccare il
+     * manifesto a schermo lo avrebbe trasformato in una sosta. Vale se durante la
+     * sosta non succede niente: qui in quei 160svh il testo si accende parola per
+     * parola, le spire si stringono e sedici parole scendono in spirale. Non è
+     * una sosta, è il tempo del capitolo — e senza pin non c'era modo di darglielo,
+     * perché il canvas scorreva via insieme alla sezione.
+     *
+     * `pinSpacing: false` come in tutti gli altri capitoli della pagina: lo spazio
+     * di scroll ce l'ha già la sezione (260svh in sections.css), e lasciare che
+     * ScrollTrigger ne aggiunga altro darebbe una schermata vuota in fondo. */
+    stPin = ScrollTrigger.create({
+      trigger: section, start: 'top top', end: 'bottom bottom',
+      pin: pin, pinSpacing: false, anticipatePin: 1,
+      onUpdate: function(self){ scrollTarget = self.progress; }
+    });
+    // Il loop vive e muore con la sezione in quadro: il pin misura il progresso,
+    // questo accende e spegne. Sono due cose diverse e vogliono due trigger —
+    // il pin comincia quando la sezione tocca il bordo alto, ma il canvas si deve
+    // vedere già da quando entra dal basso.
+    stLife = ScrollTrigger.create({
+      trigger: section, start: 'top bottom', end: 'bottom top',
+      onToggle: function(self){ self.isActive ? start() : stop(); }
+    });
+  } else if (reducedStandalone) {
+    /* NIENTE MOTO A RIPOSO fuori dal manifesto: la guardia più sopra non
+     * spegne l'elica in reduced-motion (è l'asse della pagina), ma qui le
+     * toglie il loop che gira da solo — un fotogramma all'avvio, poi uno per
+     * ogni scroll, mai un `requestAnimationFrame` continuo. `scroll` salta
+     * dritto al target invece di rincorrerlo: senza un rAF continuo lo
+     * smorzamento non avrebbe modo di finire di convergere. */
+    scrollTarget = scroll = globalScrollProgress();
+    renderOnce();
+    onScroll = function(){
+      scrollTarget = scroll = globalScrollProgress();
+      renderOnce();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+  } else {
+    // L'asse è sempre vivo: non c'è una sezione da aspettare, parte subito.
+    start();
+  }
+
+  var onResize = function(){ resize(); if (reducedStandalone) renderOnce(); };
   window.addEventListener('resize', onResize);
 
   cleanups.push(function(){
     stop();
-    stPin.kill(); stLife.kill();
+    if (stPin) stPin.kill();
+    if (stLife) stLife.kill();
+    if (onScroll) window.removeEventListener('scroll', onScroll);
     window.removeEventListener('resize', onResize);
     geometry.dispose(); material.dispose();
     atmo.dispose(); renderer.dispose();

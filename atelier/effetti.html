@@ -24,13 +24,32 @@
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%}
   body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
-    overflow:hidden;-webkit-font-smoothing:antialiased;
-    /* Lo scorrimento e' DIROTTATO sulla rotazione dell'anello: la pagina non
-       scorre, gira. Senza questi due il telefono si prende il gesto per se'
-       (trascinamento elastico, tira-per-ricaricare) e la giostra non si muove. */
-    touch-action:none;overscroll-behavior:none}
+    -webkit-font-smoothing:antialiased;
+    /* NEL FOGLIO ORIGINALE (indice, mazzo acceso) lo scorrimento era
+       DIROTTATO sulla rotazione dell'anello e la pagina non scorreva affatto
+       — da qui touch-action:none e overflow:hidden. Qui il mazzo è spento e
+       l'asse centrale (Task 2) ha bisogno del contrario: una pagina che
+       scorre DAVVERO, perché è lo scroll a far salire e girare l'elica. */
+    overscroll-behavior-y:none}
   canvas{display:block;width:100%;height:100%}
   #stage{position:fixed;inset:0}
+
+  /* L'ASSE CENTRALE (Task 2) — l'elica DNA di js/dna.js, montata su questo
+     elemento invece che sul pin del manifesto (`[data-role="helix-stage"]`
+     è quello che dna.js cerca quando non trova #wcManifestoPin). Sta SOPRA
+     al fondo (#stage: il suo renderer è opaco, cancella ogni fotogramma —
+     dietro non ci sarebbe niente da vedere) e SOTTO alla nav/atrio/etichette,
+     che restano leggibili sopra di lei. `pointer-events:none`: è un fondale,
+     non deve intercettare i click destinati al bottone dell'atrio. */
+  #helixStage{position:fixed;inset:0;z-index:2;pointer-events:none}
+
+  /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
+     (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
+     documento, `document.documentElement.scrollHeight` non supera mai
+     l'altezza dello schermo e non c'è scroll — né nativo né di Lenis — da
+     dare all'elica. Non si vede (è dietro a tutto, a `z-index` di base) ma
+     è lui a dare al documento l'altezza su cui scorrere. */
+  #scrollSpacer{position:relative;height:400vh;pointer-events:none}
 
   /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
      superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
@@ -251,6 +270,16 @@
 
 <div id="stage"><canvas id="c"></canvas></div>
 
+<!-- L'ASSE CENTRALE (Task 2): l'elica DNA, sempre viva, dietro al mazzo
+     (spento per ora) e davanti al fondo. `data-role="helix-stage"` è
+     l'elemento di misura che js/dna.js usa al posto di #wcManifestoPin
+     quando non trova il manifesto — qui grande quanto lo schermo, e
+     centrata (offsetX = 0) invece che spostata a destra della colonna di
+     testo che qui non c'è. -->
+<div id="helixStage" data-role="helix-stage" aria-hidden="true">
+  <canvas id="helixCanvas"></canvas>
+</div>
+
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
 <div id="hero">
@@ -283,7 +312,26 @@
 
 <div id="err"></div>
 
+<!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
+     cui scorrere, così l'asse centrale (Task 2) ha un progresso di scroll
+     globale da leggere. -->
+<div id="scrollSpacer" aria-hidden="true"></div>
+
+<!-- Task 2 — l'asse centrale (l'elica DNA di js/dna.js) porta con sé il
+     modulo WC che la registra e la sua base di scroll: gsap+ScrollTrigger
+     (core.js li registra sempre, anche se qui non c'è una sezione da
+     pinnare), lenis (lo scroll fluido su desktop — WC.lenis, letto da
+     dna.js per il progresso globale), e glsl.js (gli aiutanti G.* che dna.js
+     usa: colori, smorzamento, atmosfera, puntatore). CustomEase/SplitText/
+     Flip/ScrambleTextPlugin restano fuori: core.js li registra solo se
+     `typeof` li trova, e qui non serve nessuno dei quattro. -->
+<script src="vendor/gsap.min.js?v=20260824a"></script>
+<script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
+<script src="vendor/lenis.min.js?v=20260824a"></script>
 <script src="vendor/three.min.js?v=20260824a"></script>
+<script src="js/core.js?v=20260824a"></script>
+<script src="js/glsl.js?v=20260824a"></script>
+<script src="js/dna.js?v=20260824a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
@@ -1096,7 +1144,10 @@
      mezzo giro su un mouse a scatti. */
   window.addEventListener('wheel', function(e){
     if (openW) return;
-    e.preventDefault();
+    // Il mazzo e' spento (Task 2, atelier/effetti): niente da dirottare, lo
+    // scroll passa alla pagina — che ora ha un'altezza vera da scorrere
+    // (#scrollSpacer) e un asse (l'elica) che legge quel progresso.
+    if (DECK_ON) e.preventDefault();
     if (svegliaGiostra()) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
@@ -1136,9 +1187,9 @@
     if (openW) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
-      e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
+      if (DECK_ON) e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
     } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
-      e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
+      if (DECK_ON) e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
     } else if (k === 'Enter'){
       if (svegliaGiostra()) return;
       if (hot){ e.preventDefault(); enter(hot); }
