@@ -70,6 +70,29 @@ const OPEN_VAL = process.env.ROBOT_SHOT_OPEN !== undefined
   ? Number(process.env.ROBOT_SHOT_OPEN)
   : null;
 const FOCUS_HEAD = process.env.ROBOT_SHOT_FOCUS_HEAD === '1';
+// Estensioni Task 5 (cervello dentro la testa):
+//  - ROBOT_SHOT_HOLD=<json>: imposta window.__robot.hold prima dello
+//    screenshot, un override deterministico che il loop di robot.js consuma
+//    quando il puntatore NON è attivo — {"yaw":0.45,"pitch":0,"face":0.8}.
+//    Serve a mettere la testa in una posa stabile (girata + che "guarda", cioè
+//    faceAmount alto) senza dover combattere l'overlay .wc-robot-copy che
+//    intercetta i mousemove al centro dello stage. Applicato dopo che
+//    window.__robot è pronto; si attende la convergenza dello smoothing.
+//  - ROBOT_SHOT_VESPER=1: flusso ALTERNATIVO che verifica il capVesper (il
+//    cervello di Vesper, da cui il point-brain è estratto) invece del robot:
+//    scrolla in capVesper a una frazione del suo range di pin
+//    (ROBOT_SHOT_VESPER_FRAC, default 0.8, dove si forma il cervello del
+//    terzo atto), lascia girare l'animazione e screenshotta. Salta le attese
+//    e le asserzioni specifiche del robot (window.__robot), tiene console/host.
+const HOLD_RAW = process.env.ROBOT_SHOT_HOLD;
+let HOLD = null;
+if (HOLD_RAW !== undefined) {
+  try { HOLD = JSON.parse(HOLD_RAW); } catch (_) { console.error('ROBOT_SHOT_HOLD non è JSON valido:', HOLD_RAW); }
+}
+const VESPER = process.env.ROBOT_SHOT_VESPER === '1';
+const VESPER_FRAC = process.env.ROBOT_SHOT_VESPER_FRAC !== undefined
+  ? Number(process.env.ROBOT_SHOT_VESPER_FRAC)
+  : 0.8;
 const POINTER_RAW = process.env.ROBOT_SHOT_POINTER;
 let POINTER_FRAC = null; // frazione orizzontale -1..1, null = nessun movimento
 if (POINTER_RAW === 'left') POINTER_FRAC = -1;
@@ -183,24 +206,44 @@ async function main(){
       await page.waitForTimeout(150);
     }
 
-    // Porta #cap05 in vista: passa da WC.lenis.scrollTo (come fa già
-    // js/tunnel.js per lo scroll programmato) così Lenis e ScrollTrigger
-    // restano sincronizzati; un window.scrollTo/scrollIntoView nudo si sfasa
-    // da Lenis che, al frame dopo, riporta lo scroll dove pensa di essere.
-    await page.evaluate(() => {
-      const el = document.getElementById('cap05');
-      if (!el) return;
-      if (window.WC && window.WC.lenis) window.WC.lenis.scrollTo(el, { immediate: true });
-      else el.scrollIntoView({ block: 'center' });
-    });
-
-    // Aspetta window.__robot (poll, timeout ~30s)
     let robotReady = false;
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      robotReady = await page.evaluate(() => !!(window.__robot && window.__robot.model));
-      if (robotReady) break;
-      await page.waitForTimeout(250);
+    let robotState = null;
+
+    if (VESPER) {
+      // ---- Flusso capVesper (Task 5): il cervello di Vesper, da cui il
+      // point-brain è estratto. Scrolla in capVesper a una frazione del suo
+      // range di pin (dove nel terzo atto si forma il cervello), poi lascia
+      // girare l'animazione. Salta l'attesa/asserzione di window.__robot. ----
+      await page.evaluate((frac) => {
+        const el = document.getElementById('capVesper');
+        if (!el) return;
+        const top = (window.scrollY || window.pageYOffset || 0) + el.getBoundingClientRect().top;
+        const range = Math.max(1, el.offsetHeight - window.innerHeight);
+        const y = top + frac * range;
+        if (window.WC && window.WC.lenis) window.WC.lenis.scrollTo(y, { immediate: true });
+        else window.scrollTo(0, y);
+      }, VESPER_FRAC);
+      // Il raduno del cervello + il respiro hanno bisogno di qualche secondo.
+      await page.waitForTimeout(2800);
+    } else {
+      // Porta #cap05 in vista: passa da WC.lenis.scrollTo (come fa già
+      // js/tunnel.js per lo scroll programmato) così Lenis e ScrollTrigger
+      // restano sincronizzati; un window.scrollTo/scrollIntoView nudo si sfasa
+      // da Lenis che, al frame dopo, riporta lo scroll dove pensa di essere.
+      await page.evaluate(() => {
+        const el = document.getElementById('cap05');
+        if (!el) return;
+        if (window.WC && window.WC.lenis) window.WC.lenis.scrollTo(el, { immediate: true });
+        else el.scrollIntoView({ block: 'center' });
+      });
+
+      // Aspetta window.__robot (poll, timeout ~30s)
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        robotReady = await page.evaluate(() => !!(window.__robot && window.__robot.model));
+        if (robotReady) break;
+        await page.waitForTimeout(250);
+      }
     }
 
     // Task 3: inquadra da vicino la testa (bbox di parts.head), camera
@@ -265,6 +308,16 @@ async function main(){
       await page.waitForTimeout(1800);
     }
 
+    // Task 5: posa deterministica della testa (hold) — la testa "guarda"
+    // (faceAmount alto) ed eventualmente è girata di lato, senza puntatore
+    // reale (che l'overlay .wc-robot-copy intercetterebbe al centro). Il loop
+    // di robot.js, quando il puntatore non è attivo, consuma window.__robot.hold
+    // {yaw,pitch,face}. Si attende la convergenza dello smoothing esponenziale.
+    if (HOLD) {
+      await page.evaluate((h) => { if (window.__robot) window.__robot.hold = h; }, HOLD);
+      await page.waitForTimeout(1800);
+    }
+
     // Un giro di render in più prima dello screenshot.
     await page.waitForTimeout(400);
 
@@ -286,7 +339,7 @@ async function main(){
     // Task 4: stato diagnostico (rotazione testa, faceAmount, uOpen) —
     // stampato SEMPRE (non solo con POINTER) così anche i run Task 1/2/3
     // possono leggerlo senza rompere l'output esistente.
-    const robotState = await page.evaluate(() => {
+    robotState = await page.evaluate(() => {
       const r = window.__robot;
       if (!r) return null;
       return {
@@ -294,6 +347,7 @@ async function main(){
         headRotX: r.headGroup ? r.headGroup.rotation.x : null,
         faceAmount: r.state ? r.state.faceAmount : null,
         uOpen: r.glass ? r.glass.uniforms.uOpen.value : null,
+        brainAlpha: (r.brain && r.brain.uniforms && r.brain.uniforms.iAlpha) ? r.brain.uniforms.iAlpha.value : null,
       };
     });
 
@@ -338,7 +392,7 @@ async function main(){
       console.error('FAIL: errori di pagina (uncaught):', pageErrors.join(' | '));
       failed = true;
     }
-    if (!robotReady) {
+    if (!VESPER && !robotReady) {
       console.error('FAIL: window.__robot non è comparso entro il timeout');
       failed = true;
     }

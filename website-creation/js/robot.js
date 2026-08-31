@@ -187,6 +187,51 @@ WC.register('robot', function(ctx){
           });
 
           window.__robot.headGroup = headGroup;
+
+          // Task 5: il point-brain DENTRO la testa. Stesso helper del cervello
+          // di Vesper (WC.pointBrain, js/pointbrain.js). Parentato a headGroup,
+          // si muove in sincrono con la testa; si accende solo quando la testa
+          // guarda il cursore (revealValue nel loop, da state.faceAmount).
+          if (WC.pointBrain) {
+            // Centro e raggio della testa in coordinate LOCALI di headGroup, non
+            // mondo: headGroup ha solo posizione, ma `model` può portare una
+            // scala propria dal GLB — lavorare in locale slega il brain da quella
+            // scala (il raggio va nelle stesse unità delle mesh figlie).
+            headGroup.updateMatrixWorld(true);
+            var invHead = new THREE.Matrix4().copy(headGroup.matrixWorld).invert();
+            var localHeadBox = new THREE.Box3();
+            parts.head.forEach(function (m) {
+              m.updateWorldMatrix(true, false);
+              localHeadBox.union(new THREE.Box3().setFromObject(m).applyMatrix4(invHead));
+            });
+            var headCenterLocal = localHeadBox.getCenter(new THREE.Vector3());
+            var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
+            var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
+
+            var brain = WC.pointBrain.create({ count: 4000, radius: headRadius * 0.5, color: 0x8bd6ff });
+            brain.points.position.copy(headCenterLocal);
+            // Draw order: il vetro (Task 3) è transparent + depthWrite:false, non
+            // scrive profondità e quindi NON occlude il brain; i punti sono
+            // additivi, aggiungono luce sopra a ciò che c'è dietro. renderOrder
+            // default (0) li lascia interlacciare per z col guscio di vetro — la
+            // lettura più corretta di "cervello dentro il vetro". Verificato a
+            // schermo (task5-brain-on) che sono visibili attraverso il vetro
+            // aperto e spenti col vetro chiuso.
+            headGroup.add(brain.points);
+
+            // Taratura della dimensione dei punti. Nello shader del brain
+            // gl_PointSize ≈ uSize * 200 / (-mv.z), con -mv.z ≈ distanza
+            // camera→testa in unità MONDO. Il modello non è in unità "piccole"
+            // (la camera sta a maxDim*1.6, vedi sopra), quindi la uSize di
+            // default (tarata su Vesper: camera vicina, raggio ~1) renderebbe
+            // punti invisibili. La lego alla distanza reale così legge a qualunque
+            // scala del GLB.
+            var headCenterWorld = headGroup.localToWorld(headCenterLocal.clone());
+            var camDist = cam.position.distanceTo(headCenterWorld);
+            brain.uniforms.uSize.value = 4 * camDist / 200;
+
+            window.__robot.brain = brain;
+          }
         }
 
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
@@ -206,11 +251,14 @@ WC.register('robot', function(ctx){
 
       var raf;
       var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
+      var lastTick = clockStart;
+      var revealValue = 0;   // Task 5: quanto è "acceso" il brain, insegue faceAmount
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
+        var now = (window.performance && performance.now) ? performance.now() : Date.now();
+        var dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
         if (robot && robot.glass) {
-          var now = (window.performance && performance.now) ? performance.now() : Date.now();
           robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
         }
         // Task 4: la testa segue il cursore (clampata), faceAmount misura
@@ -224,6 +272,13 @@ WC.register('robot', function(ctx){
             targetYaw = Math.max(-0.5, Math.min(0.5, pointer.x * 0.5));
             targetPitch = Math.max(-0.3, Math.min(0.3, -pointer.y * 0.35));
             robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
+          } else if (robot.hold) {
+            // Override deterministico per l'harness (window.__robot.hold): posa
+            // la testa (yaw/pitch) e tiene faceAmount a `face`, senza puntatore
+            // reale — che l'overlay .wc-robot-copy intercetterebbe al centro.
+            targetYaw = robot.hold.yaw || 0;
+            targetPitch = robot.hold.pitch || 0;
+            robot.state.faceAmount += ((robot.hold.face || 0) - robot.state.faceAmount) * 0.08;
           } else {
             robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
           }
@@ -232,6 +287,13 @@ WC.register('robot', function(ctx){
           if (robot.glass) {
             robot.glass.uniforms.uOpen.value += (robot.state.faceAmount - robot.glass.uniforms.uOpen.value) * 0.1;
           }
+        }
+        // Task 5: il brain si accende quando la testa guarda (faceAmount), con
+        // lo stesso smoothing morbido del vetro. update() fa respirare i punti
+        // e pilota opacità/emissione con revealValue (0 = spento/invisibile).
+        if (robot && robot.brain && robot.state) {
+          revealValue += (robot.state.faceAmount - revealValue) * 0.08;
+          robot.brain.update(dt, revealValue);
         }
         renderer.render(scene, cam);
       })();

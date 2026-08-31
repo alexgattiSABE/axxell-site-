@@ -766,112 +766,14 @@ WC.register('vesper', function(ctx){
     uCursorRadius:      { value: 0.1 }
   };
 
-  var brainMaterial = new THREE.ShaderMaterial({
-    uniforms: brainUniforms,
-    vertexShader: [
-      'attribute float aSeed; attribute float aOcclusion; attribute vec3 aNormal;',
-      'uniform float iTime; uniform float iResolutionY; uniform float uSize; uniform float uSynapseRate;',
-      'uniform float uCenterRadius; uniform float uFlowSpeed; uniform float uFlowAmount;',
-      'uniform vec3 uHighlightPos; uniform float uHighlightRadius; uniform float uHighlightStrength;',
-      'uniform float uExplode; uniform float uExplodeDist;',
-      'uniform vec2 uMouse; uniform float uCursor; uniform float uAspect; uniform float uCursorRadius;',
-      'varying float vSeed; varying float vSynapse; varying float vHemi; varying float vDepth;',
-      'varying float vFrontness; varying float vCenterness; varying float vOcclusion; varying float vHighlight;',
-      'varying float vFar; varying float vCursor; varying vec3 vWorldPos;',
-      'void main() {',
-      '  vSeed = aSeed; vOcclusion = aOcclusion;',
-      '  vec3 p = position; vWorldPos = p; vHemi = step(0.0, p.x);',
-      '  vHighlight = (1.0 - smoothstep(0.0, uHighlightRadius, distance(position, uHighlightPos))) * uHighlightStrength;',
-      '  vec3 focalDir = normalize(uHighlightPos + vec3(1e-5));',
-      '  float align = dot(normalize(position + vec3(1e-5)), focalDir);',
-      '  vFar = smoothstep(0.55, -0.35, align);',
-      '  vec3 rad = normalize(p + vec3(1e-5));',
-      '  float breathe = sin(iTime * 1.6 + aSeed * 6.0) * 0.012;',
-      '  p += rad * breathe;',
-      '  vec3 nrm = normalize(aNormal + vec3(1e-5));',
-      '  vec3 ref = abs(nrm.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);',
-      '  vec3 tA = normalize(cross(nrm, ref));',
-      '  vec3 tB = cross(nrm, tA);',
-      '  float ph = iTime * uFlowSpeed + aSeed * 6.2831;',
-      '  vec3 loopDir = tA * cos(ph) + tB * sin(ph);',
-      '  p += loopDir * uFlowAmount;',
-      '  vec3 exDir = normalize(rad + vec3(sin(aSeed * 41.0), cos(aSeed * 57.0), sin(aSeed * 73.0)) * 0.45);',
-      '  p += exDir * uExplode * uExplodeDist;',
-      '  float period = mix(3.0, 9.0, aSeed);',
-      '  float firePhase = aSeed * period;',
-      '  float ft = mod(iTime + firePhase, period);',
-      '  float fire = pow(clamp(1.0 - ft / 0.4, 0.0, 1.0), 2.5);',
-      '  if (aSeed > uSynapseRate) fire = 0.0;',
-      '  vSynapse = fire;',
-      '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
-      '  vec4 centerMv = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);',
-      '  float rel = centerMv.z - mv.z;',
-      '  vFrontness = clamp(rel * 0.6 + 0.5, 0.0, 1.0);',
-      '  gl_Position = projectionMatrix * mv;',
-      '  vec4 centerClip = projectionMatrix * centerMv;',
-      '  vec2 centerNDC = centerClip.xy / max(0.0001, centerClip.w);',
-      '  vec2 pNDC = gl_Position.xy / max(0.0001, gl_Position.w);',
-      '  float screenDist = length(pNDC - centerNDC);',
-      '  vCenterness = 1.0 - clamp(screenDist / max(0.05, uCenterRadius), 0.0, 1.0);',
-      '  vec2 dMouse = pNDC - uMouse; dMouse.x *= uAspect;',
-      '  vCursor = (1.0 - smoothstep(0.0, uCursorRadius, length(dMouse))) * uCursor;',
-      '  float baseSize = uSize * (iResolutionY / 720.0) * (200.0 / -mv.z);',
-      // I lampi di sinapsi divampano più piccoli della sorgente (era fire * 2.5):
-      // uno scintillio, non un flash.
-      '  gl_PointSize = baseSize * (1.0 + fire * 0.8 + vHighlight * 1.8 + vCursor * 1.3);',
-      '  vDepth = -mv.z;',
-      '}'
-    ].join('\n'),
-    fragmentShader: [
-      'precision highp float;',
-      'uniform vec3 uCool; uniform vec3 uWarm; uniform vec3 uEdgeColor; uniform vec3 uCenterColor;',
-      'uniform float uCenterFalloff; uniform vec3 uSynapse; uniform float iAlpha; uniform float uGlow;',
-      'uniform float uDepthDarkness; uniform vec3 uDeepColor; uniform float uOcclusionStrength;',
-      'uniform vec3 uHighlightColor; uniform float uHighlightStrength; uniform float uFocusFadeStrength;',
-      'uniform float uIsolateStrength; uniform float uExplode; uniform vec3 uCursorColor;',
-      'varying float vSeed; varying float vSynapse; varying float vHemi; varying float vDepth;',
-      'varying float vFrontness; varying float vCenterness; varying float vOcclusion; varying float vHighlight;',
-      'varying float vFar; varying float vCursor; varying vec3 vWorldPos;',
-      'void main() {',
-      '  vec2 p = gl_PointCoord - 0.5;',
-      '  float r = length(p);',
-      '  if (r > 0.5) discard;',
-      '  float core = pow(smoothstep(0.5, 0.0, r), 2.2);',
-      '  float t = pow(vCenterness, max(0.05, uCenterFalloff));',
-      // Gradiente verticale pieno come sull'orb: freddo in basso, caldo in alto.
-      // Regge tutta la forma (la vecchia tinta al 35% su base color-bordo si
-      // leggeva piatta); sfuma verso l'interno scuro, e il bordo esterno è
-      // rialzato col colore di silhouette.
-      '  float vt = clamp(smoothstep(-0.7, 0.9, vWorldPos.y) + vSeed * 0.12, 0.0, 1.0);',
-      '  vec3 grad = mix(uCool, uWarm, vt);',
-      '  vec3 base = mix(grad, uCenterColor, t);',
-      '  base = mix(base, uEdgeColor, (1.0 - t) * 0.18);',
-      '  base = mix(base, uDeepColor, clamp(vOcclusion * uOcclusionStrength, 0.0, 1.0));',
-      '  vec3 col = base + uSynapse * vSynapse * 2.0;',
-      '  col = mix(col, uHighlightColor, vHighlight * 0.5);',
-      '  col += uHighlightColor * vHighlight * 0.7;',
-      '  float nonFocus = (1.0 - vHighlight) * uHighlightStrength;',
-      '  col = mix(col, uDeepColor, nonFocus * uIsolateStrength);',
-      '  float depthMul = mix(1.0 - uDepthDarkness, 1.0, vFrontness);',
-      '  col *= depthMul;',
-      '  float alphaOut = core * iAlpha * mix(1.0 - uDepthDarkness * 0.7, 1.0, vFrontness);',
-      '  alphaOut *= 1.0 + vHighlight * 0.8;',
-      '  float focusDim = 1.0 - uHighlightStrength * uFocusFadeStrength * vFar;',
-      '  col *= focusDim; alphaOut *= focusDim;',
-      '  col += uCursorColor * vCursor * 0.8;',
-      '  alphaOut += vCursor * core * 0.32;',
-      '  alphaOut *= 1.0 - smoothstep(0.0, 1.0, uExplode) * 0.8;',
-      '  gl_FragColor = vec4(col * uGlow, alphaOut);',
-      '}'
-    ].join('\n'),
-    transparent: true, depthWrite: false,
-    blending: THREE.AdditiveBlending
-  });
-
   var brainGroup = new THREE.Group();
   brainGroup.visible = false;
   scene.add(brainGroup);
-  var brainGeo = null, brainPoints = null;
+  // Il materiale del cervello nasce ora nella callback del fetch (via
+  // WC.pointBrain), non più sincrono a inizio scena: resta null finché la mesh
+  // non arriva. `brainUniforms` (sopra) è invece già pronto e viene passato al
+  // materiale così com'è — è lo stesso oggetto che il loop pilota.
+  var brainGeo = null, brainPoints = null, brainMaterial = null;
   var brainParallax = { ry: 0, rx: 0 };
 
   /* Decodifica del contenitore cotto: 'VBRN' + versione + conteggi, poi le
@@ -890,75 +792,29 @@ WC.register('vesper', function(ctx){
     return { positions: positions, indices: indices };
   }
 
-  /* Campionamento di superficie pesato per AREA, con normali geometriche.
-   * L'area cumulata serve perché un'estrazione uniforme sui triangoli
-   * sovracampionerebbe i grappoli di triangoli minuscoli e la nuvola farebbe
-   * grumi. Ogni campione è indipendente: un `count` più basso su uno scaglione
-   * debole è un vero sottocampione della stessa superficie, non una più grossa. */
-  function buildBrainGeometry(mesh, count, radius){
-    var verts = mesh.positions, indices = mesh.indices;
-    var triangleCount = indices.length / 3;
-
-    var cdf = new Float32Array(triangleCount);
-    var total = 0, t, a, b, c;
-    for (t = 0; t < triangleCount; t++) {
-      a = indices[t*3] * 3; b = indices[t*3+1] * 3; c = indices[t*3+2] * 3;
-      var ux = verts[b] - verts[a], uy = verts[b+1] - verts[a+1], uz = verts[b+2] - verts[a+2];
-      var vx = verts[c] - verts[a], vy = verts[c+1] - verts[a+1], vz = verts[c+2] - verts[a+2];
-      total += Math.hypot(uy*vz - uz*vy, uz*vx - ux*vz, ux*vy - uy*vx) * 0.5;
-      cdf[t] = total;
-    }
-    for (t = 0; t < triangleCount; t++) cdf[t] /= total;
-
-    var positions = new Float32Array(count * 3);
-    var normals   = new Float32Array(count * 3);
-    var seeds     = new Float32Array(count);
-    // Lo shader legge `aOcclusion`, ma il modello non ne porta: l'attributo è
-    // tutto zeri e `uOcclusionStrength` è 0 in tinta. Resta perché il layout
-    // degli attributi del materiale non si scomponga.
-    var occlusion = new Float32Array(count);
-
-    for (var s = 0; s < count; s++) {
-      var pick = Math.random(), lo = 0, hi = triangleCount - 1;
-      while (lo < hi) { var mid = (lo + hi) >> 1; if (cdf[mid] < pick) lo = mid + 1; else hi = mid; }
-      a = indices[lo*3] * 3; b = indices[lo*3+1] * 3; c = indices[lo*3+2] * 3;
-
-      // Punto baricentrico uniforme: la metà lontana del quadrato unitario viene
-      // ripiegata sulla diagonale, così la coppia cade dentro il triangolo.
-      var u = Math.random(), v = Math.random();
-      if (u + v > 1) { u = 1 - u; v = 1 - v; }
-      var w = 1 - u - v;
-
-      positions[s*3]   = (w*verts[a]   + u*verts[b]   + v*verts[c])   * radius;
-      positions[s*3+1] = (w*verts[a+1] + u*verts[b+1] + v*verts[c+1]) * radius;
-      positions[s*3+2] = (w*verts[a+2] + u*verts[b+2] + v*verts[c+2]) * radius;
-
-      var e1x = verts[b] - verts[a], e1y = verts[b+1] - verts[a+1], e1z = verts[b+2] - verts[a+2];
-      var e2x = verts[c] - verts[a], e2y = verts[c+1] - verts[a+1], e2z = verts[c+2] - verts[a+2];
-      var nx = e1y*e2z - e1z*e2y, ny = e1z*e2x - e1x*e2z, nz = e1x*e2y - e1y*e2x;
-      var len = Math.hypot(nx, ny, nz) || 1;
-      normals[s*3] = nx / len; normals[s*3+1] = ny / len; normals[s*3+2] = nz / len;
-
-      seeds[s] = Math.random();
-    }
-
-    var g = new THREE.BufferGeometry();
-    g.setAttribute('position',   new THREE.BufferAttribute(positions, 3));
-    g.setAttribute('aNormal',    new THREE.BufferAttribute(normals, 3));
-    g.setAttribute('aSeed',      new THREE.BufferAttribute(seeds, 1));
-    g.setAttribute('aOcclusion', new THREE.BufferAttribute(occlusion, 1));
-    return g;
-  }
-
   var brainAborted = false;
   fetch(BRAIN.meshUrl).then(function(res){
     if (!res.ok) throw new Error('brain mesh: ' + res.status + ' ' + res.statusText);
     return res.arrayBuffer();
   }).then(function(buf){
     if (brainAborted) return;
-    brainGeo = buildBrainGeometry(decodeBrainMesh(buf), tier.brainCount, BRAIN.radius);
-    brainPoints = new THREE.Points(brainGeo, brainMaterial);
-    brainPoints.frustumCulled = false;
+    // Il cervello di punti ora vive in WC.pointBrain (js/pointbrain.js), da cui
+    // lo riusa anche il robot (Task 5): il campionamento di superficie e lo
+    // shader dei punti stanno lì. Qui restano il contenitore cotto
+    // (decodeBrainMesh) e la coreografia. Le `brainUniforms` guidate nel loop
+    // sono lo STESSO oggetto passato al materiale, quindi la resa è identica.
+    var decoded = decodeBrainMesh(buf);
+    var srcGeo = new THREE.BufferGeometry();
+    srcGeo.setAttribute('position', new THREE.BufferAttribute(decoded.positions, 3));
+    srcGeo.setIndex(new THREE.BufferAttribute(decoded.indices, 1));
+    var brain = WC.pointBrain.create({
+      count: tier.brainCount, radius: BRAIN.radius,
+      sampleFrom: new THREE.Mesh(srcGeo), uniforms: brainUniforms
+    });
+    srcGeo.dispose();
+    brainGeo = brain.geometry;
+    brainMaterial = brain.material;
+    brainPoints = brain.points;   // frustumCulled già false dall'helper
     brainGroup.add(brainPoints);
   }).catch(function(err){
     // Un cervello che non arriva non deve portarsi giù il resto della scena.
@@ -1311,7 +1167,7 @@ WC.register('vesper', function(ctx){
     orbGeo.dispose(); orbMaterial.dispose();
     galSphere.dispose(); galMaterial.dispose();
     if (brainGeo) brainGeo.dispose();
-    brainMaterial.dispose();
+    if (brainMaterial) brainMaterial.dispose();
     atmoGeo.dispose(); atmoPoints.material.dispose();
     backdrop.geometry.dispose(); backdrop.material.dispose();
     heroLine.geometry.dispose(); heroLine.material.dispose();
