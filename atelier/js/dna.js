@@ -581,7 +581,20 @@ WC.register('dna', function(ctx){
    * `scroll/limite` in 0..1. Altrove — mobile, o reduced-motion, dove
    * `WC.lenis` resta null — lo scroll è quello nativo del browser e si
    * calcola a mano sull'altezza scorribile del documento. */
+  /* Task 4 (atelier/effetti.html) — LO SCORRIMENTO INFINITO. La pagina che
+   * monta l'elica in standalone non guida più il "progresso globale" (0..1,
+   * legato a quanto la pagina è scrollata) col mazzo di card sopra: il mazzo
+   * è infinito, non tocca mai fondo, e lo muove direttamente il gesto
+   * (rotellina/trascino/frecce), non la posizione di scroll. Se quella pagina
+   * espone `window.__effettiHelixScroll` (un numero SENZA il clamp 0..1, che
+   * cresce o cala senza limite insieme al mazzo) è quella la sorgente — è lo
+   * STESSO numero che posiziona le card, quindi elica e mazzo restano
+   * sincronizzati e l'elica sale/gira in continuità, senza mai "riavvolgersi"
+   * di scatto. Il ramo Lenis/scrollY resta per chi monta l'elica come prima
+   * (il manifesto, `capitoli.html`): lì il progresso 0..1 della sezione
+   * pinnata è ancora la sorgente giusta, e questa funzione non cambia per lui. */
   function globalScrollProgress(){
+    if (typeof window.__effettiHelixScroll === 'function') return window.__effettiHelixScroll();
     if (WC.lenis) return G.clamp01(WC.lenis.progress);
     var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     return G.clamp01(window.scrollY / max);
@@ -846,6 +859,19 @@ WC.register('dna', function(ctx){
      * ogni scroll, mai un `requestAnimationFrame` continuo. `scroll` salta
      * dritto al target invece di rincorrerlo: senza un rAF continuo lo
      * smorzamento non avrebbe modo di finire di convergere. */
+    /* FOLD-IN DA TASK 2/3 (Task 4) — LA GUARDIA DI TAGLIA.
+     * `resize()` più sopra (riga 827) ha già misurato il canvas una volta,
+     * PRIMA di sapere se si è in questo ramo — ma qui non c'è un secondo
+     * fotogramma che possa correggere in corsa un rettangolo letto a zero (il
+     * pin senza layout ancora fatto, per esempio). Se succedesse, il canvas
+     * resterebbe alla misura di default del tag `<canvas>` — 300×150 — e
+     * l'elica sarebbe invisibile pur essendo "presente" nel DOM: la promessa
+     * del brief è ferma MA PRESENTE, non ferma e invisibile. Ri-misurare qui,
+     * immediatamente prima del primo fotogramma disegnato, chiude la
+     * finestra. Guardato al ramo standalone+reduced: il manifesto
+     * (`!standalone`) non passa mai di qui, parte da `start()` e dal proprio
+     * ciclo `frame()` — questa riga non lo tocca. */
+    resize();
     scrollTarget = scroll = globalScrollProgress();
     renderOnce();
     onScroll = function(){

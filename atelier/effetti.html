@@ -356,15 +356,14 @@
      l'asse centrale. */
   var DECK_ON = true;
 
-  /* ⚠️ LA MINA DELLO SCROLL (Task 2→3). La giostra di index.html dirottava la
+  /* ⚠️ LA MINA DELLO SCROLL (Task 2→4). La giostra di index.html dirottava la
      rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
-     e bloccava lo scroll della pagina. Task 2 ha legato l'elica allo scroll
-     GLOBALE (Lenis su desktop, scrollY nativo altrove) tramite #scrollSpacer;
-     riaccendere quel dirottamento qui RI-bloccherebbe la pagina e fermerebbe
-     l'elica. Quindi la giostra-scroll resta SPENTA (`RING_SCROLL=false`): niente
-     preventDefault, niente spingi(); il disco legge lo STESSO progresso globale
-     che muove l'elica (vedi `deckScrollProgress()` e il blocco in frame()), così
-     elica e card scorrono insieme su una sola sorgente. */
+     e bloccava lo scroll della pagina — qui NON deve mai succedere: la pagina
+     resta scrollabile normalmente (vedi #scrollSpacer), anche se dal Task 4 in
+     poi non è più lei a muovere il mazzo. `RING_SCROLL` è rimasto come
+     interruttore per quel SOLO comportamento (il preventDefault che dirotta
+     rotellina/frecce): resta SEMPRE `false` — sezione 4 più sotto spiega da
+     dove viene invece mosso il mazzo dal Task 4. */
   var RING_SCROLL = false;
 
   /* ======================================================================
@@ -926,10 +925,14 @@
      spostano, lo sdoppiano nei tre colori. E' l'unico modo per avere
      davvero del testo rifratto senza rinunciare alla nitidezza di quello
      che conta.
-     Non e' solo una dimostrazione: e' l'elenco dei settori. Chi arriva
-     legge in un colpo se il suo mestiere c'e', e cliccando una riga si
-     porta davanti quel mondo. Le nove righe dicono quello che i nove
-     trattini in basso non possono dire.
+     Non e' solo una dimostrazione: e' l'elenco dei TIPI (Task 4 — cinque
+     righe, una per `CLUSTERS[]`, non piu' una per effetto: sette righe
+     dicevano "questi sono i sette nomi", cinque dicono "questi sono i cinque
+     modi in cui lavoriamo", che è la domanda a cui l'elenco deve rispondere.
+     Chi arriva legge in un colpo se il suo mestiere c'e', e cliccando una
+     riga si porta davanti il PRIMO effetto di quel tipo). I sette trattini in
+     basso restano uno per effetto — dicono "quale", l'elenco dice "quale
+     specie".
      ══════════════════════════════════════════════════════════════════ */
   var IW = 900, IH = 540, IROW0 = 150, IROWH = 44;
   var idxCv = document.createElement('canvas');
@@ -950,6 +953,9 @@
   bg.add(idxMesh);
 
   var idxSopra = -1;                 // la riga sotto al puntatore
+  /* Chi e' acceso non e' piu' "questa e' la card a fuoco" (un solo `w`): e'
+     "il tipo a cui appartiene la card a fuoco" — piu' card condividono lo
+     stesso tipo (`cluster`), e la riga resta accesa per tutte loro. */
   function idxDisegna(){
     idxG.clearRect(0,0,IW,IH);
     try { idxG.letterSpacing = '3px'; } catch(e){}
@@ -957,15 +963,15 @@
     idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
     idxG.fillStyle = 'rgba(240,240,246,0.82)';
     idxG.fillText('CHE COSA TI MOSTRO?', 34, 60);
-    WORLDS.forEach(function(w, i){
+    CLUSTERS.forEach(function(cl, i){
       var y = IROW0 + i*IROWH;
-      var acceso = (w === hot) || (i === idxSopra);
+      var acceso = (hot && hot.cluster === i) || (i === idxSopra);
       idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
       idxG.fillStyle = acceso
-        ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
+        ? 'rgba(' + cl.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
         : 'rgba(223,228,238,0.60)';
       idxG.fillText('->', 34, y);
-      idxG.fillText(w.sett.toUpperCase(), 84, y);
+      idxG.fillText(cl.tipo.toUpperCase(), 84, y);
     });
     idxTex.needsUpdate = true;
   }
@@ -976,7 +982,8 @@
 
   /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
      parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
-     si vede la rifrazione — cliccandoci si deve entrare nella lastra. */
+     si vede la rifrazione — cliccandoci si deve entrare nella lastra.
+     Torna l'indice del CLUSTER (0..4), non piu' quello dell'effetto. */
   function pickRiga(){
     if (idxMat.opacity < 0.25) return -1;
     ray.setFromCamera(ptr, camera);
@@ -984,7 +991,14 @@
     if (!h.length || !h[0].uv) return -1;
     var y = (1 - h[0].uv.y) * IH;
     var k = Math.round((y - IROW0)/IROWH);
-    return (k >= 0 && k < WORLDS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
+    return (k >= 0 && k < CLUSTERS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
+  }
+  /* Il primo effetto di un cluster: gli effetti sono già ordinati per
+     cluster in `EFFETTI` (vedi js/effetti-deck.js), quindi il primo con
+     quel `.cluster` è sempre lo stesso, stabile. */
+  function primoDelCluster(c){
+    for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].cluster === c) return WORLDS[i];
+    return null;
   }
 
   /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
@@ -1039,37 +1053,77 @@
      ══════════════════════════════════════════════════════════════════════ */
 
   /* ======================================================================
-     4. LA GIOSTRA — lo scorrimento fa girare l'anello.
-     Non c'e' una barra di scorrimento e la pagina non si muove di un pixel:
-     il gesto di scorrere viene dirottato sulla rotazione. E' la promessa che
-     il sito faceva gia' a parole nel capitolo dell'offerta — «un sito che si
-     attraversa, non uno che si sfoglia» — solo che qui l'asse non e'
-     verticale, e' l'anello.
-     Tre regole, e sono tutte e tre necessarie:
-       · finche' nessuno l'ha toccata la giostra gira DA SOLA, pianissimo.
-         Senza, nulla dice che si puo' girare: si vede una card e basta.
-       · appena la si prende in mano smette, e da li' in poi SCATTA sui suoi
-         fermi quando ci si ferma. Una giostra che si pianta a meta' fra due
-         mondi non ha scelto niente.
-       · lo scatto arriva DOPO il gesto, mai durante: 300 ms di silenzio.
-     ====================================================================== */
-  var spin = 0, spinT = 0;            // dov'e' l'anello, e dove sta andando
-  var toccato = false;                // qualcuno l'ha presa in mano?
-
-  /* Task 3 — LA SORGENTE DELLO SCROLL, LA STESSA DELL'ELICA.
-     dna.js legge il progresso globale così: Lenis su desktop (`WC.lenis.progress`,
-     già 0..1), altrove lo scroll nativo `scrollY/(scrollHeight−innerHeight)`.
-     Lo rifacciamo qui identico, così l'elica e il disco leggono lo STESSO
-     numero e scorrono insieme. #scrollSpacer (400vh) dà l'altezza da scorrere. */
-  function deckScrollProgress(){
-    var c = function(x){ return x < 0 ? 0 : (x > 1 ? 1 : x); };
-    if (typeof WC !== 'undefined' && WC.lenis && typeof WC.lenis.progress === 'number')
-      return c(WC.lenis.progress);
-    var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    return c(window.scrollY / max);
-  }
+     4. LO SCORRIMENTO INFINITO (Task 4) — un accumulatore che non tocca mai
+     fondo.
+     Task 3 leggeva il progresso GLOBALE della pagina (`deckScrollProgress()`,
+     0..1 da Lenis o da `scrollY`, dato da #scrollSpacer alto 400vh) e lo
+     mappava sulle sette card: bello finché non si arrivava in fondo allo
+     spacer, dopodiché lo scroll semplicemente si fermava — un mazzo di sette
+     effetti che finisce non è la promessa di un catalogo che cresce.
+     Qui `spinT` (e il suo inseguitore smorzato `spin`) tornano a essere quello
+     che erano nella giostra originale: un ACCUMULATORE senza fondo, mosso
+     direttamente dal gesto (rotellina, trascino, frecce) invece che dalla
+     posizione di scroll della pagina. Non c'è un massimo né un minimo: si
+     somma o si sottrae ad ogni gesto, e cresce o cala senza limite.
+     L'INFINITO STA TUTTO IN `wrapN`, GIÀ SCRITTO IN Task 3. Ogni card legge
+     solo la propria distanza dal fuoco `u = wrapN(i - spin, N)`, che è
+     periodica per costruzione: `spin` può valere 1000000 o -1000000, `u`
+     resta sempre nell'intervallo corto (-N/2, N/2]. Non c'è quindi nessun
+     "punto di riavvolgimento" da gestire a mano per le card — la coda si
+     ricongiunge alla testa da sola, esattamente come già succedeva scorrendo
+     avanti e indietro nella giostra originale, e il salto capo↔coda cade
+     dove `deckFade` ha già spento la lastra (vedi la taratura di Task 3).
+     `#scrollSpacer` resta in pagina (dà comunque un'altezza su cui il
+     documento PUO' scorrere, e con essa a Lenis un limite su cui calcolare
+     `.progress` per chi altro lo leggesse) ma NON è più la sorgente di
+     `spin`: il documento può arrivare in fondo al suo scroll nativo — la
+     barra si ferma — senza che il mazzo smetta di avanzare, perché il mazzo
+     non lo guarda più.
+     L'ELICA SEGUE LO STESSO `spin`, MAI RIAVVOLTO — vedi `window.__effettiHelixScroll`
+     più sotto e il punto in cui `frame()` lo aggiorna: qui sta la continuità
+     visiva across-wrap. Non c'è nessuna elica che "si riavvolge": sale e gira
+     con lo stesso numero delle card, che non torna mai indietro su sé stesso.
+     (Scelta (a) del brief — l'accumulatore grezzo, non periodico — invece di
+     avvolgere anche la traslazione verticale dell'elica: la geometria di
+     dna.js è un'unica striscia di punti FINITA, non una forma che si ripete a
+     ogni giro, quindi "avvolgerla" per periodo l'avrebbe fatta scattare da un
+     capo all'altro ad ogni chiusura — l'opposto della continuità richiesta.
+     Verificato a schermo su più giri completi, vedi il report.) */
+  var spin = 0, spinT = 0;            // dov'e' il mazzo, e dove sta andando
+  var toccato = false;                // qualcuno l'ha preso in mano?
   var lastInput = -1e9;
   var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+
+  /* IL PONTE VERSO L'ELICA (Task 4). dna.js, montato in modalità standalone
+     su #helixStage, cerca questa funzione PRIMA di leggere Lenis/scrollY (è
+     la stessa `globalScrollProgress()` che leggeva lo scroll globale, vedi il
+     suo commento): se la trova, l'elica sale e gira su `spin`, non più sul
+     progresso 0..1 della pagina — LO STESSO NUMERO SMORZATO che muove le
+     card, MAI RIAVVOLTO (vedi il commento sulla sezione 4). È tutto quello
+     che serve perché elica e mazzo restino sincronizzati e continui: non un
+     evento da ascoltare, una funzione da interrogare a ogni fotogramma —
+     dna.js la chiama dal proprio `frame()` in moto normale, e da qui la si
+     sveglia a mano (l'evento 'scroll' sintetico che `frame()` dispaccia più
+     sotto) quando è dna.js a
+     non avere un proprio rAF, cioè in reduced-motion.
+     `HELIX_LOOPS_PER_UNIT` — perché non `spin/(N-1)` e basta. Un "giro" del
+     mazzo (`spin` che avanza di N−1=6) e' esattamente l'intera escursione
+     che dna.js percorreva UNA volta sola nel manifesto (l'intero manifesto,
+     letto in un solo scroll dall'inizio alla fine): a quel ritmo la
+     geometria — una striscia di punti FINITA, non periodica, vedi il
+     commento in dna.js — si esauriva (schermo vuoto) dopo circa quattro giri
+     del mazzo, verificato a schermo. Un mazzo INFINITO che consuma la sua
+     elica dopo quattro giri non e' accettabile. Con questo divisore un giro
+     di scroll dell'elica costa OTTO giri del mazzo: l'elica resta comunque
+     visibilmente viva a ogni giro (sale e gira di un ottavo, non e' ferma) e
+     lo stesso punto di esaurimento arriva dopo ~32 giri del mazzo — verificato
+     a schermo restare piena e continua ben oltre i pochi giri con cui la si
+     collauda; a quella distanza (che una sessione reale non raggiunge quasi
+     mai) preferiamo un'elica che alla lunga si dirada a uno schermo vuoto in
+     un punto preciso e riproducibile — o al piu' un giorno da avvolgere per
+     periodo — a uno che scompare dopo pochi minuti di scorrimento normale. */
+  var HELIX_LOOPS_PER_UNIT = 8;
+  window.__effettiHelixScroll = function(){ return spin / (WORLDS.length - 1) / HELIX_LOOPS_PER_UNIT; };
 
   /* Quale mondo e' davanti: th = i*STEP + spin, e davanti c'e' chi ha th = 0. */
   function frontIdx(){
@@ -1089,16 +1143,21 @@
     }
     return false;
   }
+  /* L'unica guardia è `openW` (si è dentro a un mondo): niente più
+     RING_SCROLL — qui non c'è una modalità in cui l'input NON deve muovere
+     l'accumulatore, perché non c'è più una sorgente concorrente (la pagina)
+     che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra solo
+     per non fare `e.preventDefault()` su rotellina/frecce — vedi il
+     commento lì. */
   function spingi(d){
-    /* Task 3 — la giostra-scroll è spenta: il disco lo muove lo scroll globale
-       (vedi frame()), non questi input. Guardia su RING_SCROLL così rotellina,
-       trascino e frecce non fanno scroll in competizione. */
-    if (openW || !RING_SCROLL) return;
+    if (openW) return;
     toccato = true; lastInput = performance.now();
     spinT += d;
   }
-  /* Porta davanti un mondo preciso prendendo il giro piu' corto: si somma il
-     numero intero di giri che avvicina di piu' il bersaglio a dove siamo. */
+  /* Porta davanti un effetto preciso prendendo il giro piu' corto: si somma il
+     numero intero di giri che avvicina di piu' il bersaglio a dove siamo.
+     Con `spinT` senza fondo il "giro" è sempre relativo a dove siamo ORA, non
+     a un progresso 0..1 — la stessa formula di prima, invariata. */
   function portaDavanti(i){
     if (openW) return;
     toccato = true;
@@ -1109,23 +1168,34 @@
   /* La rotellina e il trackpad. `deltaMode` va normalizzato: a righe (1) un
      "clic" vale una manciata di pixel, a pagine (2) vale una schermata, e
      senza questo conto lo stesso gesto gira di un dito su un portatile e di
-     mezzo giro su un mouse a scatti. */
+     mezzo giro su un mouse a scatti.
+     REDUCED-MOTION (Task 4): la rotellina è un gesto CONTINUO — è lei a dare
+     l'illusione di girare un mazzo. Con `!WC.motionOk` resta disattiva: ci si
+     sposta solo a passi, con le frecce o cliccando un fermo/una riga
+     dell'elenco (vedi più sotto). Niente preventDefault qui, MAI: lo scroll
+     nativo della pagina resta libero (nessuna barra dirottata, vedi il
+     commento sull'accumulatore più sopra). */
+  /* Il coefficiente NON e' piu' quello della giostra (0.0026, tarato per un
+     anello che scattava sul fermo piu' vicino dopo il gesto): li' un gesto
+     "grosso" poteva anche superare una card, tanto lo scatto finale
+     correggeva. Qui non c'e' nessuno scatto — la card dove il gesto ti
+     lascia e' quella buona — quindi il passo deve restare leggibile: un
+     colpo di rotellina "pieno" (~1200 unita', la stessa entita' con cui la
+     verifica a schermo lo simula) avanza di UNA card, non di tre. */
   window.addEventListener('wheel', function(e){
-    if (openW) return;
-    // Task 3: il mazzo è acceso ma la giostra-scroll NO (RING_SCROLL=false):
-    // lo scroll resta della PAGINA — #scrollSpacer le dà l'altezza, l'elica e
-    // il disco leggono quel progresso globale. Niente preventDefault qui, o si
-    // ribloccherebbe la pagina e l'elica si fermerebbe.
-    if (DECK_ON && RING_SCROLL) e.preventDefault();
-    if (svegliaGiostra()) return;
+    if (openW || !WC.motionOk) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
-    spingi(d * unit * 0.0026);
-  }, {passive:false});
+    spingi(d * unit * (1/1200));
+  }, {passive:true});
 
-  /* Il trascinamento, dito o mouse che sia. L'asse si decide al primo
-     movimento e non si cambia piu' idea: se no un gesto un po' storto fa
-     ballare l'anello avanti e indietro. */
+  /* Il trascinamento, dito o mouse che sia (tocco compreso: i Pointer Events
+     unificano mouse/penna/touch, quindi qui il touch funziona già). L'asse si
+     decide al primo movimento e non si cambia piu' idea: se no un gesto un
+     po' storto fa ballare il mazzo avanti e indietro.
+     REDUCED-MOTION: come la rotellina, è un gesto continuo — disattivo con
+     `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
+     spinga, trascinare non muove nulla). */
   window.addEventListener('pointerdown', function(e){
     if (openW || e.button) return;
     ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
@@ -1133,13 +1203,12 @@
     dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
   });
   window.addEventListener('pointermove', function(e){
-    if (!dragging || e.pointerId !== dragId) return;
+    if (!dragging || e.pointerId !== dragId || !WC.motionOk) return;
     var dx = e.clientX - dragX, dy = e.clientY - dragY;
     dragX = e.clientX; dragY = e.clientY;
     dragMoved += Math.abs(dx) + Math.abs(dy);
     if (!dragAxis && dragMoved > 6) dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
     if (!dragAxis) return;
-    if (svegliaGiostra()) return;
     /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
        DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
        Alzando lo spin la lastra davanti scorre a destra (la sua x e'
@@ -1152,15 +1221,18 @@
   window.addEventListener('pointerup', fineTrascino);
   window.addEventListener('pointercancel', fineTrascino);
 
+  /* Le frecce restano attive ANCHE in reduced-motion: sono già "a passi" per
+     natura (un colpo = una card, STEP=1), non un gesto continuo — sono uno
+     dei due modi di navigare a passi richiesti dal brief (l'altro sono i
+     click su fermi/elenco). */
   window.addEventListener('keydown', function(e){
     if (openW) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
-      if (DECK_ON && RING_SCROLL) e.preventDefault(); if (svegliaGiostra()) return; spingi(STEP);
+      spingi(STEP);
     } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
-      if (DECK_ON && RING_SCROLL) e.preventDefault(); if (svegliaGiostra()) return; spingi(-STEP);
+      spingi(-STEP);
     } else if (k === 'Enter'){
-      if (svegliaGiostra()) return;
       if (hot){ e.preventDefault(); enter(hot); }
     }
   });
@@ -1363,8 +1435,11 @@
        con un tocco secco il risultato del fotogramma precedente e' vecchio. */
     var w = pick();
     if (w){ if (w === hot) enter(w); else portaDavanti(w.idx); return; }
+    /* `r` e' l'indice del CLUSTER cliccato (Task 4): si porta davanti il
+       PRIMO effetto di quel tipo, `portaDavanti` la anima come per i fermi —
+       non salta. */
     var r = pickRiga();
-    if (r >= 0) portaDavanti(r);
+    if (r >= 0){ var primo = primoDelCluster(r); if (primo) portaDavanti(primo.idx); }
   });
 
   /* Dove sta la lastra davanti, e quanto lontano bisogna stare per vederla
@@ -1511,16 +1586,33 @@
     }
     travel += speed * dt * 5.6;
 
-    /* LA FILA SCORRE — SULLO SCROLL GLOBALE (Task 3).
-       Non più il giro d'invito + lo scatto sul fermo della giostra: il disco
-       legge il progresso globale (0..1) e lo mappa sull'intera fila di card,
-       così l'elica e le card avanzano insieme sulla stessa sorgente. Con N=7
-       card, progress 0→prima card a fuoco, progress 1→ultima. Lo smorzamento
-       resta, per un movimento morbido. */
-    if (!openW){
-      spinT = deckScrollProgress() * (WORLDS.length - 1);
+    /* LA FILA SCORRE — SULL'ACCUMULATORE SENZA FONDO (Task 4).
+       `spinT` non è più letto dallo scroll della pagina (Task 3): lo muovono
+       direttamente rotellina/trascino/frecce/click (vedi `spingi`/
+       `portaDavanti` più sopra), e non ha né un minimo né un massimo — vedi
+       il commento sulla sezione 4.
+       Lo smorzamento resta SOLO se il moto è consentito: chi ha chiesto
+       reduced-motion non deve vedere il mazzo scivolare da un posto
+       all'altro, lo vede SCATTARE — `spin` insegue `spinT` di scatto, in un
+       solo fotogramma, invece che in ~130 ms di inseguimento esponenziale
+       (1/7.5s). È la stessa distinzione che dna.js fa da sé in
+       `reducedStandalone` (un fotogramma esplicito, mai un rincorrersi nel
+       tempo): qui è il MEDESIMO `spin` che pilota anche l'elica (vedi
+       `window.__effettiHelixScroll` più sotto), quindi lo scatto non è solo
+       delle card — è anche il modo in cui l'elica smette di "girare da
+       sola" quando il moto non è gradito. */
+    if (WC.motionOk){
+      spin += (spinT - spin)*Math.min(1, dt*7.5);
+    } else if (spin !== spinT){
+      spin = spinT;
+      /* dna.js, in reduced-motion standalone, non tiene un rAF che gira da
+         solo: ridisegna un fotogramma alla volta quando riceve un evento
+         'scroll' (vedi il suo `onScroll`). Qui non c'è nessuno scroll nativo
+         a farlo scattare — il mazzo lo muovono i click/le frecce, non la
+         pagina — quindi lo si sveglia a mano, DOPO che `spin` ha già preso
+         il valore nuovo (mai prima: dna.js leggerebbe ancora il vecchio). */
+      if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('scroll'));
     }
-    spin += (spinT - spin)*Math.min(1, dt*7.5);
 
     /* Ogni lastra ripresa e rimessa al suo posto nella fila. `u` — la
        distanza dal posto davanti — e' il numero da cui discende tutto:
