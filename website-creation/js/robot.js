@@ -48,6 +48,27 @@ WC.register('robot', function(ctx){
       return;
     }
 
+    // Task 4: la testa segue il cursore. Il puntatore si traccia in NDC
+    // rispetto allo stage (indipendente dal caricamento del modello, come
+    // fit()/resize) — tick() (dentro la callback di gltf.load) lo legge
+    // per closure. mouseleave (o cursore mai entrato) → active:false →
+    // i target di rotazione/faceAmount tornano a 0/riposo nel loop.
+    var pointer = { x: 0, y: 0, active: false };
+    function onPointerMove(e) {
+      var r = stage.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      pointer.y = ((e.clientY - r.top) / r.height) * 2 - 1;
+      pointer.active = true;
+    }
+    function onPointerLeave() { pointer.active = false; }
+    stage.addEventListener('mousemove', onPointerMove);
+    stage.addEventListener('mouseleave', onPointerLeave);
+    cleanups.push(function () {
+      stage.removeEventListener('mousemove', onPointerMove);
+      stage.removeEventListener('mouseleave', onPointerLeave);
+    });
+
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     // r128 lascia l'output in LinearEncoding di default: senza correzione
@@ -103,7 +124,7 @@ WC.register('robot', function(ctx){
       // Handle esposti per i task successivi (materiali/testa di vetro/
       // point-brain/fibre) e per la verifica headless: window.__robot
       // segnala che il modello è a schermo.
-      window.__robot = { model: model, wrap: wrap, scene: scene, camera: cam, renderer: renderer, box: box };
+      window.__robot = { model: model, wrap: wrap, scene: scene, camera: cam, renderer: renderer, box: box, state: { faceAmount: 0 } };
 
       // Split in sotto-parti (testa/corpo/braccia) per i task successivi
       // (materiali per parte, testa che segue il cursore, fibre delle
@@ -120,6 +141,52 @@ WC.register('robot', function(ctx){
         if (WC.robotMaterials) {
           var mats = WC.robotMaterials.applyTo(parts);
           window.__robot.glass = mats.glass;
+        }
+
+        // Task 4: la testa (parts.head, incluso il collo — vedi
+        // robot-parts.js) passa da figlia diretta di `model` a figlia di un
+        // headGroup pivotato al collo (bottom-center del bbox unito della
+        // testa), così ruotare headGroup.rotation gira la testa attorno al
+        // collo invece che attorno al centro dell'intero robot. Task 5
+        // parenta il point-brain allo STESSO headGroup.
+        //
+        // Le matrixWorld cache sono STALE a questo punto: la prima
+        // Box3().setFromObject(model) (sopra) è girata PRIMA di
+        // model.position.sub(c), quindi mesh.matrixWorld rappresenta ancora
+        // le posizioni pre-centratura finché non arriva il primo
+        // renderer.render() (che chiama scene.updateMatrixWorld()). Un
+        // updateMatrixWorld(true) esplicito qui forza le matrici correnti
+        // (centrate) PRIMA di leggere/scrivere posizioni mondo — altrimenti
+        // il pivot e il re-parenting "preserva mondo" userebbero coordinate
+        // sbagliate e la testa salterebbe visibilmente al primo frame.
+        if (parts.head.length) {
+          scene.updateMatrixWorld(true);
+          var headParent = parts.head[0].parent; // `model`: gerarchia piatta (vedi robot-parts.js)
+          var headBox = new THREE.Box3();
+          parts.head.forEach(function (m) { headBox.union(new THREE.Box3().setFromObject(m)); });
+          var hc = headBox.getCenter(new THREE.Vector3());
+          var pivotWorld = new THREE.Vector3(hc.x, headBox.min.y, hc.z); // bottom-center = collo
+
+          var headGroup = new THREE.Group();
+          headGroup.name = 'headGroup';
+          headParent.add(headGroup);
+          headParent.updateWorldMatrix(true, false);
+          headGroup.position.copy(headParent.worldToLocal(pivotWorld.clone()));
+          headGroup.updateMatrixWorld(true);
+
+          // Re-parenting "preserva mondo": per ogni mesh calcolo la
+          // trasformazione locale rispetto a headGroup che riproduce
+          // esattamente la matrixWorld attuale (mesh invariata a schermo),
+          // poi la sposto sotto headGroup e scompongo la matrice in
+          // position/quaternion/scale locali.
+          parts.head.forEach(function (m) {
+            m.updateWorldMatrix(true, false);
+            var localMat = new THREE.Matrix4().copy(headGroup.matrixWorld).invert().multiply(m.matrixWorld);
+            headGroup.add(m);
+            localMat.decompose(m.position, m.quaternion, m.scale);
+          });
+
+          window.__robot.headGroup = headGroup;
         }
 
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
@@ -141,9 +208,30 @@ WC.register('robot', function(ctx){
       var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
       (function tick(){
         raf = requestAnimationFrame(tick);
-        if (window.__robot && window.__robot.glass) {
+        var robot = window.__robot;
+        if (robot && robot.glass) {
           var now = (window.performance && performance.now) ? performance.now() : Date.now();
-          window.__robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
+          robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
+        }
+        // Task 4: la testa segue il cursore (clampata), faceAmount misura
+        // quanto sta "guardando" verso il cursore, e pilota l'apertura del
+        // vetro (Task 3). Cursore fuori dallo stage → i target tornano a 0
+        // (rotazione) e faceAmount decade a 0 (smorzamento esponenziale,
+        // non un salto — coerente con lo smoothing della rotazione).
+        if (robot && robot.headGroup && robot.state) {
+          var targetYaw = 0, targetPitch = 0;
+          if (pointer.active) {
+            targetYaw = Math.max(-0.5, Math.min(0.5, pointer.x * 0.5));
+            targetPitch = Math.max(-0.3, Math.min(0.3, -pointer.y * 0.35));
+            robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
+          } else {
+            robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
+          }
+          robot.headGroup.rotation.y += (targetYaw - robot.headGroup.rotation.y) * 0.12;
+          robot.headGroup.rotation.x += (targetPitch - robot.headGroup.rotation.x) * 0.12;
+          if (robot.glass) {
+            robot.glass.uniforms.uOpen.value += (robot.state.faceAmount - robot.glass.uniforms.uOpen.value) * 0.1;
+          }
         }
         renderer.render(scene, cam);
       })();
