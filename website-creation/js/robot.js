@@ -1,18 +1,18 @@
-/* CAP 05 — modello 3D interattivo (Spline), a tutta sezione.
+/* CAP 05 — modello 3D interattivo (nostro), a tutta sezione.
  *
- * ATTENZIONE, questa sezione rompe due vincoli del piano, di proposito e su
- * richiesta esplicita:
+ * Era la demo pubblica di Spline (`@splinetool/viewer` + una `.splinecode`
+ * ospitata da terzi). Ora è un GLB estratto e compresso in Draco, caricato
+ * con three.js r128 (globale, stesso <script> già in pagina per gli altri
+ * capitoli) via GLTFLoader/DRACOLoader vendorizzati in locale — zero
+ * richieste a spline.design o a un CDN a runtime.
  *
- *  - il runtime `@splinetool/viewer` (~2.2 MB) e la scena `.splinecode`
- *    (~1.3 MB) arrivano da CDN di terze parti. Il runtime è pinnato e ha il
- *    suo `integrity`; la scena no, perché non è uno <script> ma un binario
- *    che il runtime va a prendere da sé.
- *  - la scena non è nostra: è la demo pubblica di Spline.
- *
- * Per tenerne il costo dove non fa danno, niente di tutto questo viene
- * toccato finché la sezione non si avvicina davvero al viewport: sopra la
- * piega la pagina non paga un byte. Se un giorno si vuole chiudere il
- * cerchio, le due strade sono ospitare la scena in proprio o rifarla.
+ * Il mount resta lazy — sotto la piega la pagina non paga un byte — e la
+ * scena si ferma quando la sezione esce dal DOM o quando il browser chiede
+ * meno animazioni. Questo file è la fondazione: monta il GLB grezzo,
+ * centrato e inquadrato. Materiali (vetro sulla testa, metallo sul corpo),
+ * il point-brain e le fibre delle braccia arrivano nei task successivi —
+ * `mount()` resta perciò minimale e ritorna gli handle (`window.__robot`)
+ * che quei task aggancieranno.
  */
 WC.register('robot', function(ctx){
   var section = document.getElementById('cap05');
@@ -20,10 +20,6 @@ WC.register('robot', function(ctx){
   var stage   = document.getElementById('wcRobotStage');
   var hint    = document.getElementById('wcRobotHint');
   if (!section || !card || !stage) return;
-
-  var VIEWER = 'https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js';
-  var VIEWER_SRI = 'sha384-MncMO4oYWD5D17Cg+k0Ag2UcKtc6zPR7kUHgGev9M9n5I9N4ekk0XB29G0dDwgOo';
-  var SCENE = 'https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode';
 
   var cleanups = [];
 
@@ -45,51 +41,85 @@ WC.register('robot', function(ctx){
 
     // Reduced-motion: una scena 3D che gira di continuo è esattamente ciò che
     // l'impostazione chiede di non avere. Resta la card, senza il modello.
-    if (!ctx.motionOk) { fail('Modello 3D disattivato: hai chiesto meno animazioni'); return; }
+    // Stesso esito se three.js (o i loader vendorizzati) non sono disponibili.
+    if (!ctx.motionOk || typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+      fail('Modello 3D disattivato');
+      return;
+    }
 
-    var existing = document.querySelector('script[data-spline]');
-    var ready = existing
-      ? Promise.resolve()
-      : new Promise(function(resolve, reject){
-          var s = document.createElement('script');
-          s.type = 'module';
-          s.src = VIEWER;
-          s.integrity = VIEWER_SRI;
-          s.crossOrigin = 'anonymous';
-          s.dataset.spline = '1';
-          s.onload = resolve;
-          s.onerror = function(){ reject(new Error('viewer')); };
-          document.head.appendChild(s);
-        });
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    // r128 lascia l'output in LinearEncoding di default: senza correzione
+    // gamma il modello (materiale bianco di default, "geometria soltanto")
+    // renderizza quasi nero — verificato a schermo. sRGBEncoding è la resa
+    // standard three.js, non un tocco di stile riservato al task materiali.
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    var scene = new THREE.Scene();
+    var cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+    scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x0a0410, 0.9));
+    var key = new THREE.DirectionalLight(0xffffff, 1.6);
+    key.position.set(2, 4, 3);
+    scene.add(key);
 
-    ready.then(function(){
-      // `spline-viewer` è un custom element: prima che sia definito il tag
-      // esiste ma non disegna nulla, e senza questa attesa il messaggio di
-      // caricamento sparirebbe su una scatola vuota.
-      return customElements.whenDefined('spline-viewer');
-    }).then(function(){
-      var viewer = document.createElement('spline-viewer');
-      viewer.setAttribute('url', SCENE);
-      viewer.setAttribute('loading-anim-type', 'none');
-      stage.appendChild(viewer);
+    var draco = new THREE.DRACOLoader();
+    draco.setDecoderPath('vendor/draco/');
+    var gltf = new THREE.GLTFLoader();
+    gltf.setDRACOLoader(draco);
 
-      // Il viewer non emette un evento di fine caricamento su cui si possa
-      // contare, quindi il segnale vero è il canvas che compare nel suo
-      // shadow root: prima di quello non c'è niente da guardare. Si controlla
-      // a intervalli e ci si ferma comunque dopo 20 s — la scena pesa più di
-      // un megabyte, e se la rete la perde per strada il pannello non deve
-      // restare su "in arrivo" per sempre.
-      var waited = 0;
-      var poll = setInterval(function(){
-        waited += 250;
-        var drawn = viewer.shadowRoot && viewer.shadowRoot.querySelector('canvas');
-        if (drawn) { clearInterval(poll); if (hint) hint.remove(); return; }
-        if (waited >= 20000) { clearInterval(poll); fail('Scena non raggiungibile'); }
-      }, 250);
+    function fit(){
+      var w = stage.clientWidth, h = stage.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      cam.aspect = w / Math.max(1, h);
+      cam.updateProjectionMatrix();
+    }
+    stage.appendChild(renderer.domElement);
 
-      cleanups.push(function(){ clearInterval(poll); viewer.remove(); });
-    }).catch(function(){
-      fail('Scena non caricata');
+    gltf.load('assets/robot.glb', function(g){
+      var model = g.scene;
+      // centra e scala il modello nell'inquadratura
+      var box = new THREE.Box3().setFromObject(model);
+      var c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+      model.position.sub(c);
+      var wrap = new THREE.Group();
+      wrap.add(model);
+      scene.add(wrap);
+      var maxDim = Math.max(s.x, s.y, s.z);
+      cam.position.set(0, 0, maxDim * 1.6);
+      cam.lookAt(0, 0, 0);
+      // Il GLB estratto non è in unità "piccole": la camera va piazzata a
+      // maxDim*1.6 di distanza, che per questo modello supera abbondantemente
+      // il far:100 di partenza. Senza adattare il piano lontano alla scala
+      // reale del modello la camera lo vede sempre oltre il farplane — scena
+      // vuota, canvas trasparente. Il piano vicino segue lo stesso ragionamento.
+      cam.near = Math.max(0.01, maxDim / 1000);
+      cam.far = maxDim * 20;
+      cam.updateProjectionMatrix();
+      fit();
+      if (hint) hint.remove();
+
+      // Handle esposti per i task successivi (materiali/testa di vetro/
+      // point-brain/fibre) e per la verifica headless: window.__robot
+      // segnala che il modello è a schermo.
+      window.__robot = { model: model, wrap: wrap, scene: scene, camera: cam, renderer: renderer, box: box };
+
+      var raf;
+      (function tick(){
+        raf = requestAnimationFrame(tick);
+        renderer.render(scene, cam);
+      })();
+      cleanups.push(function(){ cancelAnimationFrame(raf); });
+    }, undefined, function(){
+      fail('Modello non caricato');
+    });
+
+    window.addEventListener('resize', fit);
+    cleanups.push(function(){ window.removeEventListener('resize', fit); });
+    cleanups.push(function(){
+      draco.dispose();
+      renderer.dispose();
+      if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+      if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;
     });
   }
 
