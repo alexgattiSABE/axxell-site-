@@ -29,7 +29,16 @@ const __dirname = path.dirname(__filename);
 // essere servito dalla RADICE del repo (non da dentro website-creation/),
 // altrimenti tutti i path assoluti (css/js/assets) risolvono male.
 const SITE_ROOT = path.resolve(__dirname, '..');
-const OUT_SHOT = '/Users/alexgatti/axxell-site-/.superpowers/sdd/2026-08-31-robot-cervello-vesper/task1-robot.png';
+const DEFAULT_OUT = '/Users/alexgatti/axxell-site-/.superpowers/sdd/2026-08-31-robot-cervello-vesper/task1-robot.png';
+// Estensioni Task 2 (minime, sopra l'harness invariato di Task 1):
+//  - ROBOT_SHOT_OUT: path dello screenshot (default: task1-robot.png)
+//  - ROBOT_SHOT_DEBUG_PARTS=1: setta window.__debugParts=true PRIMA che
+//    robot.js monti (per la tinteggiatura head/body/arm di Step 3)
+//  - ROBOT_SHOT_ANGLE=34: ruota il gruppo del robot di 45° su Y prima
+//    dello screenshot (vista 3/4), invece del fronte di default
+const OUT_SHOT = process.env.ROBOT_SHOT_OUT || DEFAULT_OUT;
+const DEBUG_PARTS = process.env.ROBOT_SHOT_DEBUG_PARTS === '1';
+const ANGLE_34 = process.env.ROBOT_SHOT_ANGLE === '34';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -98,6 +107,15 @@ async function main(){
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
+    // Task 2: se richiesto, setta il flag PRIMA che qualunque script di
+    // pagina giri (addInitScript esegue ad ogni navigazione, prima del
+    // <script> della pagina) — robot.js lo legge dentro mount(), che
+    // scatta molto più tardi (IntersectionObserver), quindi arriva in
+    // tempo comunque; addInitScript resta il modo pulito per farlo.
+    if (DEBUG_PARTS) {
+      await page.addInitScript(() => { window.__debugParts = true; });
+    }
+
     page.on('request', (req) => {
       try {
         const u = new URL(req.url());
@@ -146,6 +164,15 @@ async function main(){
       robotReady = await page.evaluate(() => !!(window.__robot && window.__robot.model));
       if (robotReady) break;
       await page.waitForTimeout(250);
+    }
+
+    // Task 2: vista 3/4 — ruota il gruppo `wrap` (non la camera: più
+    // semplice, e non tocca near/far calcolati su model space) di 45° su
+    // Y prima dello screenshot finale.
+    if (ANGLE_34) {
+      await page.evaluate(() => {
+        if (window.__robot && window.__robot.wrap) window.__robot.wrap.rotation.y = Math.PI / 4;
+      });
     }
 
     // Un giro di render in più prima dello screenshot.

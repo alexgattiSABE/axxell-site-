@@ -105,6 +105,29 @@ WC.register('robot', function(ctx){
       // segnala che il modello è a schermo.
       window.__robot = { model: model, wrap: wrap, scene: scene, camera: cam, renderer: renderer, box: box };
 
+      // Split in sotto-parti (testa/corpo/braccia) per i task successivi
+      // (materiali per parte, testa che segue il cursore, fibre delle
+      // braccia). WC.robotParts.split è definito in robot-parts.js,
+      // caricato PRIMA di questo file in index.html.
+      if (WC.robotParts) {
+        var parts = WC.robotParts.split(model);
+        window.__robot.parts = parts;
+
+        // Verifica visiva dello split (Task 2, dietro flag): tinteggia
+        // testa/braccia/corpo con colori piatti (MeshBasicMaterial, non
+        // sensibile alla luce) così lo screenshot dell'harness mostra
+        // chiaramente quali mesh sono finite in quale gruppo.
+        if (window.__debugParts) {
+          var dbgHead = new THREE.MeshBasicMaterial({ color: 0x22cc55 });
+          var dbgArm = new THREE.MeshBasicMaterial({ color: 0x22d8ff });
+          var dbgBody = new THREE.MeshBasicMaterial({ color: 0x888888 });
+          parts.head.forEach(function (m) { m.material = dbgHead; });
+          parts.armL.forEach(function (m) { m.material = dbgArm; });
+          parts.armR.forEach(function (m) { m.material = dbgArm; });
+          parts.body.forEach(function (m) { m.material = dbgBody; });
+        }
+      }
+
       var raf;
       (function tick(){
         raf = requestAnimationFrame(tick);
