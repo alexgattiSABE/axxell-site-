@@ -502,6 +502,38 @@ body.wc-locked{overflow:hidden;}
       rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);}
 }
 .wc-robot-stage spline-viewer,.wc-robot-stage canvas{width:100%;height:100%;display:block;}
+/* ---- TITOLO SOPRA IL ROBOT ----
+   Un invito, non un secondo H2: sta in alto a destra, sopra la testa, nello
+   spazio vuoto che il modello (centrato in orizzontale) non occupa a
+   quell'altezza. `position:absolute` dentro `.wc-robot-card` (relative) così
+   non tocca il flex della card (quello che manda `.wc-robot-copy` in basso).
+   z-index:2 — sopra al canvas (1) e al suo velo, stesso piano della copy.
+   `pointer-events:none`: il reveal cervello/circuiti nasce da mousemove reali
+   sul canvas (robot.js) — un'etichetta che intercettasse il mouse qui
+   spegnerebbe l'interazione proprio nel punto che invita a provarla. */
+.wc-robot-title{position:absolute;z-index:2;pointer-events:none;
+  top:calc(var(--nav-h) + clamp(1.4rem,4vh,3rem));right:clamp(1.5rem,5vw,4rem);
+  max-width:min(30vw,26ch);text-align:right;
+  font-family:var(--font);font-weight:500;letter-spacing:-.01em;line-height:1.25;
+  font-size:clamp(1.05rem,2.1vw,1.6rem);color:rgba(240,240,246,.82);margin:0;}
+.wc-robot-title-accent{color:var(--cyan);}
+@media (max-width:900px){
+  /* Sotto i 900px la testa torna al centro della larghezza (vedi lo sbordo
+     dello stage sopra) e l'inquadratura è più stretta (zoom sul volto, vedi
+     nota su `.wc-robot-stage` sopra): non c'è più una fascia vuota larga
+     quanto il titolo, la testa arriva quasi sotto la nav. Un testo ancorato a
+     destra come su desktop le finirebbe sopra a metà. Centrato, e chiuso in
+     un chip col velo — la stessa idea del velo sotto la copy in basso, solo
+     più piccolo — così resta leggibile qualunque cosa ci sia dietro invece
+     di dover inseguire la testa che respira. */
+  .wc-robot-title{left:clamp(1.2rem,6vw,2rem);right:clamp(1.2rem,6vw,2rem);
+    max-width:none;text-align:center;
+    top:calc(var(--nav-h) + clamp(.6rem,2.4vh,1.1rem));
+    font-size:clamp(.86rem,4vw,1.05rem);
+    background:rgba(6,6,9,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:999px;
+    padding:.55rem 1.1rem;width:fit-content;margin:0 auto;}
+}
 /* Velo in basso: la copy sta sopra al modello, non di fianco. */
 /* Il velo arrivava a .92 di nero su un 60% di altezza: la parte bassa del
    robot ci finiva dentro ed era la zona più scura della pagina. Sceso a .70 su

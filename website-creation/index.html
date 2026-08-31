@@ -300,6 +300,13 @@
       <div class="wc-robot-stage" id="wcRobotStage">
         <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
       </div>
+      <!-- Titolo sopra al robot: solo un invito a interagire (testa → cervello,
+           braccia → circuiti). `pointer-events:none` di proposito — deve
+           restare un'etichetta e non rubare gli eventi mouse al canvas
+           sottostante, che è ciò che pilota quel reveal. Testo isolato in un
+           <p> con classe dedicata così si edita da un punto solo, senza
+           toccare eyebrow/h2/lead a fianco né aggiungere un secondo <h1>. -->
+      <p class="wc-robot-title">Analizza l'<span class="wc-robot-title-accent">anatomia</span> di Axxell</p>
       <div class="wc-robot-copy">
         <p class="eyebrow">// 05 — Oggetti vivi</p>
         <h2>Non un video.<br>Un modello che risponde.</h2>
