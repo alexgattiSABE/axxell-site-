@@ -1079,16 +1079,22 @@
      `spin`: il documento può arrivare in fondo al suo scroll nativo — la
      barra si ferma — senza che il mazzo smetta di avanzare, perché il mazzo
      non lo guarda più.
-     L'ELICA SEGUE LO STESSO `spin`, MAI RIAVVOLTO — vedi `window.__effettiHelixScroll`
-     più sotto e il punto in cui `frame()` lo aggiorna: qui sta la continuità
-     visiva across-wrap. Non c'è nessuna elica che "si riavvolge": sale e gira
-     con lo stesso numero delle card, che non torna mai indietro su sé stesso.
-     (Scelta (a) del brief — l'accumulatore grezzo, non periodico — invece di
-     avvolgere anche la traslazione verticale dell'elica: la geometria di
-     dna.js è un'unica striscia di punti FINITA, non una forma che si ripete a
-     ogni giro, quindi "avvolgerla" per periodo l'avrebbe fatta scattare da un
-     capo all'altro ad ogni chiusura — l'opposto della continuità richiesta.
-     Verificato a schermo su più giri completi, vedi il report.) */
+     L'ELICA SEGUE LO STESSO `spin`, MAI RIAVVOLTO QUI — vedi `window.__effettiHelixScroll`
+     più sotto: questo numero (e quindi `spin`) cresce o cala senza limite
+     esattamente come prima, e resta l'unica cosa che sincronizza card ed
+     elica. (Scelta (a) del brief — l'accumulatore grezzo dato in pasto a
+     dna.js, non un avvolgimento fatto QUI sulla traslazione verticale
+     dell'elica: la geometria di dna.js è un'unica striscia di punti FINITA,
+     non una forma che si ripete a ogni giro, e avvolgere QUESTO numero per
+     periodo l'avrebbe fatta scattare da un capo all'altro ad ogni chiusura.)
+     ⚠️ FIX (review successiva al Task 4): la striscia finita esauriva
+     comunque lo schermo dopo circa 32 giri del mazzo (vedi il commento su
+     `HELIX_LOOPS_PER_UNIT` qui sotto) e restava vuota per sempre — contro la
+     spec ("si riavvolge dove non si vede"). Il riavvolgimento ora c'è
+     davvero, ma vive DENTRO dna.js (`wrapHelixScroll`, vedi il suo
+     commento), non qui: lì si conosce la geometria e si sa esattamente
+     dov'è il tratto invisibile in cui il salto non si vede. Qui non cambia
+     niente — `spin` resta l'accumulatore grezzo che era. */
   var spin = 0, spinT = 0;            // dov'e' il mazzo, e dove sta andando
   var toccato = false;                // qualcuno l'ha preso in mano?
   var lastInput = -1e9;
@@ -1118,10 +1124,15 @@
      visibilmente viva a ogni giro (sale e gira di un ottavo, non e' ferma) e
      lo stesso punto di esaurimento arriva dopo ~32 giri del mazzo — verificato
      a schermo restare piena e continua ben oltre i pochi giri con cui la si
-     collauda; a quella distanza (che una sessione reale non raggiunge quasi
-     mai) preferiamo un'elica che alla lunga si dirada a uno schermo vuoto in
-     un punto preciso e riproducibile — o al piu' un giorno da avvolgere per
-     periodo — a uno che scompare dopo pochi minuti di scorrimento normale. */
+     collauda.
+     ⚠️ QUEL PUNTO DI ESAURIMENTO ADESSO SI RIAVVOLGE (fix, review successiva
+     al Task 4): `wrapHelixScroll` in dna.js riporta il numero che arriva qui
+     dentro un intervallo finito prima di tradurlo in posizione, nel punto
+     preciso in cui la striscia è già fuori quadro — vedi il suo commento per
+     la soglia misurata e perché il salto non si vede. Il divisore resta 8:
+     non serve più a spostare più in là un esaurimento definitivo (non
+     esiste più), ma decide comunque IL PASSO — quanto sale/gira l'elica per
+     ogni giro del mazzo — e 8 lo tiene visibilmente vivo senza correre. */
   var HELIX_LOOPS_PER_UNIT = 8;
   window.__effettiHelixScroll = function(){ return spin / (WORLDS.length - 1) / HELIX_LOOPS_PER_UNIT; };
 

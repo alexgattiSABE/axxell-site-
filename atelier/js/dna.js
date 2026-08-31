@@ -600,6 +600,77 @@ WC.register('dna', function(ctx){
     return G.clamp01(window.scrollY / max);
   }
 
+  /* ⚠️ IL RIAVVOLGIMENTO DELL'ELICA (fix a un finding di review, dopo il Task 4
+   * di atelier/effetti.html). SOLO per il montaggio standalone — stessa
+   * guardia di `reducedStandalone` qui sotto: il manifesto (`!standalone`)
+   * non chiama mai `wrapHelixScroll`, il suo `scrollTarget` viene da
+   * ScrollTrigger com'è sempre stato, e questo blocco non lo tocca.
+   *
+   * IL PROBLEMA CHE RISOLVE. `window.__effettiHelixScroll` (sopra) resta
+   * un numero SENZA fondo — cresce con `spin`, che il mazzo di card non
+   * riavvolge mai (`wrapN` lo rende periodico solo PER LE CARD, non per
+   * questo numero). Dato in pasto diretto a `group.position.y = -scroll *
+   * scrollClimb`, quel numero trasla un'elica che è UNA STRISCIA DI PUNTI
+   * FINITA (`t` da -37.4 a 21.4, non periodica — vedi il commento sopra al
+   * vertex shader): oltre una certa traslazione l'intera striscia è scorsa
+   * fuori dalla finestra della camera e lo schermo resta vuoto per sempre.
+   * Misurato: da qualunque lato, verso ±2.4 (in queste stesse unità di
+   * `scroll`) — che con `HELIX_LOOPS_PER_UNIT=8` di effetti.html sono
+   * circa 32 giri del mazzo, il numero che il Task 4 aveva già trovato a
+   * schermo.
+   *
+   * PERCHÉ ±2.4: la striscia, in coordinate di MODELLO (dopo `finalPos =
+   * (dnaPos - vec3(0,-8,0)) * uScale`, con `uScale` = CONFIG.scale = 0.63),
+   * va da `(-37.4+8)*0.63 = -18.522` a `(21.4+8)*0.63 = +18.522` — 37.044
+   * unità di altezza. La rotazione (`group.rotation.y`) è attorno all'asse
+   * Y e non sposta questa quota di un millimetro: SOLO la traslazione
+   * (`group.position.y = -scroll*scrollClimb`, scrollClimb=9.5) la
+   * muove. La camera sta a z=8.67, guarda l'origine, fov verticale 45°
+   * (mezzo angolo 22.5°, tan=0.4142): la finestra visibile a quota Y, alla
+   * distanza della striscia, vale H ≈ 8.67*0.4142 ≈ 3.6 (varia un poco con
+   * la z del punto, mai sopra ~4.2). La striscia è COMPLETAMENTE fuori da
+   * quella finestra quando il suo capo più vicino l'ha già oltrepassata:
+   * `(18.522+H)/scrollClimb = (18.522+3.6)/9.5 ≈ 2.33` — il conto a mano;
+   * la misura a schermo (screenshot della sola elica, isolata dal resto
+   * della pagina, deviazione standard dei pixel contro `scroll` crescente)
+   * la conferma quasi esatta: la varianza crolla al rumore di fondo del
+   * pulviscolo fra 2.35 e 2.40 su ENTRAMBI i lati. Sono la stessa cosa
+   * scritta due volte — la fisica e la misura — e concordano.
+   *
+   * LA CURA: non un'elica periodica (la geometria resta quella, FINITA e
+   * non ripetuta — cambiarla è fuori portata, vedi il commento sul vertex
+   * shader), ma il NUMERO che la trasla: `wrapHelixScroll` lo riporta ogni
+   * volta dentro `[-HELIX_WRAP_HALF, HELIX_WRAP_HALF)`. Il margine (3.5
+   * contro una soglia di sparizione misurata a 2.4) è largo apposta: la
+   * striscia deve essere GIÀ vuota — non al limite — ai due capi
+   * dell'intervallo, altrimenti il salto fra un capo e l'altro si
+   * vedrebbe. Con questo margine il riavvolgimento cade sempre dentro un
+   * tratto di schermo nero, ed è esattamente "si riavvolge dove non si
+   * vede" (vedi la spec). Un giro del genere, in giri del mazzo, vale
+   * `2*HELIX_WRAP_HALF * (WORLDS.length-1) * HELIX_LOOPS_PER_UNIT / WORLDS.length`
+   * ≈ 48 — l'elica sale/gira visibilmente per la maggior parte di ognuno di
+   * questi 48 giri, poi sparisce per un tratto breve e RICOMINCIA, sempre
+   * uguale, all'infinito.
+   *
+   * IL SALTO VA COMPENSATO IN `scroll`, non solo in `scrollTarget`.
+   * `scroll` insegue `scrollTarget` con uno SMORZAMENTO (`G.damp`, qui
+   * sotto in `frame()`): se solo `scrollTarget` saltasse di colpo da
+   * +3.5 a -3.5, l'inseguitore smorzato ci metterebbe una frazione di
+   * secondo a raggiungerlo — passando per TUTTI i valori intermedi, cioè
+   * attraversando di corsa l'intera elica visibile. Sarebbe uno scatto
+   * vistoso, il contrario di quello che questo fix vuole ottenere. La cura
+   * è spostare anche `scroll` della STESSA quantità nello stesso
+   * fotogramma in cui `scrollTarget` salta (vedi `frame()`): la differenza
+   * fra i due (quello che lo smorzamento insegue) resta piccola come
+   * sempre, e il salto è un salto vero — un fotogramma, non una scia — che
+   * cade comunque dentro il buio del margine. */
+  var HELIX_WRAP_HALF = 3.5;
+  function wrapHelixScroll(raw){
+    var half = HELIX_WRAP_HALF, period = half * 2;
+    return raw - period * Math.floor((raw + half) / period);
+  }
+  var lastWrappedScroll = null;   // per rilevare il salto in frame(), solo standalone
+
   /* UN SOLO FOTOGRAMMA, per il montaggio standalone in reduced-motion: niente
    * `requestAnimationFrame` che si riproponga da solo, niente smorzamento nel
    * tempo (`scroll` è già stato portato al target da chi chiama), niente
@@ -620,7 +691,22 @@ WC.register('dna', function(ctx){
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-    if (standalone) scrollTarget = globalScrollProgress();
+    if (standalone) {
+      var rawScroll = globalScrollProgress();
+      var wrappedScroll = wrapHelixScroll(rawScroll);
+      if (lastWrappedScroll !== null) {
+        var wrapJump = wrappedScroll - lastWrappedScroll;
+        // Un fotogramma normale sposta al più una piccola frazione del
+        // margine: un salto più grande di HELIX_WRAP_HALF è per forza il
+        // riavvolgimento (vedi il commento su wrapHelixScroll), mai un
+        // gesto vero. Sposto `scroll` della stessa quantità, ADESSO, invece
+        // di lasciarlo rincorrere lo smorzamento — è il punto di tutto il
+        // fix, vedi sopra.
+        if (Math.abs(wrapJump) > HELIX_WRAP_HALF) scroll += wrapJump;
+      }
+      lastWrappedScroll = wrappedScroll;
+      scrollTarget = wrappedScroll;
+    }
     scroll += (scrollTarget - scroll) * G.damp(0.12, dt);
     // La comparsa segue lo scroll: legata all'orologio, avrebbe continuato a
     // schiarire da sola dopo che il dito si è fermato. Fuori dal manifesto
@@ -871,11 +957,18 @@ WC.register('dna', function(ctx){
      * finestra. Guardato al ramo standalone+reduced: il manifesto
      * (`!standalone`) non passa mai di qui, parte da `start()` e dal proprio
      * ciclo `frame()` — questa riga non lo tocca. */
+    /* RIAVVOLGIMENTO (fix) ANCHE QUI, con `wrapHelixScroll` — vedi il
+     * commento sopra `globalScrollProgress()`. In reduced-motion il salto
+     * non ha bisogno della compensazione che serve a `frame()`: qui non
+     * c'è uno smorzamento che rincorre nel tempo, `scroll` SALTA dritto al
+     * target ad ogni chiamata (una riga sopra), quindi un salto nel valore
+     * già avvolto è già, di per sé, un salto vero e non una scia — e cade
+     * comunque dentro il margine buio dello stesso `wrapHelixScroll`. */
     resize();
-    scrollTarget = scroll = globalScrollProgress();
+    scrollTarget = scroll = wrapHelixScroll(globalScrollProgress());
     renderOnce();
     onScroll = function(){
-      scrollTarget = scroll = globalScrollProgress();
+      scrollTarget = scroll = wrapHelixScroll(globalScrollProgress());
       renderOnce();
     };
     window.addEventListener('scroll', onScroll, { passive: true });
