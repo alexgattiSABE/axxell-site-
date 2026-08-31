@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BASE OBBLIGATORIA, non una comodità.
+     `vercel.json` alla radice ha `trailingSlash: false`, quindi in produzione
+     questa pagina vive a `/atelier` — SENZA la barra finale. Il
+     browser risolve gli indirizzi relativi rispetto all'ultimo segmento, che
+     lì non è una cartella: `css/base.css` diventa `/css/base.css` e va a
+     sbattere sulla radice del sito. Tutti i CSS, tutti i js e tutti gli asset
+     del capitolo danno 404 e resta lo scheletro HTML.
+     Verificato a schermo servendo la cartella come la serve Vercel, non
+     dedotto. Vale anche per le `fetch` dei modelli dentro js/. -->
+<base href="/atelier/">
+<title>I dodici capitoli | Axxell</title>
+<meta name="description" content="Siti web su misura progettati e costruiti da Axxell. Questa pagina è il portfolio: ogni sezione dimostra una capacità diversa.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta property="og:title" content="Atelier | Axxell">
+<meta property="og:description" content="Siti web su misura. Questa pagina è il portfolio.">
+<meta property="og:url" content="https://axxell.ai/atelier/capitoli">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://axxell.ai/atelier/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css?v=20260824a">
+<link rel="stylesheet" href="css/sections.css?v=20260824a">
+</head>
+<body>
+
+<!-- IL MARCHIO, UNA VOLTA SOLA PER TUTTA LA PAGINA.
+     Sono i tracciati veri del logo (~/LOGO AXXELL.svg), orbita compresa. Prima
+     stavano nel <defs> del footer, che e' in fondo: il logo in nav li avrebbe
+     referenziati in avanti. Stanno qui, prima di tutti e due i posti che li
+     usano, e ognuno decide da se' come dipingerli — la nav li riempie, il
+     footer li lascia in contorno (`.wc-foot-t{fill:none}`) perche' li' dentro
+     ci scorre un gradiente.
+     ⚠️ `fill` NON sta piu' sul gruppo: se ce lo si rimette, la nav torna
+     invisibile. Lo decide chi fa <use>. -->
+<svg width="0" height="0" aria-hidden="true" focusable="false"
+     style="position:absolute;pointer-events:none;">
+  <defs>
+        <g id="wcAxxellMark" stroke-linejoin="round">
+          <path d="M 73.00 214.25 C 74.00 211.64 76.72 206.12 79.06 202.00 C 86.94 188.12 92.03 178.55 95.97 170.24 C 98.12 165.69 100.75 160.74 101.80 159.24 C 103.73 156.48 113.41 138.58 115.42 134.06 C 116.01 132.73 118.37 128.00 120.66 123.56 L 124.82 115.50 L 134.66 115.50 L 144.50 115.50 L 154.50 135.56 C 160.00 146.60 165.69 157.62 167.14 160.06 C 169.26 163.62 173.94 172.63 183.75 192.00 C 184.52 193.53 166.75 200.58 164.95 199.47 C 164.39 199.13 161.84 194.49 159.29 189.17 C 156.73 183.85 151.48 173.88 147.63 167.00 C 143.77 160.12 139.28 151.81 137.65 148.53 C 135.42 144.06 134.46 142.93 133.81 144.03 C 133.34 144.84 131.34 148.20 129.36 151.50 C 127.39 154.80 121.04 166.23 115.25 176.91 C 109.46 187.58 103.77 197.73 102.61 199.45 C 101.45 201.17 98.70 206.26 96.50 210.76 L 92.50 218.97 L 81.85 218.97 L 71.19 218.97 L 73.00 214.25Z"/>
+          <path d="M 59.00 233.31 C 53.58 232.40 46.79 229.70 43.97 227.32 C 37.17 221.60 42.19 212.75 58.44 201.75 C 64.34 197.77 64.96 198.38 59.56 202.85 C 53.76 207.64 52.35 209.64 51.48 214.25 C 50.89 217.41 51.16 218.25 53.52 220.43 C 57.31 223.95 61.06 224.51 80.50 224.45 C 93.98 224.42 99.88 223.94 109.00 222.14 C 115.33 220.89 122.97 219.40 126.00 218.83 C 136.81 216.77 163.60 207.61 176.50 201.55 C 179.25 200.26 183.55 198.48 186.05 197.60 C 192.02 195.49 208.21 184.76 214.32 178.87 C 218.47 174.88 219.10 173.76 218.82 170.90 C 218.44 166.98 213.93 163.41 208.14 162.45 C 202.06 161.44 201.25 160.59 206.00 160.19 C 212.46 159.65 223.42 161.81 227.23 164.37 C 229.97 166.21 230.55 167.28 230.82 170.97 C 231.13 175.27 230.97 175.53 223.95 182.18 C 218.08 187.75 203.47 198.00 201.42 198.00 C 201.14 198.00 194.97 200.89 187.70 204.41 C 173.10 211.50 155.19 219.00 152.86 219.00 C 152.03 219.00 148.01 220.14 143.93 221.54 C 131.42 225.81 110.14 230.77 97.16 232.42 C 85.91 233.86 65.17 234.34 59.00 233.31Z"/>
+          <path d="M 457.00 191.50 L 457.00 168.00 L 480.50 168.00 L 504.00 168.00 L 504.00 172.50 L 504.00 177.00 L 486.00 177.00 L 468.00 177.00 L 468.00 182.00 L 468.00 187.00 L 485.00 187.00 L 502.00 187.00 L 502.00 191.50 L 502.00 196.00 L 484.95 196.00 L 468.20 196.00 L 468.20 200.75 L 468.20 205.77 L 486.25 205.77 L 504.00 205.77 L 504.00 210.52 L 504.00 215.00 L 480.50 215.00 L 457.00 215.00 L 457.00 191.50Z"/>
+          <path d="M 256.00 214.66 C 256.00 214.20 261.57 201.60 262.93 198.99 C 263.37 198.16 266.73 191.53 270.40 184.27 C 274.08 177.00 277.77 170.37 278.61 169.53 C 280.21 167.93 288.55 167.40 290.61 168.77 C 291.89 169.61 301.45 188.27 302.51 192.00 C 302.91 193.38 304.04 195.85 305.03 197.50 C 307.14 201.01 314.00 214.12 314.00 214.64 C 314.00 214.84 311.61 215.00 308.69 215.00 L 303.38 215.00 L 300.94 209.75 L 298.50 204.50 L 285.00 204.50 L 271.50 204.50 L 269.00 209.50 C 266.52 214.46 266.46 214.50 261.25 214.80 C 258.36 214.97 256.00 214.91 256.00 214.66Z M 293.93 195.75 C 293.82 193.51 285.53 177.74 284.50 177.79 C 283.36 177.85 283.23 178.08 279.07 187.36 C 277.38 191.14 276.00 194.85 276.00 195.61 C 276.00 196.69 277.99 197.00 285.00 197.00 C 291.57 197.00 293.98 196.66 293.93 195.75Z"/>
+          <path d="M 393.86 211.25 C 395.53 209.19 399.84 204.12 403.44 200.00 C 407.04 195.88 409.99 192.14 410.00 191.71 C 410.00 190.21 405.48 184.48 398.00 176.50 L 390.50 168.34 L 397.00 168.34 C 402.71 167.92 403.68 168.14 405.00 170.02 C 407.83 174.07 416.39 183.50 417.48 183.78 C 418.42 184.02 422.86 179.09 429.73 170.20 C 431.31 168.14 432.21 167.93 437.95 168.35 L 444.40 168.35 L 436.93 176.50 C 429.18 184.81 425.00 190.14 425.00 191.74 C 425.00 192.25 428.71 196.92 433.25 202.12 C 445.79 216.50 445.26 215.00 437.82 215.00 L 431.39 215.00 L 426.79 208.75 C 424.26 205.31 421.10 201.48 419.76 200.23 L 417.33 197.96 L 412.39 203.73 C 409.67 206.90 406.66 210.74 405.70 212.25 C 404.08 214.79 403.46 215.00 397.39 215.00 L 390.83 215.00 L 393.86 211.25Z"/>
+          <path d="M 326.00 214.36 C 326.00 213.67 335.15 202.98 341.25 196.55 C 343.31 194.38 345.00 192.02 345.00 191.30 C 345.00 190.03 333.71 176.76 328.63 172.08 C 327.18 170.74 326.00 169.28 326.00 168.83 C 326.00 168.37 328.67 168.00 331.92 168.00 C 337.36 168.00 338.04 168.25 340.17 171.06 C 341.45 172.74 344.64 176.46 347.25 179.31 L 351.99 184.50 L 357.58 178.50 C 360.66 175.20 363.86 171.49 364.70 170.25 C 366.00 168.34 367.13 168.00 372.12 168.00 C 375.35 168.00 378.00 168.30 378.00 168.67 C 378.00 169.05 374.96 172.61 371.25 176.59 C 367.54 180.58 363.21 185.46 361.64 187.43 C 358.55 191.32 358.73 192.24 363.67 197.50 C 367.46 201.54 378.00 214.07 378.00 214.53 C 378.00 214.79 375.41 215.00 372.25 215.00 L 366.50 215.00 L 359.64 206.50 C 355.87 201.82 352.40 198.00 351.92 198.00 C 351.44 198.00 349.26 200.36 347.07 203.25 C 337.84 215.45 338.42 215.00 331.90 215.00 C 328.66 215.00 326.00 214.71 326.00 214.36Z"/>
+          <path d="M 518.00 191.50 L 518.00 168.00 L 523.48 168.00 L 529.23 168.00 L 529.23 186.75 L 529.23 205.78 L 544.75 205.78 L 560.00 205.78 L 560.00 210.53 L 560.00 215.00 L 539.00 215.00 L 518.00 215.00 L 518.00 191.50Z"/>
+          <path d="M 573.00 191.50 L 573.00 168.00 L 577.98 168.00 L 583.23 168.00 L 583.23 186.75 L 583.23 205.78 L 598.75 205.78 L 614.00 205.78 L 614.00 210.53 L 614.00 215.00 L 593.50 215.00 L 573.00 215.00 L 573.00 191.50Z"/>
+          <path d="M 188.09 244.09 C 187.03 243.03 184.05 237.75 181.46 232.34 C 178.88 226.93 176.15 221.32 175.40 219.88 L 174.05 217.27 L 183.11 213.06 C 188.10 210.74 192.30 208.99 192.46 209.17 C 193.20 210.03 198.00 219.57 198.00 220.18 C 198.00 220.56 200.93 226.30 204.50 232.92 C 208.07 239.55 211.00 245.20 211.00 245.49 C 211.00 245.77 206.28 246.00 200.50 246.00 C 191.49 246.00 189.73 245.73 188.09 244.09Z"/>
+          <path d="M 54.00 245.06 C 54.00 244.54 55.01 243.04 56.25 241.74 C 58.40 239.46 58.97 239.38 69.25 239.77 C 75.16 240.00 80.00 240.59 80.00 241.09 C 80.00 241.59 79.10 242.90 78.00 244.00 C 76.24 245.76 74.67 246.00 65.00 246.00 C 58.77 246.00 54.00 245.59 54.00 245.06Z"/>
+        </g>
+  </defs>
+</svg>
+
+<div class="wc-loader" id="wcLoader">
+  <!-- Il marchio si condensa dal vapore: un'onda passa da sinistra a destra e
+       dietro di se' lascia il logo. I pixel li da' `#wcAxxellMark` qui sopra —
+       gli stessi tracciati della nav e del footer, rasterizzati una volta sola
+       da js/loader.js. Niente Lottie e niente contatore: solo il logo. -->
+  <div class="wc-loader-inner">
+    <canvas class="wc-loader-vapour" id="wcLoaderVapour" aria-hidden="true"></canvas>
+  </div>
+  <div class="wc-curtain wc-curtain-t"></div>
+  <div class="wc-curtain wc-curtain-b"></div>
+</div>
+
+<!-- IL CURSORE DEL SITO — quasi tutto spento, e non per caso.
+     Il puntatore custom era un ANELLO CON UN PUNTO DENTRO in nove capitoli su
+     dodici (`default`, `dot`, e una variante scura `light`), un
+     ROMBO in rotazione sul cap. 03, una BARRA DI LETTURA sul manifesto e una
+     FRECCIA sul cap. 07. Tolti tutti su richiesta: quelle sezioni adesso
+     dichiarano `data-cursor="hidden"` e mostrano il puntatore di sistema.
+     Resta acceso un solo stato, il `caret` del form (ora su parliamone.html),
+     che non è un
+     ornamento — dice dove si scrive.
+     Questi due nodi restano perché sono loro a portare il caret, e perché
+     ogni stato è ancora tutto in css/base.css: si riaccende un capitolo
+     rimettendogli il suo `data-cursor`, senza toccare altro. -->
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="curR"><span class="cursor-label" id="curLabel"></span></div>
+<!-- QUI C'ERANO LE TRE PALLINE DELLA SCIA (`.cursor-trail`): ognuna inseguiva
+     la precedente più lentamente, dietro l'anello che insegue il puntatore.
+     Tolte da tutto il sito su richiesta. Il codice che le muoveva è ancora in
+     js/cursor.js e non fa niente se non trova nodi: si riaccendono rimettendo
+     questi tre div. -->
+
+<nav>
+  <a href="/" class="nav-logo" aria-label="Axxell">
+    <svg viewBox="28 104 598 154" role="img" aria-hidden="true"><use href="#wcAxxellMark"/></svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <!-- `?da=effetti-speciali` non e' un vezzo: e' il segnale che la giostra
+         legge per ritrovarsi gia' composta e ferma su QUESTA card invece di
+         rifare il tunnel. Stessa cosa che fanno i sette mondi tornando. -->
+    <li><a href="/atelier?da=effetti-speciali">Atelier</a></li>
+    <li><a href="/atelier/capitoli" class="active">Capitoli</a></li>
+    <!-- Il pulsante dell'hero entra nel tunnel e non porta ai contatti:
+         senza questa voce la pagina non avrebbe una rotta verso il modulo da
+         nessun punto in cui ti trovi. Da quando il modulo ha una pagina sua
+         (parliamone.html) non e' piu' un'ancora ma un indirizzo: funziona
+         anche da fermo, si puo' mandare a qualcuno, e non obbliga a scorrere
+         otto capitoli per arrivarci. -->
+    <li><a href="/atelier/parliamone" class="nav-cta">Parliamone</a></li>
+  </ul>
+</nav>
+
+<main id="wc-main">
+  <!-- i capitoli vengono aggiunti dai Task 3-11 -->
+  <section class="wc-hero" id="cap01" data-cursor="hidden">
+    <div class="wc-hero-pin" id="wcHeroPin">
+      <canvas class="wc-tunnel" id="wcTunnel"></canvas>
+      <!-- Ogni `.wc-fly` è l'involucro che vola nel tunnel. Serve perché
+           l'entrata dal loader anima già `transform` sugli elementi dentro:
+           due animazioni sulla stessa proprietà dello stesso nodo si
+           sovrascrivono a vicenda. -->
+      <div class="wc-hero-content" id="wcHeroContent">
+        <div class="wc-fly"><p class="eyebrow">// 01 — Atelier</p></div>
+        <h1 class="wc-hero-title">Il sito non si racconta. Si attraversa.</h1>
+        <div class="wc-fly"><p class="lead">Questa pagina è il portfolio. Ogni sezione che scorri è una cosa che sappiamo fare, mostrata mentre la fa.</p></div>
+        <div class="wc-fly"><button type="button" class="wc-magnet wc-hover" id="wcHeroCta">Entra →</button></div>
+      </div>
+      <div class="wc-scroll-cue"><span></span></div>
+    </div>
+  </section>
+
+  <!-- HELION — il volo continua. Sta QUI, fra il tunnel e il manifesto, perché
+       è la prosecuzione del tunnel: apre alla velocità con cui quello chiude
+       (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
+       fra due scene, decelera dentro una sola. -->
+  <section class="wc-warp" id="capWarp" data-cursor="hidden">
+    <!-- La costellazione entra solo DOPO la prima animazione. Fino a 0,26 la
+         scena è il tubo che si apre e decelera (`phaseMorphIn` in js/warp.js):
+         lì le stelle del cursore si sommavano alle particelle del volo e non
+         si capiva più cosa fosse cosa. Da lì in poi la scena si riordina e
+         l'effetto ha un fondo su cui leggersi. -->
+    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation"
+         data-cursor-fx-range="0.26,1">
+      <canvas id="wcWarpCanvas"></canvas>
+      <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
+           cambia forma, quindi il testo cambia con lei invece di scorrere via.
+           L'opacità la guida lo stesso valore che guida il riordino. -->
+      <div class="wc-warp-copy" id="wcWarpCopyA">
+        <p class="eyebrow">// Fuori dal tubo</p>
+        <h2>Poi si apre.</h2>
+      </div>
+      <div class="wc-warp-copy" id="wcWarpCopyB">
+        <p class="eyebrow">// La stessa materia</p>
+        <h2>E si riordina.</h2>
+        <p class="lead">Nessuna dissolvenza fra due scene: sono le stesse particelle del volo, ognuna con la sua destinazione già assegnata, che vanno a comporre l'elica.</p>
+      </div>
+      <div class="wc-warp-copy" id="wcWarpCopyC">
+        <p class="eyebrow">// E ancora</p>
+        <h2>Poi diventa altro.</h2>
+        <p class="lead">Terza forma, stesse particelle: una sfera e una galassia. Nessuna scena viene ricostruita, nessuna viene sostituita — quello che scorre è sempre lo stesso pugno di materia.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wc-manifesto" id="cap02" data-cursor="hidden">
+    <!-- Qui c'era il poster "Blue Swirl" come sfondo. Tolto: il capitolo prima
+         è ora una scena 3D vera, e un'immagine ferma subito dopo si leggeva
+         come un passo indietro. Il manifesto torna a essere testo su nero.
+
+         Al posto del poster c'è ora una doppia elica di punti (js/dna.js): non
+         è un'immagine ferma ma una scena che scorre, e sta sulla destra, fuori
+         dalla colonna del testo. Il canvas è trasparente: il nero resta quello
+         della pagina. -->
+    <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
+         l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
+         dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
+    <!-- Qui c'erano l'elica di cursore (`data-cursor-fx="dna"`) e le parole
+         magnetiche (`data-magnetic-sel`). Tolti su richiesta: il capitolo ha
+         già la sua elica WebGL e le parole in spirale, e due eliche che
+         seguono il puntatore nella stessa schermata si disturbavano.
+         Si riaccendono rimettendo i due attributi qui sotto. -->
+    <div class="wc-manifesto-pin" id="wcManifestoPin">
+      <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
+      <p class="eyebrow">// 02 — Metodo</p>
+      <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
+      <!-- Le parole che scendono in spirale attorno all'elica. Il contenitore
+           resta vuoto nel markup: js/dna.js ci mette DUE copie di ogni parola, una
+           sotto il canvas e una sopra, per farle passare dietro all'elica.
+           Senza WebGL (o con reduced-motion) diventano una lista in fila qui
+           sotto, e sono l'unico posto in cui il capitolo dice di cosa è fatto. -->
+      <div class="wc-dna-orbit" id="wcDnaOrbit"></div>
+    </div>
+  </section>
+
+  <!-- VESPER — la sfera che si tocca. SPOSTATA QUI, subito dopo il capitolo
+       02, su richiesta: stava dopo Altitude, poco prima del disco volante.
+       La catena delle scene di particelle adesso è tutta di fila e senza
+       salti — tunnel (01) → helion/elica (warp) → elica del metodo (02) →
+       questa — e la pagina passa ai modelli 3D veri (ufo, robot) in un colpo
+       solo invece che tornando indietro di un passo a metà.
+       ⚠️ Il numero a schermo è stato scambiato con quello del fluido: vesper
+       è "// 03", il fluido "// 04". Gli `id` NON si toccano (capVesper resta
+       capVesper, cap03 resta cap03): ci sono agganciati i trigger in js/ e la
+       voce di menu. Numero a schermo e id qui non coincidono più — è già così
+       per cap05, ed è documentato in tutti e due i punti. -->
+  <section class="wc-vesper" id="capVesper" data-cursor="hidden">
+    <!-- I fantasmi specchiati solo sulla PRIMA sfera. L'orologio di vesper
+         ripiega il pin in tre terzi (sfera, galassia, cervello — vedi
+         `clockFromScroll` in js/vesper.js): il primo terzo è l'orb, ed è
+         l'unica forma su cui quattro cerchi concentrici hanno senso. Sulla
+         galassia e sul cervello erano solo quattro anelli in mezzo. -->
+    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror"
+         data-cursor-fx-range="0,0.34">
+      <canvas id="wcVesperCanvas"></canvas>
+      <div class="wc-vesper-copy">
+        <p class="eyebrow">// 03 — Materia</p>
+        <h2>Ventitremila punti,<br>e li sposti col dito.</h2>
+        <p class="lead">Non è un video di una sfera: è una sfera. Passaci sopra il cursore e la superficie si gonfia dove sei, resta indietro di un istante — come farebbe un liquido — e si riposa da sola quando ti fermi.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAP. 03 — IL FLUIDO.
+       Qui c'era la colonna vertebrale in vetro. È stata tolta, non rotta:
+       `js/spine.js`, `assets/spine.glb` e `scripts/pack-spine-glb.js` restano
+       sul disco e sono ripristinabili. Poi la sezione è rimasta vuota per un
+       po', col solo splash di fluido e la copy nascosta; adesso il capitolo È
+       il fluido, e ha di nuovo un testo a schermo.
+
+       L'impaginazione è quella dell'hero di "flowstate", da cui viene la scena:
+       tutto in colonna al centro — pillola, titolo, sottotitolo — con la riga
+       di chiusura appoggiata in basso. Il testo è nostro. -->
+  <section class="wc-spine" id="cap03" data-cursor="hidden">
+    <div class="wc-spine-pin" id="wcSpinePin">
+      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto della
+           pagina in cui il cursore lo accende. Sta prima della copy, così il
+           testo gli passa davanti. -->
+      <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
+      <div class="wc-spine-copy">
+        <p class="eyebrow">// 04 — Fluido</p>
+        <h2>Venti passaggi di pressione,<br>sessanta volte al secondo.</h2>
+        <p class="lead">Non è un video di inchiostro. È un fluido che viene risolto mentre lo attraversi: il cursore non disegna la scia, spinge la velocità del campo — poi sono i vortici a decidere dove finisce il colore. Ti fermi, e continua da solo per un istante.</p>
+      </div>
+      <p class="wc-spine-foot">WebGL grezzo, nessuna libreria. Il solutore sta tutto in questa pagina.</p>
+      <!-- L'invito compare in fondo alla sequenza, quando i fuochi hanno
+           spazzato via testo e inchiostro e resta il nero. Da lì in poi il
+           capitolo lo muovi tu. `aria-hidden` perché è l'etichetta di un
+           gesto su un canvas che è già aria-hidden: senza il fluido non
+           vuol dire niente, e con reduced-motion non compare mai. -->
+      <p class="wc-spine-invite" id="wcSpineInvite" aria-hidden="true">Muovi il cursore</p>
+      <!-- E dopo che hai giocato un po', la consegna al capitolo successivo:
+           lì la stessa matematica non disegna più, deforma una fotografia.
+           Compare, resta il tempo di leggerla, e se ne va — vedi `next`/
+           `nextOut` in js/fluid.js. -->
+      <p class="wc-spine-next" id="wcSpineNext" aria-hidden="true">Bello vero?<br>Adesso proviamo con un&#39;immagine.</p>
+    </div>
+  </section>
+
+  <!-- ALTITUDE — il fondo che si piega sotto il dito.
+       Il video qui non è da guardare: è materia da deformare. Il fotogramma
+       diventa una texture e la texture si piega sotto il puntatore.
+
+       Il <video> vero sotto il canvas NON è di scorta: è la sorgente della
+       texture, e si vede finché il primo fotogramma non è salito sulla GPU.
+       Il canvas ci va sopra in dissolvenza — vedi `fade` in js/altitude.js. -->
+  <!-- `hidden` e non più `cross`: il mirino faceva da terzo puntatore sopra
+       un capitolo in cui il cursore È già il vortice. Qui il cursore del sito
+       si spegne e resta il fluido. -->
+  <section class="wc-alt" id="capAltitude" data-cursor="hidden">
+    <video id="wcAltVideo" class="wc-alt-video" muted loop playsinline
+           preload="none" poster="assets/starry-poster.webp" aria-hidden="true">
+      <source data-src="assets/starry.mp4" type="video/mp4">
+      <source data-src="assets/starry.webm" type="video/webm">
+    </video>
+    <canvas id="wcAltCanvas" class="wc-alt-canvas" aria-hidden="true"></canvas>
+    <div class="wc-alt-copy">
+      <p class="eyebrow">// Il fondo non &egrave; un fondo</p>
+      <h2>Passa il dito,<br>e l'immagine si <em class="wc-serif">piega</em>.</h2>
+      <p class="lead">Non &egrave; un filtro appoggiato sopra il video: &egrave; un fluido risolto mentre lo attraversi, e ogni pixel campiona il fotogramma spostato dalla velocit&agrave; del flusso. I tre canali vengono presi a distanze diverse lungo quello spostamento — la frangia di colore ai bordi del vortice non &egrave; disegnata, &egrave; quello che fa una lente.</p>
+      <p class="wc-alt-foot">Ti fermi, e il cielo torna fermo.</p>
+    </div>
+  </section>
+
+  <!-- Qui c'era il carosello "// 04 — Movimento continuo": otto tessere con
+       gradienti CSS che scorrevano in loop e si potevano trascinare. Tolto.
+       Erano etichette di stile ("Editoriale", "Brutalista") senza niente
+       dietro, in una pagina in cui ogni altra sezione mostra una cosa vera
+       mentre la fa. Il trascinamento resta, ma sul robot del cap. 04, dove
+       c'è un oggetto vero da girare.
+       Recuperabile dal commit d80a4ca (sezione, js/carousel.js e il CSS
+       .wc-carousel/.wc-track/.wc-tile).
+
+       NUMERAZIONE: gli occhielli erano stati scalati di uno quando il carosello
+       è sparito, e sono tornati ai numeri di prima quando vesper ha preso il
+       posto libero — un capitolo tolto, uno aggiunto. Vesper poi si è spostata
+       su, subito dopo il cap. 02, e questo posto è tornato vuoto: qui adesso
+       non c'è più niente, si passa da Altitude al disco volante. Gli `id` non sono mai
+       stati toccati in nessuno dei due passaggi: restano cap05..cap07 perché ci
+       sono agganciati i trigger in js/. (cap08 era il modulo di contatto ed è
+       uscito da questa pagina: ora è parliamone.html.)
+       Vesper, essendo nuovo, ha un id parlante (capVesper) come le altre
+       sezioni aggiunte dopo la numerazione originale. -->
+
+  <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
+       con un modello 3D vero, e stando vicine si leggono come una coppia. -->
+  <!-- `data-cursor="hidden"`: in questo capitolo il cursore del sito (punto +
+       anello ciano) si spegne e resta SOLO l'anello elastico verde. Erano due
+       anelli concentrici che inseguivano lo stesso puntatore. -->
+  <section class="wc-saucer" id="capSaucer" data-cursor="hidden">
+    <!-- L'anello elastico verde: è il colore del raggio, non un accento
+           estraneo appoggiato sopra. Il disco intanto deriva col puntatore
+           — vedi la sezione DERIVA in js/saucer.js. -->
+      <div class="wc-saucer-pin" id="wcSaucerPin" data-cursor-fx="elastic">
+      <canvas id="wcSaucerCanvas"></canvas>
+      <div class="wc-saucer-copy">
+        <p class="eyebrow">// Notte</p>
+        <h2>Quarantamila fili d'erba,<br>una sola chiamata di disegno.</h2>
+        <p class="lead">Il prato non è una texture: sono fili veri, ognuno col suo vento e la sua inclinazione. Si accendono solo dove il raggio li tocca.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cursore 'dot' e non più 'invert': quello faceva della sezione un disco
+       da 110 px che inseguiva il mouse sopra il modello. Via la palla, resta il
+       cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
+       quindi non si resta comunque senza.
+
+       QUI C'ERA LA TORCIA (`data-cursor-fx="torch"`): per rivelare doveva prima
+       coprire la sezione di nero all'85%, e il robot si vedeva solo dentro il
+       cono. Ora c'è il circuito: il modello non viene mai oscurato, e le tracce
+       si accendono al PASSAGGIO invece che sotto la posizione del puntatore —
+       fermi il mouse e non entra più corrente. La differenza è scritta in
+       testa a FX.circuit in js/cursorfx.js. -->
+  <section class="wc-robot" id="cap05" data-cursor="hidden">
+    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
+      <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
+           davanti in basso, sopra un velo, invece di dividere lo spazio a metà
+           come faceva la griglia di prima. -->
+      <div class="wc-robot-stage" id="wcRobotStage">
+        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
+      </div>
+      <div class="wc-robot-copy">
+        <p class="eyebrow">// 05 — Oggetti vivi</p>
+        <h2>Non un video.<br>Un modello che risponde.</h2>
+        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini. Dietro, il rame si accende dove passi — non dove ti fermi.</p>
+        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LITHOS — il faro che scopre una seconda immagine.
+       Il meccanismo viene dalla specifica `Lithos.txt`; il testo NO. Quella
+       specifica descrive l'hero di un marchio di geologia inventato, con la
+       sua headline e il suo pulsante arancione: metterlo qui vorrebbe dire
+       mettere il marchio di un altro sul sito del cliente, in una pagina dove
+       ogni sezione dimostra invece una tecnica nostra. Qui la copy dice cosa
+       fa l'effetto, come fanno tutte le altre.
+       Le due immagini stavano su un CDN di terzi: scaricate in locale. -->
+  <section class="wc-lithos" id="capLithos" data-cursor="hidden">
+    <div class="wc-lithos-base" aria-hidden="true"></div>
+    <div class="wc-lithos-reveal" id="wcLithosReveal" aria-hidden="true"></div>
+    <div class="wc-lithos-copy">
+      <p class="eyebrow">// Due immagini, una sola</p>
+      <h2><span class="wc-serif">Sotto</span> ce n'è un'altra.</h2>
+      <p class="lead">Il puntatore non illumina: scopre. Sotto la prima immagine ce n'è una seconda, e il faro decide quanta se ne vede — con un ritardo, perché una lampada che segue il dito senza inerzia sembra un ritaglio.</p>
+    </div>
+  </section>
+
+  <!-- SNEAKER — sfondo video in loop.
+       I due <source> hanno data-src e non src: senza, il browser comincia a
+       scaricare appena incontra il tag, e `preload="none"` non lo ferma —
+       quell'attributo governa il buffering, non la scelta della sorgente.
+       È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
+       sezione scendono solo gli 83 KB del poster. -->
+  <!-- La scia di fiamme del cursore (`data-cursor-fx="fire"`) era qui: tolta.
+       Il capitolo è già un video acceso a tutto schermo. -->
+  <section class="wc-sneaker" id="capSneaker" data-cursor="hidden">
+    <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
+           preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
+      <source data-src="assets/sneaker.webm" type="video/webm">
+      <source data-src="assets/sneaker.mp4" type="video/mp4">
+    </video>
+    <div class="wc-sneaker-copy">
+      <p class="eyebrow">// Video, non decorazione</p>
+      <h2>Quarantadue megabyte<br>ne sono diventati uno e mezzo.</h2>
+      <p class="lead">Il master era 4K a 24 Mbps. Qui gira a 1080p in due formati, senza traccia audio, e non scende un byte finché non arrivi a questo punto della pagina. Un video di sfondo che si fa aspettare non è un video di sfondo.</p>
+    </div>
+  </section>
+
+
+  <!-- OROLOGIO — si smonta se scorri giù, si rimonta se torni su.
+
+       Sta subito dopo la sneaker perché sono i due capitoli in cui un oggetto
+       è la scena: là un fondo che gira da solo, qui un oggetto che non si
+       muove affatto finché non lo muovi tu.
+
+       È L'UNICO CAPITOLO SU FONDO CHIARO. Il resto della pagina è nero; qui la
+       parete sbianca per una schermata, l'inchiostro diventa scuro e sparisce
+       il ciano — su bianco non avrebbe contrasto e sarebbe l'unica macchia
+       fredda a tutto schermo.
+
+       NON È UN <video>. È una sequenza di fotogrammi disegnata su canvas: a
+       ogni posizione di scroll ne corrisponde UNO. Un filmato scrubbato su
+       questa pagina è già stato provato e tolto — cercare dentro un video
+       dipende da come il SERVER manda il file, e quando il server non manda le
+       richieste Range il capitolo resta fermo senza che niente lo dica.
+       Vedi l'intestazione di js/orologio.js.
+
+       LE COLONNE LATERALI SONO VUOTE APPOSTA. L'orologio è stato generato per
+       stare nel terzo centrale e le sorgenti sono state ricentrate al pixel
+       prima di girare il filmato: le due fasce ai lati sono lo spazio delle
+       frasi, e il canvas disegna in `contain` per non mangiarsele.
+
+       L'ARCO STA TUTTO NELLA DISCESA: a metà sezione l'orologio è
+       completamente aperto, e da lì in poi si richiude. Le finestre delle
+       frasi seguono quell'arco — una mentre si apre, una col pezzo fermo in
+       aria, una mentre si richiude, una a orologio di nuovo intero.
+
+       ⚠️ I TESTI QUI SOTTO SONO PROVVISORI, messi per verificare che
+       l'impaginazione regga. Le finestre (`data-in`/`data-out`, in frazioni
+       della corsa) invece sono vere: chi riscrive le frasi tocchi il testo,
+       non i numeri, finché non cambia il ritmo. -->
+  <section class="wc-orologio" id="capOrologio" data-cursor="hidden">
+    <div class="wc-orologio-pin" id="wcOroPin">
+      <canvas class="wc-oro-canvas" id="wcOroCanvas" aria-hidden="true"></canvas>
+      <!-- Il primo fotogramma, per chi ha il movimento ridotto: lì il canvas
+           non si accende e questa immagine resta al suo posto. -->
+      <img class="wc-oro-poster" src="assets/orologio/orologio-001.webp" alt="" aria-hidden="true">
+
+      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.04" data-out="0.24">
+        <p class="eyebrow">// Testo provvisorio</p>
+        <h2>Non parte.<br>Lo apri <em class="wc-serif">tu</em>.</h2>
+      </div>
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.40" data-out="0.60">
+        <p>Testo provvisorio. Ogni pezzo si stacca alla quota che gli tocca, e si ferma dove ti fermi.</p>
+      </div>
+      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.68" data-out="0.86">
+        <p>Testo provvisorio. Torni indietro e si rimonta, nello stesso ordine, al contrario.</p>
+      </div>
+      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.88" data-out="1.00">
+        <h2>Il tempo di questo<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
+        <p>Testo provvisorio.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
+       sfalda in galassia) era già migrata dentro capWarp come terza forma, e
+       quello che restava era un guscio: la sola copy, che per giunta
+       descriveva quello che capWarp fa davvero. Tolto su richiesta.
+       `js/particles.js` resta sul disco, come js/spine.js: si riaccende
+       rimettendo la sezione, il canvas #wcPartCanvas e lo <script>.
+       NB gli `id` degli altri capitoli non si toccano: a cap05/cap07 sono
+       agganciati i trigger in js/. -->
+  <section class="wc-process" id="cap07" data-cursor="hidden">
+    <div class="wc-process-pin" id="wcProcessPin">
+      <div class="wc-process-head">
+        <p class="eyebrow">// 07 — Processo</p>
+        <h2>Quattro passaggi.</h2>
+        <div class="wc-progress"><span id="wcProgressBar"></span></div>
+      </div>
+      <div class="wc-process-row" id="wcProcessRow">
+        <article class="wc-step"><span class="wc-step-n">01</span><h3>Ascolto</h3><p>Capiamo a chi parla il sito e cosa deve ottenere. Prima di qualsiasi pixel.</p></article>
+        <article class="wc-step"><span class="wc-step-n">02</span><h3>Direzione</h3><p>Definiamo tono, tipografia, colore e movimento. Una direzione sola, non tre da scegliere.</p></article>
+        <article class="wc-step"><span class="wc-step-n">03</span><h3>Costruzione</h3><p>Sviluppo su misura. Nessun tema comprato, nessun page builder.</p></article>
+        <article class="wc-step"><span class="wc-step-n">04</span><h3>Vita</h3><p>Messa online, misurazione, correzioni. Un sito è vivo o è un volantino.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUI STAVA IL CAPITOLO 08, il modulo di contatto. Adesso e' una pagina
+       sua: `parliamone.html`. Era l'ultima cosa da leggere dopo otto schermate
+       di portfolio, e ci arrivava stanco — chi voleva scrivere doveva scorrere
+       tutto, chi guardava il portfolio se lo trovava in mezzo. Il markup e' lo
+       stesso, id compresi, cosi' js/form.js non e' cambiato di una riga: si e'
+       spostato, non riscritto.
+       Con lui se ne sono andati da questa pagina anche js/form.js e la
+       libreria emailjs, che qui non hanno piu' niente da fare. -->
+
+  <!-- L'OFFERTA — ultima sezione della pagina.
+       Il fondo è un loop di vetro viola: due formazioni ai lati e un vuoto
+       nero al centro, che nel filmato resta vuoto per tutti i 6,4 s. È lì che
+       va il testo, e per questo la sezione non ha né velo né riquadro — il
+       contrasto ce l'ha già di suo, perché al centro non passa niente.
+
+       È la CHIUSURA: chi ci arriva ha già scorso tutto il capitolo, e qui si
+       dice cosa si compra. Da quando il modulo ha una pagina sua il pulsante
+       non riporta più su a un'ancora ma ci porta — che è anche il motivo per
+       cui l'offerta può stare in fondo senza lasciare la pagina senza uscita. -->
+  <section class="wc-offer" id="capOffer" data-cursor="dot">
+    <video id="wcGlassVideo" class="wc-offer-video" muted loop playsinline
+           preload="none" poster="assets/glass-poster.webp" aria-hidden="true">
+      <source data-src="assets/glass.mp4" type="video/mp4">
+    </video>
+    <div class="wc-offer-copy">
+      <p class="eyebrow">// Che cosa ti resta in mano</p>
+      <h2>Un sito che si <em class="wc-serif">attraversa</em>,<br>non uno che si sfoglia.</h2>
+      <p class="lead">Quello che hai appena scorso non &egrave; una vetrina di effetti: &egrave; il modo in cui lavoriamo. Ogni capitolo di questa pagina &egrave; una tecnica che pu&ograve; finire nel tuo sito — scelta perch&eacute; serve a qualcosa, mai perch&eacute; fa impressione.</p>
+      <a href="/atelier/parliamone" class="wc-offer-cta wc-hover">Parliamone &rarr;</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <!-- AXXELL in grande, e il cursore lo accende passandoci sopra.
+       Tre copie della stessa parola, sovrapposte, tutte in CONTORNO e mai
+       riempite — è il contorno a rendere leggibile il gradiente che ci scorre
+       dentro, un testo pieno lo mangerebbe:
+         1. il contorno spento, che compare solo al passaggio: dà un fondo su
+            cui il resto si stacca;
+         2. il contorno che SI DISEGNA, una volta, quando il footer entra in
+            quadro (stroke-dash animato);
+         3. il gradiente della pagina, ritagliato da una maschera radiale che
+            insegue il puntatore: è quello che si accende sotto il dito.
+       Il viewBox è fisso e il testo sta al centro in percentuale, quindi la
+       parola si ridimensiona da sola con la finestra senza una media query. -->
+  <div class="wc-footer-word" id="wcFooterWord">
+    <!-- Il logo VERO (~/LOGO AXXELL.svg), non un <text>: i tracciati sono quelli
+         del marchio, orbita compresa, e l'effetto corre sul loro contorno.
+         I dieci tracciati stanno UNA volta sola in <defs> e vengono richiamati
+         tre volte con <use>: senza, sarebbero trenta copie di path data in
+         mezzo alla pagina. Il `fill` originale del file è stato tolto — qui
+         nessuno dei tre strati è riempito, è il contorno a rendere leggibile
+         il gradiente che ci scorre dentro.
+         Il viewBox è ritagliato sul disegno (il file ne aveva uno più largo,
+         con dell'aria attorno): così il marchio occupa tutta la riga. -->
+    <svg viewBox="28 104 598 154" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <linearGradient id="wcFootGrad" gradientUnits="userSpaceOnUse" x1="28" y1="104" x2="626" y2="258">
+          <stop offset="0%"   stop-color="#00d4ff"/>
+          <stop offset="38%"  stop-color="#8c7cff"/>
+          <stop offset="70%"  stop-color="#ff2bd6"/>
+          <stop offset="100%" stop-color="#00e8a2"/>
+        </linearGradient>
+        <!-- In unità del viewBox, non in percentuale: js/footer.js ci scrive
+             dentro le coordinate del puntatore convertite una volta sola. -->
+        <radialGradient id="wcFootReveal" gradientUnits="userSpaceOnUse"
+                        cx="327" cy="181" r="150">
+          <stop offset="0%"   stop-color="#fff"/>
+          <stop offset="100%" stop-color="#000"/>
+        </radialGradient>
+        <mask id="wcFootMask">
+          <rect x="0" y="0" width="700" height="400" fill="url(#wcFootReveal)"/>
+        </mask>
+      </defs>
+      <use class="wc-foot-t -base"   href="#wcAxxellMark"/>
+      <use class="wc-foot-t -draw"   href="#wcAxxellMark"/>
+      <use class="wc-foot-t -reveal" href="#wcAxxellMark"
+           stroke="url(#wcFootGrad)" mask="url(#wcFootMask)"/>
+    </svg>
+  </div>
+  <div class="wc-footer-row">
+    <span>© 2026 Axxell AI</span>
+    <span>Reggio Emilia, Italia</span>
+    <a href="mailto:info@axxell.ai">info@axxell.ai</a>
+  </div>
+</footer>
+
+<!-- LE LIBRERIE STANNO QUI DENTRO, NON PIU' SU UN CDN.
+     Prima arrivavano da cdn.jsdelivr.net e cdnjs.cloudflare.com. Con jsdelivr
+     irraggiungibile — una rete aziendale che filtra i CDN, un blocker
+     aggressivo, un disservizio — la pagina non degradava: restava NERA.
+     `ReferenceError: gsap is not defined`, il velo del loader non si toglieva
+     mai e sotto non si vedeva niente. Verificato bloccando il dominio e
+     ricaricando: schermo nero, zero testo.
+     Adesso sono file nostri, stessa origine: se risponde il sito rispondono
+     anche loro, e nessun terzo vede piu' l'IP di chi visita (che e' anche il
+     motivo GDPR). Sono i BYTE ESATTI che serviva il CDN — ognuno verificato
+     contro l'hash SRI che stava scritto qui sopra. Proprio per questo
+     `integrity` e `crossorigin` non ci sono piu': stessa origine, non c'e' un
+     terzo di cui fidarsi. Versioni e provenienza in vendor/README.md. -->
+<script src="vendor/gsap.min.js?v=20260824a"></script>
+<script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
+<script src="vendor/SplitText.min.js?v=20260824a"></script>
+<script src="vendor/CustomEase.min.js?v=20260824a"></script>
+<script src="vendor/Flip.min.js?v=20260824a"></script>
+<script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
+<script src="vendor/lenis.min.js?v=20260824a"></script>
+<script src="vendor/three.min.js?v=20260824a"></script>
+<script src="js/core.js?v=20260824a"></script>
+<script src="js/glsl.js?v=20260824a"></script>
+<script src="js/nav.js?v=20260824a"></script>
+<script src="js/cursor.js?v=20260824a"></script>
+<script src="js/fluid.js?v=20260824a"></script>
+<script src="js/loader.js?v=20260824a"></script>
+<script src="js/tunnel.js?v=20260824a"></script>
+<script src="js/warp.js?v=20260824a"></script>
+<script src="js/manifesto.js?v=20260824a"></script>
+<script src="js/cursorfx.js?v=20260824a"></script>
+<script src="js/dna.js?v=20260824a"></script>
+<script src="js/headings.js?v=20260824a"></script>
+<script src="js/vesper.js?v=20260824a"></script>
+<script src="js/saucer.js?v=20260824a"></script>
+<script src="js/robot.js?v=20260824a"></script>
+<script src="js/horizontal.js?v=20260824a"></script>
+<script src="js/lithos.js?v=20260824a"></script>
+<script src="js/sneaker.js?v=20260824a"></script>
+<script src="js/orologio.js?v=20260824a"></script>
+<script src="js/altitude.js?v=20260824a"></script>
+<script src="js/offer.js?v=20260824a"></script>
+<script src="js/footer.js?v=20260824a"></script>
+<script>
+/* IL DEEP-LINK DI DETTAGLIO (Task 8, atelier/effetti).
+   Il rewrite in vercel.json serve QUESTO file per /atelier/capitoli/<effetto>,
+   ma la barra dell'indirizzo resta quella pulita — niente hash in arrivo,
+   niente redirect. Qui si legge l'ultimo segmento del path e si salta
+   all'ancora `#cap<Nome>` della sezione di quell'effetto, con lo stesso
+   scroll nativo di un link `#ancora` qualunque. La mappa id→ancora e'
+   duplicata (non importata) da quella di atelier/js/effetti-deck.js: due file
+   statici serviti da origini/percorsi diversi, sette righe, non vale un
+   modulo condiviso. `anchorFromPath` resta su `window` apposta per la
+   verifica da console (vedi task-8-report.md). */
+(function () {
+  'use strict';
+  var ANCHOR = {
+    saucer:   'capSaucer',
+    vesper:   'capVesper',
+    altitude: 'capAltitude',
+    lithos:   'capLithos',
+    orologio: 'capOrologio',
+    warp:     'capWarp',
+    sneaker:  'capSneaker'
+  };
+  function anchorFromPath(path) {
+    var parts = String(path || '').replace(/\/+$/, '').split('/');
+    var last = parts[parts.length - 1];
+    return ANCHOR[last] || null;
+  }
+  window.__capitoliAnchorFromPath = anchorFromPath;
+
+  var anchorId = anchorFromPath(location.pathname);
+  if (!anchorId) return;
+
+  function salta() {
+    var el = document.getElementById(anchorId);
+    if (el) el.scrollIntoView({ block: 'start' });
+  }
+  /* Dopo `load`: le sezioni sono gia' nel markup al parse, ma lo scroll deve
+     atterrare DOPO che core.js ha avviato Lenis/ScrollTrigger (boot() gira su
+     DOMContentLoaded, prima di `load`) — se no Lenis riparte da 0 al primo
+     frame utile e vanifica il salto. */
+  if (document.readyState === 'complete') salta();
+  else window.addEventListener('load', salta);
+})();
+</script>
+</body>
+</html>

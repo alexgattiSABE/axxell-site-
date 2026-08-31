@@ -60,6 +60,19 @@
      alias, senza toccare il record letterale qui sopra. */
   for (var i = 0; i < EFFETTI.length; i++) EFFETTI[i].sett = EFFETTI[i].tipo;
 
+  /* ── L'INGRESSO AL DETTAGLIO (Task 8) ──────────────────────────────────────
+     Il mazzo inline eredita `enter(w)` di peso da index.html: clic sulla card
+     A FUOCO chiama `enter(hot)`, e quella funzione sa già coprire con lo
+     zoom, precaricare al passaggio (`prefetch`, `toccato && fermo da 600ms`) e
+     navigare a `w.page` dopo ~520ms — TUTTO condizionato su `w.page` essere
+     valorizzato. I record letterali qui sopra non lo portano apposta (sono
+     dati puri, non URL); si aggiunge qui, un giro solo, PRIMA che l'inline
+     legga `window.EFFETTI`. Relativo (non "/atelier/capitoli/…"): sotto
+     `<base href="/atelier/">` risolve comunque a `/atelier/capitoli/<id>`, ed
+     è la stessa pagina — capitoli-legacy.html, servita dal rewrite in
+     vercel.json — per tutti e sette gli effetti, cambia solo l'id in coda. */
+  for (var j = 0; j < EFFETTI.length; j++) EFFETTI[j].page = 'capitoli/' + EFFETTI[j].id;
+
   /* ── IL PERCORSO SULL'ELICA ────────────────────────────────────────────────
      Rimpiazza la vecchia `deckPlace` (che disponeva le lastre su un ANELLO
      attorno alla camera). Qui le card salgono lungo un'ELICA che avvolge lo

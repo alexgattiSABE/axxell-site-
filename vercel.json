@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/atelier/capitoli/:effetto",
+      "destination": "/atelier/capitoli-legacy"
+    }
+  ],
   "redirects": [
     {
       "source": "/website-creation",
