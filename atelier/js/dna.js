@@ -306,6 +306,37 @@ WC.register('dna', function(ctx){
     offsetX: 2.2
   };
 
+  /* ⚠️ RIAVVOLGIMENTO SENZA VUOTI E SENZA SCATTO (fix round 2, solo standalone).
+   *
+   * Il round 1 riavvolgeva il NUMERO che trasla l'elica dentro [-3.5, 3.5], ma
+   * la striscia è geometricamente finita e riempie l'inquadratura solo entro
+   * ~±1.5: fuori, si svuotava per un lungo tratto VISIBILE prima di rientrare.
+   * Contro la spec ("l'elica sale all'infinito … si riavvolge DOVE NON SI
+   * VEDE": deve essere piena a OGNI quota, il riavvolgimento invisibile).
+   *
+   * La cura vera: rendere l'elica TASSELLABILE in verticale — identica a sé
+   * stessa dopo una traslazione di un periodo esatto — e riavvolgere lo scroll
+   * di ESATTAMENTE quel periodo. Tre cose scorrono con `scroll` e vanno tutte
+   * riportate identiche dopo un periodo:
+   *   1) la TRASLAZIONE  (`group.position.y`): il salto deve valere un periodo
+   *      geometrico verticale `HELIX_PERIOD_T` (in unità di `t`);
+   *   2) la ROTAZIONE    (`group.rotation.y`): il salto deve valere un multiplo
+   *      di 2π — perciò il passo di rotazione è tarato apposta qui sotto;
+   *   3) il COLORE e il serpeggiamento: erano funzioni di `t` NON periodiche —
+   *      il colore diventa funzione della quota a SCHERMO (uWorldColor, sotto),
+   *      il serpeggiamento diventa periodico in `t` (uWrapT, sotto).
+   * Con l'elica alta ~59 unità di `t` (già ~6 periodi) e il periodo scelto,
+   * l'inquadratura (~±6.8 in `t`) resta SEMPRE dentro la striscia: mai un vuoto.
+   *
+   * IL PASSO ALLINEATO AI PIOLI. `uTwist` diventa 2π/HELIX_PITCH_T: così un
+   * giro d'elica vale HELIX_PITCH_T=9.6 in `t`, cioè 24 passi di piolo (0.4) —
+   * strand E pioli tornano identici ogni giro, non solo i due filamenti. Il
+   * periodo di riavvolgimento è HELIX_TURNS_PER_WRAP giri INTERI, così tutto
+   * combacia attraverso la cucitura. */
+  var HELIX_PITCH_T = 9.6;                                   // t per un giro; uTwist = 2π/pitch
+  var HELIX_TURNS_PER_WRAP = 3;                              // periodo = numero INTERO di giri
+  var HELIX_PERIOD_T = HELIX_PITCH_T * HELIX_TURNS_PER_WRAP; // 28.8 — periodo verticale (in t)
+
   if (standalone) {
     /* TINTA CIANO (Task 2, atelier/effetti.html) — via CONFIG, mai nello
      * shader: qui l'elica è l'asse della scena, non un capitolo a sé con le
@@ -321,6 +352,19 @@ WC.register('dna', function(ctx){
     // Al centro, non a destra: qui l'elica non condivide lo spazio con una
     // colonna di testo — è lei l'asse della pagina.
     CONFIG.offsetX = 0;
+
+    /* PASSO ALLINEATO (vedi il commento sopra). Lo scostamento da 0.65 è dello
+     * 0.7%, impercettibile, ma allinea giro e pioli al periodo di
+     * riavvolgimento. Solo standalone: il manifesto tiene il suo 0.65. */
+    CONFIG.twist = 2 * Math.PI / HELIX_PITCH_T;               // ≈ 0.65450
+    /* ROTAZIONE TARATA PERCHÉ IL SUO SALTO VALGA 2π. `group.rotation.y =
+     * scroll*(spin+scrollSpin)`; a fine periodo `scroll` salta di -P_scroll
+     * (= -HELIX_PERIOD_T*scale/scrollClimb), e il salto di rotazione è
+     * rate*(-P_scroll): perché sia un multiplo di 2π (rotazione identica),
+     * rate = 2π/P_scroll = 2π*scrollClimb/(HELIX_PERIOD_T*scale). Tutto il
+     * passo di rotazione sta in scrollSpin; spin (il "moto proprio") va a 0. */
+    CONFIG.spin = 0;
+    CONFIG.scrollSpin = 2 * Math.PI * CONFIG.scrollClimb / (HELIX_PERIOD_T * CONFIG.scale);
   }
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true,
@@ -349,8 +393,29 @@ WC.register('dna', function(ctx){
     uCursor:        { value: new THREE.Vector3() },
     uRepelRadius:   { value: CONFIG.pointerRadius },
     uRepelStrength: { value: CONFIG.pointerStrength },
-    uActivity:      { value: 0 }
+    uActivity:      { value: 0 },
+    /* Tre uniformi per il riavvolgimento senza cucitura, TUTTE inerti a 0 nel
+     * manifesto (`!standalone`), che così compila lo stesso shader ma imbocca
+     * a runtime i rami "come prima". Vengono accese solo nel blocco standalone
+     * qui sotto. Vedi il commento sopra HELIX_PITCH_T.
+     *   uWrapT      periodo (in t) su cui rendere PERIODICO il serpeggiamento;
+     *               0 = serpeggiamento originale, non periodico (manifesto).
+     *   uWorldColor 1 = colora per quota a SCHERMO (periodico per costruzione),
+     *               0 = colora per `t` come l'originale (manifesto).
+     *   uColorLo/Hi la finestra verticale di scena su cui va la scala di colore
+     *               quando uWorldColor è acceso. */
+    uWrapT:         { value: 0.0 },
+    uWorldColor:    { value: 0.0 },
+    uColorLo:       { value: -4.0 },
+    uColorHi:       { value: 4.6 }
   };
+
+  if (standalone) {
+    // Accende il colore-per-schermo e il serpeggiamento periodico: entrambi
+    // servono a far combaciare la cucitura del riavvolgimento (vedi sopra).
+    uniforms.uWorldColor.value = 1.0;
+    uniforms.uWrapT.value = HELIX_PERIOD_T;
+  }
 
   /* ⚠️ IL RAGGIO SERVE ANCHE ALLO SHADER, che da `position.y` deve risalire
    * all'angolo. Sta qui una volta sola e viene interpolato nel sorgente GLSL:
@@ -366,6 +431,7 @@ WC.register('dna', function(ctx){
       'uniform float uWaveAmt; uniform float uScale; uniform float uFloat;',
       'uniform vec3 uColLow; uniform vec3 uColAqua; uniform vec3 uColHigh; uniform vec3 uColRed;',
       'uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;',
+      'uniform float uWrapT; uniform float uWorldColor; uniform float uColorLo; uniform float uColorHi;',
       'varying float vFade; varying vec3 vColor; varying float vDepth;',
       G.SNOISE,
       'void main(){',
@@ -424,8 +490,24 @@ WC.register('dna', function(ctx){
       // Il serpeggiamento si tiene in due variabili invece di sommarlo al
       // volo: serve una seconda volta più sotto, per sapere dov'è l'ASSE
       // dell'elica a questa quota. Due chiamate di rumore, non quattro.
-      '  float wx = snoise(vec3(0.0, t * 0.2, uTime * 0.2)) * uWaveAmt;',
-      '  float wz = snoise(vec3(t * 0.2, 0.0, uTime * 0.2)) * uWaveAmt;',
+      /* SERPEGGIAMENTO. Nel manifesto (uWrapT=0) è quello di sempre: il rumore
+       * scorre lungo `t*0.2`, non periodico. In standalone (uWrapT=periodo) va
+       * campionato su un CERCHIO il cui angolo è 2π·t/uWrapT, così `wx`,`wz`
+       * tornano identici ogni periodo (elica tassellabile) restando continui —
+       * niente scalino a metà colonna. Il raggio del cerchio è scelto perché la
+       * circonferenza (2π·rr) valga 0.2·uWrapT, cioè la stessa "frequenza"
+       * spaziale del rumore originale, così il serpeggiamento ha lo stesso
+       * respiro. */
+      '  float wx, wz;',
+      '  if (uWrapT > 0.0) {',
+      '    float th = 6.28318530718 * t / uWrapT;',
+      '    float rr = uWrapT * 0.03183098862;',   // uWrapT/(2π) * 0.2
+      '    wx = snoise(vec3(cos(th) * rr, sin(th) * rr, uTime * 0.2)) * uWaveAmt;',
+      '    wz = snoise(vec3(cos(th) * rr + 5.2, sin(th) * rr + 5.2, uTime * 0.2)) * uWaveAmt;',
+      '  } else {',
+      '    wx = snoise(vec3(0.0, t * 0.2, uTime * 0.2)) * uWaveAmt;',
+      '    wz = snoise(vec3(t * 0.2, 0.0, uTime * 0.2)) * uWaveAmt;',
+      '  }',
       '  dnaPos.x += wx;',
       '  dnaPos.z += wz;',
       '  vec3 finalPos = (dnaPos - vec3(0.0, -8.0, 0.0)) * uScale;',
@@ -442,7 +524,23 @@ WC.register('dna', function(ctx){
        * cambio di pendenza visibile, cioè una fascia. Così le transizioni si
        * fondono l'una nell'altra e la scala resta un unico passaggio continuo,
        * come lo era da blu a viola. */
-      '  float g = clamp(smoothstep(-20.0, 12.0, t), 0.0, 1.0);',
+      /* `g` — la quota normalizzata su cui corre la scala di colore. Nel
+       * manifesto (uWorldColor=0) è funzione di `t`, la quota MATERIALE lungo
+       * l'elica, esattamente come sempre. In standalone è funzione della quota
+       * a SCHERMO (`modelPosition.y`, che porta con sé traslazione e rotazione
+       * ma non cambia con la y): così il colore è un gradiente FISSO nello
+       * schermo che l'elica attraversa salendo, e a fine periodo — quando la
+       * striscia risale di un periodo esatto — le stesse quote a schermo hanno
+       * lo stesso colore. È questo che rende il colore periodico e la cucitura
+       * invisibile. Il fondo non va a nero (0.14 di base): anche il tratto in
+       * basso resta un ciano vivo, l'inquadratura è PIENA a ogni quota. */
+      '  float g;',
+      '  if (uWorldColor > 0.5) {',
+      '    float gw = clamp((modelPosition.y - uColorLo) / (uColorHi - uColorLo), 0.0, 1.0);',
+      '    g = 0.14 + 0.86 * gw;',
+      '  } else {',
+      '    g = clamp(smoothstep(-20.0, 12.0, t), 0.0, 1.0);',
+      '  }',
       /* ⚠️ LE FINESTRE NON POSSONO ESSERE ATTACCATE. Al primo tentativo erano
        * 0.02-0.38 / 0.30-0.70 / 0.62-0.98: il verd'acqua non si vedeva MAI,
        * perché cominciava a virare al viola prima di essere arrivato a sé
@@ -558,6 +656,13 @@ WC.register('dna', function(ctx){
   cleanups.push(function(){ pointer.dispose(); });
 
   var scrollTarget = 0, scroll = 0, appear = 0;
+  /* Il pulviscolo prende la sua deriva da QUESTO numero, non da `scroll`: in
+   * standalone `scroll` viene riavvolto (`wrapHelixScroll`) e salterebbe, e un
+   * salto nel pulviscolo si vedrebbe (la sua cucitura non è periodica come
+   * quella dell'elica). `helixRawScroll` è il numero grezzo, SENZA riavvolgo,
+   * così il pulviscolo deriva in continuità. Nel manifesto resta 0 e non serve
+   * (là il pulviscolo usa `scroll`). */
+  var helixRawScroll = 0;
   var dpr = 1, size = { w: 1, h: 1 };
   var running = false, raf = 0, last = performance.now();
 
@@ -600,71 +705,43 @@ WC.register('dna', function(ctx){
     return G.clamp01(window.scrollY / max);
   }
 
-  /* ⚠️ IL RIAVVOLGIMENTO DELL'ELICA (fix a un finding di review, dopo il Task 4
-   * di atelier/effetti.html). SOLO per il montaggio standalone — stessa
-   * guardia di `reducedStandalone` qui sotto: il manifesto (`!standalone`)
-   * non chiama mai `wrapHelixScroll`, il suo `scrollTarget` viene da
-   * ScrollTrigger com'è sempre stato, e questo blocco non lo tocca.
+  /* ⚠️ IL RIAVVOLGIMENTO DELL'ELICA — round 2, SENZA VUOTI e SENZA SCATTO.
+   * SOLO per il montaggio standalone: il manifesto (`!standalone`) non chiama
+   * mai `wrapHelixScroll`, il suo `scrollTarget` viene da ScrollTrigger.
    *
-   * IL PROBLEMA CHE RISOLVE. `window.__effettiHelixScroll` (sopra) resta
-   * un numero SENZA fondo — cresce con `spin`, che il mazzo di card non
-   * riavvolge mai (`wrapN` lo rende periodico solo PER LE CARD, non per
-   * questo numero). Dato in pasto diretto a `group.position.y = -scroll *
-   * scrollClimb`, quel numero trasla un'elica che è UNA STRISCIA DI PUNTI
-   * FINITA (`t` da -37.4 a 21.4, non periodica — vedi il commento sopra al
-   * vertex shader): oltre una certa traslazione l'intera striscia è scorsa
-   * fuori dalla finestra della camera e lo schermo resta vuoto per sempre.
-   * Misurato: da qualunque lato, verso ±2.4 (in queste stesse unità di
-   * `scroll`) — che con `HELIX_LOOPS_PER_UNIT=8` di effetti.html sono
-   * circa 32 giri del mazzo, il numero che il Task 4 aveva già trovato a
-   * schermo.
+   * `window.__effettiHelixScroll` (sopra) resta un numero SENZA fondo — cresce
+   * con `spin`, mai riavvolto dal mazzo. Dato diretto a `group.position.y`,
+   * traslerebbe la striscia fuori inquadratura per sempre. `wrapHelixScroll`
+   * lo riporta dentro `[-HELIX_WRAP_HALF, HELIX_WRAP_HALF)`.
    *
-   * PERCHÉ ±2.4: la striscia, in coordinate di MODELLO (dopo `finalPos =
-   * (dnaPos - vec3(0,-8,0)) * uScale`, con `uScale` = CONFIG.scale = 0.63),
-   * va da `(-37.4+8)*0.63 = -18.522` a `(21.4+8)*0.63 = +18.522` — 37.044
-   * unità di altezza. La rotazione (`group.rotation.y`) è attorno all'asse
-   * Y e non sposta questa quota di un millimetro: SOLO la traslazione
-   * (`group.position.y = -scroll*scrollClimb`, scrollClimb=9.5) la
-   * muove. La camera sta a z=8.67, guarda l'origine, fov verticale 45°
-   * (mezzo angolo 22.5°, tan=0.4142): la finestra visibile a quota Y, alla
-   * distanza della striscia, vale H ≈ 8.67*0.4142 ≈ 3.6 (varia un poco con
-   * la z del punto, mai sopra ~4.2). La striscia è COMPLETAMENTE fuori da
-   * quella finestra quando il suo capo più vicino l'ha già oltrepassata:
-   * `(18.522+H)/scrollClimb = (18.522+3.6)/9.5 ≈ 2.33` — il conto a mano;
-   * la misura a schermo (screenshot della sola elica, isolata dal resto
-   * della pagina, deviazione standard dei pixel contro `scroll` crescente)
-   * la conferma quasi esatta: la varianza crolla al rumore di fondo del
-   * pulviscolo fra 2.35 e 2.40 su ENTRAMBI i lati. Sono la stessa cosa
-   * scritta due volte — la fisica e la misura — e concordano.
+   * PERCHÉ IL SALTO È INVISIBILE (round 1 lo nascondeva in un tratto NERO, che
+   * però restava visibile a lungo — bug di review). Ora l'elica è TASSELLABILE:
+   * un periodo di riavvolgimento trasla la geometria di ESATTAMENTE
+   * `HELIX_PERIOD_T` in `t` (= HELIX_TURNS_PER_WRAP giri, con `uTwist` allineato
+   * ai pioli), la rotazione salta di ESATTAMENTE 2π (passo tarato nel blocco
+   * standalone) e il colore è funzione della quota a SCHERMO (uWorldColor) —
+   * quindi prima e dopo il salto l'immagine è la STESSA, e non c'è mai un vuoto
+   * perché la striscia (~59 unità di `t`, ~6 periodi) riempie l'inquadratura a
+   * ogni quota. Vedi il commento esteso sopra HELIX_PITCH_T.
    *
-   * LA CURA: non un'elica periodica (la geometria resta quella, FINITA e
-   * non ripetuta — cambiarla è fuori portata, vedi il commento sul vertex
-   * shader), ma il NUMERO che la trasla: `wrapHelixScroll` lo riporta ogni
-   * volta dentro `[-HELIX_WRAP_HALF, HELIX_WRAP_HALF)`. Il margine (3.5
-   * contro una soglia di sparizione misurata a 2.4) è largo apposta: la
-   * striscia deve essere GIÀ vuota — non al limite — ai due capi
-   * dell'intervallo, altrimenti il salto fra un capo e l'altro si
-   * vedrebbe. Con questo margine il riavvolgimento cade sempre dentro un
-   * tratto di schermo nero, ed è esattamente "si riavvolge dove non si
-   * vede" (vedi la spec). Un giro del genere, in giri del mazzo, vale
-   * `2*HELIX_WRAP_HALF * (WORLDS.length-1) * HELIX_LOOPS_PER_UNIT / WORLDS.length`
-   * ≈ 48 — l'elica sale/gira visibilmente per la maggior parte di ognuno di
-   * questi 48 giri, poi sparisce per un tratto breve e RICOMINCIA, sempre
-   * uguale, all'infinito.
+   * HELIX_WRAP_HALF NON è più un margine "di buio": è la METÀ del periodo
+   * geometrico, convertita da `t` a unità di `scroll` col fattore
+   * scale/scrollClimb (una traslazione di scroll `Δs` sposta la quota-`t`
+   * inquadrata di `Δs*scrollClimb/scale`). Perciò
+   * `HELIX_WRAP_HALF = HELIX_PERIOD_T * scale / scrollClimb / 2` — con
+   * HELIX_PERIOD_T=28.8 vale ≈ 0.955, ben dentro il ±1.5 in cui la striscia
+   * riempie ancora tutta l'inquadratura (nessun vuoto, mai). In giri del mazzo
+   * il periodo vale `2*HELIX_WRAP_HALF * (WORLDS.length-1) * HELIX_LOOPS_PER_UNIT
+   * / WORLDS.length` ≈ 13.
    *
-   * IL SALTO VA COMPENSATO IN `scroll`, non solo in `scrollTarget`.
-   * `scroll` insegue `scrollTarget` con uno SMORZAMENTO (`G.damp`, qui
-   * sotto in `frame()`): se solo `scrollTarget` saltasse di colpo da
-   * +3.5 a -3.5, l'inseguitore smorzato ci metterebbe una frazione di
-   * secondo a raggiungerlo — passando per TUTTI i valori intermedi, cioè
-   * attraversando di corsa l'intera elica visibile. Sarebbe uno scatto
-   * vistoso, il contrario di quello che questo fix vuole ottenere. La cura
-   * è spostare anche `scroll` della STESSA quantità nello stesso
-   * fotogramma in cui `scrollTarget` salta (vedi `frame()`): la differenza
-   * fra i due (quello che lo smorzamento insegue) resta piccola come
-   * sempre, e il salto è un salto vero — un fotogramma, non una scia — che
-   * cade comunque dentro il buio del margine. */
-  var HELIX_WRAP_HALF = 3.5;
+   * IL SALTO VA COMPENSATO IN `scroll`, non solo in `scrollTarget`: `scroll`
+   * insegue `scrollTarget` con uno SMORZAMENTO (`frame()`), e senza
+   * compensazione lo attraverserebbe di corsa in mezzo secondo — una scia, non
+   * un salto. Spostando anche `scroll` della stessa quantità nello stesso
+   * fotogramma, la distanza inseguita resta piccola e il salto è di un solo
+   * fotogramma; essendo la geometria periodica, quel salto è comunque
+   * invisibile. */
+  var HELIX_WRAP_HALF = HELIX_PERIOD_T * CONFIG.scale / CONFIG.scrollClimb / 2;
   function wrapHelixScroll(raw){
     var half = HELIX_WRAP_HALF, period = half * 2;
     return raw - period * Math.floor((raw + half) / period);
@@ -682,7 +759,7 @@ WC.register('dna', function(ctx){
     camera.lookAt(0, 0, 0);
     group.position.y = -scroll * CONFIG.scrollClimb;
     group.rotation.y = scroll * (CONFIG.spin + CONFIG.scrollSpin);
-    atmo.step(scroll * CONFIG.scrollAtmoTime, camera, dpr, size.h);
+    atmo.step((standalone ? helixRawScroll : scroll) * CONFIG.scrollAtmoTime, camera, dpr, size.h);
     renderer.render(scene, camera);
   }
 
@@ -706,6 +783,7 @@ WC.register('dna', function(ctx){
       }
       lastWrappedScroll = wrappedScroll;
       scrollTarget = wrappedScroll;
+      helixRawScroll = rawScroll;   // grezzo, per il pulviscolo (niente salto)
     }
     scroll += (scrollTarget - scroll) * G.damp(0.12, dt);
     // La comparsa segue lo scroll: legata all'orologio, avrebbe continuato a
@@ -736,7 +814,7 @@ WC.register('dna', function(ctx){
     // altrimenti l'elica continuerebbe a girare da ferma.
     group.rotation.y = scroll * (CONFIG.spin + CONFIG.scrollSpin);
 
-    atmo.step(scroll * CONFIG.scrollAtmoTime, camera, dpr, size.h);
+    atmo.step((standalone ? helixRawScroll : scroll) * CONFIG.scrollAtmoTime, camera, dpr, size.h);
     layoutWords();
     renderer.render(scene, camera);
   }
@@ -965,10 +1043,12 @@ WC.register('dna', function(ctx){
      * già avvolto è già, di per sé, un salto vero e non una scia — e cade
      * comunque dentro il margine buio dello stesso `wrapHelixScroll`. */
     resize();
-    scrollTarget = scroll = wrapHelixScroll(globalScrollProgress());
+    helixRawScroll = globalScrollProgress();
+    scrollTarget = scroll = wrapHelixScroll(helixRawScroll);
     renderOnce();
     onScroll = function(){
-      scrollTarget = scroll = wrapHelixScroll(globalScrollProgress());
+      helixRawScroll = globalScrollProgress();
+      scrollTarget = scroll = wrapHelixScroll(helixRawScroll);
       renderOnce();
     };
     window.addEventListener('scroll', onScroll, { passive: true });
