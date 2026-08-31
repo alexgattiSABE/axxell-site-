@@ -219,18 +219,24 @@ WC.register('robot', function(ctx){
         // robot-fibers.js ora ricava il percorso dalle mesh-braccio VERE
         // (`parts.armL`/`parts.armR`, campionate e affettate lungo l'asse
         // spalla→polso) e lo spinge sulla superficie visibile del braccio —
-        // `parts.joints` (Task 2, coordinate MODEL-LOCALI: lo split gira
-        // dopo la centratura di `model` qui sopra) resta il seme dell'asse,
-        // non più il percorso stesso (vedi robot-fibers.js per il perché:
-        // i giunti da soli danno una linea verticale dritta, non la vera
-        // piega del braccio). Nessuna dipendenza da headGroup/materiali.
-        // Figlie di `model`, lo stesso parent delle mesh-braccio (gerarchia
-        // piatta, vedi robot-parts.js): restano incollate alle braccia sotto
-        // qualunque rotazione futura di `wrap` (drag, Task 7). Il surge per
-        // lato (0..1, "la corrente si accende dove passi") è pilotato dal
-        // raycast del cursore sulle mesh-braccio in tick(), più sotto.
+        // `parts.joints` resta il seme dell'asse, non più il percorso stesso
+        // (vedi robot-fibers.js per il perché: i giunti da soli danno una
+        // linea verticale dritta, non la vera piega del braccio). Nessuna
+        // dipendenza da headGroup/materiali.
+        // Figlie DIRETTE di `model` (aggiunto sotto), che resta incollato
+        // alle braccia sotto qualunque rotazione futura di `wrap` (drag,
+        // Task 7) — gerarchia FLAT confermata (`mesh.parent === model`).
+        // `model` va passato qui perché `parts.joints` (costruiti in
+        // robot-parts.js via `Box3.setFromObject`, quindi in coordinate
+        // MONDO, non model-locali — nonostante il commento precedente in
+        // questo file lo desse per scontato) va convertito in model-locale
+        // prima di combinarlo con i vertici campionati (vedi
+        // robot-fibers.js `buildArm`, fix ref1: quel mismatch di frame era
+        // la causa radice della fibra che deviava). Il surge per lato (0..1,
+        // "la corrente si accende dove passi") è pilotato dal raycast del
+        // cursore sulle mesh-braccio in tick(), più sotto.
         if (WC.robotFibers && parts.joints) {
-          var fibers = WC.robotFibers.create({ joints: parts.joints, armL: parts.armL, armR: parts.armR });
+          var fibers = WC.robotFibers.create({ joints: parts.joints, armL: parts.armL, armR: parts.armR, model: model });
           model.add(fibers.object);
           window.__robot.fibers = fibers;
         }

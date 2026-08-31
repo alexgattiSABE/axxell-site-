@@ -32,6 +32,34 @@
 window.WC = window.WC || {};
 WC.robotParts = {
   split: function (model) {
+    // FIX (ref1, dopo revisione — causa radice della deriva delle fibre
+    // mai davvero risolta nei due rework precedenti): a questo punto della
+    // sequenza di mount() (robot.js chiama `split(model)` SUBITO dopo
+    // `model.position.sub(c)`, la centratura — vedi robot.js) la
+    // matrixWorld cache di ogni mesh è STALE: riflette ancora la posizione
+    // PRE-centratura, perché nulla ha ancora chiamato updateMatrixWorld()
+    // dopo quel .position.sub(c) (il primo renderer.render() lo farebbe,
+    // ma non è ancora avvenuto). Ogni `Box3().setFromObject(...)` qui sotto
+    // — sia quello della classificazione testa/corpo/braccia sia,
+    // soprattutto, `centerOf()` che costruisce i `joints` (shoulder/elbow/
+    // wrist) — legge quindi coordinate SBAGLIATE, spostate esattamente del
+    // vettore centro-bbox sottratto in fase di centratura.
+    // La classificazione testa/corpo/braccia è quasi immune (confronta solo
+    // POSIZIONI RELATIVE nello stesso frame stale, quindi resta
+    // internamente coerente) — ma `joints`, consumati più tardi da
+    // robot-fibers.js insieme a vertici campionati con matrixWorld FRESCA
+    // (via mesh.updateMatrixWorld esplicito), finiscono in un frame diverso
+    // da quello dei vertici: un disallineamento silenzioso, costante per
+    // braccio, che è la causa reale della fibra che devia/finisce fuori
+    // posto vicino alla mano — non risolvibile ritoccando la geometria del
+    // percorso (i due rework precedenti) se l'ancora stessa è storta.
+    // robot.js applica già lo stesso fix mirato (updateMatrixWorld
+    // esplicito) per il pivot della testa, con lo stesso identico
+    // ragionamento in commento lì — qui va fatto UNA VOLTA, in testa a
+    // split(), prima di qualunque Box3/centerOf, così ogni lettura in
+    // questa funzione (classificazione E joints) usa coordinate correnti.
+    model.updateMatrixWorld(true);
+
     var meshes = [];
     model.traverse(function (n) { if (n.isMesh) meshes.push(n); });
 

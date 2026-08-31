@@ -43,6 +43,47 @@
  * Essendo figlie di `model`, le fibre restano incollate alle braccia sotto
  * qualunque rotazione del `wrap` (drag, Task 7): tutto il calcolo qui sopra
  * lavora in coordinate MODEL-LOCALI (le stesse di `joints` e delle mesh).
+ *
+ * REWORK 2 (ref1, dopo revisione utente): il braccio SINISTRO del robot
+ * (destra di chi guarda) derivava ancora — la fibra curvava verso l'esterno
+ * verso il fondo e finiva OLTRE la mano, verso l'anca. Tre fix, applicati
+ * insieme (il primo dei tre è la causa radice vera, gli altri due sono
+ * comunque corretti/utili e restano):
+ *
+ * (a) CAUSA RADICE — mismatch di frame fra `joints` e i vertici campionati.
+ *     `joints` (shoulder/wrist, da `robot-parts.js`) sono costruiti con
+ *     `new THREE.Box3().setFromObject(m)`, che usa SEMPRE `mesh.matrixWorld`
+ *     — sono quindi in coordinate MONDO vere, NON "model-locali" come il
+ *     commento del punto 2 sopra (e il JSDoc di `create`, prima di questo
+ *     fix) assumevano. `sampleArmVertices` invece campiona in coordinate
+ *     MODEL-LOCALI (relative a `model`, che ha una sua traslazione reale —
+ *     verificato con una pagina viva: `model.position` ≈ (2.9,-29.8,-5.6) —
+ *     rispetto al mondo; NON per una gerarchia nascosta: verificato anche
+ *     quello, `mesh.parent === model` è vero, la gerarchia È piatta come
+ *     documentato). Confrontare le due (`t = (v−shoulder).dot(axis)` con v
+ *     model-locale e shoulder mondo) sballa ogni calcolo di un vettore
+ *     costante per lato — l'origine reale del "pinch"/dell'estremo che
+ *     finiva vicino al busto invece che al polso, sopravvissuta al rework
+ *     precedente perché la piega del braccio mascherava l'errore quanto
+ *     bastava da sembrare "quasi giusto" in anteprima. Fix in `buildArm`:
+ *     `shoulder`/`wrist` vengono convertiti in MODEL-LOCALE una volta sola
+ *     (inversa di `model.matrixWorld`) prima di ogni uso — vedi lì.
+ * (b) `joints.wrist*` resta comunque il fondo del bbox dell'INTERO
+ *     gruppo-braccio (mano inclusa, vedi `robot-parts.js` `jointsFor`): a
+ *     frame corretto, affettare fino a t=1.0 su quell'asse arriverebbe
+ *     ancora dentro la mano. `findWristCut` calcola il vero taglio dalla
+ *     geometria reale del nodo `Hand`/`Hand_1` invece di un fondo-bbox o
+ *     una percentuale indovinata — vedi lì per i dettagli e il fallback.
+ * (c) L'offset verso l'esterno è pesato da una finestra `sin(pi*t01)` che
+ *     vale ~1 a metà braccio e →0 a entrambi gli estremi (spalla e polso),
+ *     così i punti iniziale/finale restano vicini al centroide reale
+ *     invece che spinti a piena intensità dove la sezione del braccio è
+ *     meno affidabile (attacco spalla, imbocco mano) — vedi
+ *     `offsetToSurface`.
+ *
+ * Simmetrico per costruzione: nessun ramo per-braccio in nessuno dei tre
+ * punti, si applicano a `buildArm()` una sola volta per lato con lo stesso
+ * codice.
  */
 window.WC = window.WC || {};
 
@@ -66,6 +107,19 @@ WC.robotFibers = (function () {
   // dettaglio) che altrimenti spingerebbe il centroide ben oltre la
   // superficie reale.
   var SURFACE_PERCENTILE = 0.8;
+  // FIX drift residuo (ref1, dopo revisione): `joints.wrist*` (robot-parts.js,
+  // jointsFor) è il FONDO del bbox dell'intero gruppo-braccio, mano inclusa —
+  // NON il polso vero. Affettare fino a t=1.0 su quell'asse porta le ultime
+  // fette dentro/oltre la mano, dove la sezione si allarga e si piega per le
+  // dita: il centroide (e quindi `offsetToSurface`, spinto a piena intensità)
+  // sbanda verso l'esterno, la fibra "spara" oltre la mano verso il fianco —
+  // esattamente il bug segnalato. Il taglio vero lo calcola `findWristCut`
+  // dalla geometria reale del nodo `Hand`/`Hand_1` (misurato: comincia al
+  // ~73% dell'asse spalla→bbox-bottom, NON all'87.5% indovinato a vista in
+  // un primo tentativo). Questa frazione fissa resta solo come FALLBACK
+  // se quel nodo non si trovasse in un GLB futuro — volutamente generosa
+  // (non deve mai essere il taglio "vero" usato oggi).
+  var ARM_CLAMP_END = 0.875;
 
   var VERT = [
     'varying vec2 vUv;',
@@ -149,29 +203,71 @@ WC.robotFibers = (function () {
     });
   }
 
-  // Campiona tutti i vertici delle mesh-braccio in coordinate MODEL-LOCALI
-  // (mesh.matrix: trasformazione locale rispetto al parent, che per le
-  // mesh-braccio È `model` — gerarchia piatta, vedi robot-parts.js).
-  function sampleArmVertices(meshes) {
+  // Campiona i vertici in coordinate MODEL-LOCALI (relative a `model`, che è
+  // il parent DIRETTO di ogni mesh-braccio — gerarchia piatta CONFERMATA:
+  // verificato `mesh.parent === model` su una pagina viva, vero). Si usa la
+  // trasformazione COMPLETA `model.matrixWorld` invertita × `mesh.matrixWorld`
+  // (equivalente a `mesh.matrix`, un solo livello, VERIFICATO che dà lo
+  // stesso risultato identico dato che il parent è già `model` — ma scritta
+  // così resta corretta anche se in futuro un export del GLB introducesse
+  // un livello in mezzo). Chi consuma questi vertici (`buildArm`) converte
+  // ANCHE `joints` (shoulder/wrist) allo stesso frame model-locale prima di
+  // usarli — vedi `buildArm` per il perché era il pezzo mancante vero (i
+  // `joints` da soli sono in coordinate MONDO, non model-locali).
+  function sampleArmVertices(meshes, model) {
     var pts = [];
     var v = new THREE.Vector3();
+    model.updateMatrixWorld(true);
+    var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
     meshes.forEach(function (mesh) {
       var geo = mesh.geometry;
       if (!geo || !geo.attributes || !geo.attributes.position) return;
-      // matrixAutoUpdate ricalcola .matrix da position/quaternion/scale solo
-      // dentro updateMatrixWorld(); a questo punto della sequenza di mount()
-      // (subito dopo il primo Box3().setFromObject(model), che ha già
-      // percorso l'albero) .matrix è affidabile, ma un updateMatrix()
-      // esplicito è a costo zero e toglie ogni dipendenza dall'ordine delle
-      // chiamate a monte.
-      mesh.updateMatrix();
+      mesh.updateMatrixWorld(true);
+      // Trasformazione mesh→model (non solo mesh→genitore diretto): risolve
+      // qualunque numero di Group intermedi fra `model` e la mesh.
+      var localMat = new THREE.Matrix4().multiplyMatrices(invModel, mesh.matrixWorld);
       var pos = geo.attributes.position;
       for (var i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrix);
+        v.fromBufferAttribute(pos, i).applyMatrix4(localMat);
         pts.push(v.clone());
       }
     });
     return pts;
+  }
+
+  // Trova il vero polso lungo l'asse shoulder→wrist-bbox, misurandolo sulla
+  // geometria reale invece di indovinare una frazione fissa. Sui due
+  // gruppi-braccio compare un nodo nominato affidabile: `Hand`/`Hand_1`
+  // (vedi robot-parts.js, header: uno dei pochi nomi affidabili nel GLB).
+  // Verificato coi dati reali (dump vertici su pagina viva, ref1): quel nodo
+  // NON è un dito o un dettaglio, è la mano intera — la sua faccia rivolta
+  // verso la spalla (proiezione MINIMA lungo l'asse, presa su un CLUSTER di
+  // ~100+ vertici del bordo prossimale, non un singolo outlier) è
+  // esattamente il polso. Con questo, il taglio è geometrico (si adatta a
+  // qualunque posa/modello), non una percentuale tarata a vista — vedi
+  // ref1-report.md per la frazione effettiva misurata a frame corretto (fix
+  // del mismatch mondo/model-locale in `buildArm`, sotto — a frame SBAGLIATO
+  // il nodo Hand sembrava cominciare altrove, da cui il tentativo iniziale
+  // con una frazione fissa, sostituito da questa misura geometrica).
+  // Fallback a una frazione (ARM_CLAMP_END) SOLO se il nodo non si trova o
+  // dà una proiezione degenere — non dovrebbe succedere (nome verificato
+  // per entrambi i lati) ma niente NaN/curve vuote se il GLB cambiasse.
+  function findWristCut(meshes, shoulder, axis, armLenFull, model) {
+    var handMeshes = meshes.filter(function (m) { return /hand/i.test(m.name || ''); });
+    if (handMeshes.length) {
+      var handVerts = sampleArmVertices(handMeshes, model);
+      if (handVerts.length) {
+        var minT = Infinity;
+        handVerts.forEach(function (v) {
+          var t = v.clone().sub(shoulder).dot(axis);
+          if (t < minT) minT = t;
+        });
+        if (isFinite(minT) && minT > armLenFull * 0.3 && minT < armLenFull * 0.98) {
+          return minT;
+        }
+      }
+    }
+    return armLenFull * ARM_CLAMP_END;
   }
 
   // Affetta i vertici lungo l'asse shoulder→wrist (seme, non percorso) e
@@ -179,38 +275,47 @@ WC.robotFibers = (function () {
   // della fetta } — servono entrambi: il centroide per il percorso, i
   // vertici grezzi per stimare quanto spingerlo verso la superficie
   // (offsetToSurface).
-  function sliceArm(meshes, shoulder, wrist, sliceCount) {
+  function sliceArm(meshes, shoulder, wrist, sliceCount, model) {
     var axis = new THREE.Vector3().subVectors(wrist, shoulder);
-    var armLen = axis.length();
-    if (armLen < 1e-4) return null; // giunti degeneri (braccio vuoto)
+    var armLenFull = axis.length();
+    if (armLenFull < 1e-4) return null; // giunti degeneri (braccio vuoto)
     axis.normalize();
+    // Fix drift: affettiamo solo fino al polso vero (findWristCut), non
+    // fino al fondo del bbox (che include la mano).
+    var armLen = findWristCut(meshes, shoulder, axis, armLenFull, model);
 
-    var verts = sampleArmVertices(meshes);
+    var verts = sampleArmVertices(meshes, model);
     if (verts.length < sliceCount * 3) return null; // troppo pochi vertici per un binning affidabile
 
     var bins = [];
     for (var i = 0; i < sliceCount; i++) bins.push([]);
     verts.forEach(function (v) {
       var t = v.clone().sub(shoulder).dot(axis);
-      if (t < 0 || t > armLen) return; // fuori dallo span spalla→polso: non oltre la mano
+      if (t < 0 || t > armLen) return; // fuori dallo span spalla→polso (clampato prima della mano)
       var bin = Math.min(sliceCount - 1, Math.floor((t / armLen) * sliceCount));
       bins[bin].push(v);
     });
 
     var slices = [];
-    bins.forEach(function (bin) {
+    bins.forEach(function (bin, i) {
       if (bin.length < 3) return; // fetta troppo scarsa: salto, la curva resta continua sulle altre
       var c = new THREE.Vector3();
       bin.forEach(function (v) { c.add(v); });
       c.multiplyScalar(1 / bin.length);
-      slices.push({ point: c, verts: bin });
+      // t01: posizione normalizzata 0 (spalla) → 1 (polso, dopo il clamp) di
+      // QUESTA fetta — dal centro del bin, non dall'indice grezzo (i bin
+      // scartati non devono comprimere lo spacing di quelli rimasti). Usata
+      // solo dalla finestra di taper in `offsetToSurface`.
+      var t01 = (i + 0.5) / sliceCount;
+      slices.push({ point: c, verts: bin, t01: t01 });
     });
     if (slices.length < 3) return null;
     // Task 7 (nit): `armLen` (già calcolato sopra per il binning) viaggia
     // appeso all'array — un array resta un oggetto normale in JS, la
     // proprietà extra non disturba `.length`/`.forEach`/`.map` di chi lo
     // consuma — così buildArm() lo rilegge invece di ricalcolare
-    // `shoulder.distanceTo(wrist)`, la stessa identica distanza.
+    // `shoulder.distanceTo(wrist)`, la stessa identica distanza. Da ref1
+    // in poi è già la lunghezza CLAMPATA (fino al polso, non alla mano).
     slices.armLen = armLen;
     return slices;
   }
@@ -255,6 +360,18 @@ WC.robotFibers = (function () {
   // dei suoi vertici, vedi SURFACE_PERCENTILE), più una piccola spinta extra
   // così il tubo (che ha un suo raggio) sporge per lo più FUORI dalla mesh —
   // leggibile — invece che restarne per metà dentro.
+  //
+  // FIX drift (ref1, dopo revisione): la spinta a piena intensità fin sui due
+  // capi è la seconda metà del bug — anche col clamp sopra (niente più fette
+  // dentro la mano), la fetta immediatamente prima del polso è comunque dove
+  // il braccio comincia ad allargarsi/piegarsi per il polso stesso, quindi
+  // l'offset lì è già meno affidabile; e alla spalla l'offset "verso
+  // l'esterno" non ha senso fisico (è dove il braccio si innesta nel busto).
+  // Si applica quindi una finestra `sin(pi * t01)`: 1 a metà braccio (dove il
+  // bulge verso la superficie ha più senso ed è più stabile), →0 a entrambi
+  // gli estremi — lì il punto resta sul centroide reale (asse del braccio),
+  // niente spinta laterale che possa farlo sbandare. Stesso metodo su
+  // ENTRAMBE le braccia (t01 viene da sliceArm, simmetrico per costruzione).
   function offsetToSurface(slices, dirs, extraPush) {
     return slices.map(function (s, i) {
       var dir = dirs[i];
@@ -262,7 +379,18 @@ WC.robotFibers = (function () {
         .sort(function (a, b) { return a - b; });
       var idx = Math.min(proj.length - 1, Math.floor(proj.length * SURFACE_PERCENTILE));
       var dist = Math.max(0, proj[idx]);
-      return s.point.clone().addScaledVector(dir, dist + extraPush);
+      // Pavimento 0.4 (non 0, verificato a schermo, ref1): un taper che
+      // arriva a ESATTAMENTE 0 fa collassare il punto sul centroide reale,
+      // che vicino al polso può stare leggermente SOTTO la superficie
+      // visibile (dentro il volume del braccio) — con `depthTest:true` quel
+      // tratto risultava invisibile (occluso), la fibra sembrava fermarsi
+      // prima del vero polso pur essendo geometricamente presente. Un
+      // pavimento tiene il punto un minimo spinto FUORI anche ai due
+      // estremi (40% dell'offset pieno — comunque molto meno del 100%
+      // originale, che causava lo sbandamento), abbastanza per restare
+      // sopra la superficie e visibile.
+      var taper = Math.max(0.4, Math.sin(Math.PI * Math.min(1, Math.max(0, s.t01))));
+      return s.point.clone().addScaledVector(dir, (dist + extraPush) * taper);
     });
   }
 
@@ -296,9 +424,35 @@ WC.robotFibers = (function () {
   // mesh non ha dato abbastanza vertici per un binning affidabile (braccio
   // vuoto o mesh anomala) — il chiamante lascia il gruppo vuoto in quel
   // caso, nessuna geometria NaN.
-  function buildArm(meshes, shoulder, wrist, material, group) {
+  // FIX drift — CAUSA RADICE reale (ref1, trovata solo dopo aver escluso
+  // tutto il resto con misure dirette su pagina viva, non a occhio):
+  // `joints` (shoulder/wrist, da WC.robotParts.split → `centerOf()`) sono
+  // costruiti con `new THREE.Box3().setFromObject(m)`, che usa SEMPRE
+  // `mesh.matrixWorld` — sono quindi in coordinate MONDO vere, non
+  // "model-locali" come il commento originale (Task 6) e i JSDoc di questo
+  // file assumevano. `sampleArmVertices` invece campiona i vertici in
+  // coordinate MODEL-LOCALI (relative a `model`, che ha una sua traslazione
+  // reale — verificato: (2.9, -29.8, -5.6) — rispetto al mondo). Mescolare
+  // i due (com'era: `t = (v − shoulder).dot(axis)` con v model-locale e
+  // shoulder mondo) confronta due origini diverse: il risultato non è "quasi
+  // giusto", è sistematicamente sballato di un vettore costante per lato —
+  // la causa reale dietro il "pinch"/l'estremo che finiva vicino al busto
+  // invece che al polso, sopravvissuta a entrambi i rework precedenti
+  // perché la piega del braccio mascherava l'errore quanto bastava da
+  // sembrare "quasi giusto" in anteprima.
+  // Fix: si converte `shoulder`/`wrist` in MODEL-LOCALE una volta sola qui
+  // (stesso frame dei vertici campionati), con l'inversa di
+  // `model.matrixWorld` — la trasformazione COMPLETA world→model, corretta
+  // qualunque sia la rotazione/traslazione di `model` o dei suoi antenati
+  // (`wrap`) al momento della build (mount, prima che il drag tocchi `wrap`).
+  function buildArm(meshes, shoulder, wrist, material, group, model) {
     if (!shoulder || !wrist || !meshes || !meshes.length) return false;
-    var slices = sliceArm(meshes, shoulder, wrist, SLICE_COUNT);
+    model.updateMatrixWorld(true);
+    var worldToModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
+    shoulder = shoulder.clone().applyMatrix4(worldToModel);
+    wrist = wrist.clone().applyMatrix4(worldToModel);
+
+    var slices = sliceArm(meshes, shoulder, wrist, SLICE_COUNT, model);
     if (!slices) return false;
 
     var radius = slices.armLen * TUBE_RADIUS_FACTOR;
@@ -323,12 +477,22 @@ WC.robotFibers = (function () {
     /**
      * @param {Object} input
      * @param {Object} input.joints - parts.joints da WC.robotParts.split:
-     *   Vector3 MODEL-LOCALI {shoulderL, wristL, shoulderR, wristR, ...} —
-     *   usati solo come SEME dell'asse lungo cui affettare, non come
-     *   percorso (vedi sliceArm).
+     *   Vector3 in coordinate MONDO (costruiti via `Box3.setFromObject`,
+     *   ref1: NON model-locali, nonostante l'assunzione originale di Task 6)
+     *   — usati solo come SEME dell'asse lungo cui affettare, non come
+     *   percorso (vedi sliceArm). `buildArm` li converte in model-locale
+     *   prima di ogni uso (serve `input.model`, sotto).
      * @param {THREE.Mesh[]} input.armL - mesh-braccio sinistro, da
      *   WC.robotParts.split (parts.armL) — campionate per il percorso reale.
      * @param {THREE.Mesh[]} input.armR - mesh-braccio destro (parts.armR).
+     * @param {THREE.Object3D} input.model - il gruppo `model` di robot.js
+     *   (radice della scena GLTF, parent DIRETTO di ogni mesh-braccio —
+     *   gerarchia piatta). `object` (il ritorno) viene aggiunto come figlio
+     *   DIRETTO di questo stesso `model` da robot.js. Serve qui per
+     *   convertire `joints` (coordinate MONDO) in model-locale — vedi
+     *   `buildArm` — nello stesso frame dei vertici campionati da
+     *   `sampleArmVertices`, così i punti costruiti finiscono nello STESSO
+     *   frame in cui verranno renderizzati.
      * @returns {{object: THREE.Object3D, update: function(dt, surgeL, surgeR)}}
      */
     create: function (input) {
@@ -336,6 +500,7 @@ WC.robotFibers = (function () {
       var joints = input.joints || {};
       var armL = input.armL || [];
       var armR = input.armR || [];
+      var model = input.model;
 
       var object = new THREE.Group();
       object.name = 'robotFibers';
@@ -347,8 +512,10 @@ WC.robotFibers = (function () {
       var groupR = new THREE.Group();
       object.add(groupL, groupR);
 
-      buildArm(armL, joints.shoulderL, joints.wristL, matL, groupL);
-      buildArm(armR, joints.shoulderR, joints.wristR, matR, groupR);
+      if (model) {
+        buildArm(armL, joints.shoulderL, joints.wristL, matL, groupL, model);
+        buildArm(armR, joints.shoulderR, joints.wristR, matR, groupR, model);
+      }
 
       var time = 0;
       function update(dt, surgeL, surgeR) {
