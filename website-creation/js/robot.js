@@ -38,6 +38,7 @@ WC.register('robot', function(ctx){
   function mount(){
     if (mounted) return;
     mounted = true;
+    var torn = false;
 
     // Reduced-motion: una scena 3D che gira di continuo è esattamente ciò che
     // l'impostazione chiede di non avere. Resta la card, senza il modello.
@@ -76,6 +77,7 @@ WC.register('robot', function(ctx){
     stage.appendChild(renderer.domElement);
 
     gltf.load('assets/robot.glb', function(g){
+      if (torn) return;
       var model = g.scene;
       // centra e scala il modello nell'inquadratura
       var box = new THREE.Box3().setFromObject(model);
@@ -110,12 +112,14 @@ WC.register('robot', function(ctx){
       })();
       cleanups.push(function(){ cancelAnimationFrame(raf); });
     }, undefined, function(){
+      if (torn) return;
       fail('Modello non caricato');
     });
 
     window.addEventListener('resize', fit);
     cleanups.push(function(){ window.removeEventListener('resize', fit); });
     cleanups.push(function(){
+      torn = true;
       draco.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
