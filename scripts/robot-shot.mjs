@@ -99,6 +99,21 @@ if (POINTER_RAW === 'left') POINTER_FRAC = -1;
 else if (POINTER_RAW === 'center') POINTER_FRAC = 0;
 else if (POINTER_RAW === 'right') POINTER_FRAC = 1;
 else if (POINTER_RAW !== undefined && !Number.isNaN(Number(POINTER_RAW))) POINTER_FRAC = Number(POINTER_RAW);
+// Estensione Task 5b (lente Lithos sul vetro testa):
+//  - ROBOT_SHOT_LENS_POINT="<x>,<y>": muove il mouse REALE (page.mouse.move)
+//    a coordinate ASSOLUTE di viewport (px), pensate per cadere SOPRA la
+//    proiezione a schermo della testa (a differenza di ROBOT_SHOT_POINTER,
+//    pensato per il solo "segue il cursore" e che a left/right cade fuori
+//    dalla testa). Applicato DOPO ROBOT_SHOT_POINTER (se entrambi presenti,
+//    vince l'ultimo movimento reale, cioè questo), poi aspetta la
+//    convergenza dello smoothing esponenziale di uLensActive (0.18/frame).
+const LENS_POINT_RAW = process.env.ROBOT_SHOT_LENS_POINT;
+let LENS_POINT = null;
+if (LENS_POINT_RAW !== undefined) {
+  const parts = LENS_POINT_RAW.split(',').map((s) => Number(s.trim()));
+  if (parts.length === 2 && parts.every((n) => !Number.isNaN(n))) LENS_POINT = { x: parts[0], y: parts[1] };
+  else console.error('ROBOT_SHOT_LENS_POINT non è "x,y" valido:', LENS_POINT_RAW);
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -308,6 +323,17 @@ async function main(){
       await page.waitForTimeout(1800);
     }
 
+    // Task 5b: muove il mouse REALE su un punto assoluto di viewport pensato
+    // per cadere sopra la testa (raycast reale in robot.js, non un override
+    // sintetico) — verifica che la lente Lithos si apra lì e segua il
+    // cursore fra due scatti diversi.
+    if (LENS_POINT) {
+      await page.mouse.move(LENS_POINT.x, LENS_POINT.y, { steps: 12 });
+      // Convergenza dello smoothing esponenziale di uLensActive
+      // (+= (target-current)*0.18 per frame in robot.js).
+      await page.waitForTimeout(1800);
+    }
+
     // Task 5: posa deterministica della testa (hold) — la testa "guarda"
     // (faceAmount alto) ed eventualmente è girata di lato, senza puntatore
     // reale (che l'overlay .wc-robot-copy intercetterebbe al centro). Il loop
@@ -321,17 +347,18 @@ async function main(){
     // Un giro di render in più prima dello screenshot.
     await page.waitForTimeout(400);
 
-    // Task 3: forza l'uniform uOpen del vetro testa (0=chiuso/scuro,
-    // 1=aperto/trasparente) subito prima dello screenshot, per isolare
-    // l'effetto dal materiale. Da Task 4 in poi il loop di robot.js pilota
-    // uOpen ogni frame verso state.faceAmount (interazione reale) — un
-    // valore forzato qui viene quindi eroso nei frame successivi, non è
-    // più "stabile" come lo era prima di Task 4. Applicato per ULTIMO, con
-    // un'attesa breve (una manciata di frame, non 400ms) per limitare la
-    // deriva mantenendo comunque un render fresco col valore appena forzato.
+    // Task 3 (SUPERATO da Task 5b — vedi spec §2/§3, correzione 2026-08-31):
+    // forzava l'uniform uOpen del vetro testa. Quell'uniform non esiste più
+    // (rimpiazzata dalla lente Lithos uLensActive/uLensPos, guidata dal
+    // raycast reale — vedi ROBOT_SHOT_LENS_POINT sopra). ROBOT_SHOT_OPEN
+    // resta letto per compatibilità di interfaccia ma non ha più un target
+    // da scrivere: guardia esplicita così non lancia (uniforms.uOpen
+    // sarebbe undefined) se qualcuno lo passa ancora per abitudine.
     if (OPEN_VAL !== null && !Number.isNaN(OPEN_VAL)) {
       await page.evaluate((v) => {
-        if (window.__robot && window.__robot.glass) window.__robot.glass.uniforms.uOpen.value = v;
+        if (window.__robot && window.__robot.glass && window.__robot.glass.uniforms.uOpen) {
+          window.__robot.glass.uniforms.uOpen.value = v;
+        }
       }, OPEN_VAL);
       await page.waitForTimeout(80);
     }
@@ -346,7 +373,12 @@ async function main(){
         headRotY: r.headGroup ? r.headGroup.rotation.y : null,
         headRotX: r.headGroup ? r.headGroup.rotation.x : null,
         faceAmount: r.state ? r.state.faceAmount : null,
-        uOpen: r.glass ? r.glass.uniforms.uOpen.value : null,
+        // Task 5b: uOpen è sparito (glass.js non ha più quell'uniform),
+        // sostituito dalla lente Lithos — uLensActive (0..1, smorzato) e il
+        // punto colpito in mondo (uLensPos), diagnostica per lo screenshot.
+        uLensActive: (r.glass && r.glass.uniforms.uLensActive) ? r.glass.uniforms.uLensActive.value : null,
+        uLensPos: (r.glass && r.glass.uniforms.uLensPos) ? r.glass.uniforms.uLensPos.value.toArray() : null,
+        uLensRadius: (r.glass && r.glass.uniforms.uLensRadius) ? r.glass.uniforms.uLensRadius.value : null,
         brainAlpha: (r.brain && r.brain.uniforms && r.brain.uniforms.iAlpha) ? r.brain.uniforms.iAlpha.value : null,
       };
     });

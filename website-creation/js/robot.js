@@ -134,10 +134,12 @@ WC.register('robot', function(ctx){
         var parts = WC.robotParts.split(model);
         window.__robot.parts = parts;
 
-        // Materiali (Task 3): carbonio su corpo/braccia, vetro Fresnel
-        // sulla testa. `mats.glass` è lo ShaderMaterial la cui uniform
-        // uOpen/uTime pilotiamo qui sotto (uTime nel loop di render,
-        // uOpen arriverà da un'interazione nei task successivi).
+        // Materiali: carbonio su corpo/braccia, visore scuro con envMap +
+        // lente Lithos sulla testa (Task 3, corretto in Task 5b — vedi
+        // robot-materials.js). `mats.glass` è lo ShaderMaterial le cui
+        // uniform pilotiamo qui sotto: uTime nel loop di render,
+        // uLensActive/uLensPos dal raycast del cursore sulla testa (tick()
+        // più sotto), uLensRadius impostato subito dopo, sotto.
         if (WC.robotMaterials) {
           var mats = WC.robotMaterials.applyTo(parts);
           window.__robot.glass = mats.glass;
@@ -188,10 +190,26 @@ WC.register('robot', function(ctx){
 
           window.__robot.headGroup = headGroup;
 
+          // Task 5b: raggio della lente Lithos sul vetro (§2 della spec),
+          // 0.18 * dimensione mondo della testa. headBox è ancora quello
+          // WORLD calcolato sopra (prima della creazione di headGroup): la
+          // dimensione non cambia quando la testa ruota, resta valido.
+          if (window.__robot.glass) {
+            var headWorldSize = headBox.getSize(new THREE.Vector3());
+            var headWorldMax = Math.max(headWorldSize.x, headWorldSize.y, headWorldSize.z);
+            // 0.18 (partenza da spec) rivelava quasi tutta la cupola in un
+            // colpo solo (il brain ha raggio ~0.21*headWorldMax, comparabile
+            // al lens radius risultante: la finestra "morbida" arrivava a
+            // coprire l'intera nuvola). 0.11 tarato a schermo (task5b-lens):
+            // resta una finestra LOCALE — si vede chiaramente lo spostamento
+            // fra due punti diversi della testa (task5b-lens2).
+            window.__robot.glass.uniforms.uLensRadius.value = headWorldMax * 0.11;
+          }
+
           // Task 5: il point-brain DENTRO la testa. Stesso helper del cervello
           // di Vesper (WC.pointBrain, js/pointbrain.js). Parentato a headGroup,
-          // si muove in sincrono con la testa; si accende solo quando la testa
-          // guarda il cursore (revealValue nel loop, da state.faceAmount).
+          // si muove in sincrono con la testa; si accende solo sotto la lente
+          // Lithos che segue il cursore (Task 5b — vedi tick() più sotto).
           if (WC.pointBrain) {
             // Centro e raggio della testa in coordinate LOCALI di headGroup, non
             // mondo: headGroup ha solo posizione, ma `model` può portare una
@@ -208,8 +226,16 @@ WC.register('robot', function(ctx){
             var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
             var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
 
-            var brain = WC.pointBrain.create({ count: 4000, radius: headRadius * 0.5, color: 0x8bd6ff });
-            brain.points.position.copy(headCenterLocal);
+            // Task 5b (correzione utente): il centro del bbox testa è tirato
+            // in basso, all'altezza della mascella, perché il bbox include il
+            // collo (vedi robot-parts.js — il cluster "testa" è casco+collo).
+            // Si sposta verso l'alto, dentro la calotta cranica, di una quota
+            // proporzionale all'altezza della testa. Raggio leggermente
+            // ridotto (0.42 invece di 0.5) così la nuvola sta dentro la
+            // cupola senza sconfinare verso guance/mascella.
+            var brain = WC.pointBrain.create({ count: 4000, radius: headRadius * 0.42, color: 0x8bd6ff });
+            var craniumOffset = headSizeLocal.y * 0.35;
+            brain.points.position.copy(headCenterLocal).add(new THREE.Vector3(0, craniumOffset, 0));
             // Draw order: il vetro (Task 3) è transparent + depthWrite:false, non
             // scrive profondità e quindi NON occlude il brain; i punti sono
             // additivi, aggiungono luce sopra a ciò che c'è dietro. renderOrder
@@ -252,7 +278,15 @@ WC.register('robot', function(ctx){
       var raf;
       var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
       var lastTick = clockStart;
-      var revealValue = 0;   // Task 5: quanto è "acceso" il brain, insegue faceAmount
+      // Task 5b: la lente Lithos. Un solo Raycaster riusato ogni frame (niente
+      // allocazioni), il punto colpito in MONDO e un fattore di attivazione
+      // smorzato (0..1, esponenziale come rotazione/faceAmount) — sia il
+      // vetro (uLensActive/uLensPos) sia il brain (update(dt, reveal))
+      // seguono questo stesso segnale, così si accendono/spengono insieme.
+      var raycaster = new THREE.Raycaster();
+      var lensNdc = new THREE.Vector2();
+      var lensHitPos = new THREE.Vector3();
+      var lensActive = 0;
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
@@ -261,11 +295,11 @@ WC.register('robot', function(ctx){
         if (robot && robot.glass) {
           robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
         }
-        // Task 4: la testa segue il cursore (clampata), faceAmount misura
-        // quanto sta "guardando" verso il cursore, e pilota l'apertura del
-        // vetro (Task 3). Cursore fuori dallo stage → i target tornano a 0
-        // (rotazione) e faceAmount decade a 0 (smorzamento esponenziale,
-        // non un salto — coerente con lo smoothing della rotazione).
+        // Task 4: la testa segue il cursore (clampata, smorzata). Task 5b
+        // (correzione utente): questo resta INDIPENDENTE dal reveal — la
+        // testa gira dietro al cursore anche da visore chiuso. faceAmount
+        // resta calcolato (diagnostica dell'harness) ma non pilota più
+        // nulla del vetro/brain.
         if (robot && robot.headGroup && robot.state) {
           var targetYaw = 0, targetPitch = 0;
           if (pointer.active) {
@@ -274,26 +308,44 @@ WC.register('robot', function(ctx){
             robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
           } else if (robot.hold) {
             // Override deterministico per l'harness (window.__robot.hold): posa
-            // la testa (yaw/pitch) e tiene faceAmount a `face`, senza puntatore
-            // reale — che l'overlay .wc-robot-copy intercetterebbe al centro.
+            // la testa (yaw/pitch) senza puntatore reale — che l'overlay
+            // .wc-robot-copy intercetterebbe al centro.
             targetYaw = robot.hold.yaw || 0;
             targetPitch = robot.hold.pitch || 0;
-            robot.state.faceAmount += ((robot.hold.face || 0) - robot.state.faceAmount) * 0.08;
+            robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
           } else {
             robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;
           }
           robot.headGroup.rotation.y += (targetYaw - robot.headGroup.rotation.y) * 0.12;
           robot.headGroup.rotation.x += (targetPitch - robot.headGroup.rotation.x) * 0.12;
-          if (robot.glass) {
-            robot.glass.uniforms.uOpen.value += (robot.state.faceAmount - robot.glass.uniforms.uOpen.value) * 0.1;
-          }
         }
-        // Task 5: il brain si accende quando la testa guarda (faceAmount), con
-        // lo stesso smoothing morbido del vetro. update() fa respirare i punti
-        // e pilota opacità/emissione con revealValue (0 = spento/invisibile).
-        if (robot && robot.brain && robot.state) {
-          revealValue += (robot.state.faceAmount - revealValue) * 0.08;
-          robot.brain.update(dt, revealValue);
+        // Task 5b: raycast del cursore sulle mesh testa. Solo col puntatore
+        // REALE attivo (pointer.x/y sono già NDC rispetto allo stage, la
+        // stessa camera che renderizza lo stage: si passano diretti al
+        // Raycaster, flip di segno su y come da convenzione NDC three.js).
+        // Nessun hit (cursore fuori dalla testa, o fuori dallo stage) →
+        // il target di attivazione scende a 0, la lente si chiude morbida.
+        if (robot && robot.glass && robot.parts && robot.parts.head && robot.parts.head.length) {
+          var lensTargetActive = 0;
+          if (pointer.active) {
+            lensNdc.set(pointer.x, -pointer.y);
+            raycaster.setFromCamera(lensNdc, cam);
+            var hits = raycaster.intersectObjects(robot.parts.head, false);
+            if (hits.length) {
+              lensTargetActive = 1;
+              lensHitPos.copy(hits[0].point);
+            }
+          }
+          lensActive += (lensTargetActive - lensActive) * 0.18;
+          robot.glass.uniforms.uLensActive.value = lensActive;
+          robot.glass.uniforms.uLensPos.value.copy(lensHitPos);
+        }
+        // Task 5b: il brain si accende SOLO sotto la lente (stesso segnale
+        // smorzato di sopra), non più legato a faceAmount. update() fa
+        // respirare i punti e pilota opacità/emissione con reveal (0 =
+        // spento/invisibile — visore chiuso, niente cervello in vista).
+        if (robot && robot.brain) {
+          robot.brain.update(dt, lensActive);
         }
         renderer.render(scene, cam);
       })();
@@ -309,6 +361,13 @@ WC.register('robot', function(ctx){
       torn = true;
       draco.dispose();
       renderer.dispose();
+      // Task 5b: l'envMap del vetro testa è una CanvasTexture creata ad-hoc
+      // (robot-materials.js), non gestita da nessun altro loader/cache —
+      // va smaltita qui insieme al resto, altrimenti resta un WebGLTexture
+      // orfano ad ogni mount/unmount della sezione.
+      if (window.__robot && window.__robot.glass && window.__robot.glass.userData.envMap) {
+        window.__robot.glass.userData.envMap.dispose();
+      }
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
       if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;
     });
