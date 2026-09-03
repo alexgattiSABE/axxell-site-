@@ -388,3 +388,49 @@ Limite dichiarato: nessuno l'ha ancora aperto su **browser/telefono vero** — m
 - **Copertura spec:** Fondazione+rimozione Spline → T1; isolamento parti → T2; materiali (carbonio+vetro Fresnel) → T3; testa-segue-cursore → T4; cervello Vesper sincrono + reveall → T5; fibre → T6; interazione+levitazione+drag+reduced-motion+cleanup → T7. Peso/Draco → T1. Fallback → T1+T7. Tutti i criteri di riuscita della spec hanno un task.
 - **Placeholder:** i punti "da iterare" (shader vetro, fibre) hanno una **implementazione di partenza concreta** + un passo di verifica che definisce il target; non sono TODO vuoti. Le parentesi `/* … */` in T2 (joints) e T3 (shader body) sono gli unici dettagli lasciati all'implementazione perché **dipendono dai nomi/posizioni mesh reali** che T2/Step1 scopre — è una dipendenza dichiarata, non un placeholder di comodo.
 - **Coerenza tipi:** `parts` (T2) consumato da T3/T5/T6; `state.faceAmount` prodotto in T4 e consumato in T3/T5; `headGroup` prodotto in T4 e usato in T5; `joints` prodotto in T2 e usato in T6. Nomi coerenti.
+
+---
+
+## FASE 2 — Design e meccanica mancanti dal brief originale (aggiunta 2026-09-03)
+
+> I task T1–T7 sopra sono l'impalcatura tecnica. Il **brief completo** dell'utente
+> (`docs/superpowers/robot-brief-completo.md`) contiene molto di più, rimasto solo nella conversazione
+> della sessione originale e mai messo a task: sotto ci sono i pezzi mancanti. **Nessuno di questi è
+> ancora iniziato.** Verifica a schermo con l'harness `scripts/robot-shot.mjs` (desktop + telefono),
+> confronto contro i riferimenti in `.superpowers/sdd/2026-08-31-robot-cervello-vesper/`.
+
+### Task 8: La «A» di Axxell sul petto
+- [ ] Logo A di Axxell applicato sul petto del robot (texture/decal o mesh emissiva), coerente con la
+  palette e con lo stile del robot dell'atelier. Visibile a riposo, non solo all'hover.
+
+### Task 9: Pancia = effetto «anima» della sezione SABE
+- [ ] Portare nella pancia l'effetto della **sezione SABE** del sito (la zona "anima"), come il
+  cervello è portato nella testa. Reveal all'hover, un solo contesto WebGL heavy vivo per volta
+  (coordinare con testa/arti: attivo solo quello a fuoco).
+
+### Task 10: Flusso d'energia — corde vocali (oltre agli arti)
+- [ ] Aggiungere il flusso d'energia delle **corde vocali** (gli arti sono già in T6). Stesso
+  linguaggio visivo delle fibre.
+
+### Task 11: Etichette anatomiche all'hover (le 4 zone)
+- [ ] Al passaggio su una zona esce un'**etichetta anatomica**: linea spezzata **prima obliqua poi
+  orizzontale**, e **sopra il tratto orizzontale** il nome. Voci CONFERMATE: testa=**"testa"**,
+  pancia=**"anima"**, braccio destro=**"chatbot"**, braccio sinistro=**"social automation"**.
+- [ ] Sotto ogni titolo, il tab **«scopri →»**.
+- [ ] Le etichette seguono la zona in proiezione schermo (come le etichette dei portali in altre scene)
+  e rispettano `prefers-reduced-motion`.
+
+### Task 12: Click → zoom sulla zona + parte semi-trasparente
+- [ ] Click su una zona → **zoom** sulla parte del corpo; la parte diventa **quasi trasparente** per
+  mostrare l'interno (es. testa → si vede il cervello di particelle ATLAS).
+- [ ] Uscita dallo zoom (click fuori / ESC) torna alla vista intera, senza leak di contesto.
+
+### Task 13: Pannello info prodotto (al click, per zona)
+- [ ] In stato di zoom, pannello con **tutte le info del prodotto** della zona: testa→ATLAS,
+  pancia→SABE, braccio destro→chatbot, braccio sinistro→social automation. Contenuti dai testi già
+  presenti nel sito per quei prodotti.
+- [ ] Il tab «scopri →» del Task 11 apre/collega questo pannello.
+
+### Chiusura (dopo T8–T13)
+- [ ] Passata finale aspetto/colori **uguale al robot dell'atelier** (chiude il 🟡 della spec).
+- [ ] **Solo dopo autorizzazione esplicita dell'utente**: innesto nella home reale + merge su `main`.
