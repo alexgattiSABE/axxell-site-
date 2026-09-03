@@ -43,7 +43,7 @@
  * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): il
  * fluido vive dentro `#capAltitude`, con lo ScrollTrigger di sezione a
  * pinnare/accendere/spegnere — montaggio storico, invariato. (B)
- * `atelier/effetti.html`: niente sezione; il controller monta canvas+video
+ * `atelier/capitoli.html`: niente sezione; il controller monta canvas+video
  * dentro `#stage-live` e li pilota via `WC.effects.altitude.start(container)`/
  * `.stop()` — nessuno ScrollTrigger.
  *
@@ -899,7 +899,7 @@ function mountAltitude(ctx, cfg){
     clearSim();
   }
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller. `start()`/
    * `stop()` sono le STESSE funzioni del ramo legacy — caricano il video,
    * fanno partire il solutore, lo svuotano allo stop — solo che qui a
@@ -974,7 +974,7 @@ function mountAltitude(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta video+canvas
  * dentro il `container` che gli passa il controller. */
 WC.register('altitude', function(ctx){

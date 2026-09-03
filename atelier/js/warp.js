@@ -55,7 +55,7 @@
  * card (`assets/effetti/warp.webp`, catturato nel Task 3 da questa stessa
  * sezione) lo conferma: è la sfera-costellazione della SCENA qui sotto, non
  * una riga di testo. Il campo `render` non è mai letto dal controller né da
- * `effetti.html` (solo `modulo` conta per il risveglio): risvegliare QUESTA
+ * `capitoli.html` (solo `modulo` conta per il risveglio): risvegliare QUESTA
  * scena sotto quella card riproduce fedelmente ciò che il suo stesso poster
  * mostra già, invece di inventare un settimo effetto DOM di testo mai
  * scritto. Segnalato in dettaglio nel report del Task 7. */
@@ -654,7 +654,7 @@ function mountWarp(ctx, cfg){
 
   resize();
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger da leggere: qui il progresso lo fa
    * un tween GSAP proprio, stesso schema di `mountOrologio` (Task 6) — un
    * oggetto di appoggio (`driver`) invece dello `state.t` dell'orologio,
@@ -725,7 +725,7 @@ function mountWarp(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta il volo su una
  * tela creata dentro il `container` che gli passa il controller (vedi la nota
  * sul record del mazzo, in testa al file). */

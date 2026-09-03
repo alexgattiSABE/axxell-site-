@@ -106,7 +106,7 @@ function mountLithos(ctx, cfg){
     place(sx, sy);
   })();
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: il faro è sveglio/congelato a
    * comando del controller. `--lr` va sul `reveal` stesso (non su un
    * antenato): la `mask-image` che lo legge sta sullo stesso elemento, quindi
@@ -165,11 +165,11 @@ function mountLithos(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta le due
  * fotografie (base + rivelata, mascherata) dentro il `container` che gli passa
  * il controller — niente CSS esterno da caricare, gli stili sono inline
- * perché `effetti.html` non importa `css/sections.css`. */
+ * perché `capitoli.html` non importa `css/sections.css`. */
 WC.register('lithos', function(ctx){
   var section = document.getElementById('capLithos');
   var reveal  = document.getElementById('wcLithosReveal');

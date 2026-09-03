@@ -49,7 +49,7 @@
  * Questo modulo serve DUE padroni, e il corpo della scena è lo stesso per
  * entrambi. (A) `capitoli.html` (legacy): la scena vive dentro la sua sezione
  * `#capSaucer`, si pinna e si accende/spegne da sola con lo ScrollTrigger di
- * sezione — è il montaggio storico, invariato. (B) `atelier/effetti.html`: non
+ * sezione — è il montaggio storico, invariato. (B) `atelier/capitoli.html`: non
  * c'è nessuna sezione; il controller sveglia/congela (js/effetti-deck.js) monta
  * il canvas del disco dentro `#stage-live` e lo pilota a comando via
  * `WC.effects.saucer.start(container)` / `.stop()` — nessuno ScrollTrigger.
@@ -837,7 +837,7 @@ function mountSaucer(ctx, cfg){
   var modelsIo = null;
   function loadModels(){ loadSaucer(); loadHuman(); }
   // Il cancello a una schermata di distanza esiste solo dove c'è una sezione da
-  // osservare (legacy). Nel montaggio esterno (effetti.html) il disco si monta
+  // osservare (legacy). Nel montaggio esterno (capitoli.html) il disco si monta
   // solo quando il controller lo sveglia — che È già il momento «sei arrivato»
   // — quindi i modelli si caricano subito.
   if (section && 'IntersectionObserver' in window) {
@@ -1117,7 +1117,7 @@ function mountSaucer(ctx, cfg){
 
   resize();
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller. Lo scroll
    * non c'è, quindi `scrollTarget=1` all'avvio accende il raggio (e con lui il
    * rapito) subito. Si restituisce un'API — start/stop/resize — invece del
@@ -1173,7 +1173,7 @@ function mountSaucer(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta il disco su una
  * tela creata dentro il `container` che gli passa il controller. */
 WC.register('saucer', function(ctx){

@@ -2,45 +2,260 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- BASE OBBLIGATORIA, non una comodità.
-     `vercel.json` alla radice ha `trailingSlash: false`, quindi in produzione
-     questa pagina vive a `/atelier` — SENZA la barra finale. Il
-     browser risolve gli indirizzi relativi rispetto all'ultimo segmento, che
-     lì non è una cartella: `css/base.css` diventa `/css/base.css` e va a
-     sbattere sulla radice del sito. Tutti i CSS, tutti i js e tutti gli asset
-     del capitolo danno 404 e resta lo scheletro HTML.
-     Verificato a schermo servendo la cartella come la serve Vercel, non
-     dedotto. Vale anche per le `fetch` dei modelli dentro js/. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- BASE OBBLIGATORIA, e qui serve piu' che altrove.
+     `vercel.json` ha `trailingSlash:false`, quindi questa pagina vive a
+     `/atelier`; ma ogni mondo vive un livello piu' in giu', a
+     `/atelier/la-notte`. Senza base, entrando da li'
+     `vendor/three.min.js` diventerebbe `/atelier/vendor/...`,
+     404, e resterebbe lo scheletro. Con la base gli indirizzi relativi
+     partono sempre da `/atelier/`, a qualunque profondita' si entri. -->
 <base href="/atelier/">
-<title>I dodici capitoli | Axxell</title>
-<meta name="description" content="Siti web su misura progettati e costruiti da Axxell. Questa pagina è il portfolio: ogni sezione dimostra una capacità diversa.">
+<title>Effetti speciali — Atelier</title>
+<meta name="description" content="Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.">
 <meta name="robots" content="index, follow">
 <link rel="icon" type="image/png" href="/favicon.png">
-<meta property="og:title" content="Atelier | Axxell">
-<meta property="og:description" content="Siti web su misura. Questa pagina è il portfolio.">
-<meta property="og:url" content="https://axxell.ai/atelier/capitoli">
+<meta property="og:title" content="La costellazione | Axxell">
+<meta property="og:description" content="Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.">
+<meta property="og:url" content="https://axxell.ai/atelier">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://axxell.ai/atelier/assets/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260824a">
-<link rel="stylesheet" href="css/sections.css?v=20260824a">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
+    -webkit-font-smoothing:antialiased;
+    /* NEL FOGLIO ORIGINALE (indice, mazzo acceso) lo scorrimento era
+       DIROTTATO sulla rotazione dell'anello e la pagina non scorreva affatto
+       — da qui touch-action:none e overflow:hidden. Qui il mazzo è spento e
+       l'asse centrale (Task 2) ha bisogno del contrario: una pagina che
+       scorre DAVVERO, perché è lo scroll a far salire e girare l'elica. */
+    overscroll-behavior-y:none}
+  canvas{display:block;width:100%;height:100%}
+  #stage{position:fixed;inset:0}
+
+  /* L'ASSE CENTRALE (Task 2) — l'elica DNA di js/dna.js, montata su questo
+     elemento invece che sul pin del manifesto (`[data-role="helix-stage"]`
+     è quello che dna.js cerca quando non trova #wcManifestoPin). Sta SOPRA
+     al fondo (#stage: il suo renderer è opaco, cancella ogni fotogramma —
+     dietro non ci sarebbe niente da vedere) e SOTTO alla nav/atrio/etichette,
+     che restano leggibili sopra di lei. `pointer-events:none`: è un fondale,
+     non deve intercettare i click destinati al bottone dell'atrio. */
+  #helixStage{position:fixed;inset:0;z-index:2;pointer-events:none}
+  /* L'INGRESSO DELL'ASSE. L'elica è sempre viva dietro al velo (appear=1 in
+     standalone: è l'asse della pagina, c'è dal primo fotogramma) — ma finché il
+     velo è chiuso nessuno la vede. Quando il sipario si alza, l'asse SALE e si
+     addensa nel mentre: non un fade dell'intero oggetto, ma una risalita dal
+     basso col pulviscolo che prende corpo. `body.-velo-attivo` è lo stato di
+     partenza, messo dall'inline SOLO a moto pieno; a `alza()` viene tolto e
+     l'elica entra attraverso il velo che se ne va. In reduced-motion la classe
+     non viene mai messa: l'asse è già a posto. */
+  #helixStage{transition:opacity 1.15s ease, transform 1.35s cubic-bezier(.16,1,.3,1);
+    will-change:opacity,transform}
+  body.-velo-attivo #helixStage{opacity:0;transform:translateY(58px)}
+
+  /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
+     che il controller (js/effetti-deck.js) riposiziona ogni fotogramma sul
+     rettangolo proiettato della card davanti: sopra la tela dello stage (dove
+     vive il poster congelato) e sopra l'elica, ma SOTTO nav/etichette/didascalia.
+     Quando nessun effetto è sveglio è `hidden` e non c'è nulla: si vede il
+     poster. `pointer-events:none` perché il clic sulla card (entrare nel mondo)
+     lo intercetta lo stage sotto, non questo. */
+  #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
+    pointer-events:none;overflow:hidden}
+  #stage-live canvas{display:block;width:100%;height:100%}
+
+  /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
+     (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
+     documento, `document.documentElement.scrollHeight` non supera mai
+     l'altezza dello schermo e non c'è scroll — né nativo né di Lenis — da
+     dare all'elica. Non si vede (è dietro a tutto, a `z-index` di base) ma
+     è lui a dare al documento l'altezza su cui scorrere. */
+  #scrollSpacer{position:relative;height:400vh;pointer-events:none}
+
+  /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
+     superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
+     script proiettando il punto in basso di ogni portale. */
+  /* Nav propria e minima: il foglio del sito e' scritto per pagine che
+     scorrono, e questa non scorre. Stessi colori, stesse misure. */
+  #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
+    background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
+    transition:opacity .4s ease}
+  #nav.-hide{opacity:0;pointer-events:none}
+  .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
+  .nv-links{display:flex;list-style:none;gap:.3rem}
+  .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
+    letter-spacing:.1em;padding:.9rem .5rem;display:inline-block}
+  .nv-links a:hover,.nv-links a.active{color:#3ad8ff}
+  .nv-cta{border:1px solid rgba(240,240,246,.22);margin-left:.4rem}
+  #nav a:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+  @media (max-width:600px){ .nv-links a{font-size:9.5px;padding:.9rem .28rem} }
+
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+  #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
+    transform-style:preserve-3d}
+/* Le scritte stanno DAVANTI alle card, non sotto. Sono ancorate al centro
+     della lastra ma spostate verso di te lungo la sua normale: muovendo il
+     puntatore scorrono contro il proprio portale, ed è quella parallasse a
+     dare la profondità. Non toccano il vetro, quindi non vengono né rifratte
+     né smerigliate — l'obiezione che valeva per un testo APPOGGIATO sopra qui
+     non vale.
+     L'alone scuro dietro non è decorazione: sotto ci può passare un video
+     chiaro, e senza quello la scritta sparisce. */
+  /* La trasformazione la scrive lo script per intero: qui NIENTE transform,
+     se no sovrascrive la matrice 3D e la scritta torna piatta. */
+  .lb{position:absolute;top:0;left:0;text-align:center;transform-style:preserve-3d;
+    opacity:0;transition:opacity .35s ease;white-space:nowrap}
+  .lb.-on{opacity:1}
+  .lb::before{content:'';position:absolute;inset:-170% -34%;pointer-events:none;
+    background:radial-gradient(ellipse at center,
+      rgba(4,5,10,.60) 0%, rgba(4,5,10,.30) 46%, rgba(4,5,10,0) 74%)}
+  .lb b,.lb span{position:relative;display:block}
+  /* il margine negativo toglie lo spazio in coda che la spaziatura aggiunge
+     dopo l'ultima lettera: se no la scritta appare storta a sinistra */
+  .lb b{font-family:'Space Grotesk',system-ui,sans-serif;
+    font-weight:600;font-size:19px;letter-spacing:.34em;margin-right:-.34em;
+    color:#f0f0f6;text-transform:uppercase;
+    text-shadow:0 2px 20px rgba(4,5,10,.95);
+    transition:letter-spacing .35s cubic-bezier(.22,1,.36,1),color .3s ease}
+  .lb span{font-family:'DM Mono',ui-monospace,monospace;
+    font-size:9.5px;letter-spacing:.24em;margin-right:-.24em;margin-top:10px;
+    color:rgba(223,228,238,.54);text-transform:uppercase;
+    text-shadow:0 1px 14px rgba(4,5,10,.95);transition:color .3s ease}
+  .lb.-hot b{color:var(--hot,#3ad8ff);letter-spacing:.46em;margin-right:-.46em}
+  .lb.-hot span{color:rgba(223,228,238,.78)}
+  /* LA SCRITTA DEL VUOTO. E' l'unico elemento della scena senza colore, e la
+     sua scritta deve dirlo: piu' piccola, piu' spenta, in corsivo di peso e
+     non di forma. Si accende soltanto quando ci passi sopra — e allora e' un
+     invito, non un bottone. */
+  .lb.-void b{font-size:15px;color:rgba(240,240,246,.50)}
+  .lb.-void span{color:rgba(223,228,238,.34)}
+  .lb.-void.-hot b{color:#3ad8ff}
+  @media (max-width:760px){ .lb.-void b{font-size:10.5px} }
+
+  #hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
+    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
+
+  /* LA FOCUS CAPTION — le scritte come in Mirror Hall.
+     Non piu' un'etichetta appesa a ogni card (nella rotonda sono nove e si
+     accavallano): una sola didascalia in basso al centro che segue il mondo
+     davanti. Contatore, NOME grande che si scambia col blur-rise, settore, e
+     sotto i fermi a capsula. Tutto DOM, nitido, sopra il canvas. */
+  #focus{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:6;
+    width:92%;display:flex;flex-direction:column;align-items:center;gap:11px;
+    text-align:center;opacity:0;transition:opacity .5s ease;pointer-events:none}
+  #focus.-on{opacity:1}
+  #focus .counter{display:flex;align-items:baseline;gap:7px;
+    font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.16em}
+  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px;
+    text-shadow:0 0 16px rgba(58,216,255,.4)}
+  #focus .counter i{color:rgba(190,214,246,.34);font-style:normal}
+  #focus .counter .tot{color:rgba(190,214,246,.5)}
+  #focus .fname{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
+    font-size:clamp(21px,3.2vw,34px);letter-spacing:.16em;margin-right:-.16em;
+    text-transform:uppercase;color:#f0f0f6;line-height:1;
+    text-shadow:0 2px 30px rgba(4,5,10,.92);will-change:transform,opacity,filter}
+  /* IL VUOTO: l'unica scritta senza colore, in corsivo di peso e non di forma. */
+  #focus .fname.-void{color:rgba(240,240,246,.58);font-weight:500;font-style:italic}
+  @keyframes focusSwap{
+    from{opacity:0;transform:translateY(9px);filter:blur(5px)}
+    to{opacity:1;transform:none;filter:blur(0)}}
+  #focus .fname.-swap{animation:focusSwap .5s cubic-bezier(.22,.61,.36,1) both}
+  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;
+    letter-spacing:.26em;margin-right:-.26em;margin-top:-2px;text-transform:uppercase;
+    color:rgba(223,228,238,.55)}
+  /* I FERMI, a capsula come in Mirror Hall: un punto per mondo che quando e'
+     davanti sboccia in una capsula del colore del mondo. */
+  #dots{display:flex;align-items:center;gap:9px;margin-top:3px}
+  #dots button{width:5px;height:5px;padding:0;border:0;border-radius:4px;
+    background:rgba(176,204,244,.26);cursor:pointer;pointer-events:auto;
+    transition:width .5s cubic-bezier(.22,.61,.36,1),background .5s ease,box-shadow .5s ease}
+  #dots button:hover{background:rgba(176,204,244,.52)}
+  #dots button.-now{width:22px;background:var(--now,#3ad8ff);
+    box-shadow:0 0 12px rgba(58,216,255,.55)}
+  #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
+  @media (max-width:600px){
+    #focus{bottom:44px} #dots button.-now{width:18px}
+    #hint{font-size:9px;letter-spacing:.1em;bottom:20px;white-space:nowrap}
+  }
+
+  /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
+  #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
+    transition:opacity .28s ease;background:#04050a}
+  #world.-on{opacity:1;pointer-events:auto}
+  #world video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #world .veil{position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(4,5,10,.82) 0%,rgba(4,5,10,.25) 42%,rgba(4,5,10,.88) 100%)}
+  #world .copy{position:absolute;left:clamp(1.4rem,5vw,4rem);bottom:clamp(2rem,8vh,5rem);max-width:36ch}
+  #world .copy i{font-style:normal;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--hot,#3ad8ff)}
+  #world .copy h2{font-size:clamp(1.8rem,4.4vw,3.1rem);font-weight:400;line-height:1.05;
+    letter-spacing:.02em;margin:.5rem 0 .6rem;text-transform:uppercase}
+  #world .copy p{font-size:12.5px;color:rgba(223,228,238,.6);letter-spacing:.04em;line-height:1.7}
+  #world .exits{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
+  #world button{background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.26);
+    padding:9px 16px;font:inherit;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer}
+  #world button:hover{border-color:var(--hot,#3ad8ff);color:var(--hot,#3ad8ff)}
+  #world button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+
+  #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1.4rem;text-align:center;
+    padding:2rem;transition:opacity .5s ease;pointer-events:none}
+  #hero.-off{opacity:0}
+  #hero .k{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:#3ad8ff}
+  #hero h1{font-size:clamp(1.9rem,4.6vw,3.4rem);font-weight:400;line-height:1.16;
+    letter-spacing:.01em;text-transform:uppercase;
+    text-shadow:0 2px 30px rgba(4,5,10,.95)}
+  #hero h1 em{font-style:normal;color:#3ad8ff}
+  #hero button{pointer-events:auto;margin-top:.6rem;background:transparent;color:#dfe4ee;
+    border:1px solid rgba(223,228,238,.3);padding:11px 26px;font:inherit;font-size:11px;
+    letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+  #hero button:hover{border-color:#3ad8ff;color:#3ad8ff}
+  #hero button:focus-visible{outline:2px solid #3ad8ff;outline-offset:3px}
+
+  #err{position:fixed;inset:0;display:none;place-items:center;padding:32px;text-align:center;
+    color:#ff6b6b;font-size:13px;line-height:1.7;z-index:20}
+  @media (max-width:760px){ .lb b{font-size:11px} .lb span{font-size:9.5px} }
+</style>
+
+
+<style>
+  /* ── IL SIPARIO: il marchio si CONDENSA dal vapore ────────────────────────
+     Portato da `capitoli.html` (js/loader.js) SENZA il suo runtime: là
+     l'effetto girava dentro a `WC.register` e la sua linea del tempo era di
+     gsap. Qui non c'è né l'uno né l'altro — il vapore è tutto nel canvas, il
+     resto era orchestrazione, e si rifà in venti righe.
+     La regola che conta: il velo si alza e IL CONTENUTO ENTRA MENTRE SI ALZA,
+     non dopo. Il sipario che si scopre su una pagina già viva è un gesto solo;
+     aspettare che sia finito ne fa due. */
+  #velo{position:fixed;inset:0;z-index:10000;background:#04050a;
+    display:flex;align-items:center;justify-content:center}
+  #velo.-via{pointer-events:none}
+  #velo-inner{position:relative;z-index:1;transition:opacity .4s cubic-bezier(.4,0,1,1)}
+  #velo.-sfuma #velo-inner{opacity:0}
+  #velo canvas{display:block}
+  .velo-tenda{position:absolute;left:0;right:0;height:50.5%;background:#04050a;
+    transition:transform .9s cubic-bezier(.87,0,.13,1)}
+  .velo-t{top:0} .velo-b{bottom:0}
+  #velo.-sfuma .velo-t{transform:translateY(-100%)}
+  #velo.-sfuma .velo-b{transform:translateY(100%)}
+  /* fino a che il sipario non parte, l'atrio non si vede: entra attraverso */
+  #hero{opacity:0;transition:opacity .8s ease}
+  body.-aperto #hero{opacity:1}
+  /* E QUANDO SE NE VA, DEVE SFUMARE.
+     `body.-aperto #hero` pesa (1,1,1) e `#hero.-off` pesa (1,1,0): finito il
+     sipario vinceva sempre il primo, quindi l'atrio restava a piena opacita'
+     e spariva di colpo al `display:none` dopo 600 ms. La dissolvenza c'era
+     nel CSS e non si e' mai vista. Questa riga rimette il peso a posto. */
+  body.-aperto #hero.-off{opacity:0}
+</style>
 </head>
 <body>
 
-<!-- IL MARCHIO, UNA VOLTA SOLA PER TUTTA LA PAGINA.
-     Sono i tracciati veri del logo (~/LOGO AXXELL.svg), orbita compresa. Prima
-     stavano nel <defs> del footer, che e' in fondo: il logo in nav li avrebbe
-     referenziati in avanti. Stanno qui, prima di tutti e due i posti che li
-     usano, e ognuno decide da se' come dipingerli — la nav li riempie, il
-     footer li lascia in contorno (`.wc-foot-t{fill:none}`) perche' li' dentro
-     ci scorre un gradiente.
-     ⚠️ `fill` NON sta piu' sul gruppo: se ce lo si rimette, la nav torna
-     invisibile. Lo decide chi fa <use>. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false"
      style="position:absolute;pointer-events:none;">
   <defs>
@@ -58,549 +273,1770 @@
         </g>
   </defs>
 </svg>
-
-<div class="wc-loader" id="wcLoader">
-  <!-- Il marchio si condensa dal vapore: un'onda passa da sinistra a destra e
-       dietro di se' lascia il logo. I pixel li da' `#wcAxxellMark` qui sopra —
-       gli stessi tracciati della nav e del footer, rasterizzati una volta sola
-       da js/loader.js. Niente Lottie e niente contatore: solo il logo. -->
-  <div class="wc-loader-inner">
-    <canvas class="wc-loader-vapour" id="wcLoaderVapour" aria-hidden="true"></canvas>
-  </div>
-  <div class="wc-curtain wc-curtain-t"></div>
-  <div class="wc-curtain wc-curtain-b"></div>
+<div id="velo" aria-hidden="true">
+  <div id="velo-inner"><canvas id="velo-vapore"></canvas></div>
+  <div class="velo-tenda velo-t"></div>
+  <div class="velo-tenda velo-b"></div>
 </div>
 
-<!-- IL CURSORE DEL SITO — quasi tutto spento, e non per caso.
-     Il puntatore custom era un ANELLO CON UN PUNTO DENTRO in nove capitoli su
-     dodici (`default`, `dot`, e una variante scura `light`), un
-     ROMBO in rotazione sul cap. 03, una BARRA DI LETTURA sul manifesto e una
-     FRECCIA sul cap. 07. Tolti tutti su richiesta: quelle sezioni adesso
-     dichiarano `data-cursor="hidden"` e mostrano il puntatore di sistema.
-     Resta acceso un solo stato, il `caret` del form (ora su parliamone.html),
-     che non è un
-     ornamento — dice dove si scrive.
-     Questi due nodi restano perché sono loro a portare il caret, e perché
-     ogni stato è ancora tutto in css/base.css: si riaccende un capitolo
-     rimettendogli il suo `data-cursor`, senza toccare altro. -->
-<div class="cursor" id="cur"></div>
-<div class="cursor-ring" id="curR"><span class="cursor-label" id="curLabel"></span></div>
-<!-- QUI C'ERANO LE TRE PALLINE DELLA SCIA (`.cursor-trail`): ognuna inseguiva
-     la precedente più lentamente, dietro l'anello che insegue il puntatore.
-     Tolte da tutto il sito su richiesta. Il codice che le muoveva è ancora in
-     js/cursor.js e non fa niente se non trova nodi: si riaccendono rimettendo
-     questi tre div. -->
 
-<nav>
-  <a href="/" class="nav-logo" aria-label="Axxell">
-    <svg viewBox="28 104 598 154" role="img" aria-hidden="true"><use href="#wcAxxellMark"/></svg>
-  </a>
-  <ul class="nav-links">
+<nav id="nav">
+  <a href="/" class="nv-logo">AXXELL</a>
+  <ul class="nv-links">
     <li><a href="/">Home</a></li>
-    <!-- `?da=effetti-speciali` non e' un vezzo: e' il segnale che la giostra
-         legge per ritrovarsi gia' composta e ferma su QUESTA card invece di
-         rifare il tunnel. Stessa cosa che fanno i sette mondi tornando. -->
-    <li><a href="/atelier?da=effetti-speciali">Atelier</a></li>
-    <li><a href="/atelier/capitoli" class="active">Capitoli</a></li>
-    <!-- Il pulsante dell'hero entra nel tunnel e non porta ai contatti:
-         senza questa voce la pagina non avrebbe una rotta verso il modulo da
-         nessun punto in cui ti trovi. Da quando il modulo ha una pagina sua
-         (parliamone.html) non e' piu' un'ancora ma un indirizzo: funziona
-         anche da fermo, si puo' mandare a qualcuno, e non obbliga a scorrere
-         otto capitoli per arrivarci. -->
-    <li><a href="/atelier/parliamone" class="nav-cta">Parliamone</a></li>
+    <li><a href="/atelier" class="active">Atelier</a></li>
+    <li><a href="/atelier/capitoli">Capitoli</a></li>
+    <li><a href="/atelier/parliamone" class="nv-cta">Parliamone</a></li>
   </ul>
 </nav>
 
-<main id="wc-main">
-  <!-- i capitoli vengono aggiunti dai Task 3-11 -->
-  <section class="wc-hero" id="cap01" data-cursor="hidden">
-    <div class="wc-hero-pin" id="wcHeroPin">
-      <canvas class="wc-tunnel" id="wcTunnel"></canvas>
-      <!-- Ogni `.wc-fly` è l'involucro che vola nel tunnel. Serve perché
-           l'entrata dal loader anima già `transform` sugli elementi dentro:
-           due animazioni sulla stessa proprietà dello stesso nodo si
-           sovrascrivono a vicenda. -->
-      <div class="wc-hero-content" id="wcHeroContent">
-        <div class="wc-fly"><p class="eyebrow">// 01 — Atelier</p></div>
-        <h1 class="wc-hero-title">Il sito non si racconta. Si attraversa.</h1>
-        <div class="wc-fly"><p class="lead">Questa pagina è il portfolio. Ogni sezione che scorri è una cosa che sappiamo fare, mostrata mentre la fa.</p></div>
-        <div class="wc-fly"><button type="button" class="wc-magnet wc-hover" id="wcHeroCta">Entra →</button></div>
-      </div>
-      <div class="wc-scroll-cue"><span></span></div>
+<div id="stage"><canvas id="c"></canvas></div>
+
+<!-- L'ASSE CENTRALE (Task 2): l'elica DNA, sempre viva, dietro al mazzo
+     (spento per ora) e davanti al fondo. `data-role="helix-stage"` è
+     l'elemento di misura che js/dna.js usa al posto di #wcManifestoPin
+     quando non trova il manifesto — qui grande quanto lo schermo, e
+     centrata (offsetX = 0) invece che spostata a destra della colonna di
+     testo che qui non c'è. -->
+<div id="helixStage" data-role="helix-stage" aria-hidden="true">
+  <canvas id="helixCanvas"></canvas>
+</div>
+
+<!-- IL LAYER VIVO (Task 5): il controller ci monta dentro la tela dell'effetto
+     a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
+     `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
+<div id="stage-live" hidden></div>
+
+<!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
+     video di attesa, è la stessa scena in cui si sta per entrare. -->
+<div id="hero">
+  <p class="k">// atelier</p>
+  <h1>Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.</h1>
+  <button id="go">Entra →</button>
+</div>
+<div id="labels"><div id="labelCam"></div></div>
+<div id="focus" aria-live="polite">
+  <div class="counter"><span class="num" id="fNum">01</span><i>/</i><span class="tot" id="fTot">09</span></div>
+  <div class="fname" id="fName">Il prodotto</div>
+  <div class="fsub" id="fSub">retail, e-commerce</div>
+  <div id="dots" aria-label="I mondi"></div>
+</div>
+<p id="hint" style="opacity:0">scorri per cambiare mondo — clicca quello davanti</p>
+
+<div id="world" aria-hidden="true">
+  <div class="veil"></div>
+  <div class="copy">
+    <i id="wKick"></i>
+    <h2 id="wName"></h2>
+    <p id="wDesc"></p>
+    <div class="exits">
+      <button id="wNext">Il prossimo mondo →</button>
+      <button id="wTalk">Parliamone</button>
+      <button id="wBack">← Mappa</button>
     </div>
-  </section>
-
-  <!-- HELION — il volo continua. Sta QUI, fra il tunnel e il manifesto, perché
-       è la prosecuzione del tunnel: apre alla velocità con cui quello chiude
-       (vedi js/warp.js) e da lì rallenta. Chi scorre non attraversa un confine
-       fra due scene, decelera dentro una sola. -->
-  <section class="wc-warp" id="capWarp" data-cursor="hidden">
-    <!-- La costellazione entra solo DOPO la prima animazione. Fino a 0,26 la
-         scena è il tubo che si apre e decelera (`phaseMorphIn` in js/warp.js):
-         lì le stelle del cursore si sommavano alle particelle del volo e non
-         si capiva più cosa fosse cosa. Da lì in poi la scena si riordina e
-         l'effetto ha un fondo su cui leggersi. -->
-    <div class="wc-warp-pin" id="wcWarpPin" data-cursor-fx="constellation"
-         data-cursor-fx-range="0.26,1">
-      <canvas id="wcWarpCanvas"></canvas>
-      <!-- Due didascalie sovrapposte, non due sezioni: la scena è una sola e
-           cambia forma, quindi il testo cambia con lei invece di scorrere via.
-           L'opacità la guida lo stesso valore che guida il riordino. -->
-      <div class="wc-warp-copy" id="wcWarpCopyA">
-        <p class="eyebrow">// Fuori dal tubo</p>
-        <h2>Poi si apre.</h2>
-      </div>
-      <div class="wc-warp-copy" id="wcWarpCopyB">
-        <p class="eyebrow">// La stessa materia</p>
-        <h2>E si riordina.</h2>
-        <p class="lead">Nessuna dissolvenza fra due scene: sono le stesse particelle del volo, ognuna con la sua destinazione già assegnata, che vanno a comporre l'elica.</p>
-      </div>
-      <div class="wc-warp-copy" id="wcWarpCopyC">
-        <p class="eyebrow">// E ancora</p>
-        <h2>Poi diventa altro.</h2>
-        <p class="lead">Terza forma, stesse particelle: una sfera e una galassia. Nessuna scena viene ricostruita, nessuna viene sostituita — quello che scorre è sempre lo stesso pugno di materia.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="wc-manifesto" id="cap02" data-cursor="hidden">
-    <!-- Qui c'era il poster "Blue Swirl" come sfondo. Tolto: il capitolo prima
-         è ora una scena 3D vera, e un'immagine ferma subito dopo si leggeva
-         come un passo indietro. Il manifesto torna a essere testo su nero.
-
-         Al posto del poster c'è ora una doppia elica di punti (js/dna.js): non
-         è un'immagine ferma ma una scena che scorre, e sta sulla destra, fuori
-         dalla colonna del testo. Il canvas è trasparente: il nero resta quello
-         della pagina. -->
-    <!-- Il capitolo è PINNATO: la schermata resta ferma e a muoversi sono solo
-         l'elica, le parole e il testo che si accende. Tutto quanto è scrubbato
-         dallo scroll — fermi il dito e si ferma tutto. Vedi js/dna.js. -->
-    <!-- Qui c'erano l'elica di cursore (`data-cursor-fx="dna"`) e le parole
-         magnetiche (`data-magnetic-sel`). Tolti su richiesta: il capitolo ha
-         già la sua elica WebGL e le parole in spirale, e due eliche che
-         seguono il puntatore nella stessa schermata si disturbavano.
-         Si riaccendono rimettendo i due attributi qui sotto. -->
-    <div class="wc-manifesto-pin" id="wcManifestoPin">
-      <canvas class="wc-dna" id="wcDnaCanvas" aria-hidden="true"></canvas>
-      <p class="eyebrow">// 02 — Metodo</p>
-      <p class="wc-manifesto-text" id="wcManifesto">Non partiamo da un template. Partiamo da cosa deve succedere nella testa di chi arriva sul sito: cosa capisce nei primi tre secondi, cosa lo convince, cosa lo fa scrivere. Il design viene dopo quella risposta, mai prima.</p>
-      <!-- Le parole che scendono in spirale attorno all'elica. Il contenitore
-           resta vuoto nel markup: js/dna.js ci mette DUE copie di ogni parola, una
-           sotto il canvas e una sopra, per farle passare dietro all'elica.
-           Senza WebGL (o con reduced-motion) diventano una lista in fila qui
-           sotto, e sono l'unico posto in cui il capitolo dice di cosa è fatto. -->
-      <div class="wc-dna-orbit" id="wcDnaOrbit"></div>
-    </div>
-  </section>
-
-  <!-- VESPER — la sfera che si tocca. SPOSTATA QUI, subito dopo il capitolo
-       02, su richiesta: stava dopo Altitude, poco prima del disco volante.
-       La catena delle scene di particelle adesso è tutta di fila e senza
-       salti — tunnel (01) → helion/elica (warp) → elica del metodo (02) →
-       questa — e la pagina passa ai modelli 3D veri (ufo, robot) in un colpo
-       solo invece che tornando indietro di un passo a metà.
-       ⚠️ Il numero a schermo è stato scambiato con quello del fluido: vesper
-       è "// 03", il fluido "// 04". Gli `id` NON si toccano (capVesper resta
-       capVesper, cap03 resta cap03): ci sono agganciati i trigger in js/ e la
-       voce di menu. Numero a schermo e id qui non coincidono più — è già così
-       per cap05, ed è documentato in tutti e due i punti. -->
-  <section class="wc-vesper" id="capVesper" data-cursor="hidden">
-    <!-- I fantasmi specchiati solo sulla PRIMA sfera. L'orologio di vesper
-         ripiega il pin in tre terzi (sfera, galassia, cervello — vedi
-         `clockFromScroll` in js/vesper.js): il primo terzo è l'orb, ed è
-         l'unica forma su cui quattro cerchi concentrici hanno senso. Sulla
-         galassia e sul cervello erano solo quattro anelli in mezzo. -->
-    <div class="wc-vesper-pin" id="wcVesperPin" data-cursor-fx="mirror"
-         data-cursor-fx-range="0,0.34">
-      <canvas id="wcVesperCanvas"></canvas>
-      <div class="wc-vesper-copy">
-        <p class="eyebrow">// 03 — Materia</p>
-        <h2>Ventitremila punti,<br>e li sposti col dito.</h2>
-        <p class="lead">Non è un video di una sfera: è una sfera. Passaci sopra il cursore e la superficie si gonfia dove sei, resta indietro di un istante — come farebbe un liquido — e si riposa da sola quando ti fermi.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CAP. 03 — IL FLUIDO.
-       Qui c'era la colonna vertebrale in vetro. È stata tolta, non rotta:
-       `js/spine.js`, `assets/spine.glb` e `scripts/pack-spine-glb.js` restano
-       sul disco e sono ripristinabili. Poi la sezione è rimasta vuota per un
-       po', col solo splash di fluido e la copy nascosta; adesso il capitolo È
-       il fluido, e ha di nuovo un testo a schermo.
-
-       L'impaginazione è quella dell'hero di "flowstate", da cui viene la scena:
-       tutto in colonna al centro — pillola, titolo, sottotitolo — con la riga
-       di chiusura appoggiata in basso. Il testo è nostro. -->
-  <section class="wc-spine" id="cap03" data-cursor="hidden">
-    <div class="wc-spine-pin" id="wcSpinePin">
-      <!-- Lo splash di fluido vive DENTRO il capitolo: è l'unico punto della
-           pagina in cui il cursore lo accende. Sta prima della copy, così il
-           testo gli passa davanti. -->
-      <canvas class="wc-fluid" id="wcFluid" aria-hidden="true"></canvas>
-      <div class="wc-spine-copy">
-        <p class="eyebrow">// 04 — Fluido</p>
-        <h2>Venti passaggi di pressione,<br>sessanta volte al secondo.</h2>
-        <p class="lead">Non è un video di inchiostro. È un fluido che viene risolto mentre lo attraversi: il cursore non disegna la scia, spinge la velocità del campo — poi sono i vortici a decidere dove finisce il colore. Ti fermi, e continua da solo per un istante.</p>
-      </div>
-      <p class="wc-spine-foot">WebGL grezzo, nessuna libreria. Il solutore sta tutto in questa pagina.</p>
-      <!-- L'invito compare in fondo alla sequenza, quando i fuochi hanno
-           spazzato via testo e inchiostro e resta il nero. Da lì in poi il
-           capitolo lo muovi tu. `aria-hidden` perché è l'etichetta di un
-           gesto su un canvas che è già aria-hidden: senza il fluido non
-           vuol dire niente, e con reduced-motion non compare mai. -->
-      <p class="wc-spine-invite" id="wcSpineInvite" aria-hidden="true">Muovi il cursore</p>
-      <!-- E dopo che hai giocato un po', la consegna al capitolo successivo:
-           lì la stessa matematica non disegna più, deforma una fotografia.
-           Compare, resta il tempo di leggerla, e se ne va — vedi `next`/
-           `nextOut` in js/fluid.js. -->
-      <p class="wc-spine-next" id="wcSpineNext" aria-hidden="true">Bello vero?<br>Adesso proviamo con un&#39;immagine.</p>
-    </div>
-  </section>
-
-  <!-- ALTITUDE — il fondo che si piega sotto il dito.
-       Il video qui non è da guardare: è materia da deformare. Il fotogramma
-       diventa una texture e la texture si piega sotto il puntatore.
-
-       Il <video> vero sotto il canvas NON è di scorta: è la sorgente della
-       texture, e si vede finché il primo fotogramma non è salito sulla GPU.
-       Il canvas ci va sopra in dissolvenza — vedi `fade` in js/altitude.js. -->
-  <!-- `hidden` e non più `cross`: il mirino faceva da terzo puntatore sopra
-       un capitolo in cui il cursore È già il vortice. Qui il cursore del sito
-       si spegne e resta il fluido. -->
-  <section class="wc-alt" id="capAltitude" data-cursor="hidden">
-    <video id="wcAltVideo" class="wc-alt-video" muted loop playsinline
-           preload="none" poster="assets/starry-poster.webp" aria-hidden="true">
-      <source data-src="assets/starry.mp4" type="video/mp4">
-      <source data-src="assets/starry.webm" type="video/webm">
-    </video>
-    <canvas id="wcAltCanvas" class="wc-alt-canvas" aria-hidden="true"></canvas>
-    <div class="wc-alt-copy">
-      <p class="eyebrow">// Il fondo non &egrave; un fondo</p>
-      <h2>Passa il dito,<br>e l'immagine si <em class="wc-serif">piega</em>.</h2>
-      <p class="lead">Non &egrave; un filtro appoggiato sopra il video: &egrave; un fluido risolto mentre lo attraversi, e ogni pixel campiona il fotogramma spostato dalla velocit&agrave; del flusso. I tre canali vengono presi a distanze diverse lungo quello spostamento — la frangia di colore ai bordi del vortice non &egrave; disegnata, &egrave; quello che fa una lente.</p>
-      <p class="wc-alt-foot">Ti fermi, e il cielo torna fermo.</p>
-    </div>
-  </section>
-
-  <!-- Qui c'era il carosello "// 04 — Movimento continuo": otto tessere con
-       gradienti CSS che scorrevano in loop e si potevano trascinare. Tolto.
-       Erano etichette di stile ("Editoriale", "Brutalista") senza niente
-       dietro, in una pagina in cui ogni altra sezione mostra una cosa vera
-       mentre la fa. Il trascinamento resta, ma sul robot del cap. 04, dove
-       c'è un oggetto vero da girare.
-       Recuperabile dal commit d80a4ca (sezione, js/carousel.js e il CSS
-       .wc-carousel/.wc-track/.wc-tile).
-
-       NUMERAZIONE: gli occhielli erano stati scalati di uno quando il carosello
-       è sparito, e sono tornati ai numeri di prima quando vesper ha preso il
-       posto libero — un capitolo tolto, uno aggiunto. Vesper poi si è spostata
-       su, subito dopo il cap. 02, e questo posto è tornato vuoto: qui adesso
-       non c'è più niente, si passa da Altitude al disco volante. Gli `id` non sono mai
-       stati toccati in nessuno dei due passaggi: restano cap05..cap07 perché ci
-       sono agganciati i trigger in js/. (cap08 era il modulo di contatto ed è
-       uscito da questa pagina: ora è parliamone.html.)
-       Vesper, essendo nuovo, ha un id parlante (capVesper) come le altre
-       sezioni aggiunte dopo la numerazione originale. -->
-
-  <!-- LUMINOUS SAUCER — sta qui, subito prima del robot: sono le due sezioni
-       con un modello 3D vero, e stando vicine si leggono come una coppia. -->
-  <!-- `data-cursor="hidden"`: in questo capitolo il cursore del sito (punto +
-       anello ciano) si spegne e resta SOLO l'anello elastico verde. Erano due
-       anelli concentrici che inseguivano lo stesso puntatore. -->
-  <section class="wc-saucer" id="capSaucer" data-cursor="hidden">
-    <!-- L'anello elastico verde: è il colore del raggio, non un accento
-           estraneo appoggiato sopra. Il disco intanto deriva col puntatore
-           — vedi la sezione DERIVA in js/saucer.js. -->
-      <div class="wc-saucer-pin" id="wcSaucerPin" data-cursor-fx="elastic">
-      <canvas id="wcSaucerCanvas"></canvas>
-      <div class="wc-saucer-copy">
-        <p class="eyebrow">// Notte</p>
-        <h2>Quarantamila fili d'erba,<br>una sola chiamata di disegno.</h2>
-        <p class="lead">Il prato non è una texture: sono fili veri, ognuno col suo vento e la sua inclinazione. Si accendono solo dove il raggio li tocca.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Cursore 'dot' e non più 'invert': quello faceva della sezione un disco
-       da 110 px che inseguiva il mouse sopra il modello. Via la palla, resta il
-       cursore base. Il puntatore di sistema non è nascosto da nessuna parte,
-       quindi non si resta comunque senza.
-
-       QUI C'ERA LA TORCIA (`data-cursor-fx="torch"`): per rivelare doveva prima
-       coprire la sezione di nero all'85%, e il robot si vedeva solo dentro il
-       cono. Ora c'è il circuito: il modello non viene mai oscurato, e le tracce
-       si accendono al PASSAGGIO invece che sotto la posizione del puntatore —
-       fermi il mouse e non entra più corrente. La differenza è scritta in
-       testa a FX.circuit in js/cursorfx.js. -->
-  <section class="wc-robot" id="cap05" data-cursor="hidden">
-    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
-      <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
-           davanti in basso, sopra un velo, invece di dividere lo spazio a metà
-           come faceva la griglia di prima. -->
-      <div class="wc-robot-stage" id="wcRobotStage">
-        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
-      </div>
-      <div class="wc-robot-copy">
-        <p class="eyebrow">// 05 — Oggetti vivi</p>
-        <h2>Non un video.<br>Un modello che risponde.</h2>
-        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini. Dietro, il rame si accende dove passi — non dove ti fermi.</p>
-        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- LITHOS — il faro che scopre una seconda immagine.
-       Il meccanismo viene dalla specifica `Lithos.txt`; il testo NO. Quella
-       specifica descrive l'hero di un marchio di geologia inventato, con la
-       sua headline e il suo pulsante arancione: metterlo qui vorrebbe dire
-       mettere il marchio di un altro sul sito del cliente, in una pagina dove
-       ogni sezione dimostra invece una tecnica nostra. Qui la copy dice cosa
-       fa l'effetto, come fanno tutte le altre.
-       Le due immagini stavano su un CDN di terzi: scaricate in locale. -->
-  <section class="wc-lithos" id="capLithos" data-cursor="hidden">
-    <div class="wc-lithos-base" aria-hidden="true"></div>
-    <div class="wc-lithos-reveal" id="wcLithosReveal" aria-hidden="true"></div>
-    <div class="wc-lithos-copy">
-      <p class="eyebrow">// Due immagini, una sola</p>
-      <h2><span class="wc-serif">Sotto</span> ce n'è un'altra.</h2>
-      <p class="lead">Il puntatore non illumina: scopre. Sotto la prima immagine ce n'è una seconda, e il faro decide quanta se ne vede — con un ritardo, perché una lampada che segue il dito senza inerzia sembra un ritaglio.</p>
-    </div>
-  </section>
-
-  <!-- SNEAKER — sfondo video in loop.
-       I due <source> hanno data-src e non src: senza, il browser comincia a
-       scaricare appena incontra il tag, e `preload="none"` non lo ferma —
-       quell'attributo governa il buffering, non la scelta della sorgente.
-       È js/sneaker.js a promuoverli quando ci si avvicina. Fino a lì di questa
-       sezione scendono solo gli 83 KB del poster. -->
-  <!-- La scia di fiamme del cursore (`data-cursor-fx="fire"`) era qui: tolta.
-       Il capitolo è già un video acceso a tutto schermo. -->
-  <section class="wc-sneaker" id="capSneaker" data-cursor="hidden">
-    <video id="wcSneakerVideo" class="wc-sneaker-video" muted loop playsinline
-           preload="none" poster="assets/sneaker-poster.webp" aria-hidden="true">
-      <source data-src="assets/sneaker.webm" type="video/webm">
-      <source data-src="assets/sneaker.mp4" type="video/mp4">
-    </video>
-    <div class="wc-sneaker-copy">
-      <p class="eyebrow">// Video, non decorazione</p>
-      <h2>Quarantadue megabyte<br>ne sono diventati uno e mezzo.</h2>
-      <p class="lead">Il master era 4K a 24 Mbps. Qui gira a 1080p in due formati, senza traccia audio, e non scende un byte finché non arrivi a questo punto della pagina. Un video di sfondo che si fa aspettare non è un video di sfondo.</p>
-    </div>
-  </section>
-
-
-  <!-- OROLOGIO — si smonta se scorri giù, si rimonta se torni su.
-
-       Sta subito dopo la sneaker perché sono i due capitoli in cui un oggetto
-       è la scena: là un fondo che gira da solo, qui un oggetto che non si
-       muove affatto finché non lo muovi tu.
-
-       È L'UNICO CAPITOLO SU FONDO CHIARO. Il resto della pagina è nero; qui la
-       parete sbianca per una schermata, l'inchiostro diventa scuro e sparisce
-       il ciano — su bianco non avrebbe contrasto e sarebbe l'unica macchia
-       fredda a tutto schermo.
-
-       NON È UN <video>. È una sequenza di fotogrammi disegnata su canvas: a
-       ogni posizione di scroll ne corrisponde UNO. Un filmato scrubbato su
-       questa pagina è già stato provato e tolto — cercare dentro un video
-       dipende da come il SERVER manda il file, e quando il server non manda le
-       richieste Range il capitolo resta fermo senza che niente lo dica.
-       Vedi l'intestazione di js/orologio.js.
-
-       LE COLONNE LATERALI SONO VUOTE APPOSTA. L'orologio è stato generato per
-       stare nel terzo centrale e le sorgenti sono state ricentrate al pixel
-       prima di girare il filmato: le due fasce ai lati sono lo spazio delle
-       frasi, e il canvas disegna in `contain` per non mangiarsele.
-
-       L'ARCO STA TUTTO NELLA DISCESA: a metà sezione l'orologio è
-       completamente aperto, e da lì in poi si richiude. Le finestre delle
-       frasi seguono quell'arco — una mentre si apre, una col pezzo fermo in
-       aria, una mentre si richiude, una a orologio di nuovo intero.
-
-       ⚠️ I TESTI QUI SOTTO SONO PROVVISORI, messi per verificare che
-       l'impaginazione regga. Le finestre (`data-in`/`data-out`, in frazioni
-       della corsa) invece sono vere: chi riscrive le frasi tocchi il testo,
-       non i numeri, finché non cambia il ritmo. -->
-  <section class="wc-orologio" id="capOrologio" data-cursor="hidden">
-    <div class="wc-orologio-pin" id="wcOroPin">
-      <canvas class="wc-oro-canvas" id="wcOroCanvas" aria-hidden="true"></canvas>
-      <!-- Il primo fotogramma, per chi ha il movimento ridotto: lì il canvas
-           non si accende e questa immagine resta al suo posto. -->
-      <img class="wc-oro-poster" src="assets/orologio/orologio-001.webp" alt="" aria-hidden="true">
-
-      <div class="wc-oro-say" data-side="l" data-y="alto" data-in="0.04" data-out="0.24">
-        <p class="eyebrow">// Testo provvisorio</p>
-        <h2>Non parte.<br>Lo apri <em class="wc-serif">tu</em>.</h2>
-      </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.40" data-out="0.60">
-        <p>Testo provvisorio. Ogni pezzo si stacca alla quota che gli tocca, e si ferma dove ti fermi.</p>
-      </div>
-      <div class="wc-oro-say" data-side="l" data-y="basso" data-in="0.68" data-out="0.86">
-        <p>Testo provvisorio. Torni indietro e si rimonta, nello stesso ordine, al contrario.</p>
-      </div>
-      <div class="wc-oro-say" data-side="r" data-y="mezzo" data-in="0.88" data-out="1.00">
-        <h2>Il tempo di questo<br>&egrave; il <em class="wc-serif">tuo</em> scroll.</h2>
-        <p>Testo provvisorio.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUI C'ERA IL CAP. 06, e prima ancora vesper. La scena (sfera che si
-       sfalda in galassia) era già migrata dentro capWarp come terza forma, e
-       quello che restava era un guscio: la sola copy, che per giunta
-       descriveva quello che capWarp fa davvero. Tolto su richiesta.
-       `js/particles.js` resta sul disco, come js/spine.js: si riaccende
-       rimettendo la sezione, il canvas #wcPartCanvas e lo <script>.
-       NB gli `id` degli altri capitoli non si toccano: a cap05/cap07 sono
-       agganciati i trigger in js/. -->
-  <section class="wc-process" id="cap07" data-cursor="hidden">
-    <div class="wc-process-pin" id="wcProcessPin">
-      <div class="wc-process-head">
-        <p class="eyebrow">// 07 — Processo</p>
-        <h2>Quattro passaggi.</h2>
-        <div class="wc-progress"><span id="wcProgressBar"></span></div>
-      </div>
-      <div class="wc-process-row" id="wcProcessRow">
-        <article class="wc-step"><span class="wc-step-n">01</span><h3>Ascolto</h3><p>Capiamo a chi parla il sito e cosa deve ottenere. Prima di qualsiasi pixel.</p></article>
-        <article class="wc-step"><span class="wc-step-n">02</span><h3>Direzione</h3><p>Definiamo tono, tipografia, colore e movimento. Una direzione sola, non tre da scegliere.</p></article>
-        <article class="wc-step"><span class="wc-step-n">03</span><h3>Costruzione</h3><p>Sviluppo su misura. Nessun tema comprato, nessun page builder.</p></article>
-        <article class="wc-step"><span class="wc-step-n">04</span><h3>Vita</h3><p>Messa online, misurazione, correzioni. Un sito è vivo o è un volantino.</p></article>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUI STAVA IL CAPITOLO 08, il modulo di contatto. Adesso e' una pagina
-       sua: `parliamone.html`. Era l'ultima cosa da leggere dopo otto schermate
-       di portfolio, e ci arrivava stanco — chi voleva scrivere doveva scorrere
-       tutto, chi guardava il portfolio se lo trovava in mezzo. Il markup e' lo
-       stesso, id compresi, cosi' js/form.js non e' cambiato di una riga: si e'
-       spostato, non riscritto.
-       Con lui se ne sono andati da questa pagina anche js/form.js e la
-       libreria emailjs, che qui non hanno piu' niente da fare. -->
-
-  <!-- L'OFFERTA — ultima sezione della pagina.
-       Il fondo è un loop di vetro viola: due formazioni ai lati e un vuoto
-       nero al centro, che nel filmato resta vuoto per tutti i 6,4 s. È lì che
-       va il testo, e per questo la sezione non ha né velo né riquadro — il
-       contrasto ce l'ha già di suo, perché al centro non passa niente.
-
-       È la CHIUSURA: chi ci arriva ha già scorso tutto il capitolo, e qui si
-       dice cosa si compra. Da quando il modulo ha una pagina sua il pulsante
-       non riporta più su a un'ancora ma ci porta — che è anche il motivo per
-       cui l'offerta può stare in fondo senza lasciare la pagina senza uscita. -->
-  <section class="wc-offer" id="capOffer" data-cursor="dot">
-    <video id="wcGlassVideo" class="wc-offer-video" muted loop playsinline
-           preload="none" poster="assets/glass-poster.webp" aria-hidden="true">
-      <source data-src="assets/glass.mp4" type="video/mp4">
-    </video>
-    <div class="wc-offer-copy">
-      <p class="eyebrow">// Che cosa ti resta in mano</p>
-      <h2>Un sito che si <em class="wc-serif">attraversa</em>,<br>non uno che si sfoglia.</h2>
-      <p class="lead">Quello che hai appena scorso non &egrave; una vetrina di effetti: &egrave; il modo in cui lavoriamo. Ogni capitolo di questa pagina &egrave; una tecnica che pu&ograve; finire nel tuo sito — scelta perch&eacute; serve a qualcosa, mai perch&eacute; fa impressione.</p>
-      <a href="/atelier/parliamone" class="wc-offer-cta wc-hover">Parliamone &rarr;</a>
-    </div>
-  </section>
-
-</main>
-
-<footer>
-  <!-- AXXELL in grande, e il cursore lo accende passandoci sopra.
-       Tre copie della stessa parola, sovrapposte, tutte in CONTORNO e mai
-       riempite — è il contorno a rendere leggibile il gradiente che ci scorre
-       dentro, un testo pieno lo mangerebbe:
-         1. il contorno spento, che compare solo al passaggio: dà un fondo su
-            cui il resto si stacca;
-         2. il contorno che SI DISEGNA, una volta, quando il footer entra in
-            quadro (stroke-dash animato);
-         3. il gradiente della pagina, ritagliato da una maschera radiale che
-            insegue il puntatore: è quello che si accende sotto il dito.
-       Il viewBox è fisso e il testo sta al centro in percentuale, quindi la
-       parola si ridimensiona da sola con la finestra senza una media query. -->
-  <div class="wc-footer-word" id="wcFooterWord">
-    <!-- Il logo VERO (~/LOGO AXXELL.svg), non un <text>: i tracciati sono quelli
-         del marchio, orbita compresa, e l'effetto corre sul loro contorno.
-         I dieci tracciati stanno UNA volta sola in <defs> e vengono richiamati
-         tre volte con <use>: senza, sarebbero trenta copie di path data in
-         mezzo alla pagina. Il `fill` originale del file è stato tolto — qui
-         nessuno dei tre strati è riempito, è il contorno a rendere leggibile
-         il gradiente che ci scorre dentro.
-         Il viewBox è ritagliato sul disegno (il file ne aveva uno più largo,
-         con dell'aria attorno): così il marchio occupa tutta la riga. -->
-    <svg viewBox="28 104 598 154" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <defs>
-        <linearGradient id="wcFootGrad" gradientUnits="userSpaceOnUse" x1="28" y1="104" x2="626" y2="258">
-          <stop offset="0%"   stop-color="#00d4ff"/>
-          <stop offset="38%"  stop-color="#8c7cff"/>
-          <stop offset="70%"  stop-color="#ff2bd6"/>
-          <stop offset="100%" stop-color="#00e8a2"/>
-        </linearGradient>
-        <!-- In unità del viewBox, non in percentuale: js/footer.js ci scrive
-             dentro le coordinate del puntatore convertite una volta sola. -->
-        <radialGradient id="wcFootReveal" gradientUnits="userSpaceOnUse"
-                        cx="327" cy="181" r="150">
-          <stop offset="0%"   stop-color="#fff"/>
-          <stop offset="100%" stop-color="#000"/>
-        </radialGradient>
-        <mask id="wcFootMask">
-          <rect x="0" y="0" width="700" height="400" fill="url(#wcFootReveal)"/>
-        </mask>
-      </defs>
-      <use class="wc-foot-t -base"   href="#wcAxxellMark"/>
-      <use class="wc-foot-t -draw"   href="#wcAxxellMark"/>
-      <use class="wc-foot-t -reveal" href="#wcAxxellMark"
-           stroke="url(#wcFootGrad)" mask="url(#wcFootMask)"/>
-    </svg>
   </div>
-  <div class="wc-footer-row">
-    <span>© 2026 Axxell AI</span>
-    <span>Reggio Emilia, Italia</span>
-    <a href="mailto:info@axxell.ai">info@axxell.ai</a>
-  </div>
-</footer>
+</div>
 
-<!-- LE LIBRERIE STANNO QUI DENTRO, NON PIU' SU UN CDN.
-     Prima arrivavano da cdn.jsdelivr.net e cdnjs.cloudflare.com. Con jsdelivr
-     irraggiungibile — una rete aziendale che filtra i CDN, un blocker
-     aggressivo, un disservizio — la pagina non degradava: restava NERA.
-     `ReferenceError: gsap is not defined`, il velo del loader non si toglieva
-     mai e sotto non si vedeva niente. Verificato bloccando il dominio e
-     ricaricando: schermo nero, zero testo.
-     Adesso sono file nostri, stessa origine: se risponde il sito rispondono
-     anche loro, e nessun terzo vede piu' l'IP di chi visita (che e' anche il
-     motivo GDPR). Sono i BYTE ESATTI che serviva il CDN — ognuno verificato
-     contro l'hash SRI che stava scritto qui sopra. Proprio per questo
-     `integrity` e `crossorigin` non ci sono piu': stessa origine, non c'e' un
-     terzo di cui fidarsi. Versioni e provenienza in vendor/README.md. -->
+<div id="err"></div>
+
+<!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
+     cui scorrere, così l'asse centrale (Task 2) ha un progresso di scroll
+     globale da leggere. -->
+<div id="scrollSpacer" aria-hidden="true"></div>
+
+<!-- Task 2 — l'asse centrale (l'elica DNA di js/dna.js) porta con sé il
+     modulo WC che la registra e la sua base di scroll: gsap+ScrollTrigger
+     (core.js li registra sempre, anche se qui non c'è una sezione da
+     pinnare), lenis (lo scroll fluido su desktop — WC.lenis, letto da
+     dna.js per il progresso globale), e glsl.js (gli aiutanti G.* che dna.js
+     usa: colori, smorzamento, atmosfera, puntatore). CustomEase/SplitText/
+     Flip/ScrambleTextPlugin restano fuori: core.js li registra solo se
+     `typeof` li trova, e qui non serve nessuno dei quattro. -->
 <script src="vendor/gsap.min.js?v=20260824a"></script>
 <script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
-<script src="vendor/SplitText.min.js?v=20260824a"></script>
-<script src="vendor/CustomEase.min.js?v=20260824a"></script>
-<script src="vendor/Flip.min.js?v=20260824a"></script>
-<script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
 <script src="vendor/lenis.min.js?v=20260824a"></script>
 <script src="vendor/three.min.js?v=20260824a"></script>
 <script src="js/core.js?v=20260824a"></script>
 <script src="js/glsl.js?v=20260824a"></script>
-<script src="js/nav.js?v=20260824a"></script>
-<script src="js/cursor.js?v=20260824a"></script>
-<script src="js/fluid.js?v=20260824a"></script>
-<script src="js/loader.js?v=20260824a"></script>
-<script src="js/tunnel.js?v=20260824a"></script>
-<script src="js/warp.js?v=20260824a"></script>
-<script src="js/manifesto.js?v=20260824a"></script>
-<script src="js/cursorfx.js?v=20260824a"></script>
 <script src="js/dna.js?v=20260824a"></script>
-<script src="js/headings.js?v=20260824a"></script>
-<script src="js/vesper.js?v=20260824a"></script>
-<script src="js/saucer.js?v=20260824a"></script>
-<script src="js/robot.js?v=20260824a"></script>
-<script src="js/horizontal.js?v=20260824a"></script>
-<script src="js/lithos.js?v=20260824a"></script>
-<script src="js/sneaker.js?v=20260824a"></script>
-<script src="js/orologio.js?v=20260824a"></script>
-<script src="js/altitude.js?v=20260824a"></script>
-<script src="js/offer.js?v=20260824a"></script>
-<script src="js/footer.js?v=20260824a"></script>
+<!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
+     sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
+     window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
+<script src="js/effetti-deck.js?v=20260831a"></script>
+<!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
+     quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
+     WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
+     PRIMA dell'inline: il controller lo cerca in WC.effects. -->
+<script src="js/saucer.js?v=20260831a"></script>
+<!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
+     dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
+     js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
+     invece che a scroll) e «La piega» (altitude, il fluido sopra il video —
+     l'H.264 non decodifica sotto swiftshader headless, atteso). Nessuna delle
+     tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
+     servono per registrare i tre handle esterni su WC.effects, che il
+     controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/vesper.js?v=20260831a"></script>
+<script src="js/orologio.js?v=20260831a"></script>
+<script src="js/altitude.js?v=20260831a"></script>
+<!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
+     (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
+     vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
+     WebGL del volo/DNA/vesper di cap. 02, non testo DOM: vedi la nota sul
+     record del mazzo in testa a js/warp.js). Nessuna delle due sezioni
+     esiste qui, quindi l'init WC di ciascuna è un no-op innocuo; servono per
+     registrare i due handle esterni su WC.effects, che il controller sveglia
+     dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/lithos.js?v=20260831a"></script>
+<script src="js/warp.js?v=20260831a"></script>
+<script>
+(function(){
+  var errBox = document.getElementById('err');
+  if (typeof THREE === 'undefined'){
+    errBox.style.display = 'grid';
+    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.';
+    return;
+  }
+
+  /* IL FLAG DEL CANTIERE (Task 1). La pozza Mirror Hall e' tolta, e il
+     mazzo di portali non si costruisce ancora: le funzioni del vetro
+     (VERT/FRAG/TARATURA) restano definite piu' sotto perche' servono ai
+     prossimi task, ma non vengono chiamate finche' questo resta a false.
+     Con DECK_ON=false lo stage e' vuoto: solo lo sfondo (nebbia+pulviscolo),
+     la nav, nessun portale, nessuna didascalia a fuoco. */
+  /* Task 3 — IL MAZZO È ACCESO. Le 7 card degli effetti si costruiscono e
+     cavalcano l'elica (window.helixPlace), guidate dallo scroll globale come
+     l'asse centrale. */
+  var DECK_ON = true;
+
+  /* ⚠️ LA MINA DELLO SCROLL (Task 2→4). La giostra di index.html dirottava la
+     rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
+     e bloccava lo scroll della pagina — qui NON deve mai succedere: la pagina
+     resta scrollabile normalmente (vedi #scrollSpacer), anche se dal Task 4 in
+     poi non è più lei a muovere il mazzo. `RING_SCROLL` è rimasto come
+     interruttore per quel SOLO comportamento (il preventDefault che dirotta
+     rotellina/frecce): resta SEMPRE `false` — sezione 4 più sotto spiega da
+     dove viene invece mosso il mazzo dal Task 4. */
+  var RING_SCROLL = false;
+
+  /* ======================================================================
+     I SEI MONDI. Ognuno è un SETTORE, non una tecnica: è la condizione
+     dell'intero progetto. Il colore non è decorativo — è quello con cui il
+     mondo tinge la nebbia intorno a sé quando lo guardi, così il fondo resta
+     neutro e sono i portali a colorarlo.
+     `poster` è quello che si vede sempre; `video` parte solo al passaggio.
+     ====================================================================== */
+  /* `page` = il mondo ha una pagina sua. Chi ce l'ha si raggiunge navigando,
+     sotto la copertura dello zoom; chi non ce l'ha ancora resta sul pannello
+     provvisorio, cosi' la mappa e' completa anche a costruzione in corso. */
+  /* MISURA UNICA PER TUTTE LE LASTRE.
+     Nella costellazione ogni portale aveva la sua taglia: erano fermi, e la
+     differenza si leggeva come profondita'. In una giostra sfilano uno dietro
+     l'altro nello stesso posto, e la stessa differenza si legge come un
+     errore. Ed e' la misura del NUCLEO: ogni mondo e' grande esattamente
+     quanto lo slot che resta da riempire. */
+  /* La misura e' TARATA sulla fila, non scelta a occhio: e' quella per cui
+     la lastra davanti riempie il quadro come si deve E si sovrappone alla
+     successiva. La sovrapposizione non e' un effetto collaterale — senza,
+     il vetro non ha niente da rifrangere e torna a essere una cornice. */
+  var CW = 2.95, CH = 1.84;
+
+  /* Task 3 — LA SORGENTE DEI DATI È window.EFFETTI (7 effetti), non più la
+     lista dei 9 mondi. Vive in js/effetti-deck.js, caricato prima di questo
+     script. Il resto del mazzo (mesh, vetro, focus, trattini) continua a
+     leggere `WORLDS`: qui è solo un alias del nuovo array, così il blocco
+     ereditato non va riscritto. I record hanno `col` e `poster` come i mondi;
+     `sett` è aliasato a `tipo` dentro effetti-deck.js per la focus-caption e
+     i trattini. Niente `vuoto`/`page`/`video`: le card sono poster di vetro. */
+  var WORLDS = window.EFFETTI;
+  WORLDS.forEach(function(w, i){ w.idx = i; });
+
+  /* ══ IL MAZZO ═════════════════════════════════════════════════════════
+     Non piu' un anello. L'anello era onesto — la lastra si volta e il vetro
+     si chiude — ma teneva meta' delle lastre girate di spalle, e per arrivare
+     alla quinta bisognava fare mezzo giro al buio. Qui invece si devono
+     VEDERE tutte, e si deve poter andare su una qualsiasi quando si vuole.
+     Le nove lastre stanno quindi su una fila che sfugge in profondita' da
+     tutti e due i lati, come un mazzo aperto a ventaglio. Chi e' al posto
+     zero e' davanti, grande e di faccia; gli altri arretrano, rimpiccioliscono
+     e si girano, ma restano tutti in quadro e tutti cliccabili. Si scorre, la
+     fila scorre, e la lastra che arriva davanti si ingrandisce.
+     Due conti fanno tutto il lavoro, e nessuno dei due e' decorativo:
+       · `tanh` sulla x — la fila non se ne va fuori schermo, si accumula
+         verso un punto di fuga. Senza, la quarta lastra e' gia' fuori.
+       · la profondita' cresce LINEARE mentre la x satura. Se saturano
+         tutt'e due, l'angolo di vista non e' piu' monotono: le lastre si
+         sorpassano e la fila torna indietro su se stessa (provato).
+     E soprattutto: LE LASTRE SI SOVRAPPONGONO, di proposito. E' la condizione
+     perche' il vetro abbia qualcosa da rifrangere.
+     ═════════════════════════════════════════════════════════════════════ */
+  var NZ = -1.55;                       // dove gira lo sciame senza destinazione
+  var STEP = 1;                         // l'unita' di scorrimento e' UNA lastra
+  /* ══ LA ROTONDA (Mirror Hall) ══════════════════════════════════════════
+     Le nove lastre non stanno piu' su una fila a ventaglio: stanno su un
+     ANELLO, e la camera e' AL CENTRO che guarda in fuori. Chi e' davanti
+     (u=0) sta a (0, cardY, -R), di faccia; girando l'anello gli altri mondi
+     arrivano davanti. Si vede l'arco che ti sta di fronte (~5 lastre); gli
+     altri sono dietro le tue spalle e si scoprono girando — e' il patto della
+     rotonda, scelto sapendo il compromesso.
+     Le lastre restano PIATTE e tangenti all'anello (non incurvate come le
+     card di Mirror Hall): incurvarle romperebbe la normale dello smusso del
+     vetro, la taratura del 24/08. La pozza riflettente sta sotto, alla quota
+     y=0, e le lastre sono alzate a `cardY` perche' stiano sopra il pelo. */
+  var RING = { R:6.6, cardY:1.18, camH:0.92, lookY:0.98 };
+  var TWO_PI_N = 2*Math.PI / WORLDS.length;
+
+  function wrapN(u, n){ u = (u + n*0.5) % n; if (u < 0) u += n; return u - n*0.5; }
+  /* Quanti posti separano una lastra da quello davanti, col segno e col giro
+     corto: e' il numero da cui discende tutto il resto. */
+  function deckU(i, pos){ return wrapN(i - pos, WORLDS.length); }
+  /* Task 3 — LA POSIZIONE NON È PIÙ SULL'ANELLO, È SULL'ELICA.
+     La vecchia deckPlace disponeva le lastre su un anello attorno alla camera
+     (out.set(R·sinθ, cardY, −R·cosθ)). Ora delega a window.helixPlace, che le
+     fa salire lungo l'elica dell'asse centrale (vedi js/effetti-deck.js). Resta
+     una funzione locale così i tre punti di chiamata (portalPoint, costruzione
+     card, frame()) non cambiano. deckYaw/deckScale/deckFade restano quelli
+     dell'anello, ereditati. */
+  function deckPlace(u, out){
+    return window.helixPlace(u, out);
+  }
+  /* La lastra guarda il centro: la sua normale (+Z locale) punta alla camera.
+     rotation.y = -theta. E la `fwd` calcolata a valle come
+     (sin(yaw),0,cos(yaw)) torna la normale giusta. */
+  function deckYaw(u){ return -u * TWO_PI_N; }
+  function deckRoll(u){ return 0; }              // su un anello non serve rollio
+  /* Tutte le lastre sono alla stessa distanza dal centro, quindi alla stessa
+     misura: e' la rotonda di Mirror Hall. Il mondo a fuoco non si stacca per
+     grandezza ma perche' e' centrato, piu' acceso (uHot) e nominato dalla
+     didascalia. */
+  function deckScale(u){ return 1; }
+  /* Chi si volta di spalle sparisce. Dietro la camera non si vedrebbe
+     comunque, ma questo spegne DOLCEMENTE l'arco posteriore ai lati invece di
+     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te. */
+  function deckFade(u){
+    var c = Math.cos(u * TWO_PI_N);
+    return c <= -0.1 ? 0 : (c >= 0.35 ? 1 : (c + 0.1) / 0.45);
+  }
+
+  var canvas   = document.getElementById('c');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x04050a, 1);
+  renderer.autoClear = false;
+
+  var camera = new THREE.PerspectiveCamera(66, 1, 0.1, 240);
+  /* La camera sta AL CENTRO dell'anello e guarda in fuori. Un filo di z
+     positivo per non stare esattamente sul perno; `resize()` la fa arretrare
+     su schermo stretto perche' la lastra davanti ci stia comunque. */
+  var CAM0 = new THREE.Vector3(0, RING.camH, 0.001);
+  camera.position.copy(CAM0);
+
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
+
+  /* ======================================================================
+     1. IL MONDO DIETRO
+     ====================================================================== */
+  var bg = new THREE.Scene();
+
+  var fogMat = new THREE.ShaderMaterial({
+    depthTest:false, depthWrite:false,
+    uniforms:{ uTime:{value:0}, uAspect:{value:1}, uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.999,1.0); }',
+    fragmentShader:[
+      'varying vec2 vUv; uniform float uTime,uAspect,uTintStr; uniform vec3 uTint;',
+      'float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }',
+      'void main(){',
+      '  vec2 p=(vUv-0.5)*vec2(uAspect,1.0); float d=length(p);',
+      '  vec3 base=mix(vec3(0.055,0.052,0.085),vec3(0.010,0.011,0.021),smoothstep(0.0,0.95,d));',
+      '  base+=vec3(0.020,0.012,0.050)*(1.0-smoothstep(0.0,0.55,d));',
+      // il mondo guardato tinge la nebbia: il fondo resta neutro, sono i portali a colorarlo
+      '  base+=uTint*uTintStr*0.085*(1.0-smoothstep(0.0,1.05,d));',
+      '  base+=(h(gl_FragCoord.xy+uTime)-0.5)*0.012;',
+      '  gl_FragColor=vec4(base,1.0);',
+      '}'
+    ].join('\n')
+  });
+  var fog = new THREE.Mesh(new THREE.PlaneGeometry(2,2), fogMat);
+  fog.frustumCulled = false;
+  bg.add(fog);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LE PARTICELLE — UNA SOLA POPOLAZIONE, TRE DESTINI.
+
+     Questo è il pezzo che tiene insieme tutto il capitolo: NON esiste un
+     tunnel e poi una mappa. Esiste un solo sistema di punti, una sola camera,
+     e una sola scena. All'inizio i punti sfilano verso di te (il tunnel);
+     poi il viaggio rallenta fino a fermarsi, e ognuno raggiunge la
+     destinazione che aveva già assegnata dall'inizio:
+
+       ruolo 0 — l'85%: si allarga e diventa il pulviscolo di fondo;
+       ruolo 1 — il 12%: converge sulla superficie di uno dei sei portali e
+                 lì densifica finché il portale non traspare e lo sostituisce;
+       ruolo 2 — il resto: NON ha una destinazione. Resta a girare attorno al
+                 nucleo vuoto. Sono le uniche rimaste senza posto, ed è
+                 l'altra metà della frase che sta già scritta nel capitolo
+                 dell'elica: «ognuna con la sua destinazione già assegnata».
+
+     Non c'è niente da cucire fra tunnel e mappa perché non si taglia niente:
+     cambia solo `uAssign`, da 0 a 1. ══════════════════════════════════════ */
+  var PN = mobile ? 1500 : 3400;
+  var TUNNEL_LEN = 26.0;
+  var pPos = new Float32Array(PN*3), pTgt = new Float32Array(PN*3),
+      pSeed = new Float32Array(PN), pRole = new Float32Array(PN);
+
+  /* Le facce dei portali servono da bersaglio: un punto a caso sulla lastra,
+     portato in coordinate di mondo. Si prendono le posizioni dell'anello A
+     GIRO FERMO (spin = 0), che sono quelle su cui le lastre traspaiono a fine
+     coreografia: l'ingresso avviene prima che la giostra si muova, e comunque
+     appena i portali sono formati queste particelle si spengono. */
+  var tmpP = new THREE.Vector3();
+  function portalPoint(w, out){
+    var u = deckU(w.idx, 0), sc = deckScale(u);
+    out.set((Math.random()-0.5)*CW*sc*0.94, (Math.random()-0.5)*CH*sc*0.94, 0);
+    out.applyEuler(new THREE.Euler(0, deckYaw(u), deckRoll(u)));
+    out.add(deckPlace(u, tmpP));
+    return out;
+  }
+  var tmpV = new THREE.Vector3();
+  for (var i=0;i<PN;i++){
+    // posizione di partenza: sparsa nel tubo che sfila
+    var ang = Math.random()*6.283, rad = 0.9 + Math.pow(Math.random(),0.6)*4.6;
+    pPos[i*3]   = Math.cos(ang)*rad;
+    pPos[i*3+1] = Math.sin(ang)*rad*0.72;
+    pPos[i*3+2] = Math.random()*TUNNEL_LEN;
+    pSeed[i]    = Math.random();
+
+    var r = Math.random();
+    if (r < 0.12){                                   // sulla faccia di un portale
+      pRole[i] = 1;
+      var w = WORLDS[i % WORLDS.length];
+      portalPoint(w, tmpV);
+      pTgt[i*3]=tmpV.x; pTgt[i*3+1]=tmpV.y; pTgt[i*3+2]=tmpV.z;
+    } else if (r < 0.17){                            // senza destinazione, attorno al vuoto
+      pRole[i] = 2;
+      pTgt[i*3]=0; pTgt[i*3+1]=0; pTgt[i*3+2]=0;
+    } else {                                         // il fondo
+      pRole[i] = 0;
+      pTgt[i*3]   = (Math.random()-0.5)*15;
+      pTgt[i*3+1] = (Math.random()-0.5)*9;
+      pTgt[i*3+2] = (Math.random()-0.5)*7 - 1.8;
+    }
+  }
+  var pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+  pGeo.setAttribute('aTarget',  new THREE.BufferAttribute(pTgt,3));
+  pGeo.setAttribute('aSeed',    new THREE.BufferAttribute(pSeed,1));
+  pGeo.setAttribute('aRole',    new THREE.BufferAttribute(pRole,1));
+  pGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 40);
+
+  var dustMat = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    uniforms:{ uTime:{value:0}, uPr:{value:renderer.getPixelRatio()},
+               uTravel:{value:0}, uAssign:{value:0}, uSpeed:{value:1},
+               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN} },
+    vertexShader:[
+      'attribute vec3 aTarget; attribute float aSeed, aRole;',
+      'uniform float uTime,uPr,uTravel,uAssign,uSpeed,uCardsIn,uNZ,uLen;',
+      'varying float vA;',
+      'void main(){',
+      // dov'è mentre sfila: la z scorre e si riavvolge
+      '  vec3 sp = vec3(position.xy, mod(position.z + uTravel, uLen) - uLen*0.62);',
+      // ogni particella parte con un suo ritardo: l'assegnazione non è un salto
+      '  float d = clamp((uAssign - aSeed*0.26) / 0.74, 0.0, 1.0);',
+      '  d = d*d*(3.0-2.0*d);',
+      '  vec3 tgt = aTarget;',
+      '  if (aRole > 1.5){',                     // quelle senza posto: girano attorno al vuoto
+      '    float a = aSeed*6.283 + uTime*0.055;',
+      '    float rr = 0.95 + fract(aSeed*7.3)*0.8;',
+      '    tgt = vec3(cos(a)*rr, sin(a)*rr*0.58, uNZ + (fract(aSeed*13.1)-0.5)*0.4);',
+      '  }',
+      '  vec3 p = mix(sp, tgt, d);',
+      '  if (aRole < 0.5){',                     // il fondo respira piano
+      '    p.x += sin(uTime*0.11 + aSeed*6.28)*0.20*d;',
+      '    p.y += cos(uTime*0.09 + aSeed*11.0)*0.16*d;',
+      '  }',
+      '  vec4 mv = modelViewMatrix * vec4(p,1.0);',
+      '  float base = 0.16 + 0.5*(0.5+0.5*sin(uTime*0.5 + aSeed*19.0));',
+      '  vA = mix(0.85, base, d) * (0.35 + 0.65*uSpeed*0.0 + 0.65);',
+      // sulla faccia dei portali le particelle si spengono via via che il
+      // portale traspare: sono loro a diventarlo
+      '  if (aRole > 0.5 && aRole < 1.5) vA *= (1.0 - uCardsIn);',
+      '  gl_PointSize = (1.3 + 1.4*fract(aSeed*3.1) + uSpeed*2.6) * uPr * (3.4 / max(0.3, -mv.z));',
+      '  gl_Position = projectionMatrix * mv;',
+      '}'
+    ].join('\n'),
+    fragmentShader:[
+      'varying float vA;',
+      'void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;',
+      '  gl_FragColor=vec4(vec3(0.62,0.78,0.95), vA*(1.0-smoothstep(0.18,0.5,d))); }'
+    ].join('\n')
+  });
+  var dust = new THREE.Points(pGeo, dustMat);
+  dust.frustumCulled = false;
+  bg.add(dust);
+
+  /* IL NUCLEO AL CENTRO NON C'E' PIU', E I RAGGI NEMMENO.
+     Erano il perno dell'anello: un contorno vuoto al centro e otto raggi che
+     ci convergevano. Con la fila non c'e' un centro da tenere sgombro — il
+     posto vuoto e' l'ULTIMA lastra, la si raggiunge scorrendo come tutte le
+     altre, e i raggi non avrebbero piu' un punto verso cui puntare. Quello
+     che resta della vecchia scena e' il pulviscolo, che serviva a comporre la
+     fila e continua a servire. */
+
+  /* ======================================================================
+     2. IL VETRO — materiale approvato il 24/08/2026. NON ritarare.
+     `uFlat` è l'unica aggiunta: a 1 il portale si disegna piatto, ed è la
+     versione che finisce nel render target per farsi vedere dagli altri.
+     ====================================================================== */
+  /* IL VETRO E' TORNATO A ESSERE VETRO.
+     La taratura del 24/08 era di una lastra che si guarda da sola su fondo
+     nero: aperta di faccia (`uOpen` 0.75) mostrava il contenuto quasi
+     pulito, e la rifrazione viveva solo sullo smusso (`rMask` partiva da
+     0.10). In una fila di lastre sovrapposte quel materiale sparisce — sono
+     nove cornici con dentro nove fotografie.
+     Qui il vetro ha un CORPO: smeriglia il contenuto anche al centro
+     (`uInside`, che prima non esisteva), non si apre mai del tutto
+     (`uOpen` 0.46), rifrange su tutta la superficie e non solo al bordo, e
+     ha un velo lattiginoso (`uMilk`) che ne fa una lastra invece di una
+     finestra. Quello che c'e' dentro si INTUISCE. */
+  /* DE-SFOCO (27/08): la fila di lastre sovrapposte chiedeva un vetro con un
+     CORPO fitto per non essere nove cornici; ma nella rotonda, e con la
+     richiesta esplicita di «vedere il contenuto», quel velo era troppo. I tre
+     numeri che nascondono il contenuto scendono: `uInside` (velo al centro)
+     0.30→0.12, `uMilk` (corpo lattiginoso) 0.38→0.20, `uFrost` (smeriglia al
+     bordo) 0.85→0.52. Rifrazione e trasmissione restano: e' ancora vetro, si
+     vede solo cosa c'e' dentro. */
+  var TARATURA = { uFres:2.2, uOpen:0.56, uThick:0.022, uDisp:0.26,
+                   uBev:0.16, uRim:0.62, uGain:1.28, uPar:0.06, uBlur:0.60,
+                   uFrost:0.52, uInside:0.12, uMilk:0.20, uThru:0.60 };
+
+  var VERT = [
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'void main(){',
+    '  vUv=uv;',
+    '  vec4 mv=modelViewMatrix*vec4(position,1.0);',
+    '  vView=-mv.xyz;',
+    '  vec3 T=normalize((modelViewMatrix*vec4(1.0,0.0,0.0,0.0)).xyz);',
+    '  vec3 B=normalize((modelViewMatrix*vec4(0.0,1.0,0.0,0.0)).xyz);',
+    '  vec3 N=normalize((modelViewMatrix*vec4(0.0,0.0,1.0,0.0)).xyz);',
+    '  vTBN=mat3(T,B,N);',
+    '  gl_Position=projectionMatrix*mv;',
+    '}'
+  ].join('\n');
+
+  var FRAG = [
+    'precision highp float;',
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'uniform sampler2D tScene,tVideo;',
+    'uniform vec2 uRes;',
+    'uniform float uFres,uOpen,uThick,uDisp,uBev,uRim,uGain,uPar,uBlur,uFrost,uInside,uMilk,uThru;',
+    'uniform float uVidAsp,uCardAsp,uFlat,uHot,uDim,uReveal,uVuoto;',
+    'uniform vec3 uCol;',
+
+    'float sdBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r;',
+    '  return min(max(q.x,q.y),0.0)+length(max(q,0.0))-r; }',
+
+    // DUE anelli di prelievi, non uno: con un anello solo una smerigliatura
+    // larga non sfoca, SDOPPIA — si vedono le otto copie del contorno.
+    'vec3 blurVid(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tVideo,uv).rgb;',
+    '  float d=r*0.70710678, h=r*0.5, e=h*0.70710678;',
+    '  vec3 s=texture2D(tVideo,uv).rgb*0.16;',
+    '  s+=texture2D(tVideo,uv+vec2( r,0.0)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-r,0.0)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0, r)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0,-r)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( d, d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( d,-d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-d, d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-d,-d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( h,0.0)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-h,0.0)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0, h)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0,-h)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2( e, e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2( e,-e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-e, e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-e,-e)).rgb*0.045;',
+    '  return s; }',
+
+    'vec3 blur9(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tScene,uv).rgb;',
+    '  vec3 s=texture2D(tScene,uv).rgb*0.28; float d=r*0.70710678;',
+    '  s+=texture2D(tScene,uv+vec2( r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0, r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0,-r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d,-d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d,-d)).rgb*0.09;',
+    '  return s; }',
+
+    'void main(){',
+    '  vec2 p=(vUv-0.5)*2.0; p.x*=uCardAsp;',
+    '  vec2 b=vec2(uCardAsp,1.0)-0.012; float rad=0.14;',
+    '  float sd=sdBox(p,b,rad);',
+    '  if(sd>0.0) discard;',
+
+    // normale dello smusso: un asse per volta, continua ovunque
+    '  vec2 tE=clamp((abs(p)-(b-uBev))/max(uBev,1e-4),0.0,1.0);',
+    '  tE=tE*tE*(3.0-2.0*tE);',
+    '  vec2 tilt=sign(p)*tE;',
+    '  float bend=clamp(max(abs(tilt.x),abs(tilt.y)),0.0,1.0);',
+    '  vec3 N=normalize(vTBN*normalize(vec3(tilt*1.35,1.0-bend*0.30)));',
+    '  vec3 V=normalize(vView);',
+
+    // il contenuto, smerigliato più verso il bordo
+    '  vec2 vuv=vUv; float k=uCardAsp/uVidAsp;',
+    '  if(k<1.0){ vuv.y=(vuv.y-0.5)*k+0.5; } else { vuv.x=(vuv.x-0.5)/k+0.5; }',
+    '  vuv-=vec2(V.x,V.y)*uPar;',
+    // LA SMERIGLIATURA NON PARTE PIU' DA ZERO AL CENTRO. `uInside` e' il velo
+    // che c'e' anche in mezzo alla lastra: e' quello che fa intuire il
+    // contenuto invece di mostrarlo.
+    // Chi e' davanti smeriglia MENO: resta veloce da leggere senza per questo
+    // diventare una finestra. Il velo c'e' comunque, e' la lastra a scostarsi.
+    '  float frost=(uInside*(1.0-uHot*0.42) + uFrost*bend)*0.055;',
+    '  vec3 inside=blurVid(clamp(vuv,0.006,0.994),frost)*uGain;',
+    '  inside*=(1.0-uVuoto);',
+
+    '  float f=pow(1.0-clamp(dot(N,V),0.0,1.0),uFres);',
+    // La fascia del bordo e' in unita' NORMALIZZATE della lastra: crescendo la
+    // lastra cresceva anche in pixel, e da filo di luce diventava un tubo.
+    '  float rim=smoothstep(0.038,0.0,-sd);',
+    '  float a=1.0-smoothstep(-0.006,0.0,sd);',
+
+    // passaggio piatto: nessuna lettura della scena, serve solo a farsi vedere
+    /* IL PASSAGGIO PIATTO E' SEMITRASPARENTE, E QUI STA IL PUNTO.
+       Nel render target ci finiscono lo sfondo e poi le lastre piatte. Ma la
+       lastra che poi legge quel bersaglio ci trova sopra anche SE STESSA:
+       disegnandosi piatta e OPACA si tappava il proprio buco, e attraverso il
+       vetro non passava piu' niente di cio' che ha dietro — ne' l'elenco ne'
+       la nebbia. Restava solo la propria immagine, spostata di poco.
+       A meta' alfa il bersaglio contiene tutt'e due: la lastra vede
+       attraverso di se' quello che le sta dietro, e continua a vedere le
+       compagne. E' l'unico numero che decide se questo vetro trasmette. */
+    '  if(uFlat>0.5){',
+    '    vec3 fc=inside*0.62+uCol*rim*0.5;',
+    '    gl_FragColor=vec4(fc,a*0.48*uReveal); return;',
+    '  }',
+
+    /* LA SFOCATURA DI CIO' CHE STA DIETRO E' BASSA DI PROPOSITO (`uBlur`
+       0.40, non 1.5). Il velo che rende illeggibile il contenuto e'
+       `uInside`, ed e' un'altra cosa: agisce sulla texture della lastra.
+       Questa qui agisce su cio' che si vede ATTRAVERSO, e sfocandolo tanto
+       il testo dell'elenco dietro al mazzo si spappolava — spariva invece di
+       spezzarsi. Il vetro deve DEFORMARE quello che ha dietro, non
+       cancellarlo. */
+    '  vec2 suv=gl_FragCoord.xy/uRes;',
+    // LA RIFRAZIONE VIVE SU TUTTA LA LASTRA, non solo sullo smusso: e' quello
+    // che fa scorrere e spezzare cio' che sta dietro anche in mezzo al vetro.
+    '  float rMask=mix(0.42,1.0,bend);',
+    /* LO SPESSORE E' PICCOLO PERCHE' LE LASTRE SONO GRANDI.
+       `off` e' in unita' di SCHERMO: a 0.078 lo scostamento era di oltre
+       cento pixel, e cio' che si vedeva attraverso non era piu' quello che
+       sta dietro alla lastra ma quello che sta dietro a un palmo di distanza
+       — il testo dell'elenco veniva teleportato fuori dal vetro invece di
+       essere spezzato. A 0.022 la deformazione si vede e resta quella
+       giusta. Con lastre piccole questo numero puo' tornare a crescere. */
+    '  vec2 off=N.xy*uThick*rMask;',
+    '  float br=uBlur*0.009;',
+    '  vec3 sR=blur9(suv+off*(1.0+uDisp),br);',
+    '  vec3 sG=blur9(suv+off,br);',
+    '  vec3 sB=blur9(suv+off*(1.0-uDisp),br);',
+    '  vec3 refr=vec3(sR.r,sG.g,sB.b);',
+
+    // uHot: quanto è "guardato". Apre di più e accende il bordo del suo colore.
+    '  float open=clamp((1.0-f)*uOpen*(1.0+uHot*0.34)*(1.0-uVuoto),0.0,1.0);',
+    '  vec3 col=mix(refr,inside,open);',
+    /* CIO' CHE STA DIETRO SI SOMMA, non si contende il posto.
+       Con la sola mescolanza il contenuto della lastra e quello che le passa
+       dietro si dividono lo stesso pixel: l'elenco dietro al mazzo arrivava
+       al 40% del suo grigio su un poster scuro, cioe' non arrivava. Sommato,
+       invece, passa cio' che DIETRO E' CHIARO e non passa cio' che e' scuro —
+       che e' come si comporta una lastra traslucida, ed e' la ragione per cui
+       il testo si legge attraverso il vetro mentre il nero resta nero. */
+    // Chi e' davanti trasmette MENO: e' la lastra che si sta scegliendo, e
+    // la sagoma della vicina che le passa dietro le toglierebbe leggibilita'
+    // proprio quando serve. Di fianco invece si trasmette pieno, ed e' li'
+    // che il testo dell'elenco attraversa il vetro.
+    '  col+=refr*uThru*(1.0-uHot*0.55);',
+    // IL CORPO DEL VETRO: un velo lattiginoso, tinto appena del colore del
+    // mondo, piu' fitto verso il bordo. Senza, la lastra e' una finestra.
+    '  float lum=dot(col,vec3(0.299,0.587,0.114));',
+    '  col=mix(col, mix(vec3(lum),uCol*0.55+0.30,0.30)*1.06, uMilk*(0.40+0.60*bend));',
+    '  col+=mix(vec3(0.42,0.78,0.95),uCol,uHot)*rim*(uRim+uHot*0.38)*(0.35+0.65*f);',
+    '  col+=vec3(0.10,0.16,0.24)*f*0.5;',
+    '  col*=uDim;',                       // gli altri portali arretrano
+    '  gl_FragColor=vec4(col,a*uReveal);',
+    '}'
+  ].join('\n');
+
+  /* ======================================================================
+     3. I PORTALI
+     ====================================================================== */
+  var loader = new THREE.TextureLoader();
+  var cards = new THREE.Group();
+  var scene = new THREE.Scene();
+  scene.add(cards);
+
+  var RES = new THREE.Vector2(1,1);
+  /* Un pixel nero, e serve davvero: e' quello che prende il posto della
+     texture della scena mentre si sta disegnando dentro alla scena. */
+  var vuota = new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1, THREE.RGBAFormat);
+  vuota.needsUpdate = true;
+  var rt = new THREE.WebGLRenderTarget(2,2,{
+    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+    format:THREE.RGBAFormat, stencilBuffer:false, depthBuffer:true
+  });
+
+  /* IL MAZZO NON SI COSTRUISCE ANCORA (Task 1). Le prossime righe creano una
+     mesh per ogni mondo — poster, materiale del vetro, ancora della scritta.
+     Restano scritte per il task che rimette il mazzo in scena; qui, dietro
+     DECK_ON=false, non girano mai e `cards` resta un gruppo vuoto. */
+  if (DECK_ON) WORLDS.forEach(function(w, i){
+    /* La lastra vuota non carica niente: dentro non c'e' un mondo, e il
+       pixel nero fa da contenuto assente senza casi speciali a valle. */
+    var tex = vuota;
+    if (!w.vuoto){
+      tex = loader.load(w.poster, function(t){
+        w.posterAsp = t.image.width / t.image.height;
+        w.mat.uniforms.uVidAsp.value = w.posterAsp;
+      });
+      tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+      tex.encoding = THREE.sRGBEncoding;
+    }
+    w.posterTex = tex;
+
+    var uni = {
+      tScene:{value:rt.texture}, tVideo:{value:tex}, uRes:{value:RES},
+      uVidAsp:{value:16/9}, uCardAsp:{value:CW/CH},
+      uFlat:{value:0}, uHot:{value:0}, uDim:{value:1}, uReveal:{value:0},
+      uVuoto:{value:w.vuoto ? 1 : 0},
+      uCol:{value:new THREE.Vector3(w.col[0],w.col[1],w.col[2])}
+    };
+    Object.keys(TARATURA).forEach(function(k){ uni[k] = { value: TARATURA[k] }; });
+    /* Esposizione per mondo. La taratura del vetro non si tocca — questo è
+       l'unico numero che cambia da un portale all'altro, e serve perché un
+       contenuto girato di giorno in mezzo a cinque mondi notturni buca la
+       scena e si mangia l'attenzione che deve andare al centro. */
+    if (w.gain) uni.uGain.value = w.gain;
+
+    var mat = new THREE.ShaderMaterial({
+      uniforms:uni, vertexShader:VERT, fragmentShader:FRAG,
+      /* DUE LATI. Su una giostra meta' delle lastre e' girata di spalle: con
+         il taglio delle facce posteriori sparirebbero di colpo a meta' giro.
+         Viste da dietro il Fresnel le trova completamente chiuse — nessun
+         contenuto, solo rifrazione e bordo — che e' esattamente cio' che deve
+         essere il dorso di un portale. */
+      side:THREE.DoubleSide,
+      transparent:true, depthWrite:false
+    });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(CW, CH), mat);
+    deckPlace(deckU(i, 0), mesh.position);
+    mesh.rotation.set(0, deckYaw(deckU(i, 0)), deckRoll(deckU(i, 0)));
+    mesh.scale.setScalar(deckScale(deckU(i, 0)));
+    /* NIENTE renderOrder. Prima era fisso (10+i) perche' le lastre erano
+       ferme; qui girano, e un ordine fisso farebbe disegnare una lastra
+       lontana SOPRA a una vicina a ogni mezzo giro. Lasciato a zero, three
+       riordina i trasparenti dal fondo per profondita' a ogni fotogramma. */
+    mesh.userData.world = w;
+    w.mesh = mesh; w.mat = mat; w.uni = uni;
+    cards.add(mesh);
+
+
+    /* L'ANCORA DELLA SCRITTA È UN FIGLIO DELLA CARD.
+       Non un punto proiettato: un oggetto agganciato alla lastra, spostato di
+       `lift` lungo il suo asse z locale — che è la normale della card. Così
+       eredita di suo posizione, INCLINAZIONE e scala, e la scritta si posa sul
+       piano del portale invece di restare appiccicata allo schermo. Se la card
+       è girata di tre quarti, lo è anche la scritta. */
+    w.fwd = new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(0, deckYaw(deckU(i,0)), 0));
+    w.u = deckU(i, 0);                // il posto nella fila, col segno
+    w.lift = 0.30 + CW*0.10;
+    w.liftNow = w.lift;
+    var anchor = new THREE.Object3D();
+    anchor.position.set(0, 0, w.lift);
+    mesh.add(anchor);
+    w.anchorObj = anchor;
+
+    /* NIENTE PIU' ETICHETTA PER-CARD. Nella rotonda le nove scritte
+       appese alle lastre si accavallano; il nome del mondo davanti lo dice
+       ora la focus-caption in basso, come in Mirror Hall. L'ancora resta
+       (inerte) per non toccare oltre. */
+    w.label = null;
+  });
+
+  /* ══ L'INDICE — ED E' TESTO CHE STA DENTRO ALLA SCENA ═════════════════
+     Le scritte delle lastre sono DOM: nitide a qualunque risoluzione, con
+     una parallasse vera, e per questo restano dove sono. Ma proprio perche'
+     sono DOM stanno SOPRA al canvas, e il vetro non le puo' rifrangere —
+     non entrano mai nel render target da cui la rifrazione legge.
+     Questo invece e' testo disegnato su una tela e appeso nella scena,
+     DIETRO al mazzo: le lastre ci passano sopra e lo scompongono, lo
+     spostano, lo sdoppiano nei tre colori. E' l'unico modo per avere
+     davvero del testo rifratto senza rinunciare alla nitidezza di quello
+     che conta.
+     Non e' solo una dimostrazione: e' l'elenco dei TIPI (Task 4 — cinque
+     righe, una per `CLUSTERS[]`, non piu' una per effetto: sette righe
+     dicevano "questi sono i sette nomi", cinque dicono "questi sono i cinque
+     modi in cui lavoriamo", che è la domanda a cui l'elenco deve rispondere.
+     Chi arriva legge in un colpo se il suo mestiere c'e', e cliccando una
+     riga si porta davanti il PRIMO effetto di quel tipo). I sette trattini in
+     basso restano uno per effetto — dicono "quale", l'elenco dice "quale
+     specie".
+     ══════════════════════════════════════════════════════════════════ */
+  var IW = 900, IH = 540, IROW0 = 150, IROWH = 44;
+  var idxCv = document.createElement('canvas');
+  idxCv.width = IW; idxCv.height = IH;
+  var idxG = idxCv.getContext('2d');
+  var idxTex = new THREE.CanvasTexture(idxCv);
+  idxTex.minFilter = THREE.LinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  idxTex.encoding = THREE.sRGBEncoding;
+  var idxMat = new THREE.MeshBasicMaterial({
+    map:idxTex, transparent:true, depthWrite:false, opacity:0
+  });
+  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.40, 1.44), idxMat);
+  idxMesh.position.set(-2.62, -1.12, -2.00);
+  idxMesh.frustumCulled = false;
+  /* In `bg`, non in `scene`: `bg` viene disegnato nel render target PRIMA
+     delle lastre, ed e' quel passaggio che il vetro legge. Messo insieme
+     alle lastre, sarebbe visibile ma non rifrangibile. */
+  bg.add(idxMesh);
+
+  var idxSopra = -1;                 // la riga sotto al puntatore
+  /* Chi e' acceso non e' piu' "questa e' la card a fuoco" (un solo `w`): e'
+     "il tipo a cui appartiene la card a fuoco" — piu' card condividono lo
+     stesso tipo (`cluster`), e la riga resta accesa per tutte loro. */
+  function idxDisegna(){
+    idxG.clearRect(0,0,IW,IH);
+    try { idxG.letterSpacing = '3px'; } catch(e){}
+    idxG.textBaseline = 'middle';
+    idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
+    idxG.fillStyle = 'rgba(240,240,246,0.82)';
+    idxG.fillText('CHE COSA TI MOSTRO?', 34, 60);
+    CLUSTERS.forEach(function(cl, i){
+      var y = IROW0 + i*IROWH;
+      var acceso = (hot && hot.cluster === i) || (i === idxSopra);
+      idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
+      idxG.fillStyle = acceso
+        ? 'rgba(' + cl.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
+        : 'rgba(223,228,238,0.60)';
+      idxG.fillText('->', 34, y);
+      idxG.fillText(cl.tipo.toUpperCase(), 84, y);
+    });
+    idxTex.needsUpdate = true;
+  }
+  idxDisegna();
+  /* Il carattere arriva dopo: la prima passata esce col monospazio di
+     sistema, e senza questa seconda ci resterebbe per sempre. */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(idxDisegna);
+
+  /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
+     parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
+     si vede la rifrazione — cliccandoci si deve entrare nella lastra.
+     Torna l'indice del CLUSTER (0..4), non piu' quello dell'effetto. */
+  function pickRiga(){
+    if (idxMat.opacity < 0.25) return -1;
+    ray.setFromCamera(ptr, camera);
+    var h = ray.intersectObject(idxMesh, false);
+    if (!h.length || !h[0].uv) return -1;
+    var y = (1 - h[0].uv.y) * IH;
+    var k = Math.round((y - IROW0)/IROWH);
+    return (k >= 0 && k < CLUSTERS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
+  }
+  /* Il primo effetto di un cluster: gli effetti sono già ordinati per
+     cluster in `EFFETTI` (vedi js/effetti-deck.js), quindi il primo con
+     quel `.cluster` è sempre lo stesso, stabile. */
+  function primoDelCluster(c){
+    for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].cluster === c) return WORLDS[i];
+    return null;
+  }
+
+  /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
+  var video = document.createElement('video');
+  video.muted = true; video.loop = true; video.playsInline = true;
+  video.setAttribute('playsinline',''); video.preload = 'auto';
+  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(video);
+  var vtex = new THREE.VideoTexture(video);
+  vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
+  vtex.format = THREE.RGBFormat; vtex.encoding = THREE.sRGBEncoding;
+  var videoOn = null;
+
+  function playOn(w){
+    if (videoOn === w) return;
+    if (videoOn){ videoOn.uni.tVideo.value = videoOn.posterTex;
+                  videoOn.uni.uVidAsp.value = videoOn.posterAsp || 16/9;
+                  videoOn.uni.uGain.value = videoOn.gain || TARATURA.uGain;
+                  videoOn = null; }
+    if (!w || !w.video) { video.pause(); return; }
+    videoOn = w;
+    if (video.getAttribute('src') !== w.video){ video.src = w.video; }
+    video.play().catch(function(){});
+    /* LA TEXTURE SI ATTACCA SOLO QUANDO C'E' UN FOTOGRAMMA DA LEGGERE.
+       Assegnandola subito, three prova a caricare un video ancora vuoto e il
+       driver risponde `INVALID_VALUE: texImage2D: no video` — a ogni
+       fotogramma, finche' non arriva il primo. Non si perde niente ad
+       aspettare: fino a quel momento nella lastra resta il poster. */
+    /* Il guadagno segue la SORGENTE, non il mondo: il poster del prodotto e'
+       su fondo bianco e il suo video e' notturno, e un solo numero per tutti
+       e due li sbaglia tutti e due. */
+    function attacca(){
+      if (videoOn !== w) return;
+      w.uni.tVideo.value = vtex;
+      w.uni.uGain.value = w.gainVid || TARATURA.uGain;
+    }
+    if (video.readyState >= 2) attacca();
+    else video.addEventListener('loadeddata', function una(){
+      video.removeEventListener('loadeddata', una); attacca();
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     3.5 LA POZZA RIFLETTENTE — TOLTA (Task 1).
+     C'era qui la riflessione planare di Mirror Hall: una camera specchiata
+     (`reflectCam`) che rendeva bg+lastre piatte dentro `reflectRT`, un piano
+     d'acqua (`water`) che campionava quel bersaglio increspandolo con onde
+     procedurali, e una scia (`dropRipple`, raycast su y=0) che il puntatore
+     lasciava nell'acqua. Tolta di netto — non dietro un flag, perche' lo
+     stage di questo task non ha ne' pelo d'acqua ne' un piano y=0 da colpire.
+     Il render e' tornato a un solo passaggio (vedi `frame()`, sezione 4).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ======================================================================
+     4. LO SCORRIMENTO INFINITO (Task 4) — un accumulatore che non tocca mai
+     fondo.
+     Task 3 leggeva il progresso GLOBALE della pagina (`deckScrollProgress()`,
+     0..1 da Lenis o da `scrollY`, dato da #scrollSpacer alto 400vh) e lo
+     mappava sulle sette card: bello finché non si arrivava in fondo allo
+     spacer, dopodiché lo scroll semplicemente si fermava — un mazzo di sette
+     effetti che finisce non è la promessa di un catalogo che cresce.
+     Qui `spinT` (e il suo inseguitore smorzato `spin`) tornano a essere quello
+     che erano nella giostra originale: un ACCUMULATORE senza fondo, mosso
+     direttamente dal gesto (rotellina, trascino, frecce) invece che dalla
+     posizione di scroll della pagina. Non c'è un massimo né un minimo: si
+     somma o si sottrae ad ogni gesto, e cresce o cala senza limite.
+     L'INFINITO STA TUTTO IN `wrapN`, GIÀ SCRITTO IN Task 3. Ogni card legge
+     solo la propria distanza dal fuoco `u = wrapN(i - spin, N)`, che è
+     periodica per costruzione: `spin` può valere 1000000 o -1000000, `u`
+     resta sempre nell'intervallo corto (-N/2, N/2]. Non c'è quindi nessun
+     "punto di riavvolgimento" da gestire a mano per le card — la coda si
+     ricongiunge alla testa da sola, esattamente come già succedeva scorrendo
+     avanti e indietro nella giostra originale, e il salto capo↔coda cade
+     dove `deckFade` ha già spento la lastra (vedi la taratura di Task 3).
+     `#scrollSpacer` resta in pagina (dà comunque un'altezza su cui il
+     documento PUO' scorrere, e con essa a Lenis un limite su cui calcolare
+     `.progress` per chi altro lo leggesse) ma NON è più la sorgente di
+     `spin`: il documento può arrivare in fondo al suo scroll nativo — la
+     barra si ferma — senza che il mazzo smetta di avanzare, perché il mazzo
+     non lo guarda più.
+     L'ELICA SEGUE LO STESSO `spin`, MAI RIAVVOLTO QUI — vedi `window.__effettiHelixScroll`
+     più sotto: questo numero (e quindi `spin`) cresce o cala senza limite
+     esattamente come prima, e resta l'unica cosa che sincronizza card ed
+     elica. Il riavvolgimento vive DENTRO dna.js (`wrapHelixScroll`, vedi il
+     suo commento), non qui: lì si conosce la geometria e la si è resa
+     TASSELLABILE (periodica in verticale), così il numero si riporta in un
+     intervallo finito e il salto è invisibile perché prima e dopo l'immagine
+     è identica — nessun tratto vuoto, mai. Qui non cambia niente: `spin`
+     resta l'accumulatore grezzo che era. */
+  var spin = 0, spinT = 0;            // dov'e' il mazzo, e dove sta andando
+  var toccato = false;                // qualcuno l'ha preso in mano?
+  var lastInput = -1e9;
+  var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+
+  /* IL PONTE VERSO L'ELICA (Task 4). dna.js, montato in modalità standalone
+     su #helixStage, cerca questa funzione PRIMA di leggere Lenis/scrollY (è
+     la stessa `globalScrollProgress()` che leggeva lo scroll globale, vedi il
+     suo commento): se la trova, l'elica sale e gira su `spin`, non più sul
+     progresso 0..1 della pagina — LO STESSO NUMERO SMORZATO che muove le
+     card, MAI RIAVVOLTO (vedi il commento sulla sezione 4). È tutto quello
+     che serve perché elica e mazzo restino sincronizzati e continui: non un
+     evento da ascoltare, una funzione da interrogare a ogni fotogramma —
+     dna.js la chiama dal proprio `frame()` in moto normale, e da qui la si
+     sveglia a mano (l'evento 'scroll' sintetico che `frame()` dispaccia più
+     sotto) quando è dna.js a
+     non avere un proprio rAF, cioè in reduced-motion.
+     `HELIX_LOOPS_PER_UNIT` — perché non `spin/(N-1)` e basta. Un "giro" del
+     mazzo (`spin` che avanza di N−1=6) e' esattamente l'intera escursione
+     che dna.js percorreva UNA volta sola nel manifesto (l'intero manifesto,
+     letto in un solo scroll dall'inizio alla fine): a quel ritmo la
+     geometria — una striscia di punti FINITA, non periodica, vedi il
+     commento in dna.js — si esauriva (schermo vuoto) dopo circa quattro giri
+     del mazzo, verificato a schermo. Un mazzo INFINITO che consuma la sua
+     elica dopo quattro giri non e' accettabile. Con questo divisore un giro
+     di scroll dell'elica costa OTTO giri del mazzo: l'elica resta comunque
+     visibilmente viva a ogni giro (sale e gira di un ottavo, non e' ferma) e
+     lo stesso punto di esaurimento arriva dopo ~32 giri del mazzo — verificato
+     a schermo restare piena e continua ben oltre i pochi giri con cui la si
+     collauda.
+     ⚠️ NIENTE PIÙ ESAURIMENTO — RIAVVOLGIMENTO SENZA CUCITURA (fix round 2):
+     dna.js ora rende l'elica TASSELLABILE e riavvolge `wrapHelixScroll` di un
+     periodo geometrico esatto, così l'immagine è identica prima e dopo e non
+     c'è mai un vuoto (vedi il commento su HELIX_PITCH_T in dna.js). Il divisore
+     resta 8: non serve più a spostare più in là un esaurimento (non esiste
+     più), ma decide comunque IL PASSO — quanto sale/gira l'elica per ogni giro
+     del mazzo — e 8 lo tiene visibilmente vivo senza correre. Con questo passo
+     il periodo di riavvolgimento vale ~13 giri del mazzo. */
+  var HELIX_LOOPS_PER_UNIT = 8;
+  window.__effettiHelixScroll = function(){ return spin / (WORLDS.length - 1) / HELIX_LOOPS_PER_UNIT; };
+
+  /* Quale mondo e' davanti: th = i*STEP + spin, e davanti c'e' chi ha th = 0. */
+  function frontIdx(){
+    var k = Math.round(spin) % WORLDS.length;
+    return (k + WORLDS.length) % WORLDS.length;
+  }
+  /* Il primo gesto di scorrimento ENTRA, non salta: chi arriva e scorre
+     subito deve vedere il tunnel fermarsi e la giostra comporsi, e' il
+     mezzo secondo per cui esiste tutta la scena. Ma un trackpad manda venti
+     eventi in un gesto solo, e se ognuno saltasse la coreografia non si
+     vedrebbe mai: si salta solo con un gesto NUOVO, dopo 800 ms. */
+  function svegliaGiostra(){
+    if (stage === 'hero'){ entra(); return true; }
+    if (stage === 'arrivo'){
+      if (performance.now() - arriveT > 800) skip();
+      return true;
+    }
+    return false;
+  }
+  /* L'unica guardia è `openW` (si è dentro a un mondo): niente più
+     RING_SCROLL — qui non c'è una modalità in cui l'input NON deve muovere
+     l'accumulatore, perché non c'è più una sorgente concorrente (la pagina)
+     che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra solo
+     per non fare `e.preventDefault()` su rotellina/frecce — vedi il
+     commento lì. */
+  function spingi(d){
+    if (openW) return;
+    toccato = true; lastInput = performance.now();
+    spinT += d;
+  }
+  /* Porta davanti un effetto preciso prendendo il giro piu' corto: si somma il
+     numero intero di giri che avvicina di piu' il bersaglio a dove siamo.
+     Con `spinT` senza fondo il "giro" è sempre relativo a dove siamo ORA, non
+     a un progresso 0..1 — la stessa formula di prima, invariata. */
+  function portaDavanti(i){
+    if (openW) return;
+    toccato = true;
+    lastInput = -1e9;                 // niente attesa: questo e' gia' un fermo
+    spinT = i + Math.round((spinT - i)/WORLDS.length)*WORLDS.length;
+  }
+
+  /* La rotellina e il trackpad. `deltaMode` va normalizzato: a righe (1) un
+     "clic" vale una manciata di pixel, a pagine (2) vale una schermata, e
+     senza questo conto lo stesso gesto gira di un dito su un portatile e di
+     mezzo giro su un mouse a scatti.
+     REDUCED-MOTION (Task 4): la rotellina è un gesto CONTINUO — è lei a dare
+     l'illusione di girare un mazzo. Con `!WC.motionOk` resta disattiva: ci si
+     sposta solo a passi, con le frecce o cliccando un fermo/una riga
+     dell'elenco (vedi più sotto). Niente preventDefault qui, MAI: lo scroll
+     nativo della pagina resta libero (nessuna barra dirottata, vedi il
+     commento sull'accumulatore più sopra). */
+  /* Il coefficiente NON e' piu' quello della giostra (0.0026, tarato per un
+     anello che scattava sul fermo piu' vicino dopo il gesto): li' un gesto
+     "grosso" poteva anche superare una card, tanto lo scatto finale
+     correggeva. Qui, DURANTE il gesto, non c'e' nessuno scatto — la card dove
+     il gesto ti lascia e' quella buona — quindi il passo deve restare
+     leggibile: un colpo di rotellina "pieno" (~1200 unita', la stessa entita'
+     con cui la verifica a schermo lo simula) avanza di UNA card, non di tre.
+     (fix round 1) Lo scatto torna SOLO DOPO che il gesto e' finito e la mano
+     e' ferma da `SETTLE_MS` — vedi «LO SCATTO SUL FERMO» piu' sotto nel
+     `frame()`: serve al controller (Task 5) per accendere l'effetto sulla
+     card a fuoco, che altrimenti con `spin` frazionario non si sveglia mai
+     scorrendo di rotellina/trascino. */
+  window.addEventListener('wheel', function(e){
+    if (openW || !WC.motionOk) return;
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
+    spingi(d * unit * (1/1200));
+  }, {passive:true});
+
+  /* Il trascinamento, dito o mouse che sia (tocco compreso: i Pointer Events
+     unificano mouse/penna/touch, quindi qui il touch funziona già). L'asse si
+     decide al primo movimento e non si cambia piu' idea: se no un gesto un
+     po' storto fa ballare il mazzo avanti e indietro.
+     REDUCED-MOTION: come la rotellina, è un gesto continuo — disattivo con
+     `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
+     spinga, trascinare non muove nulla). */
+  window.addEventListener('pointerdown', function(e){
+    if (openW || e.button) return;
+    ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
+    dragging = true; dragId = e.pointerId;
+    dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
+  });
+  window.addEventListener('pointermove', function(e){
+    if (!dragging || e.pointerId !== dragId || !WC.motionOk) return;
+    var dx = e.clientX - dragX, dy = e.clientY - dragY;
+    dragX = e.clientX; dragY = e.clientY;
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+    if (!dragAxis && dragMoved > 6) dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+    if (!dragAxis) return;
+    /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
+       DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
+       Alzando lo spin la lastra davanti scorre a destra (la sua x e'
+       sin(th)*r, e in zero la derivata e' +r): quindi dito a sinistra =
+       spin che cala, cioe' `dx` cosi' com'e'. In verticale vale lo stesso
+       patto della rotellina: dito in su = come scorrere in giu' = avanti. */
+    spingi(dragAxis === 1 ? -dx*0.0060 : -dy*0.0060);
+  }, {passive:true});
+  function fineTrascino(){ if (dragging){ dragging = false; lastInput = performance.now(); } }
+  window.addEventListener('pointerup', fineTrascino);
+  window.addEventListener('pointercancel', fineTrascino);
+
+  /* Le frecce restano attive ANCHE in reduced-motion: sono già "a passi" per
+     natura (un colpo = una card, STEP=1), non un gesto continuo — sono uno
+     dei due modi di navigare a passi richiesti dal brief (l'altro sono i
+     click su fermi/elenco). */
+  window.addEventListener('keydown', function(e){
+    if (openW) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
+      spingi(STEP);
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
+      spingi(-STEP);
+    } else if (k === 'Enter'){
+      if (hot){ e.preventDefault(); enter(hot); }
+    }
+  });
+
+  /* I FERMI, in basso: otto trattini, uno per mondo, e si puo' saltare
+     direttamente a uno qualsiasi. In un carosello con otto posti il conto
+     di quanti ne restano non deve costare un giro completo per scoprirlo. */
+  var dotsEl = document.getElementById('dots');
+  WORLDS.forEach(function(w, i){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', w.nome + ' — ' + w.sett);
+    b.style.setProperty('--now', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    b.addEventListener('click', function(ev){ ev.stopPropagation(); portaDavanti(i); });
+    dotsEl.appendChild(b);
+    w.dot = b;
+  });
+
+  if (mobile){
+    document.getElementById('hint').textContent = 'trascina per cambiare mondo — tocca per entrare';
+  }
+
+  /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
+     blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
+  var focusEl = document.getElementById('focus');
+  var fNameEl = document.getElementById('fName'),
+      fSubEl  = document.getElementById('fSub'),
+      fNumEl  = document.getElementById('fNum');
+  document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
+  function aggiornaFocus(w){
+    if (!w) return;
+    fNameEl.textContent = w.nome;
+    fNameEl.classList.toggle('-void', !!w.vuoto);
+    fSubEl.textContent = w.sett;
+    fNumEl.textContent = String(w.idx+1).padStart(2,'0');
+    focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // riavvia l'animazione di scambio
+    fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
+  }
+
+  /* ======================================================================
+     5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
+     ====================================================================== */
+  /* ══════════════════════════════════════════════════════════════════════
+     GLI STADI. `hero` → `arrivo` → `mappa`. Non sono scene diverse: è lo
+     stesso frame, con tre numeri che si muovono.
+     ══════════════════════════════════════════════════════════════════════ */
+  /* UN INDIRIZZO PER MONDO, SUL PATH.
+     Si condivide, il tasto indietro funziona, e Google indicizza sette pagine
+     invece di una. Il rewrite che serve sta in vercel.json: senza, un ingresso
+     diretto su /atelier/la-notte darebbe 404. */
+  var ROOT = '/atelier';
+  function worldFromPath(){
+    var parts = location.pathname.replace(/\/+$/,'').split('/');
+    var last = parts[parts.length-1];
+    return (last === 'atelier' || last === '') ? '' : last;
+  }
+
+  /* SI TORNA DA UN MONDO: la coreografia d'ingresso e' roba da prima visita.
+     Chi rientra dalla pagina di un mondo trova la mappa gia' composta, col
+     portale da cui e' uscito acceso e un filo piu' avanti. Il parametro lo
+     mette il link «Mappa» delle pagine dei mondi. */
+  var CAME_FROM = (function(){
+    try { return new URLSearchParams(location.search).get('da') || ''; }
+    catch(e){ return ''; }
+  })();
+
+  var stage = 'hero';
+  var travel = 0, speed = 1;      // quanto scorre il tunnel, e a che velocità
+  var assign = 0;                 // 0 = sfila, 1 = tutti a destinazione
+  var cardsIn = 0;                // i portali traspaiono dentro agli ammassi
+  var spokeIn = 0;                // i raggi si disegnano per ultimi
+  var arriveT = 0;
+
+  function entra(){
+    if (stage !== 'hero') { skip(); return; }
+    stage = 'arrivo'; arriveT = performance.now();
+    document.getElementById('hero').classList.add('-off');
+    setTimeout(function(){ var h=document.getElementById('hero'); if(h) h.style.display='none'; }, 600);
+  }
+  // Alla terza volta la meraviglia è un pedaggio: un secondo clic salta in fondo.
+  function skip(){
+    if (stage !== 'arrivo') return;
+    speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; stage = 'mappa';
+  }
+  document.getElementById('go').addEventListener('click', function(e){ e.stopPropagation(); entra(); });
+
+  var ray = new THREE.Raycaster();
+  var ptr = new THREE.Vector2(-2,-2);
+  var mx=0, my=0, tmx=0, tmy=0;
+  /* CHI E' A FUOCO NON LO DECIDE PIU' IL PUNTATORE, LO DECIDE LA GIOSTRA.
+     Nella costellazione i portali erano fermi e si sceglieva guardandoli; qui
+     c'e' sempre e solo un mondo davanti, ed e' quello. Il puntatore resta per
+     una cosa sola: sapere su quale lastra si e' cliccato. */
+  var hot = null;                 // il mondo davanti
+  var hotSince = 0;               // da quando: il precaricamento aspetta che ci si fermi
+  var overCard = null;            // la lastra sotto al puntatore, se c'e'
+  function pick(){
+    ray.setFromCamera(ptr, camera);
+    var h = ray.intersectObjects(cards.children, false);
+    return h.length ? h[0].object.userData.world : null;
+  }
+  var openW = null;               // il mondo in cui si è entrati
+  var zoom = 0, zoomT = 0;        // 0 = mappa, 1 = dentro
+  var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
+
+  /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
+     fuoco era il raycast, e il primo fotogramma col mouse fermo altrove
+     spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
+     davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
+  window.addEventListener('pointermove', function(e){
+    tmx = (e.clientX/window.innerWidth)*2-1;
+    tmy = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(tmx, -tmy);
+  }, {passive:true});
+
+  ['pointerdown','keydown','touchstart'].forEach(function(ev){
+    window.addEventListener(ev, function(){ video.play().catch(function(){}); }, {once:true});
+  });
+
+  var prefetched = {};
+  function prefetch(w){
+    if (!w || !w.page || prefetched[w.id]) return;
+    prefetched[w.id] = 1;
+    var l = document.createElement('link');
+    l.rel = 'prefetch'; l.href = w.page; l.as = 'document';
+    document.head.appendChild(l);
+  }
+
+  function enter(w, push){
+    if (!w || openW) return;
+    /* Nella rotonda si entra in chi e' davanti; ma da URL/popstate il mondo
+       puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
+       dentro, se no la camera parte verso una lastra di fianco. */
+    if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
+    openW = w; zoomT = 1;
+    playOn(w);
+
+    /* IL MONDO E' UNA PAGINA: lo zoom non e' una transizione DECORATIVA, e' la
+       copertura del caricamento. Si parte, e quando il portale ha riempito il
+       quadro — cioe' quando fuori non si vede piu' niente — si naviga. Il
+       precaricamento e' partito al passaggio del puntatore, quindi a quel punto
+       la pagina c'e' gia'. */
+    if (w.page){
+      document.getElementById('hint').style.opacity = 0;
+      document.getElementById('nav').classList.add('-hide');
+      setTimeout(function(){ location.href = w.page; }, 520);
+      return;
+    }
+    var el = document.getElementById('world');
+    el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
+    document.getElementById('wKick').textContent = '// ' + w.sett;
+    document.getElementById('wName').textContent = w.nome;
+    document.getElementById('wDesc').textContent = w.desc;
+    var vv = el.querySelector('video');
+    if (vv) vv.remove();
+    if (w.video){
+      var v2 = document.createElement('video');
+      v2.muted = true; v2.loop = true; v2.playsInline = true; v2.setAttribute('playsinline','');
+      v2.src = w.video; el.insertBefore(v2, el.firstChild); v2.play().catch(function(){});
+    }
+    setTimeout(function(){ el.classList.add('-on'); el.setAttribute('aria-hidden','false'); }, 380);
+    document.getElementById('hint').style.opacity = 0;
+    document.getElementById('nav').classList.add('-hide');
+    if (push !== false && window.history && history.pushState) history.pushState({w:w.id}, '', ROOT + '/' + w.id);
+  }
+  function leave(pop){
+    if (!openW) return;
+    var el = document.getElementById('world');
+    el.classList.remove('-on'); el.setAttribute('aria-hidden','true');
+    var vv = el.querySelector('video'); if (vv) vv.remove();
+    hot = openW; openW = null; zoomT = 0;
+    document.getElementById('hint').style.opacity = '';
+    document.getElementById('nav').classList.remove('-hide');
+    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT);
+  }
+  window.addEventListener('popstate', function(e){
+    var id = worldFromPath();
+    var w = WORLDS.filter(function(x){ return x.id === id; })[0];
+    if (w && !openW) enter(w, false);
+    else if (!w && openW) leave(true);
+  });
+  document.getElementById('wBack').addEventListener('click', function(){ leave(); });
+  document.getElementById('wTalk').addEventListener('click', function(){ leave(); });
+  document.getElementById('wNext').addEventListener('click', function(){
+    var i = WORLDS.indexOf(openW); leave();
+    setTimeout(function(){ enter(WORLDS[(i+1)%WORLDS.length]); }, 420);
+  });
+  window.addEventListener('keydown', function(e){ if (e.key === 'Escape') leave(); });
+
+  window.addEventListener('click', function(){
+    if (stage === 'hero'){ entra(); return; }
+    if (stage === 'arrivo'){ skip(); return; }
+    if (openW) return;
+    /* Un trascinamento finisce sempre con un clic: senza questa guardia
+       girare la giostra farebbe entrare nel mondo su cui si e' lasciato. */
+    if (dragMoved > 8){ dragMoved = 0; return; }
+    /* Si conta il colpo QUI e non nel fotogramma: il clic arriva subito dopo
+       il rilascio, prima che il ciclo di disegno abbia rifatto il raycast, e
+       con un tocco secco il risultato del fotogramma precedente e' vecchio. */
+    var w = pick();
+    if (w){ if (w === hot) enter(w); else portaDavanti(w.idx); return; }
+    /* `r` e' l'indice del CLUSTER cliccato (Task 4): si porta davanti il
+       PRIMO effetto di quel tipo, `portaDavanti` la anima come per i fermi —
+       non salta. */
+    var r = pickRiga();
+    if (r >= 0){ var primo = primoDelCluster(r); if (primo) portaDavanti(primo.idx); }
+  });
+
+  /* Dove sta la lastra davanti, e quanto lontano bisogna stare per vederla
+     intera. Il campo visivo di three e' VERTICALE: su un telefono in piedi
+     l'apertura orizzontale e' meno di meta' di quella di un portatile, e con
+     una distanza fissa la card davanti usciva dallo schermo da tutti e due i
+     lati. La distanza quindi non e' un numero, e' un conto: quello che serve
+     perche' la larghezza della lastra piu' un margine ci stia. Sul desktop il
+     conto da' meno di 4.35 e vince il valore di partenza, quindi la
+     composizione tarata a mano non si muove di un pixel. */
+  var ZFRONT = -RING.R;                 // la lastra davanti sta a z = -R
+  var MEZZOFOV = Math.tan(66*Math.PI/180/2);
+
+  /* Task 3 — SU RITRATTO SI STRINGE IL PASSO DELL'ELICA.
+     Il campo visivo di three è verticale: su un telefono in piedi l'apertura
+     ORIZZONTALE è meno di metà di quella del desktop, e le card sparse di lato
+     (A·sin(phase)) sbordano. Come resize() stringe la giostra nella home, qui
+     si stringono apertura (A) e salita (climb) — R e turns restano — così in
+     quadro ne restano 3–4 accumulate verso il fuga invece di uscire ai lati.
+     I numeri base sono quelli tarati in js/effetti-deck.js; qui si scalano. */
+  var HELIX_BASE = null;
+  function helixTune(){
+    if (!HELIX_BASE) HELIX_BASE = {
+      A:window.__HELIX_TUNE.A, R:window.__HELIX_TUNE.R, turns:window.__HELIX_TUNE.turns,
+      climb:window.__HELIX_TUNE.climb, yTop:window.__HELIX_TUNE.yTop
+    };
+    var b = HELIX_BASE, t = window.__HELIX_TUNE;
+    var portrait = (window.innerWidth / window.innerHeight) < 1;
+    t.A     = b.A     * (portrait ? 0.66 : 1);
+    t.climb = b.climb * (portrait ? 0.82 : 1);
+    t.yTop  = b.yTop  * (portrait ? 0.90 : 1);
+    t.R     = b.R;
+    t.turns = b.turns;
+  }
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
+    renderer.setSize(w,h,false);
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+    helixTune();
+    /* Il campo visivo di three e' VERTICALE: su un telefono in piedi
+       l'apertura orizzontale e' meno di meta' di quella di un portatile. La
+       camera al centro dell'anello arretra un filo verso +z su schermo
+       stretto perche' la lastra davanti ci stia intera coi suoi margini; sul
+       desktop il conto da' meno di zero e la camera resta sul perno. */
+    var need = (CW*0.5 + (camera.aspect < 1 ? 0.22 : 0.30)) / (MEZZOFOV*camera.aspect);
+    /* Task 3 — la lastra davanti non sta più a z=−R (anello) ma a z=−R+A
+       (elica: il punto più vicino della spirale). La camera arretra quel tanto
+       che serve perché la card ci stia coi margini: distanza = CAM0.z + (R−A).
+       Su ritratto `need` cresce (FOV orizzontale stretto) e la camera arretra
+       parecchio; su desktop il conto è ~0 e resta sul perno. */
+    var hz = window.__HELIX_TUNE, front = hz.R - hz.A;
+    CAM0.z = Math.max(0.001, need - front);
+    DREF = front + CAM0.z;              // distanza camera → lastra davanti
+    /* L'elenco «CHE COSA CERCHI?» resta a lato, ma SOPRA il pelo dell'acqua
+       (y positivo) perche' non anneghi nella pozza; su telefono va sotto le
+       lastre e ingrandito. Rifinitura nella milestone della pozza. */
+    /* Su desktop l'elenco sta a SINISTRA, sopra il pelo dell'acqua, girato
+       verso il centro cosi' la camera-al-perno lo legge di faccia invece che
+       di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
+       IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
+    if (camera.aspect < 1){
+      idxMesh.position.set(0, 1.78, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.66);
+    } else {
+      idxMesh.position.set(-2.55, 2.05, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.82);
+    }
+    rt.setSize(Math.round(w*pr), Math.round(h*pr));
+    RES.set(Math.round(w*pr), Math.round(h*pr));
+    fogMat.uniforms.uAspect.value = w/h;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var proj = new THREE.Vector3();
+  var labelsEl = document.getElementById('labels');
+  var labelCam = document.getElementById('labelCam');
+  var lastPersp = -1;
+  /* I numeri della matrice vanno scritti SENZA notazione esponenziale.
+     `+v.toFixed(6)` torna a essere un numero, e JavaScript stampa i valori
+     molto piccoli come `4e-06`: in CSS non è un numero valido, quindi il
+     browser scarta l'INTERA dichiarazione `transform` — in silenzio, senza un
+     errore in console. Il risultato era la trasformata della camera che non
+     veniva applicata per niente e le scritte che sparivano.
+     Qui esce sempre una stringa in notazione decimale, e sotto la soglia si
+     scrive zero. */
+  function n(v){
+    if (!isFinite(v) || Math.abs(v) < 1e-5) return '0';
+    return v.toFixed(5);
+  }
+  function camMatrix(m){
+    var e = m.elements;
+    return 'matrix3d(' + [n(e[0]),n(-e[1]),n(e[2]),n(e[3]),
+                          n(e[4]),n(-e[5]),n(e[6]),n(e[7]),
+                          n(e[8]),n(-e[9]),n(e[10]),n(e[11]),
+                          n(e[12]),n(-e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  /* IL CSS3D LAVORA IN PIXEL, LA SCENA IN UNITÀ — E I DUE LATI DEVONO
+     ANNULLARSI.
+     Il layer DOM tratta un'unità di mondo come UN PIXEL. Con card larghe 1.3
+     unità le scritte collassano in due pixel al centro e spariscono; e se si
+     corregge solo da una parte, escono specchiate e fuori posto (provato).
+     La conversione va fatta DUE VOLTE, in versi opposti: la camera viene
+     ingrandita di `ppu`, l'ancora della scritta rimpicciolita di `1/ppu`.
+     Nel prodotto il fattore sparisce, e resta solo l'effetto voluto — quanti
+     pixel di testo stanno in un'unità di mondo.
+     `ppu` è la prospettiva diviso la distanza tipica della camera dalle card:
+     così a quella profondità il testo esce grande quanto è scritto nel CSS, e
+     resta proporzionato se la finestra cambia. */
+  /* La distanza di riferimento per le scritte: quella della lastra davanti.
+     Se fosse fissa, sul telefono (dove la camera arretra) le scritte
+     arriverebbero rimpicciolite; cosi' escono sempre della misura scritta
+     nel CSS. La scrive `resize`, qui c'e' solo il primo valore. */
+  var DREF = RING.R + CAM0.z;
+  var mCam = new THREE.Matrix4(), mObj = new THREE.Matrix4(), mScale = new THREE.Matrix4();
+
+  function objMatrix(m){
+    var e = m.elements;
+    return 'translate(-50%,-50%)matrix3d(' +
+      [n(e[0]),n(e[1]),n(e[2]),n(e[3]),
+       n(-e[4]),n(-e[5]),n(-e[6]),n(-e[7]),
+       n(e[8]),n(e[9]),n(e[10]),n(e[11]),
+       n(e[12]),n(e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  var t0 = performance.now(), tPrev = t0;
+  function sstep(x){ x = x < 0 ? 0 : (x > 1 ? 1 : x); return x*x*(3-2*x); }
+
+  /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Vive in js/effetti-deck.js
+     (window.EffettiController): gli si passano la STESSA camera e lo STESSO
+     renderer dello stage — così proietta il rettangolo della card con la
+     matrice con cui la card è disegnata — più `#stage-live` e la misura del
+     piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili — Task 5
+     `saucer`, Task 6 `vesper`/`orologio`/`altitude` (tutti su `WC.effects`,
+     popolato dai rispettivi js/<modulo>.js caricati qui sotto PRIMA di questo
+     inline) — Task 7 aggiunge `warp`/`lithos`; resta poster solo `sneaker`
+     (nessuna sezione statica per lui in questa sotto-costellazione). La
+     soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
+  var STAGE_LIVE = document.getElementById('stage-live');
+  var SETTLE_MS = 250;
+  var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
+    ? window.EffettiController.create({
+        THREE: THREE, camera: camera, renderer: renderer,
+        stageLive: STAGE_LIVE, effects: (WC.effects || {}),
+        cardW: CW, cardH: CH, settleMs: SETTLE_MS
+      })
+    : null;
+
+  function frame(){
+    requestAnimationFrame(frame);
+    var now = performance.now();
+    var t = (now-t0)/1000;
+    var dt = Math.min(0.05, (now-tPrev)/1000); tPrev = now;
+
+    /* La coreografia. Cinque numeri, nessun taglio: il tunnel rallenta, le
+       particelle raggiungono la destinazione che avevano gia', i portali
+       traspaiono dentro agli ammassi che si sono formati, e i raggi si
+       disegnano per ultimi. Chi torna una seconda volta salta con un clic. */
+    if (stage === 'arrivo'){
+      var e = now - arriveT;
+      speed   = 1 - sstep(e/900);
+      assign  = sstep((e-550)/1250);
+      cardsIn = sstep((e-1250)/800);
+      spokeIn = sstep((e-1800)/700);
+      if (e > 2500) stage = 'mappa';
+    }
+    travel += speed * dt * 5.6;
+
+    /* LA FILA SCORRE — SULL'ACCUMULATORE SENZA FONDO (Task 4).
+       `spinT` non è più letto dallo scroll della pagina (Task 3): lo muovono
+       direttamente rotellina/trascino/frecce/click (vedi `spingi`/
+       `portaDavanti` più sopra), e non ha né un minimo né un massimo — vedi
+       il commento sulla sezione 4.
+       Lo smorzamento resta SOLO se il moto è consentito: chi ha chiesto
+       reduced-motion non deve vedere il mazzo scivolare da un posto
+       all'altro, lo vede SCATTARE — `spin` insegue `spinT` di scatto, in un
+       solo fotogramma, invece che in ~130 ms di inseguimento esponenziale
+       (1/7.5s). È la stessa distinzione che dna.js fa da sé in
+       `reducedStandalone` (un fotogramma esplicito, mai un rincorrersi nel
+       tempo): qui è il MEDESIMO `spin` che pilota anche l'elica (vedi
+       `window.__effettiHelixScroll` più sotto), quindi lo scatto non è solo
+       delle card — è anche il modo in cui l'elica smette di "girare da
+       sola" quando il moto non è gradito. */
+    /* LO SCATTO SUL FERMO (fix round 1 — review Task 5).
+       Il commento sul coefficiente della rotellina, qui sopra, spiegava perché
+       la card originaria NON avesse uno scatto: «la card dove il gesto ti
+       lascia è quella buona». Ma il gate di pieno-fuoco del controller (più
+       sotto, Task 5) richiede `spin` intero — e uno scorrimento libero
+       (rotellina/trascino) lascia `spin` frazionario per sempre, perché non
+       c'era nulla a riportarlo su un fermo. Frecce e fermi/elenco (`STEP=1`,
+       `portaDavanti`) arrivano già interi: solo la rotellina/il trascino ne
+       restavano fuori. Si prende in prestito ESATTAMENTE il meccanismo della
+       home (`index.html` — «lo scatto sul fermo», sezione 4 del suo frame):
+       dopo `SETTLE_MS` di silenzio (la stessa soglia del gate, sotto) e senza
+       trascino in corso, si ammorbidisce **`spinT`** — il bersaglio che `spin`
+       insegue subito dopo, qui sotto, con lo smorzamento di Task 3/4 (mai
+       `spin` stesso, per non spezzare quell'inseguimento) — verso l'intero più
+       vicino. Compatibile con l'accumulatore infinito di Task 4 senza alcun
+       clamp: `spinT` può valere un milione, `Math.round` di un numero enorme
+       resta un numero enorme — nessun avvolgimento da gestire qui, come già
+       per `wrapN` sulle card. */
+    if (!openW && toccato && !dragging && now - lastInput > SETTLE_MS){
+      var det = Math.round(spinT);
+      spinT += (det - spinT)*Math.min(1, dt*7);
+    }
+
+    if (WC.motionOk){
+      spin += (spinT - spin)*Math.min(1, dt*7.5);
+    } else if (spin !== spinT){
+      spin = spinT;
+      /* dna.js, in reduced-motion standalone, non tiene un rAF che gira da
+         solo: ridisegna un fotogramma alla volta quando riceve un evento
+         'scroll' (vedi il suo `onScroll`). Qui non c'è nessuno scroll nativo
+         a farlo scattare — il mazzo lo muovono i click/le frecce, non la
+         pagina — quindi lo si sveglia a mano, DOPO che `spin` ha già preso
+         il valore nuovo (mai prima: dna.js leggerebbe ancora il vecchio). */
+      if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('scroll'));
+    }
+
+    /* Ogni lastra ripresa e rimessa al suo posto nella fila. `u` — la
+       distanza dal posto davanti — e' il numero da cui discende tutto:
+       dove sta, quanto e' grande, quanto e' girata, quanto si vede.
+       Dietro DECK_ON=false non c'e' nessuna mesh da riposizionare — questo
+       loop tocca `w.mesh`/`w.uni`, che esistono solo quando il mazzo (Task
+       1: sezione 3, sopra) e' stato costruito. */
+    if (DECK_ON) WORLDS.forEach(function(w, i){
+      var u = deckU(i, spin);
+      w.u = u;
+      deckPlace(u, w.mesh.position);
+      w.mesh.rotation.set(0, deckYaw(u), deckRoll(u));
+      w.mesh.scale.setScalar(deckScale(u));
+      w.fwd.set(Math.sin(deckYaw(u)), 0, Math.cos(deckYaw(u)));
+      w.uni.uReveal.value = cardsIn * deckFade(u);
+      /* La scritta si stacca dalla lastra lungo la sua normale — e' quella
+         parallasse a dare la profondita' — ma solo su chi e' davanti: di
+         fianco la normale punta di traverso e la scritta finirebbe lontana
+         dalla propria lastra. */
+      w.liftNow = w.lift * Math.exp(-u*u/1.6) * w.mesh.scale.x;
+      w.anchorObj.position.z = w.lift * Math.exp(-u*u/1.6);
+    });
+
+    mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
+    zoom += (zoomT-zoom)*(zoomT > zoom ? 0.115 : 0.16);   // entra in ~600ms, esce in ~400
+
+    // a fuoco c'e' chi e' davanti, e basta — ma solo col mazzo acceso
+    if (DECK_ON && stage === 'mappa' && !openW){
+      var nw = WORLDS[frontIdx()];
+      if (nw !== hot){
+        hot = nw; hotSince = now; playOn(hot);
+        WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
+        aggiornaFocus(hot);
+        idxDisegna();
+      }
+      /* PRECARICARE CHI PASSA E' UN'ALTRA COSA DA PRECARICARE CHI E' SCELTO.
+         Prima il precaricamento partiva al passaggio del puntatore, che e'
+         gia' una scelta; una giostra invece porta davanti tutti e otto i
+         mondi da sola, e precaricandoli tutti si scaricherebbe un megabyte
+         e mezzo di pagine a chi non ha ancora deciso niente. Si aspetta che
+         qualcuno abbia preso in mano la giostra E che sia rimasto fermo su
+         quel mondo mezzo secondo. */
+      if (toccato && hot && now - hotSince > 600) prefetch(hot);
+      if (!mobile && !dragging){
+        overCard = pick();
+        var r = overCard ? -1 : pickRiga();
+        if (r !== idxSopra){ idxSopra = r; idxDisegna(); }
+        document.body.style.cursor = (overCard || r >= 0) ? 'pointer' : '';
+      }
+    }
+
+    /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
+       vicini si muovono più dei lontani senza doverlo scrivere da nessuna
+       parte. Entrando, va incontro al portale scelto. */
+    /* La camera sta al centro dell'anello e guarda verso la lastra davanti
+       (0, lookY, -R). Il puntatore la sposta appena — la parallasse viene da
+       se'. Entrando, vola incontro al portale scelto (che a quel punto e' gia'
+       quello davanti) e finisce appena davanti a lui. */
+    var tx = mx*0.34, ty = RING.camH - my*0.18, tz = CAM0.z;
+    var look = new THREE.Vector3(0, RING.lookY, -RING.R);
+    if (openW){
+      var wp = openW.mesh.position;
+      tx = wp.x*zoom + tx*(1-zoom);
+      ty = wp.y*zoom + ty*(1-zoom);
+      tz = (wp.z + 0.62)*zoom + CAM0.z*(1-zoom);
+      look.set(wp.x*zoom + 0*(1-zoom),
+               wp.y*zoom + RING.lookY*(1-zoom),
+               wp.z*zoom + (-RING.R)*(1-zoom));
+    }
+    camera.position.set(tx, ty, tz);
+    camera.lookAt(look);
+
+    if (DECK_ON) WORLDS.forEach(function(w){
+      var isHot = (w === hot || w === openW);
+      var u = w.uni;
+      u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
+      /* Chi non e' davanti arretra, ma non troppo: devono restare tutte
+         leggibili e raggiungibili, e' la ragione per cui la fila ha
+         sostituito l'anello. */
+      var dimT = isHot ? 1 : 0.80;
+      u.uDim.value += (dimT - u.uDim.value)*0.10;
+    });
+
+    // la nebbia prende il colore del mondo guardato (nessuno, finche' il mazzo e' spento)
+    var target = hot || openW;
+    var ts = target ? 1 : 0;
+    tintStr += (ts - tintStr)*0.08;
+    if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
+    fogMat.uniforms.uTint.value.copy(tintCol);
+    fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
+    if (!openW){
+      document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*0.9 : 0);
+      focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
+    }
+
+    /* L'elenco compare quando la fila si e' composta e si ritira entrando
+       in un mondo: e' un attrezzo della mappa, non della scena — e la mappa
+       non c'e' finche' DECK_ON e' false. */
+    var idxT = (DECK_ON && stage === 'mappa' && !openW) ? spokeIn*0.92*(1-zoom) : 0;
+    idxMat.opacity += (idxT - idxMat.opacity)*0.10;
+
+    fogMat.uniforms.uTime.value = t;
+    var du = dustMat.uniforms;
+    du.uTime.value = t; du.uTravel.value = travel; du.uAssign.value = assign;
+    du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
+
+    if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
+
+    /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Si sveglia l'effetto della card
+       davanti SOLO a pieno fuoco: ferma da ~250ms (spinT raggiunto e nessun
+       gesto in corso da SETTLE_MS) e centrata (frazione di `spin` presso lo zero
+       → face≈1). Mentre si scorre — o dentro un mondo (openW) — nulla è sveglio
+       e tutte le card mostrano il poster. Un solo effetto per volta lo garantisce
+       il controller stesso (freeze del precedente prima del wake del nuovo). */
+    if (deckCtl){
+      if (DECK_ON && stage === 'mappa' && !openW){
+        var _frac = Math.abs(spin - Math.round(spin));
+        var _settled = !dragging && Math.abs(spinT - spin) < 0.02 && (now - lastInput) > SETTLE_MS;
+        var _full = _settled && _frac < 0.045;   // face≈1
+        var _hw = WORLDS[frontIdx()];
+        deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
+      } else {
+        deckCtl.tick(now, null, null, false);
+      }
+    }
+
+    /* --- UN SOLO PASSAGGIO (Task 1) ---
+       Qui c'erano tre passate: (A) il RIFLESSO, camera specchiata rispetto
+       al pelo dell'acqua → `reflectRT`, con bg + lastre piatte; (B) il
+       PIATTO → `rt`, bg + lastre piatte SENZA acqua, la sorgente da cui il
+       vetro rifrange; (C) il FINALE → schermo, bg + acqua + lastre che
+       rifrangono. La pozza (acqua, riflesso, onde, scia) e' tolta di netto
+       (sezione 3.5, sopra); il mazzo che il passaggio (B) doveva nutrire non
+       si costruisce finche' DECK_ON e' false. Resta un solo render dritto a
+       schermo, solo `bg` — nebbia e pulviscolo, niente altro. Il mazzo (e la
+       sua pozza di vetro, non quella d'acqua) tornano nei prossimi task,
+       dietro allo stesso flag. */
+    renderer.setRenderTarget(null);
+    renderer.clear();
+    renderer.render(bg, camera);
+    if (DECK_ON) renderer.render(scene, camera);
+  }
+  /* Task 3 — IL DISCO PARTE GIÀ COMPOSTO.
+     La coreografia atrio→tunnel→mappa (con il giro d'invito) era della giostra;
+     qui l'elica è l'asse sempre vivo e le card la cavalcano da subito, guidate
+     dallo scroll globale. Si salta dritti a 'mappa' — così `cardsIn=1` rivela
+     le card e il fuoco si accende — e si nasconde l'atrio, che parlava dei 9
+     mondi e coprirebbe la scena. */
+  if (DECK_ON){
+    stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+    var heroEl = document.getElementById('hero');
+    if (heroEl){ heroEl.classList.add('-off'); heroEl.style.display = 'none'; }
+  }
+
+  requestAnimationFrame(frame);
+
+  // se si arriva con un indirizzo già puntato a un mondo, ci si entra
+  // (irrilevante finche' il mazzo e' spento: `playOn`/`hot` presumono le mesh)
+  if (DECK_ON && CAME_FROM){
+    var back = WORLDS.filter(function(x){ return x.id === CAME_FROM; })[0];
+    if (back){
+      stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+      /* La giostra e' gia' girata fin li': si esce dal mondo e lo si ritrova
+         davanti, fermo sul suo scatto. Ed e' gia' stata «toccata», quindi non
+         riparte il giro d'invito — quello e' per chi non ha ancora capito. */
+      spin = spinT = back.idx;
+      toccato = true;
+      hot = back; playOn(back);
+      WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === back); });
+      aggiornaFocus(back);
+      var h = document.getElementById('hero');
+      h.classList.add('-off'); h.style.display = 'none';
+      if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
+    }
+  }
+
+  var initial = worldFromPath();
+  if (initial){
+    var w0 = WORLDS.filter(function(x){ return x.id === initial; })[0];
+    if (w0) setTimeout(function(){ enter(w0, false); }, 600);
+  }
+
+})();
+</script>
+
+<script>
+/* IL SIPARIO — il marchio si condensa dal vapore.
+ * Portato da js/loader.js, che girava dentro a `WC.register` con una linea del
+ * tempo di gsap. Qui non c'è né l'uno né l'altro: il vapore è tutto nel canvas.
+ * Il conto non è stato toccato — è quello, comprese le tre cose che nel file
+ * originale sono segnate come imparate a caro prezzo:
+ *   · una particella = UN pixel (sottocampionare fa tornare il grigio o la scaletta);
+ *   · la distanza di nascita va AL QUADRATO (se no il vapore scopre un rettangolo);
+ *   · il fronte va sfasato lungo l'altezza (se no l'onda è una riga verticale).
+ */
+(function(){
+  var velo = document.getElementById('velo');
+  var cv   = document.getElementById('velo-vapore');
+  var mark = document.getElementById('wcAxxellMark');
+  if (!velo) return;
+
+  var finito = false;
+  function apri(){
+    if (finito) return; finito = true;
+    velo.classList.add('-via');
+    velo.style.display = 'none';
+    document.body.classList.add('-aperto');
+    document.body.style.overflow = '';
+  }
+  /* Il velo si alza e l'atrio entra NEL MENTRE: si sblocca all'inizio
+     dell'uscita, non alla sua fine. E con lui l'asse: togliere `-velo-attivo`
+     qui — non a velo finito — fa risalire l'elica ATTRAVERSO il sipario che se
+     ne va, non dopo. */
+  function alza(){
+    velo.classList.add('-sfuma');
+    document.body.classList.add('-aperto');
+    document.body.classList.remove('-velo-attivo');
+    setTimeout(apri, 950);
+  }
+
+  var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (ridotto || !cv || !mark){ apri(); return; }
+
+  /* Moto pieno: l'asse parte abbassato e trasparente dietro al velo, e salirà a
+     `alza()`. In reduced-motion questa riga non si tocca, quindi l'elica è già
+     al suo posto. */
+  document.body.classList.add('-velo-attivo');
+  document.body.style.overflow = 'hidden';
+
+  var VB = { x:28, y:104, w:598, h:154 };
+  var cssW = Math.min(window.innerWidth * 0.7, 620), cssH = cssW * VB.h / VB.w;
+  var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  var W = Math.round(cssW*dpr), H = Math.round(cssH*dpr);
+  cv.style.width = cssW+'px'; cv.style.height = cssH+'px';
+  cv.width = W; cv.height = H;
+  var g = cv.getContext('2d');
+  if (!g){ apri(); return; }
+
+  var img = new Image();
+  /* Un sipario che non finisce è una pagina che non esiste: se la
+     rasterizzazione fallisce, si alza lo stesso. */
+  img.onerror = function(){ apri(); };
+  img.onload = function(){
+    var ink;
+    try { g.drawImage(img,0,0,W,H); ink = g.getImageData(0,0,W,H).data; }
+    catch(e){ apri(); return; }
+    g.clearRect(0,0,W,H);
+    costruisci(ink);
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+VB.x+' '+VB.y+' '+VB.w+' '+VB.h+
+    '" width="'+W+'" height="'+H+'"><g fill="#ffffff">'+mark.innerHTML+'</g></svg>');
+
+  var SPREAD = 0.34, N = 0, ox,oy,sx,sy,oa,ph,jt, frame=null, buf=null, onda=0;
+
+  function costruisci(ink){
+    var idx=[];
+    for (var y=0;y<H;y++) for (var x=0;x<W;x++){
+      var a = ink[(y*W+x)*4+3];
+      if (a > 8) idx.push(x,y,a);          // soglia bassa: il contorno È l'antialiasing
+    }
+    N = idx.length/3;
+    if (!N){ apri(); return; }
+    ox=new Float32Array(N); oy=new Float32Array(N); sx=new Float32Array(N);
+    sy=new Float32Array(N); oa=new Float32Array(N); ph=new Float32Array(N); jt=new Float32Array(N);
+    var SC = Math.max(18, H*0.55);
+    for (var i=0;i<N;i++){
+      var X=idx[i*3], Y=idx[i*3+1];
+      ox[i]=X; oy[i]=Y; oa[i]=idx[i*3+2]/255;
+      var r=Math.random(); r*=r;                       // al quadrato: nuvola, non scatola
+      var an=Math.random()*6.28318;
+      sx[i]=X+Math.cos(an)*r*SC*0.55;
+      sy[i]=Y+Math.sin(an)*r*SC*0.40 - r*SC*0.95;      // nasce in alto e scende
+      ph[i]=Math.random()*6.28318;
+      jt[i]=Math.sin(Y*0.021)*0.055 + Math.sin(Y*0.007+2.1)*0.035 + (Math.random()-0.5)*0.05;
+    }
+    frame = g.createImageData(W,H); buf = new Uint32Array(frame.data.buffer);
+    t0 = performance.now();
+    requestAnimationFrame(disegna);
+  }
+
+  var DUR = 3400, t0 = 0, partito = false;
+  function easeInOutQuad(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function smooth(a,b,v){ var t=(v-a)/(b-a); t=t<0?0:t>1?1:t; return t*t*(3-2*t); }
+
+  function disegna(){
+    if (finito) return;
+    var now = performance.now();
+    var p = Math.min(1, (now - t0) / DUR);
+    onda = easeInOutQuad(p) * (1 + SPREAD);
+    if (p >= 1 && !partito){ partito = true; setTimeout(alza, 350); }
+    if (!partito) requestAnimationFrame(disegna);
+    else requestAnimationFrame(disegna);
+
+    buf.fill(0);
+    var t = now * 0.001;
+    for (var i=0;i<N;i++){
+      var u = (onda - (ox[i]/W + jt[i])) / SPREAD;   // il segno conta: si forma DIETRO l'onda
+      if (u <= 0) continue;
+      if (u > 1) u = 1;
+      var settle = smooth(0.34,1.0,u);
+      var veil   = smooth(0.0,0.20,u) * (1-settle);
+      var px = sx[i] + (ox[i]-sx[i])*settle;
+      var py = sy[i] + (oy[i]-sy[i])*settle;
+      var wob = (1-settle)*6;                        // il tremolio muore col posarsi
+      px += Math.sin(t*2.1 + ph[i])*wob;
+      py += Math.cos(t*1.7 + ph[i]*1.3)*wob*0.7;
+      var alpha = oa[i]*(settle + veil*0.32);
+      if (alpha <= 0.004) continue;
+      var X = px|0, Y = py|0;
+      if (X<0||Y<0||X>=W||Y>=H) continue;
+      var o = Y*W+X;
+      var acc = (buf[o]>>>24)/255 + alpha;           // si sommano: la nebbia si addensa
+      if (acc > 1) acc = 1;
+      buf[o] = ((acc*255)<<24) | (255<<16) | (255<<8) | 255;
+    }
+    g.putImageData(frame,0,0);
+  }
+})();
+</script>
 </body>
 </html>

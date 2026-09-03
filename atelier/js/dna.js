@@ -31,7 +31,7 @@ WC.register('dna', function(ctx){
   var canvas  = document.getElementById('wcDnaCanvas');
   var orbitEl = document.getElementById('wcDnaOrbit');
 
-  /* RI-COLLOCAZIONE (Task 2, atelier/effetti.html). Il montaggio di default
+  /* RI-COLLOCAZIONE (Task 2, atelier/capitoli.html). Il montaggio di default
    * resta questo: sezione + pin + canvas del manifesto trovati per id, con
    * l'offset a destra, le parole in orbita, lo ScrollTrigger della sezione.
    * Se quel terzetto non c'è in pagina si cerca un elemento generico
@@ -338,7 +338,7 @@ WC.register('dna', function(ctx){
   var HELIX_PERIOD_T = HELIX_PITCH_T * HELIX_TURNS_PER_WRAP; // 28.8 — periodo verticale (in t)
 
   if (standalone) {
-    /* TINTA CIANO (Task 2, atelier/effetti.html) — via CONFIG, mai nello
+    /* TINTA CIANO (Task 2, atelier/capitoli.html) — via CONFIG, mai nello
      * shader: qui l'elica è l'asse della scena, non un capitolo a sé con le
      * sue quattro fermate cromatiche, quindi le quattro fermate diventano
      * gradazioni dello stesso ciano del sito (`#3ad8ff`, lo stesso `--hot`
@@ -686,7 +686,7 @@ WC.register('dna', function(ctx){
    * `scroll/limite` in 0..1. Altrove — mobile, o reduced-motion, dove
    * `WC.lenis` resta null — lo scroll è quello nativo del browser e si
    * calcola a mano sull'altezza scorribile del documento. */
-  /* Task 4 (atelier/effetti.html) — LO SCORRIMENTO INFINITO. La pagina che
+  /* Task 4 (atelier/capitoli.html) — LO SCORRIMENTO INFINITO. La pagina che
    * monta l'elica in standalone non guida più il "progresso globale" (0..1,
    * legato a quanto la pagina è scrollata) col mazzo di card sopra: il mazzo
    * è infinito, non tocca mai fondo, e lo muove direttamente il gesto
@@ -764,7 +764,7 @@ WC.register('dna', function(ctx){
   }
 
   /* STROZZATURA A ~30fps (Task 5) — SOLO standalone.
-   * Quando un effetto WebGL è a pieno fuoco (effetti.html) ci sono tre contesti
+   * Quando un effetto WebGL è a pieno fuoco (capitoli.html) ci sono tre contesti
    * GL che si contendono la GPU: stage, elica e disco. L'elica è l'ASSE, non il
    * protagonista del momento, quindi si può assottigliare a metà cadenza —
    * salta un fotogramma sì e uno no — finché l'effetto è vivo. È un'assicurazione
@@ -1000,7 +1000,7 @@ WC.register('dna', function(ctx){
   function stop(){ if (!running) return; running = false; cancelAnimationFrame(raf); }
 
   /* L'unica leva pubblica dell'elica, e SOLO da standalone (è l'asse di
-   * effetti.html; il manifesto non la espone). Il controller degli effetti la
+   * capitoli.html; il manifesto non la espone). Il controller degli effetti la
    * usa per assottigliare la cadenza mentre un disco è a fuoco. */
   if (standalone) {
     WC.helix = { throttle: function(on){ throttled = !!on; } };

@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    IL DISCO DEGLI EFFETTI — dati, cluster e il percorso sull'elica.
-   (atelier/effetti — Task 3 della sotto-costellazione)
+   (atelier/capitoli — Task 3 della sotto-costellazione)
 
    Questo file NON ridisegna il mazzo di vetro ereditato da index.html: quel
    blocco (mesh, materiale-vetro, deckYaw/deckScale/deckFade, aggiornaFocus,
-   resize) resta INLINE in effetti.html, dietro a DECK_ON. Qui si espongono
+   resize) resta INLINE in capitoli.html, dietro a DECK_ON. Qui si espongono
    soltanto tre globali, sincroni, PRIMA che quello script parta:
 
      · window.EFFETTI   — i 7 record (uno per effetto), non i 9 mondi;
@@ -107,7 +107,7 @@
      (u=−1,0,+1), dentro il «3–4» del criterio. L'elica di js/dna.js resta
      visibile davanti/dietro (criterio d): è un canvas separato, z-index 2.
      Su ritratto (aspect<1) il passo si stringe da sé: vedi `helixTune()` in
-     effetti.html, che stringe A/climb/yTop come fa resize() nella home. */
+     capitoli.html, che stringe A/climb/yTop come fa resize() nella home. */
   var TUNE = { A: 1.3, R: 4.5, turns: 0.38, climb: 0.85, yTop: 0.95 };
 
   function helixPlace(u, out) {
@@ -124,7 +124,7 @@
   root.EFFETTI = EFFETTI;
   root.CLUSTERS = CLUSTERS;
   root.helixPlace = helixPlace;
-  /* La taratura viva, così effetti.html può stringere il passo su ritratto
+  /* La taratura viva, così capitoli.html può stringere il passo su ritratto
      senza reimportare i numeri. Parte dai valori tarati qui sopra. */
   root.__HELIX_TUNE = { A: TUNE.A, R: TUNE.R, turns: TUNE.turns, climb: TUNE.climb, yTop: TUNE.yTop };
 
@@ -156,10 +156,10 @@
      controller è un no-op e resta il poster. Ogni handle si registra da sé, nel
      proprio js/<modulo>.js (`WC.effects.<modulo> = {start,stop,resize}`), non
      qui: `effects` è `WC.effects` per riferimento (vedi la creazione del
-     controller in effetti.html), quindi un modulo caricato prima dell'inline
+     controller in capitoli.html), quindi un modulo caricato prima dell'inline
      compare già pronto. Task 5 ha aggiunto `saucer`; Task 6 `vesper`,
      `orologio`, `altitude` — questo file non cambia per registrarli, cambia
-     solo l'elenco degli script caricati in effetti.html. */
+     solo l'elenco degli script caricati in capitoli.html. */
   function createController(deps){
     var THREE = deps.THREE, camera = deps.camera, renderer = deps.renderer;
     var stageLive = deps.stageLive, effects = deps.effects || {};

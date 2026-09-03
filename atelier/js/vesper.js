@@ -47,7 +47,7 @@
  * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): la
  * scena vive dentro `#capVesper`, l'orologio 0→4 lo guida lo ScrollTrigger di
  * sezione (pin + outro dopo lo sgancio) — montaggio storico, invariato. (B)
- * `atelier/effetti.html`: niente sezione, niente scroll; il controller monta
+ * `atelier/capitoli.html`: niente sezione, niente scroll; il controller monta
  * il canvas dentro `#stage-live` e lo pilota via
  * `WC.effects.vesper.start(container)`/`.stop()`.
  *
@@ -1288,7 +1288,7 @@ function mountVesper(ctx, cfg){
 
   resize();
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller.
    * `progressTarget` non si tocca — resta 0, quindi la scena resta per sempre
    * sull'orb (vedi il commento in testa al file). `startIntro()` fa arrivare
@@ -1380,7 +1380,7 @@ function mountVesper(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta la scena su
  * una tela creata dentro il `container` che gli passa il controller. */
 WC.register('vesper', function(ctx){

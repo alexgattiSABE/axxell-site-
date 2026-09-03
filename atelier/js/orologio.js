@@ -38,7 +38,7 @@
 /* ── DOPPIO USO (Task 6) ─────────────────────────────────────────────────────
  * Stessa disciplina di js/saucer.js (Task 5). (A) `capitoli.html` (legacy): la
  * sequenza vive dentro `#capOrologio`, pinnata e guidata dallo SCROLL via
- * ScrollTrigger — montaggio storico, invariato. (B) `atelier/effetti.html`:
+ * ScrollTrigger — montaggio storico, invariato. (B) `atelier/capitoli.html`:
  * niente sezione, niente scroll; il controller monta il canvas dentro
  * `#stage-live` e lo pilota via `WC.effects.orologio.start(container)`/`.stop()`.
  * Senza scroll da leggere, l'apertura/chiusura la guida un tween GSAP proprio
@@ -164,7 +164,7 @@ function mountOrologio(ctx, cfg){
   cleanups.push(function(){ window.removeEventListener('resize', onResize); });
   resize();
 
-  /* ── MONTAGGIO ESTERNO (effetti.html) ─────────────────────────────────────
+  /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: qui il tempo lo fa un tween GSAP
    * proprio invece dello scroll. `load()` parte subito (il risveglio È già il
    * «sei arrivato», come per `saucer`/Task 5); il tween resta creato ma in
@@ -247,7 +247,7 @@ function mountOrologio(ctx, cfg){
 }
 
 /* ── I DUE PADRONI ───────────────────────────────────────────────────────────
- * Legacy: si registra come sempre; se la sezione non c'è (effetti.html) l'init
+ * Legacy: si registra come sempre; se la sezione non c'è (capitoli.html) l'init
  * è un no-op innocuo. Esterno: un handle recuperabile che monta la sequenza su
  * una tela creata dentro il `container` che gli passa il controller. */
 WC.register('orologio', function(ctx){
