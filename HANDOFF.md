@@ -28,19 +28,20 @@ three r128 vendorato); mesh separate testa/corpo/braccia; carbonio + vetro Fresn
 cursore; **point-brain di Vesper dentro la testa**; visore + lente Lithos; fibre nelle braccia;
 interazione (levitazione/drag/reduced-motion/cleanup). Ultimo commit: `8d3f03e`.
 
-**⚠️ NON è "quasi finito": manca quasi tutta la resa visiva.** Aperti:
-- **Aspetto e colori come il robot Spline** — nella spec è dichiarato "materiali da iterare, non
-  identici" (righe 29–30, 149): NON chiuso. I commit `f29fcfd` ("ref1") e `72d446f` ("RITOCCO 2") sono
-  queste iterazioni, ancora in corso.
-- **Logo sul petto** — NON nel piano/spec: da aggiungere.
-- **Linee dell'anatomia** che marcano le parti **+ etichette** — NON nel piano/spec (le "linee" della
-  spec sono i fasci-fibra delle braccia, un'altra cosa).
-- **Titolo "anatomia di Axxell"** — NON nel piano/spec (diverso dal "titolo invito" già committato).
-- (per ultimo) innesto nella home + merge su `main`.
+**⚠️ NON è "quasi finito": il piano tecnico copre ~1/3 della visione.** Il brief completo dell'utente era
+rimasto solo nella conversazione originale ed è ora scritto in **`docs/superpowers/robot-brief-completo.md`**
+(LEGGILO). I task mancanti sono nel piano, sezione **FASE 2 (Task 8–13)**. In sintesi manca:
+- La **«A» di Axxell sul petto** (T8).
+- **Pancia = effetto della sezione SABE** ("anima") (T9).
+- **Corde vocali** come flusso d'energia (T10).
+- **Etichette anatomiche all'hover** — linea spezzata obliqua→orizzontale + nome; voci confermate:
+  testa=«testa», pancia=«anima», braccio dx=«chatbot», braccio sx=«social automation»; tab «scopri →» (T11).
+- **Click → zoom** sulla zona, parte semi-trasparente che mostra l'interno (T12).
+- **Pannello info prodotto** al click: ATLAS / SABE / chatbot / social automation (T13).
+- 🟡 aspetto/colori **uguali al robot dell'atelier** (spec: "da iterare", non chiuso).
 
-**Da dove ripartire:** estendere il piano con i punti di design/finitura qui sopra (logo, linee+etichette
-anatomia, titolo, palette Spline), poi iterare l'aspetto a schermo contro il render Spline di riferimento.
-Il merge in home viene solo alla fine.
+**Da dove ripartire:** brief completo → poi Task 8–13 in ordine. **Il merge in home solo dopo
+autorizzazione esplicita dell'utente** (richiesta nel brief).
 
 Anteprima locale:
 ```bash
