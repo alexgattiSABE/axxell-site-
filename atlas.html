@@ -4011,7 +4011,7 @@ function setLang(lang){
   scheduleNext();
 })();
 </script>
-<script>function toggleAtlasPlans(){var p=document.getElementById('atlasPlansPanel');if(!p)return;var b=document.getElementById('atlasPlansToggle');var open=(p.style.display==='none'||!p.style.display);p.style.display=open?'block':'none';if(b)b.textContent=open?'Nascondi i piani':'Scopri i piani';}</script>
+<script>function toggleAtlasPlans(){var p=document.getElementById('atlasPlansPanel');if(!p)return;var b=document.getElementById('atlasPlansToggle');var open=(p.style.display==='none'||!p.style.display);p.style.display=open?'block':'none';if(b)b.textContent=open?'Nascondi i piani':'Scopri i piani';if(open){setTimeout(function(){try{p.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){p.scrollIntoView();}},80);}}</script>
 <script>function openPrevUltra(){openPrev();try{var cards=document.querySelectorAll('#prevForm .sabe-cards .pcard');cards.forEach(function(l){var n=l.querySelector('.pc-name');var inp=l.querySelector('input');if(!inp)return;var isUltra=n&&/ultra/i.test(n.textContent);inp.checked=isUltra;if(isUltra){inp.dispatchEvent(new Event('change',{bubbles:true}));}});}catch(e){}}</script>
 <!-- ══ SCENE 3D (three r185, modulo ES) ══
      Il sito carica three r128 come script globale e ci disegna già la sfera, le
