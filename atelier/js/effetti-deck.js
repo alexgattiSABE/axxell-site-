@@ -184,7 +184,11 @@
       return !!(mqRidotto && mqRidotto.matches);
     }
 
-    function place(mesh){
+    /* IL RETTANGOLO DELLA CARD A SCHERMO. Estratto da `place()` perché serve
+       anche a chi non sveglia niente: il buco nella maschera dell'elica (vedi
+       `deckCtl.rect` in capitoli.html) lo usa per non far entrare i punti del
+       DNA dentro all'anteprima. */
+    function misura(mesh){
       camera.updateMatrixWorld();
       mesh.updateWorldMatrix(true, false);
       var el = renderer.domElement;
@@ -198,7 +202,12 @@
         if (sx < minx) minx = sx; if (sx > maxx) maxx = sx;
         if (sy < miny) miny = sy; if (sy > maxy) maxy = sy;
       }
-      var w = Math.max(1, maxx - minx), h = Math.max(1, maxy - miny);
+      return { x: minx, y: miny, w: Math.max(1, maxx - minx), h: Math.max(1, maxy - miny) };
+    }
+
+    function place(mesh){
+      var r = misura(mesh);
+      var minx = r.x, miny = r.y, w = r.w, h = r.h;
       stageLive.style.left = minx + 'px';
       stageLive.style.top = miny + 'px';
       stageLive.style.width = w + 'px';
@@ -212,6 +221,22 @@
       }
     }
 
+    /* UNA CARD, IL SUO EFFETTO — E NIENT'ALTRO.
+       Ogni modulo tiene in vita il proprio host dentro `#stage-live` anche da
+       fermo (è quello che gli permette di ripartire senza rimontare: vedi la
+       nota in js/saucer.js) e lo rimette in coda ai figli quando riparte. Ma i
+       fratelli restavano lì, visibili: bastava che l'effetto sveglio avesse
+       una tela trasparente — lithos con la maschera, warp che è DOM — per
+       vedere sotto l'effetto di un'altra card. Qui si spegne tutto quello che
+       non è l'host appena montato: `display:none` e non `remove()`, perché il
+       modulo quell'host se lo ritrova e lo rianima al prossimo giro. */
+    function soloQuestoSiVede(){
+      var kids = stageLive.children;
+      for (var i = 0; i < kids.length; i++){
+        kids[i].style.display = (i === kids.length - 1) ? '' : 'none';
+      }
+    }
+
     function wake(record, mesh){
       var api = effects[record.modulo];
       if (!api) return;
@@ -220,6 +245,7 @@
       awakeId = record.modulo;
       place(mesh);                    // posiziona PRIMA che l'effetto misuri
       api.start(stageLive);
+      soloQuestoSiVede();
       var hx = helix(); if (hx && hx.throttle) hx.throttle(true);
     }
 
@@ -234,6 +260,7 @@
 
     return {
       awake: function(){ return awakeId; },
+      rect: misura,
       freeze: freeze,
       tick: function(now, focusMesh, focusRecord, atFullFocus){
         /* REDUCED-MOTION: NESSUN EFFETTO SI SVEGLIA (Task 9).

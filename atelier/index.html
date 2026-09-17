@@ -31,6 +31,9 @@
     touch-action:none;overscroll-behavior:none}
   canvas{display:block;width:100%;height:100%}
   #stage{position:fixed;inset:0}
+  /* Sopra allo stage (che è opaco e cancella ogni fotogramma) e sotto a
+     scritte/nav/atrio: una meteora non deve mai passare davanti a una parola. */
+  #cadenti{position:fixed;inset:0;z-index:1;pointer-events:none}
 
   /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
      superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
@@ -194,11 +197,11 @@
   #velo{position:fixed;inset:0;z-index:10000;background:#04050a;
     display:flex;align-items:center;justify-content:center}
   #velo.-via{pointer-events:none}
-  #velo-inner{position:relative;z-index:1;transition:opacity .4s cubic-bezier(.4,0,1,1)}
+  #velo-inner{position:relative;z-index:1;transition:opacity .26s cubic-bezier(.4,0,1,1)}
   #velo.-sfuma #velo-inner{opacity:0}
   #velo canvas{display:block}
   .velo-tenda{position:absolute;left:0;right:0;height:50.5%;background:#04050a;
-    transition:transform .9s cubic-bezier(.87,0,.13,1)}
+    transition:transform .55s cubic-bezier(.87,0,.13,1)}
   .velo-t{top:0} .velo-b{bottom:0}
   #velo.-sfuma .velo-t{transform:translateY(-100%)}
   #velo.-sfuma .velo-b{transform:translateY(100%)}
@@ -250,6 +253,10 @@
 </nav>
 
 <div id="stage"><canvas id="c"></canvas></div>
+<!-- LE STELLE CADENTI — solo cielo, mai acqua. Una tela sottile sopra allo
+     stage: il disegno è tutto in `js` in coda al file, e si taglia da sé
+     all'orizzonte che il frame loop pubblica. -->
+<canvas id="cadenti" aria-hidden="true"></canvas>
 
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
@@ -388,9 +395,18 @@
        — si scorrono otto mondi costruiti e si arriva a una lastra dentro cui
        non c'e' niente. E' l'unica senza contenuto: il vetro c'e', si vede
        attraverso, dentro non c'e' ancora niente da vedere. */
+    /* ORA LA NONA UN'ANTEPRIMA CE L'HA (richiesta utente). Resta la lastra
+       «ancora da costruire» — il nome in corsivo, il posto in fondo alla fila,
+       la porta che va a parliamone — ma dentro non c'è più il nero: c'è il
+       DISEGNO di un sito che non esiste ancora, griglia da tavolo da lavoro,
+       blocchi a filo di ciano e un cursore che aspetta. Nessuna parola
+       nell'immagine: quello che c'è da dire lo dice la didascalia.
+       `vuoto` resta true per la didascalia in corsivo; il vetro però non è più
+       in modalità "lastra vuota" (vedi `uVuoto` più sotto), se no il disegno
+       non si vedrebbe. */
     { id:'il-tuo', vuoto:true, nome:'Il tuo', sett:'ancora da costruire',
       desc:'Gli altri otto esistono. Questo no — per adesso.',
-      col:[0.23,0.85,1.00], poster:null, video:null,
+      col:[0.23,0.85,1.00], poster:'assets/il-tuo.webp', video:null, gain:1.25,
       page:'/atelier/parliamone' }
   ];
   WORLDS.forEach(function(w, i){ w.idx = i; });
@@ -832,10 +848,12 @@
   });
 
   WORLDS.forEach(function(w, i){
-    /* La lastra vuota non carica niente: dentro non c'e' un mondo, e il
-       pixel nero fa da contenuto assente senza casi speciali a valle. */
+    /* Chi non ha un poster non carica niente e il pixel nero fa da contenuto
+       assente senza casi speciali a valle. La condizione era `!w.vuoto`: ora
+       che anche la nona lastra ha la sua anteprima, quello che conta è avere
+       un'immagine, non essere "il posto vuoto". */
     var tex = vuota;
-    if (!w.vuoto){
+    if (w.poster){
       tex = loader.load(w.poster, function(t){
         w.posterAsp = t.image.width / t.image.height;
         w.mat.uniforms.uVidAsp.value = w.posterAsp;
@@ -849,7 +867,10 @@
       tScene:{value:rt.texture}, tVideo:{value:tex}, uRes:{value:RES},
       uVidAsp:{value:16/9}, uCardAsp:{value:CW/CH},
       uFlat:{value:0}, uHot:{value:0}, uDim:{value:1}, uReveal:{value:0},
-      uVuoto:{value:w.vuoto ? 1 : 0},
+      /* `uVuoto` spegne il contenuto e chiude l'apertura del vetro: è la
+         lastra-senza-mondo. Vale solo per chi non ha davvero niente da
+         mostrare — con un'anteprima dentro, la nona è vetro come le altre. */
+      uVuoto:{value:(w.vuoto && !w.poster) ? 1 : 0},
       uCol:{value:new THREE.Vector3(w.col[0],w.col[1],w.col[2])}
     };
     Object.keys(TARATURA).forEach(function(k){ uni[k] = { value: TARATURA[k] }; });
@@ -938,13 +959,35 @@
   bg.add(idxMesh);
 
   var idxSopra = -1;                 // la riga sotto al puntatore
+  /* IL BLOCCO VA CENTRATO NELLA TELA, non solo la tela nello schermo.
+     Le righe sono scritte da x=34 su una tela larga 900: finché l'elenco
+     stava a sinistra non contava, ma portandolo in alto AL CENTRO il blocco
+     restava schiacciato nella metà sinistra del suo piano — centrato di
+     piano, storto d'occhio. Qui si misura la riga più larga (freccia +
+     etichetta, col letter-spacing già impostato) e si sposta tutto del tanto
+     che serve: le righe restano allineate a sinistra fra loro — è un elenco,
+     non un titolo — ma il blocco sta in mezzo. */
+  var IGAP = 50;                     // quanto sta la freccia prima dell'etichetta
+  function idxOffsetX(){
+    idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
+    var max = 0;
+    for (var i = 0; i < WORLDS.length; i++){
+      var w = IGAP + idxG.measureText(WORLDS[i].sett.toUpperCase()).width;
+      if (w > max) max = w;
+    }
+    idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
+    var t = idxG.measureText('CHE COSA CERCHI?').width;
+    if (t > max) max = t;
+    return Math.max(0, Math.round((IW - max) / 2));
+  }
   function idxDisegna(){
     idxG.clearRect(0,0,IW,IH);
     try { idxG.letterSpacing = '3px'; } catch(e){}
     idxG.textBaseline = 'middle';
+    var ox = idxOffsetX();
     idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
     idxG.fillStyle = 'rgba(240,240,246,0.82)';
-    idxG.fillText('CHE COSA CERCHI?', 34, 60);
+    idxG.fillText('CHE COSA CERCHI?', ox, 60);
     WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
       var acceso = (w === hot) || (i === idxSopra);
@@ -952,8 +995,8 @@
       idxG.fillStyle = acceso
         ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
         : 'rgba(223,228,238,0.60)';
-      idxG.fillText('->', 34, y);
-      idxG.fillText(w.sett.toUpperCase(), 84, y);
+      idxG.fillText('->', ox, y);
+      idxG.fillText(w.sett.toUpperCase(), ox + IGAP, y);
     });
     idxTex.needsUpdate = true;
   }
@@ -1484,7 +1527,14 @@
     if (camera.aspect < 1){
       idxMesh.position.set(0, 1.78, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.66);
     } else {
-      idxMesh.position.set(-2.55, 2.05, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.82);
+      /* L'ELENCO VA IN ALTO AL CENTRO (richiesta utente). Stava a sinistra,
+         girato di 0.52 rad verso il centro perché la camera-al-perno lo
+         leggesse di faccia invece che di taglio: da lì veniva anche la sua
+         prospettiva storta. Al centro quel mestiere non serve — la camera lo
+         guarda già di faccia, quindi `rotation` va a zero e le righe stanno
+         dritte. Resta sopra il pelo dell'acqua (y positivo) come prima, così
+         non annega nella pozza ma continua a specchiarsi. */
+      idxMesh.position.set(0, 2.46, -4.35); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.90);
     }
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
@@ -1496,6 +1546,7 @@
   resize();
 
   var proj = new THREE.Vector3();
+  var _hz  = new THREE.Vector3();     // punto di servizio per l'orizzonte
   var labelsEl = document.getElementById('labels');
   var labelCam = document.getElementById('labelCam');
   var lastPersp = -1;
@@ -1715,6 +1766,16 @@
     renderer.render(bg, camera);
     renderer.render(scene, camera);
 
+    /* DOV'È L'ORIZZONTE, IN PIXEL. Serve alle stelle cadenti (script in coda
+       al file): devono attraversare il CIELO e fermarsi al pelo dell'acqua —
+       sotto c'è la pozza, che riflette, e una meteora che ci entra dentro
+       senza specchiarsi si vede subito che è finta. La linea non è un numero
+       fisso: dipende da dove guarda la camera, e la camera si sposta col
+       puntatore. Si proietta un punto del piano d'acqua (y=0) infinitamente
+       lontano: quello È l'orizzonte, fotogramma per fotogramma. */
+    _hz.set(0, 0, -100000).project(camera);
+    window.__atelierOrizzonte = (1 - (_hz.y * 0.5 + 0.5)) * window.innerHeight;
+
     /* Le scritte per-card in 3D non esistono piu': il nome del mondo davanti
        lo porta la focus-caption in basso (aggiornaFocus), come in Mirror
        Hall. Tolto con loro tutto l'apparato CSS3D di proiezione. */
@@ -1750,6 +1811,106 @@
 </script>
 
 <script>
+/* ★ LE STELLE CADENTI — qualcuna, ogni tanto, e solo in cielo.
+ *
+ * Non sono nel WebGL apposta. Nello stage il cielo è un fondo pieno disegnato
+ * da uno shader e la pozza lo riflette: infilarci una scia voleva dire o
+ * rifarla anche nel riflesso (e allora la meteora si specchia, che è bello ma
+ * non è quello che è stato chiesto) o vederla sparire nel passaggio del
+ * riflesso. Su una tela a parte, sopra allo stage, il confine è netto: si
+ * disegna, e si TAGLIA all'orizzonte — `window.__atelierOrizzonte`, che il
+ * frame loop dello stage aggiorna proiettando il piano d'acqua all'infinito.
+ * Sotto quella riga non passa un pixel.
+ *
+ * Il ritmo: una cadente ogni 6–16 secondi, mai due insieme. Abbastanza rara da
+ * restare un avvistamento — se ne cadesse una al secondo sarebbe pioggia, e la
+ * pioggia non la si guarda.
+ *
+ * Con `prefers-reduced-motion` non ne cade nessuna e la tela resta vuota.
+ */
+(function(){
+  var cv = document.getElementById('cadenti');
+  if (!cv) return;
+  var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (ridotto) return;
+  var g = cv.getContext('2d');
+  if (!g) return;
+
+  var dpr = Math.min(window.devicePixelRatio || 1, 2), W = 0, H = 0;
+  function misura(){
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    g.setTransform(dpr,0,0,dpr,0,0);
+  }
+  misura();
+  window.addEventListener('resize', misura);
+
+  /* Una cadente: da dove parte, dove va, quanto dura. L'angolo è sempre verso
+     il basso (fra ~12° e ~38° sotto l'orizzontale) e il verso è casuale:
+     cadere sempre dalla stessa parte si nota dopo la seconda. */
+  var attiva = null, prossima = performance.now() + 1800 + Math.random()*4000;
+
+  function nasci(now, orizz){
+    var verso = Math.random() < 0.5 ? 1 : -1;
+    var ang = (12 + Math.random()*26) * Math.PI/180;
+    var lung = 150 + Math.random()*260;                // quanto viaggia
+    /* Si nasce in ALTO nel cielo, non a filo d'acqua: fra il bordo e metà
+       orizzonte. Le lastre stanno nella fascia bassa del cielo, e una scia che
+       ci passa sopra sembra un graffio sul vetro invece che una meteora. */
+    var y0 = 24 + Math.random() * Math.max(40, orizz*0.46);
+    var x0 = verso > 0 ? -60 + Math.random()*W*0.55 : W*0.45 + Math.random()*W*0.55;
+    var dy = Math.sin(ang)*lung;
+    var giu = orizz*0.86 - y0;                         // quanto può scendere
+    if (dy > giu) dy = Math.max(30, giu);
+    attiva = {
+      x0: x0, y0: y0,
+      dx: Math.cos(ang)*lung*verso, dy: dy,
+      t0: now, dur: 620 + Math.random()*520,
+      coda: 70 + Math.random()*90,
+      spess: 1 + Math.random()*0.9
+    };
+  }
+
+  function disegna(now){
+    requestAnimationFrame(disegna);
+    var orizz = window.__atelierOrizzonte;
+    if (!(orizz > 0)) orizz = H*0.56;                  // finché lo stage non parte
+    g.clearRect(0,0,W,H);
+
+    if (!attiva && now >= prossima){ nasci(now, orizz); }
+    if (!attiva) return;
+
+    var p = (now - attiva.t0) / attiva.dur;
+    if (p >= 1){ attiva = null; prossima = now + 6000 + Math.random()*10000; return; }
+
+    /* La testa corre, la coda la insegue: due punti sulla stessa retta, e fra
+       loro una sfumatura che si spegne. In entrata e in uscita l'intera scia
+       si abbassa di opacità, se no compare e sparisce di scatto. */
+    var e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2;
+    var hx = attiva.x0 + attiva.dx*e, hy = attiva.y0 + attiva.dy*e;
+    var len = Math.min(attiva.coda, Math.hypot(attiva.dx, attiva.dy)*e);
+    var ux = attiva.dx, uy = attiva.dy, m = Math.hypot(ux,uy) || 1;
+    var tx = hx - ux/m*len, ty = hy - uy/m*len;
+    var vel = Math.sin(Math.PI*p);                     // 0 → 1 → 0
+
+    g.save();
+    g.beginPath(); g.rect(0, 0, W, Math.max(0, orizz)); g.clip();   // ← il cielo, e basta
+    var grad = g.createLinearGradient(tx,ty,hx,hy);
+    grad.addColorStop(0, 'rgba(190,214,246,0)');
+    grad.addColorStop(1, 'rgba(226,240,255,' + (0.82*vel).toFixed(3) + ')');
+    g.strokeStyle = grad; g.lineWidth = attiva.spess; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(tx,ty); g.lineTo(hx,hy); g.stroke();
+    // la testa: un punto appena più acceso, non una palla
+    g.fillStyle = 'rgba(236,246,255,' + (0.9*vel).toFixed(3) + ')';
+    g.beginPath(); g.arc(hx, hy, attiva.spess*0.85, 0, 6.283); g.fill();
+    g.restore();
+  }
+  requestAnimationFrame(disegna);
+})();
+</script>
+
+<script>
 /* IL SIPARIO — il marchio si condensa dal vapore.
  * Portato da js/loader.js, che girava dentro a `WC.register` con una linea del
  * tempo di gsap. Qui non c'è né l'uno né l'altro: il vapore è tutto nel canvas.
@@ -1778,7 +1939,7 @@
   function alza(){
     velo.classList.add('-sfuma');
     document.body.classList.add('-aperto');
-    setTimeout(apri, 950);
+    setTimeout(apri, 560);
   }
 
   var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1838,7 +1999,14 @@
     requestAnimationFrame(disegna);
   }
 
-  var DUR = 3400, t0 = 0, partito = false;
+  /* QUANTO DURA IL SIPARIO (richiesta utente: più rapido).
+     La condensazione stava su 3400 ms più 350 di posa: quasi quattro secondi
+     prima che la pagina cominciasse a scoprirsi, ogni volta che si entra
+     nell'atelier. Scesa a 1500 + 150: il gesto si legge tutto — l'onda passa,
+     il marchio si addensa — ma non si aspetta. Le tende e la dissolvenza del
+     marchio, qui sotto e nel foglio di stile, sono state accorciate della
+     stessa proporzione, se no il velo restava il pezzo lento del gesto. */
+  var DUR = 1500, t0 = 0, partito = false;
   function easeInOutQuad(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
   function smooth(a,b,v){ var t=(v-a)/(b-a); t=t<0?0:t>1?1:t; return t*t*(3-2*t); }
 
@@ -1847,7 +2015,7 @@
     var now = performance.now();
     var p = Math.min(1, (now - t0) / DUR);
     onda = easeInOutQuad(p) * (1 + SPREAD);
-    if (p >= 1 && !partito){ partito = true; setTimeout(alza, 350); }
+    if (p >= 1 && !partito){ partito = true; setTimeout(alza, 150); }
     if (!partito) requestAnimationFrame(disegna);
     else requestAnimationFrame(disegna);
 

@@ -55,6 +55,14 @@ WC.register('loader', function(ctx){
   // Reduced-motion: nessun teatro, la pagina è subito lì.
   if (!ctx.motionOk || !canvas) { finish(); return; }
 
+  /* IL SIPARIO È DELL'ATELIER, NON DI OGNI PAGINA (richiesta utente).
+   * Il marchio che si condensa dal vapore è la soglia dell'atelier: si vede
+   * entrando da «Atelier», e una volta sola. Le pagine interne — i capitoli di
+   * dettaglio, dove si arriva cliccando una card — dichiarano `data-senza-sipario`
+   * sul proprio `#wcLoader` e saltano direttamente a `finish()`: stesso sblocco
+   * dello scroll, stesso `wc:loaded`, nessun teatro ripetuto. */
+  if (root.hasAttribute('data-senza-sipario')) { finish(); return; }
+
   var mark = document.getElementById('wcAxxellMark');
   if (!mark) { finish(); return; }
 

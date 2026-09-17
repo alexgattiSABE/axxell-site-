@@ -42,17 +42,40 @@
      che restano leggibili sopra di lei. `pointer-events:none`: è un fondale,
      non deve intercettare i click destinati al bottone dell'atrio. */
   #helixStage{position:fixed;inset:0;z-index:2;pointer-events:none}
-  /* L'INGRESSO DELL'ASSE. L'elica è sempre viva dietro al velo (appear=1 in
-     standalone: è l'asse della pagina, c'è dal primo fotogramma) — ma finché il
-     velo è chiuso nessuno la vede. Quando il sipario si alza, l'asse SALE e si
-     addensa nel mentre: non un fade dell'intero oggetto, ma una risalita dal
-     basso col pulviscolo che prende corpo. `body.-velo-attivo` è lo stato di
-     partenza, messo dall'inline SOLO a moto pieno; a `alza()` viene tolto e
-     l'elica entra attraverso il velo che se ne va. In reduced-motion la classe
-     non viene mai messa: l'asse è già a posto. */
-  #helixStage{transition:opacity 1.15s ease, transform 1.35s cubic-bezier(.16,1,.3,1);
+  /* L'INGRESSO DELL'ASSE. Col sipario tolto non c'è più niente dietro cui
+     nascondersi: l'elica è viva dal primo fotogramma e sale al suo posto da
+     sé, una volta sola, senza velo da attraversare. `body.-entra` è messo
+     dall'inline in cima alla pagina e tolto al primo fotogramma utile; in
+     reduced-motion non viene mai messo, quindi l'asse è già fermo a posto. */
+  #helixStage{transition:opacity .75s ease, transform .95s cubic-bezier(.16,1,.3,1);
     will-change:opacity,transform}
-  body.-velo-attivo #helixStage{opacity:0;transform:translateY(58px)}
+
+  /* IL DNA NON ENTRA NELL'ANTEPRIMA (richiesta utente).
+     L'elica vive su un canvas suo, sopra allo stage (il renderer dello stage è
+     opaco: dietro non ci sarebbe niente da vedere), quindi nessuna lastra del
+     mazzo può coprirla — i punti passavano DENTRO al quadro della card, sopra
+     al poster e sopra l'effetto. Qui si fora la maschera dell'elica sul
+     rettangolo della card davanti: due livelli di maschera, tutto lo schermo
+     meno quel riquadro (`exclude`). Le misure arrivano ogni fotogramma dal
+     controller (`deckCtl.rect`), che proietta gli stessi quattro angoli con la
+     stessa camera con cui la card è disegnata.
+     Il buco si apre solo quando la card è FRONTALE (vedi `-buco` in frame()):
+     girata, il suo rettangolo proiettato è più largo della lastra e si
+     mangerebbe elica anche fuori dal quadro. La transizione sulla misura fa il
+     resto — si apre e si chiude, non sbatte. */
+  #helixStage.-buco{
+    -webkit-mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
+            mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
+    -webkit-mask-repeat:no-repeat,no-repeat;
+            mask-repeat:no-repeat,no-repeat;
+    -webkit-mask-position:0 0,var(--bx,0) var(--by,0);
+            mask-position:0 0,var(--bx,0) var(--by,0);
+    -webkit-mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
+            mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
+    -webkit-mask-composite:xor;
+            mask-composite:exclude;
+    transition:-webkit-mask-size .22s ease, mask-size .22s ease}
+  body.-entra #helixStage{opacity:0;transform:translateY(42px)}
 
   /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
      che il controller (js/effetti-deck.js) riposiziona ogni fotogramma sul
@@ -224,25 +247,13 @@
 
 
 <style>
-  /* ── IL SIPARIO: il marchio si CONDENSA dal vapore ────────────────────────
-     Portato da `capitoli.html` (js/loader.js) SENZA il suo runtime: là
-     l'effetto girava dentro a `WC.register` e la sua linea del tempo era di
-     gsap. Qui non c'è né l'uno né l'altro — il vapore è tutto nel canvas, il
-     resto era orchestrazione, e si rifà in venti righe.
-     La regola che conta: il velo si alza e IL CONTENUTO ENTRA MENTRE SI ALZA,
-     non dopo. Il sipario che si scopre su una pagina già viva è un gesto solo;
-     aspettare che sia finito ne fa due. */
-  #velo{position:fixed;inset:0;z-index:10000;background:#04050a;
-    display:flex;align-items:center;justify-content:center}
-  #velo.-via{pointer-events:none}
-  #velo-inner{position:relative;z-index:1;transition:opacity .4s cubic-bezier(.4,0,1,1)}
-  #velo.-sfuma #velo-inner{opacity:0}
-  #velo canvas{display:block}
-  .velo-tenda{position:absolute;left:0;right:0;height:50.5%;background:#04050a;
-    transition:transform .9s cubic-bezier(.87,0,.13,1)}
-  .velo-t{top:0} .velo-b{bottom:0}
-  #velo.-sfuma .velo-t{transform:translateY(-100%)}
-  #velo.-sfuma .velo-b{transform:translateY(100%)}
+  /* ── NIENTE SIPARIO QUI (richiesta utente) ────────────────────────────────
+     Il marchio che si condensa dal vapore è il gesto d'ingresso dell'ATELIER:
+     si vede una volta, cliccando «Atelier», e basta. Rivederlo a ogni passo
+     interno — entrando nella sotto-costellazione, poi in ogni card — lo
+     trasformava da soglia in pedaggio. Qui la pagina si apre e basta: il velo,
+     le sue tende e il canvas del vapore sono stati tolti insieme al loro
+     runtime in coda al file. */
   /* fino a che il sipario non parte, l'atrio non si vede: entra attraverso */
   #hero{opacity:0;transition:opacity .8s ease}
   body.-aperto #hero{opacity:1}
@@ -273,11 +284,6 @@
         </g>
   </defs>
 </svg>
-<div id="velo" aria-hidden="true">
-  <div id="velo-inner"><canvas id="velo-vapore"></canvas></div>
-  <div class="velo-tenda velo-t"></div>
-  <div class="velo-tenda velo-b"></div>
-</div>
 
 
 <nav id="nav">
@@ -1179,7 +1185,13 @@
      più), ma decide comunque IL PASSO — quanto sale/gira l'elica per ogni giro
      del mazzo — e 8 lo tiene visibilmente vivo senza correre. Con questo passo
      il periodo di riavvolgimento vale ~13 giri del mazzo. */
-  var HELIX_LOOPS_PER_UNIT = 8;
+  /* ⚡ PASSO PIÙ RAPIDO (richiesta utente: «fai ruotare più velocemente il dna
+     con lo scroll»). Era 8 — un giro di elica ogni otto giri di mazzo, cioè un
+     ottavo di giro per ogni card che passa: vivo ma lento da leggere. A 3
+     l'elica sale e gira di un terzo di giro per ogni giro di mazzo, tre volte
+     più svelta, e il riavvolgimento senza cucitura di dna.js non cambia: è
+     periodico, cade solo più spesso (~5 giri di mazzo invece di ~13). */
+  var HELIX_LOOPS_PER_UNIT = 3;
   window.__effettiHelixScroll = function(){ return spin / (WORLDS.length - 1) / HELIX_LOOPS_PER_UNIT; };
 
   /* Quale mondo e' davanti: th = i*STEP + spin, e davanti c'e' chi ha th = 0. */
@@ -1430,20 +1442,22 @@
        puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
        dentro, se no la camera parte verso una lastra di fianco. */
     if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
-    openW = w; zoomT = 1;
-    playOn(w);
 
-    /* IL MONDO E' UNA PAGINA: lo zoom non e' una transizione DECORATIVA, e' la
-       copertura del caricamento. Si parte, e quando il portale ha riempito il
-       quadro — cioe' quando fuori non si vede piu' niente — si naviga. Il
-       precaricamento e' partito al passaggio del puntatore, quindi a quel punto
-       la pagina c'e' gia'. */
+    /* LA CARD È UNA PAGINA: SI VA, E BASTA (richiesta utente).
+       Prima il clic faceva volare la camera dentro alla lastra per mezzo
+       secondo e poi navigava: uno zoom su un'ISTANTANEA — il poster congelato,
+       o al più il fotogramma dell'effetto — che ingrandendosi si sgranava, e
+       che comunque copriva un caricamento che non c'era più (la pagina è già
+       precaricata al passaggio del puntatore). Tolto: niente `zoomT`, niente
+       posa, si segue il collegamento come un collegamento qualunque. */
     if (w.page){
+      openW = w;                       // un solo clic: il secondo non riparte
       document.getElementById('hint').style.opacity = 0;
-      document.getElementById('nav').classList.add('-hide');
-      setTimeout(function(){ location.href = w.page; }, 520);
+      location.href = w.page;
       return;
     }
+    openW = w; zoomT = 1;
+    playOn(w);
     var el = document.getElementById('world');
     el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
     document.getElementById('wKick').textContent = '// ' + w.sett;
@@ -1649,6 +1663,7 @@
      (nessuna sezione statica per lui in questa sotto-costellazione). La
      soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
   var STAGE_LIVE = document.getElementById('stage-live');
+  var HELIX_EL   = document.getElementById('helixStage');
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
     ? window.EffettiController.create({
@@ -1862,8 +1877,22 @@
         var _full = _settled && _frac < 0.045;   // face≈1
         var _hw = WORLDS[frontIdx()];
         deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
+        /* IL BUCO PER L'ELICA. Frontale entro ~0.10 di giro: da lì in poi il
+           rettangolo proiettato è la lastra, e il DNA si ferma sul bordo. */
+        if (HELIX_EL && _hw && _hw.mesh && _frac < 0.10){
+          var _r = deckCtl.rect(_hw.mesh);
+          HELIX_EL.style.setProperty('--bx', Math.round(_r.x) + 'px');
+          HELIX_EL.style.setProperty('--by', Math.round(_r.y) + 'px');
+          HELIX_EL.style.setProperty('--bw', Math.round(_r.w) + 'px');
+          HELIX_EL.style.setProperty('--bh', Math.round(_r.h) + 'px');
+          HELIX_EL.classList.add('-buco');
+        } else if (HELIX_EL){
+          HELIX_EL.style.setProperty('--bw', '0px');
+          HELIX_EL.style.setProperty('--bh', '0px');
+        }
       } else {
         deckCtl.tick(now, null, null, false);
+        if (HELIX_EL){ HELIX_EL.classList.remove('-buco'); }
       }
     }
 
@@ -1927,138 +1956,20 @@
 </script>
 
 <script>
-/* IL SIPARIO — il marchio si condensa dal vapore.
- * Portato da js/loader.js, che girava dentro a `WC.register` con una linea del
- * tempo di gsap. Qui non c'è né l'uno né l'altro: il vapore è tutto nel canvas.
- * Il conto non è stato toccato — è quello, comprese le tre cose che nel file
- * originale sono segnate come imparate a caro prezzo:
- *   · una particella = UN pixel (sottocampionare fa tornare il grigio o la scaletta);
- *   · la distanza di nascita va AL QUADRATO (se no il vapore scopre un rettangolo);
- *   · il fronte va sfasato lungo l'altezza (se no l'onda è una riga verticale).
- */
+/* LA RISALITA DELL'ASSE — quel che resta dell'ingresso, senza sipario.
+ * Il velo col marchio è stato tolto (vedi la nota nel foglio di stile): al suo
+ * posto un gesto solo, e breve. `-entra` parte messo, e si toglie al secondo
+ * fotogramma — il tempo che il browser registri lo stato di partenza — così
+ * l'elica sale una volta sola invece di comparire di colpo. Con moto ridotto
+ * non si mette affatto. */
 (function(){
-  var velo = document.getElementById('velo');
-  var cv   = document.getElementById('velo-vapore');
-  var mark = document.getElementById('wcAxxellMark');
-  if (!velo) return;
-
-  var finito = false;
-  function apri(){
-    if (finito) return; finito = true;
-    velo.classList.add('-via');
-    velo.style.display = 'none';
-    document.body.classList.add('-aperto');
-    document.body.style.overflow = '';
-  }
-  /* Il velo si alza e l'atrio entra NEL MENTRE: si sblocca all'inizio
-     dell'uscita, non alla sua fine. E con lui l'asse: togliere `-velo-attivo`
-     qui — non a velo finito — fa risalire l'elica ATTRAVERSO il sipario che se
-     ne va, non dopo. */
-  function alza(){
-    velo.classList.add('-sfuma');
-    document.body.classList.add('-aperto');
-    document.body.classList.remove('-velo-attivo');
-    setTimeout(apri, 950);
-  }
-
   var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (ridotto || !cv || !mark){ apri(); return; }
-
-  /* Moto pieno: l'asse parte abbassato e trasparente dietro al velo, e salirà a
-     `alza()`. In reduced-motion questa riga non si tocca, quindi l'elica è già
-     al suo posto. */
-  document.body.classList.add('-velo-attivo');
-  document.body.style.overflow = 'hidden';
-
-  var VB = { x:28, y:104, w:598, h:154 };
-  var cssW = Math.min(window.innerWidth * 0.7, 620), cssH = cssW * VB.h / VB.w;
-  var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-  var W = Math.round(cssW*dpr), H = Math.round(cssH*dpr);
-  cv.style.width = cssW+'px'; cv.style.height = cssH+'px';
-  cv.width = W; cv.height = H;
-  var g = cv.getContext('2d');
-  if (!g){ apri(); return; }
-
-  var img = new Image();
-  /* Un sipario che non finisce è una pagina che non esiste: se la
-     rasterizzazione fallisce, si alza lo stesso. */
-  img.onerror = function(){ apri(); };
-  img.onload = function(){
-    var ink;
-    try { g.drawImage(img,0,0,W,H); ink = g.getImageData(0,0,W,H).data; }
-    catch(e){ apri(); return; }
-    g.clearRect(0,0,W,H);
-    costruisci(ink);
-  };
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+VB.x+' '+VB.y+' '+VB.w+' '+VB.h+
-    '" width="'+W+'" height="'+H+'"><g fill="#ffffff">'+mark.innerHTML+'</g></svg>');
-
-  var SPREAD = 0.34, N = 0, ox,oy,sx,sy,oa,ph,jt, frame=null, buf=null, onda=0;
-
-  function costruisci(ink){
-    var idx=[];
-    for (var y=0;y<H;y++) for (var x=0;x<W;x++){
-      var a = ink[(y*W+x)*4+3];
-      if (a > 8) idx.push(x,y,a);          // soglia bassa: il contorno È l'antialiasing
-    }
-    N = idx.length/3;
-    if (!N){ apri(); return; }
-    ox=new Float32Array(N); oy=new Float32Array(N); sx=new Float32Array(N);
-    sy=new Float32Array(N); oa=new Float32Array(N); ph=new Float32Array(N); jt=new Float32Array(N);
-    var SC = Math.max(18, H*0.55);
-    for (var i=0;i<N;i++){
-      var X=idx[i*3], Y=idx[i*3+1];
-      ox[i]=X; oy[i]=Y; oa[i]=idx[i*3+2]/255;
-      var r=Math.random(); r*=r;                       // al quadrato: nuvola, non scatola
-      var an=Math.random()*6.28318;
-      sx[i]=X+Math.cos(an)*r*SC*0.55;
-      sy[i]=Y+Math.sin(an)*r*SC*0.40 - r*SC*0.95;      // nasce in alto e scende
-      ph[i]=Math.random()*6.28318;
-      jt[i]=Math.sin(Y*0.021)*0.055 + Math.sin(Y*0.007+2.1)*0.035 + (Math.random()-0.5)*0.05;
-    }
-    frame = g.createImageData(W,H); buf = new Uint32Array(frame.data.buffer);
-    t0 = performance.now();
-    requestAnimationFrame(disegna);
-  }
-
-  var DUR = 3400, t0 = 0, partito = false;
-  function easeInOutQuad(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
-  function smooth(a,b,v){ var t=(v-a)/(b-a); t=t<0?0:t>1?1:t; return t*t*(3-2*t); }
-
-  function disegna(){
-    if (finito) return;
-    var now = performance.now();
-    var p = Math.min(1, (now - t0) / DUR);
-    onda = easeInOutQuad(p) * (1 + SPREAD);
-    if (p >= 1 && !partito){ partito = true; setTimeout(alza, 350); }
-    if (!partito) requestAnimationFrame(disegna);
-    else requestAnimationFrame(disegna);
-
-    buf.fill(0);
-    var t = now * 0.001;
-    for (var i=0;i<N;i++){
-      var u = (onda - (ox[i]/W + jt[i])) / SPREAD;   // il segno conta: si forma DIETRO l'onda
-      if (u <= 0) continue;
-      if (u > 1) u = 1;
-      var settle = smooth(0.34,1.0,u);
-      var veil   = smooth(0.0,0.20,u) * (1-settle);
-      var px = sx[i] + (ox[i]-sx[i])*settle;
-      var py = sy[i] + (oy[i]-sy[i])*settle;
-      var wob = (1-settle)*6;                        // il tremolio muore col posarsi
-      px += Math.sin(t*2.1 + ph[i])*wob;
-      py += Math.cos(t*1.7 + ph[i]*1.3)*wob*0.7;
-      var alpha = oa[i]*(settle + veil*0.32);
-      if (alpha <= 0.004) continue;
-      var X = px|0, Y = py|0;
-      if (X<0||Y<0||X>=W||Y>=H) continue;
-      var o = Y*W+X;
-      var acc = (buf[o]>>>24)/255 + alpha;           // si sommano: la nebbia si addensa
-      if (acc > 1) acc = 1;
-      buf[o] = ((acc*255)<<24) | (255<<16) | (255<<8) | 255;
-    }
-    g.putImageData(frame,0,0);
-  }
+  document.body.classList.add('-aperto');
+  if (ridotto) return;
+  document.body.classList.add('-entra');
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ document.body.classList.remove('-entra'); });
+  });
 })();
 </script>
 </body>
