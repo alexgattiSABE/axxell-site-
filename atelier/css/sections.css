@@ -829,7 +829,12 @@ body.wc-locked{overflow:hidden;}
 /* Reduced-motion: resta il poster, che il tag mostra da sé. */
 .wc-alt.-static .wc-alt-canvas{display:none;}
 .wc-alt.-static .wc-alt-video{display:none;}
-.wc-alt.-static{background:#05060b url(assets/starry-poster.webp) center/cover no-repeat;}
+/* I PERCORSI DEL CSS PARTONO DAL FOGLIO, NON DALLA PAGINA.
+   `url(assets/…)` da qui puntava a /atelier/css/assets/… — due 404 silenziosi
+   (si vedevano solo con prefers-reduced-motion, che è l'unico caso in cui
+   questi fondi statici servono: niente video, resta il fotogramma). Il `<base
+   href="/atelier/">` della pagina non vale per il CSS. */
+.wc-alt.-static{background:#05060b url(../assets/starry-poster.webp) center/cover no-repeat;}
 
 /* ---- L'OFFERTA — l'ultima sezione (js/offer.js) ----
    Nessun velo e nessun riquadro dietro al testo, ed è una scelta: nel filmato
@@ -865,4 +870,4 @@ body.wc-locked{overflow:hidden;}
 
 /* Reduced-motion: resta il poster, che il tag mostra da sé. */
 .wc-offer.-static .wc-offer-video{display:none;}
-.wc-offer.-static{background:#05050a url(assets/glass-poster.webp) center/cover no-repeat;}
+.wc-offer.-static{background:#05050a url(../assets/glass-poster.webp) center/cover no-repeat;}

@@ -212,6 +212,10 @@
       stageLive.style.top = miny + 'px';
       stageLive.style.width = w + 'px';
       stageLive.style.height = h + 'px';
+      /* Gli angoli della lastra: la stessa frazione della larghezza che usa lo
+         shader del vetro, così la tela viva non è un rettangolo appiccicato
+         sopra a un vetro smussato. */
+      stageLive.style.setProperty('--raggio', Math.round(w * 0.035) + 'px');
       // Ridimensiona la tela dell'effetto solo quando il riquadro cambia misura
       // (a ogni frame è sprecato): al primo posizionamento e a ogni resize.
       if (Math.abs(w - lastW) > 1 || Math.abs(h - lastH) > 1){
@@ -246,6 +250,13 @@
       place(mesh);                    // posiziona PRIMA che l'effetto misuri
       api.start(stageLive);
       soloQuestoSiVede();
+      /* La dissolvenza parte al fotogramma dopo: messa nello stesso, il
+         browser non ha uno stato "prima" da cui interpolare e la transizione
+         non si vede proprio. */
+      if (root.requestAnimationFrame) root.requestAnimationFrame(function(){
+        if (awakeId) stageLive.classList.add('-viva');
+      });
+      else stageLive.classList.add('-viva');
       var hx = helix(); if (hx && hx.throttle) hx.throttle(true);
     }
 
@@ -254,7 +265,12 @@
       var api = effects[awakeId];
       if (api && api.stop) api.stop();
       awakeId = null;
-      stageLive.hidden = true;
+      /* Si spegne anche in uscita, non solo in entrata: `hidden` toglierebbe
+         la tela in un fotogramma, e il ritorno al poster sarebbe lo stesso
+         scatto visto al contrario. `hidden` arriva a dissolvenza finita — e
+         solo se nel frattempo non si è svegliato qualcun altro. */
+      stageLive.classList.remove('-viva');
+      setTimeout(function(){ if (!awakeId) stageLive.hidden = true; }, 280);
       var hx = helix(); if (hx && hx.throttle) hx.throttle(false);
     }
 

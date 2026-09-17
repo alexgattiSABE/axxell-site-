@@ -85,7 +85,17 @@
      poster. `pointer-events:none` perché il clic sulla card (entrare nel mondo)
      lo intercetta lo stage sotto, non questo. */
   #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
-    pointer-events:none;overflow:hidden}
+    pointer-events:none;overflow:hidden;
+    /* LA TELA VIVA HA LA FORMA DELLA LASTRA, e non appare di scatto.
+       Erano due stacchi secchi in uno: un rettangolo a spigoli vivi che si
+       sovrapponeva a una lastra con gli angoli tondi, e un poster che diventava
+       effetto in un fotogramma solo. Il raggio lo detta il controller (una
+       frazione della larghezza del riquadro, come nello shader del vetro); la
+       dissolvenza copre il salto fra il fotogramma congelato e il primo
+       fotogramma vivo, che sono due immagini diverse per definizione. */
+    border-radius:var(--raggio,18px);
+    opacity:0;transition:opacity .26s ease}
+  #stage-live.-viva{opacity:1}
   #stage-live canvas{display:block;width:100%;height:100%}
 
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
@@ -1727,8 +1737,16 @@
        resta un numero enorme — nessun avvolgimento da gestire qui, come già
        per `wrapN` sulle card. */
     if (!openW && toccato && !dragging && now - lastInput > SETTLE_MS){
+    /* PIÙ MORBIDO SUL FERMO (richiesta utente: «a volte, mentre si scorre,
+       le card passano da un'immagine all'altra in modo scattante»).
+       Il colpevole era qui: fermato il gesto, il bersaglio veniva tirato
+       sull'intero più vicino a `dt*7` — circa 140 ms — e se la rotellina
+       lasciava la fila a metà strada quel richiamo si vedeva come uno
+       strappo, non come un assestamento. A `dt*3` il richiamo dura il doppio
+       e lo smorzamento di `spin`, che è più svelto, ci arriva sopra: la fila
+       si POSA sul fermo invece di scattarci. */
       var det = Math.round(spinT);
-      spinT += (det - spinT)*Math.min(1, dt*7);
+      spinT += (det - spinT)*Math.min(1, dt*3);
     }
 
     if (WC.motionOk){

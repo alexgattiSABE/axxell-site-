@@ -34,6 +34,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css?v=20260824a">
 <link rel="stylesheet" href="css/sections.css?v=20260824a">
+<style>
+  /* L'indirizzo sotto al modulo: stessa misura delle etichette del modulo,
+     staccato da una riga sottile. Non è un piè di pagina — è la seconda
+     strada per la stessa cosa, quindi sta attaccato al modulo, non in fondo
+     allo schermo. */
+  .wc-cta-altro{display:flex;flex-wrap:wrap;gap:.35rem 1.6rem;align-items:baseline;
+    margin-top:2.6rem;padding-top:1.4rem;max-width:34rem;font-style:normal;
+    border-top:1px solid rgba(223,228,238,.12);
+    font-family:'DM Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:rgba(223,228,238,.45)}
+  .wc-cta-altro a{color:#3ad8ff;text-decoration:none;border-bottom:1px solid rgba(58,216,255,.35)}
+  .wc-cta-altro a:hover{border-bottom-color:#3ad8ff}
+  .wc-cta-altro a:focus-visible{outline:2px solid #3ad8ff;outline-offset:3px}
+  @media (max-width:600px){ .wc-cta-altro{gap:.5rem;flex-direction:column} }
+</style>
 </head>
 <body>
 
@@ -71,6 +86,7 @@
   <ul class="nav-links">
     <li><a href="/">Home</a></li>
     <li><a href="/atelier/">Atelier</a></li>
+    <li><a href="/atelier/capitoli">Capitoli</a></li>
     <li><a href="/atelier/parliamone" class="nav-cta active">Parliamone</a></li>
   </ul>
 </nav>
@@ -101,6 +117,17 @@
       <div class="wc-form-ok-lottie" id="wcFormOkLottie"></div>
       <p>Ricevuto. Ti rispondiamo entro un giorno lavorativo.</p>
     </div>
+
+    <!-- L'ALTRA STRADA. Un modulo è un solo canale, e quando il suo provider
+         non risponde la pagina sa dirlo ma la persona resta a mani vuote. Qui
+         sotto c'è l'indirizzo vero, scritto in chiaro e cliccabile: vale come
+         alternativa al modulo, e come risposta alle due domande che uno si fa
+         prima di scrivere — dove siete, e quanto ci mettete. -->
+    <address class="wc-cta-altro">
+      <a href="mailto:info@axxell.ai">info@axxell.ai</a>
+      <span>Reggio Emilia, Italia</span>
+      <span>Rispondiamo entro un giorno lavorativo</span>
+    </address>
   </section>
 </main>
 

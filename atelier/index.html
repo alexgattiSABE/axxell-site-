@@ -378,7 +378,9 @@
        apre la cassetta degli attrezzi — il disco volante sui quarantamila fili
        d'erba, il robot che risponde al puntatore, il fluido, l'elica, la pietra
        che si scopre. Sono i dodici capitoli del vecchio atelier, che non sono
-       stati buttati: vivono a /atelier/capitoli e da oggi hanno una porta.
+       stati buttati: vivono a /atelier/capitoli-legacy — e da /atelier/capitoli,
+       che oggi è la sotto-costellazione degli effetti, ci si arriva cliccando
+       l'effetto che interessa.
        Il poster e' un fotogramma vero del capitolo del disco, non un'immagine
        di repertorio, e il colore e' il ciano del sito: l'unico portale che non
        porta a un cliente immaginario ma a casa nostra.
@@ -1623,8 +1625,16 @@
     if (stage === 'mappa' && !openW){
       if (!toccato) spinT += 0.075*dt;                       // lo scorrimento d'invito
       else if (!dragging && now - lastInput > 300){          // lo scatto sul fermo
+      /* PIÙ MORBIDO SUL FERMO (richiesta utente: «a volte, mentre si scorre,
+         le card passano da un'immagine all'altra in modo scattante»).
+         Il colpevole era qui: fermato il gesto, il bersaglio veniva tirato
+         sull'intero più vicino a `dt*7` — circa 140 ms — e se la rotellina
+         lasciava la fila a metà strada quel richiamo si vedeva come uno
+         strappo, non come un assestamento. A `dt*3` il richiamo dura il doppio
+         e lo smorzamento di `spin`, che è più svelto, ci arriva sopra: la fila
+         si POSA sul fermo invece di scattarci. */
         var det = Math.round(spinT);
-        spinT += (det - spinT)*Math.min(1, dt*7);
+        spinT += (det - spinT)*Math.min(1, dt*3);
       }
     }
     spin += (spinT - spin)*Math.min(1, dt*7.5);
