@@ -254,13 +254,42 @@ window.CLUSTERS = [
 - Consumes: il loader/sipario già in `js/loader.js` (il velo col vapore della home, o il loader dei capitoli).
 - Produces: `/atelier/capitoli` che serve la sotto-costellazione; il vecchio scroll lineare resta a `/atelier/capitoli-legacy` (le pagine di dettaglio).
 
-- [ ] **Step 1: Coreografia d'ingresso.** Applica a `effetti.html` il sipario coerente col sito: gate al **via** dell'uscita del velo (contenuto entra _attraverso_), elica che entra dal basso in dissolvenza-a-punti (non un fade dell'intero oggetto). Segui `revealChoreography`.
-- [ ] **Step 2: Verifica completa PRIMA dello scambio.** Giro intero su desktop **e** 390×844: sipario → costellazione → scroll infinito fra i 5 cluster → effetto vivo a fuoco per tutti e 7 → clic → dettaglio → ritorno. `ERRORS: none`, niente 404 estranei, niente host esterni oltre Google Fonts. Screenshot di ogni cluster.
-- [ ] **Step 3: Lo scambio.** Il legacy esiste già dal Task 8 (`capitoli-legacy.html`), quindi qui basta far diventare il fork la pagina servita: `git mv atelier/effetti.html atelier/capitoli.html`. Aggiorna gli eventuali riferimenti al nome pagina (es. `js/effetti-deck.js` referenzia il proprio file? no; i `src` dei moduli sono relativi, non toccati). Verifica che `/atelier/capitoli` ora sia la costellazione e `/atelier/capitoli-legacy` (+ `#cap<Nome>`) il dettaglio, e che il rewrite del Task 8 punti a `capitoli-legacy`.
-- [ ] **Step 4: La card della home.** In `index.html` la card «Effetti speciali» già punta a `/atelier/capitoli` — verifica che il giro home→sotto-costellazione→dettaglio→home regga end-to-end.
-- [ ] **Step 5: Verifica finale a schermo** (desktop + telefono), console pulita ovunque, il giro completo dell'atelier (home → effetti → un dettaglio → ritorno) senza errori.
-- [ ] **Step 6: Commit**
-  `git add atelier/ vercel.json && git commit -m "feat(atelier/effetti): la sotto-costellazione diventa /atelier/capitoli; sipario e scambio"`
+- [x] **Step 1: Coreografia d'ingresso.** FATTO (commit `2af7d1e`): il sipario col marchio che
+  si condensa dal vapore vive inline in `capitoli.html`, e l'asse entra ATTRAVERSO — `alza()`
+  toglie `body.-velo-attivo` all'inizio dell'uscita del velo, non alla sua fine, quindi l'elica
+  risale (`translateY(58px) → 0`, opacità 0 → 1) mentre le tende se ne vanno. In reduced-motion
+  la classe non viene mai messa: nessuna risalita, l'asse è già a posto.
+- [x] **Step 2: Verifica completa PRIMA dello scambio.** Giro intero a 1440×900 e 390×844,
+  server locale che imita `vercel.json` (cleanUrls + rewrite del dettaglio): tutte e 7 le card a
+  fuoco, effetto vivo su 6 (`sneaker` è poster per progetto), `ERRORS: none`, nessun host oltre
+  `fonts.googleapis.com`/`fonts.gstatic.com`.
+  **Tre cose trovate e sistemate qui, non erano rifiniture rimandabili:**
+  1. *Reduced-motion arrivava a metà strada.* `uTime` teneva in moto pulviscolo e nebbia
+     (capitoli.html), e il gate del controller — che ogni modulo ha al proprio interno — cadeva
+     troppo tardi: `WC.motionOk` nasce `true` in `js/core.js` e diventa `false` solo dentro
+     `boot()`, così il primo `wake` passava e due moduli restavano montati (altitude col video in
+     riproduzione, lithos col faro in automatico). Ora il controller interroga la media query, e
+     con moto ridotto non si sveglia più nessuno: costellazione ferma, poster, navigazione a passi.
+  2. *Il poster di «La piega» era un segnaposto* (un blu piatto da 3 KB): la prima card della
+     costellazione era un vetro vuoto ogni volta che l'effetto non era sveglio — cioè sempre, in
+     reduced-motion. Sostituito con un fotogramma vero dell'effetto (1000×625).
+  3. *Su ritratto l'elenco dei tipi era illeggibile*: stava a un `z` assoluto ereditato dalla home,
+     ma qui la camera arretra (`CAM0.z`) perché la card ci stia intera — finiva lontano e minuscolo.
+     Ora è ancorato a `CAM0.z − 2.55`: distanza dall'occhio fissa, misura a schermo come nella home.
+- [x] **Step 3: Lo scambio.** Già avvenuto al Task 8 (`2af7d1e`): l'esperienza è
+  `atelier/capitoli.html`, l'originale è `atelier/capitoli-legacy.html`, `effetti.html` non esiste
+  più. Verificato che `/atelier/capitoli` sia la costellazione e che il rewrite di `vercel.json`
+  (`/atelier/capitoli/:effetto → /atelier/capitoli-legacy`) porti al capitolo giusto: il deep-link
+  atterra sull'ancora `#cap<Nome>` dell'effetto scelto.
+- [x] **Step 4: La card della home.** `atelier/index.html` punta a `/atelier/capitoli`; giro
+  home → sotto-costellazione → dettaglio → indietro percorso end-to-end, console pulita a ogni passo.
+- [x] **Step 5: Verifica finale a schermo** (desktop + telefono, moto pieno e moto ridotto).
+  **Limite noto dell'harness:** in chromium headless con swiftshader il `<video>` viene composto
+  come un rettangolo bianco (a volte con un filo fuori registro sopra al riquadro). Non è la
+  pagina: a browser vero, stessa misura, stesso fotogramma, il video c'è. Dove serviva guardare il
+  video — il poster di «La piega», le prove su ritratto — la verifica è stata rifatta a browser
+  visibile.
+- [x] **Step 6: Commit** (il merge in `main` resta in attesa dell'autorizzazione dell'utente).
 
 ---
 

@@ -171,6 +171,19 @@
 
     function helix(){ return root.WC && root.WC.helix; }
 
+    /* Il moto non è gradito? La domanda si fa al SISTEMA, non solo a
+       `WC.motionOk`: quel flag nasce `true` in js/core.js e diventa `false`
+       dentro boot(), un gradino più tardi del primo fotogramma utile — e un
+       effetto che si sveglia in quella finestra si porta dietro il suo video
+       (la richiesta parte e viene poi abortita: `ERR_ABORTED` in console).
+       La media query è giusta dal fotogramma zero; `WC.motionOk === false`
+       resta come conferma quando boot() ha già deciso. */
+    var mqRidotto = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)');
+    function ridotto(){
+      if (root.WC && root.WC.motionOk === false) return true;
+      return !!(mqRidotto && mqRidotto.matches);
+    }
+
     function place(mesh){
       camera.updateMatrixWorld();
       mesh.updateWorldMatrix(true, false);
@@ -223,6 +236,17 @@
       awake: function(){ return awakeId; },
       freeze: freeze,
       tick: function(now, focusMesh, focusRecord, atFullFocus){
+        /* REDUCED-MOTION: NESSUN EFFETTO SI SVEGLIA (Task 9).
+           Ogni modulo esce già da sé su `!ctx.motionOk` — ma `WC.motionOk`
+           nasce `true` in js/core.js e diventa `false` solo dentro boot(),
+           mentre il fuoco (e quindi il primo `wake`) può cadere prima: chi si
+           è montato in quella finestra resta montato, e due moduli lo danno a
+           vedere (altitude tiene il video in riproduzione; lithos, con
+           `auto`, muove il faro da solo). Il gate va qui, dove la decisione si
+           prende ogni fotogramma e non una volta sola: se il moto non è
+           gradito si congela e si resta sul poster — la costellazione ferma
+           che chiede la spec, navigabile a passi con frecce/fermi/elenco. */
+        if (ridotto()){ freeze(); return; }
         var wired = focusRecord && effects[focusRecord.modulo];
         if (atFullFocus && wired && focusMesh){
           if (awakeId !== focusRecord.modulo){ freeze(); wake(focusRecord, focusMesh); }

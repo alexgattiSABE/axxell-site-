@@ -1564,7 +1564,17 @@
        di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
        IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
     if (camera.aspect < 1){
-      idxMesh.position.set(0, 1.78, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.66);
+      /* SU RITRATTO L'ELENCO STA A UNA DISTANZA FISSA DALLA CAMERA (Task 9 —
+         rifinitura mobile). Nella home la camera è ferma sul perno e un `z`
+         assoluto bastava; qui no: `CAM0.z` cresce con lo schermo stretto (la
+         camera arretra perché la card davanti ci stia intera), e un elenco
+         lasciato a z=−3.05 finiva due unità più lontano di quanto fosse
+         disegnato — minuscolo, illeggibile, e addosso all'elica. Ancorandolo a
+         `CAM0.z − DIST` la distanza dall'occhio è sempre quella, quindi la
+         misura a schermo non dipende più da quanto la camera è arretrata.
+         Sale anche di quota (1.78 → 2.08): sotto ci passa l'elica, e il
+         titolo restava mangiato dai punti. */
+      idxMesh.position.set(0, 1.80, CAM0.z - 2.55); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.50);
     } else {
       idxMesh.position.set(-2.55, 2.05, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.82);
     }
@@ -1819,9 +1829,22 @@
     var idxT = (DECK_ON && stage === 'mappa' && !openW) ? spokeIn*0.92*(1-zoom) : 0;
     idxMat.opacity += (idxT - idxMat.opacity)*0.10;
 
-    fogMat.uniforms.uTime.value = t;
+    /* IL TEMPO DELL'AMBIENTE (Task 9 — rifinitura reduced-motion).
+       `uTime` non muove le card: muove il FONDO — il pulviscolo che va alla
+       deriva e brilla, e il rumore della nebbia. È l'ultimo «giro continuo»
+       rimasto in scena quando il moto non è gradito: il mazzo scatta già
+       (`spin = spinT`), l'elica è ferma (dna.js in reduced standalone), gli
+       effetti non si accendono nemmeno (ogni js/<modulo>.js esce su
+       `!ctx.motionOk`) — ma questi due shader continuavano ad andare, perché
+       leggono l'orologio, non il flag. Qui l'orologio si ferma: un fotogramma
+       fisso, ancora pieno di pulviscolo, che non si muove più da solo. Il
+       resto del frame gira lo stesso (serve a rispondere ai click).
+       Il vincolo del piano — «reduced-motion deve raggiungere anche i loop
+       canvas, non basta il flag di gsap» — è esattamente questo. */
+    var tAmb = WC.motionOk ? t : 0;
+    fogMat.uniforms.uTime.value = tAmb;
     var du = dustMat.uniforms;
-    du.uTime.value = t; du.uTravel.value = travel; du.uAssign.value = assign;
+    du.uTime.value = tAmb; du.uTravel.value = travel; du.uAssign.value = assign;
     du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
 
     if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;

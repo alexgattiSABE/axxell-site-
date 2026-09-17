@@ -17,7 +17,8 @@ Un branch alla volta:
 git fetch origin
 git checkout robot-cervello-vesper            # oppure atelier-effetti-sottocostellazione
 ```
-Le **checkbox dei piani non sono aggiornate** (restano `[ ]`): lo stato vero è nei commit, riassunto qui sotto.
+Le **checkbox dei piani sono aggiornate solo in coda** (Task 9 degli effetti, con l'esito di ogni passo);
+per tutto il resto restano `[ ]` — lo stato vero è nei commit, riassunto qui sotto.
 
 ---
 
@@ -51,19 +52,31 @@ cd <root del branch robot> && python3 -m http.server 8801
 
 ---
 
-## ✨ Effetti atelier — 8 task su 9
+## ✨ Effetti atelier — FINITI (9 task su 9), in attesa del merge
 
 Fatto: fork della pagina, **DNA helix come asse centrale**, 7 card sui cluster dell'elica con poster
 congelati, scroll infinito + contatore NN/07 + lista dei tipi, controller **wake/freeze** (un solo
 effetto vivo a fuoco), risveglio di saucer/vesper/orologio/altitude/lithos/warp, pagine di dettaglio
-per-effetto + ingresso/ritorno. L'esperienza vive dentro **`atelier/capitoli.html`** (l'originale è
-salvato in `atelier/capitoli-legacy.html`; `effetti.html` è stato rimosso). Ultimo commit: `2af7d1e`.
+per-effetto + ingresso/ritorno, **sipario d'ingresso** (il marchio che si condensa dal vapore, con
+l'asse che risale ATTRAVERSO il velo che se ne va) e **Task 9**: rifinitura mobile, reduced-motion,
+verifica end-to-end. L'esperienza vive dentro **`atelier/capitoli.html`** (l'originale è salvato in
+`atelier/capitoli-legacy.html`; `effetti.html` è stato rimosso).
 
-**Da dove ripartire: Task 9** del piano — *"Sipario, e lo scambio: effetti.html diventa
-/atelier/capitoli"* → sipario d'ingresso, rifinitura mobile/`prefers-reduced-motion`, verifica finale,
-poi merge su `main`.
+Cosa ha aggiunto il Task 9, oltre alla verifica:
+- **Reduced-motion davvero fermo.** `uTime` (pulviscolo + nebbia) si congela, e il controller non
+  sveglia più nessun effetto: il gate ora interroga la media query e non `WC.motionOk`, che in
+  `js/core.js` nasce `true` e diventa `false` solo dentro `boot()` — un fotogramma più tardi del
+  primo `wake`, abbastanza perché altitude restasse col video in riproduzione e lithos col faro
+  in automatico.
+- **Il poster di «La piega»** era un segnaposto blu piatto: ora è un fotogramma vero dell'effetto.
+- **Su ritratto l'elenco dei tipi** è ancorato alla distanza dalla camera (`CAM0.z − 2.55`) invece
+  che a un `z` assoluto: prima, con la camera arretrata dagli schermi stretti, era minuscolo.
 
-Anteprima locale:
+**Stato: pronto per `main`. Il merge NON è stato fatto** — il piano lo subordina all'autorizzazione
+esplicita dell'utente.
+
+Anteprima locale (serve il rewrite di `vercel.json` per le pagine di dettaglio; con un
+`http.server` semplice `/atelier/capitoli/<effetto>` dà 404, ed è l'unico "errore" atteso):
 ```bash
 cd <root del branch effetti> && python3 -m http.server 8802
 # apri http://localhost:8802/atelier/capitoli.html
