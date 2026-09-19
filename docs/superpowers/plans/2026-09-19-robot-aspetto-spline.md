@@ -20,7 +20,7 @@
 - Niente levitazione, niente drag. Unica interazione del corpo: testa che segue il cursore.
 - Cervello: nessun punto disegnato a riposo (`points.visible = hoverHead > 0.01`).
 - Fibre braccia: **spente a riposo**, accese solo col cursore sul braccio.
-- Mobile fuori scope. Nessuna ombra portata (verifica sulle coppie).
+- Mobile fuori scope. Ombre: dal Task 4b (richiesta di Nike 2026-09-19) sì, come Spline (point light, PCF).
 - Viewport di riferimento **1440×900, DPR 1**. Verifica aggiuntiva 1280×720.
 - Le cartelle `~/Progetti/file-sciolti/robot-confronto/` ricevono gli screenshot per Nike.
 - Scena Spline: `https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode`, viewer `@splinetool/viewer@1.9.82`.
@@ -1187,6 +1187,31 @@ git commit -m "feat(robot): strati Spline in GLSL nostro, materiali Parts e Body
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01Uq4gj26CZnLLaGs9oHjgm8"
 ```
+
+---
+
+### Task 4b: Ombre come Spline su braccia e corpo (aggiunto il 2026-09-19 su richiesta di Nike)
+
+> Nike: «facciamo bene le rifiniture di quelle braccia e del corpo». Dopo il Task 4 l'unica differenza misurata su braccia/gambe/petto è l'ombra portata della point light Spline (meanDiff vs `ref-frozen` 4.31/4.06/2.75 con ombre, 1.67/1.51/0.87 con `--no-shadows`). Questo task **annulla l'esclusione delle ombre** dello spec §3 per il corpo.
+
+**Files:**
+- Modify: `~/Progetti/file-sciolti/robot-spline-tools/estrai.mjs`, `verifica-dati.mjs` (dati ombre)
+- Modify (rigenerato): `website-creation/assets/robot-spline/robot-spline-data.js`
+- Modify: `website-creation/js/robot-spline-glsl.js`, `website-creation/js/robot-spline-materials.js`, `website-creation/js/robot.js`
+
+**Interfaces:**
+- Consumes: materiali del Task 4 (`create/assign`, `userData.splineIndex`), `ref-frozen.mjs` (Spline con la nostra posa, `--no-shadows`).
+- Produces: `D.light.shadow = { mapSize:[w,h], bias, normalBias, radius, near, far, type }`, `D.meshes[i].castShadow/receiveShadow`; nella scena una `THREE.PointLight` **solo per le ombre** (stessa posizione mondo, `castShadow` con i parametri estratti; il colore resta quello delle nostre uniform: la luce three non deve cambiare l'illuminazione dei nostri shader, che la calcolano da sé); i ShaderMaterial Spline ricevono l'ombra. Il materiale `Head` (Task 5) deve poterla usare con lo stesso codice.
+
+**Fatti dal GLSL di riferimento (`spline-ref/Parts.frag`):** Spline compila con `SHADOWMAP_TYPE_PCF`; la luce diretta è moltiplicata per `getPointShadow(pointShadowMap[0], shadowMapSize, shadowBias, shadowRadius, vPointShadowCoord[0], shadowCameraNear, shadowCameraFar)` quando `receiveShadow` (riga ~1447); il percorso PCSS (`penumbraSize`) nel file non è quello usato per la point light. three r128 ha lo stesso `getPointShadow` PCF.
+
+- [ ] **Step 1: estrai i parametri delle ombre.** In `estrai.mjs` (pagina Spline): dalla `PointLight` `shadow.mapSize`, `shadow.bias`, `shadow.normalBias`, `shadow.radius`, `shadow.camera.near/far`; `renderer.shadowMap.enabled/type`; per ogni mesh (stesso traverse) `castShadow`, `receiveShadow`. Scrivili in `D.light.shadow` e in `D.meshes[i]`. `verifica-dati.mjs`: asserisci numeri finiti e booleani reali. Rilancia `node estrai.mjs && node verifica-dati.mjs` → `ok`.
+- [ ] **Step 2: prova rossa.** Misura la base con `node ref-frozen.mjs out/rf.png --solo` + `node shot.mjs site out/t4b-before.png --solo` + `confronta` sui CROPS braccio/gambe/petto: annota i numeri (≈4.3/4.1/2.8).
+- [ ] **Step 3: ombre nella scena.** `renderer.shadowMap.enabled = true`, tipo = `D.light.shadow.type` (PCF). Aggiungi una `THREE.PointLight` alla posizione mondo della luce, `castShadow = true`, shadow params dai dati; `mesh.castShadow/receiveShadow` dai dati per ognuna delle 80 mesh (per `userData.splineIndex`). Fibre e cervello: `castShadow = false`.
+- [ ] **Step 4: ombre negli shader.** I tre ShaderMaterial diventano `lights: true` con `THREE.UniformsUtils.merge([THREE.UniformsLib.lights, …])` (poi riassegnare le texture: `merge` le clona). Nel vertex: `#include <common>`, `#include <shadowmap_pars_vertex>`, rinomina la normale trasformata in `transformedNormal`, `vec4 worldPosition = modelMatrix * vec4(position, 1.0);`, `#include <shadowmap_vertex>`. Nel fragment: `#include <common>`, `#include <packing>`, `#include <lights_pars_begin>` solo se serve per le strutture, `#include <shadowmap_pars_fragment>`, `uniform bool receiveShadow;` se r128 non la dichiara già; in `sp_light()` moltiplica il colore per `getPointShadow(pointShadowMap[0], pointLightShadows[0].shadowMapSize, pointLightShadows[0].shadowBias, pointLightShadows[0].shadowRadius, vPointShadowCoord[0], pointLightShadows[0].shadowCameraNear, pointLightShadows[0].shadowCameraFar)` quando `receiveShadow` (dentro `#if defined(USE_SHADOWMAP) && NUM_POINT_LIGHT_SHADOWS > 0`). **Nessun** uso della luce three per l'illuminazione: colore/attenuazione restano le nostre uniform. Controlla che i nomi di `common` non collidano con i nostri (`sp_*`, `SP_*`).
+- [ ] **Step 5: prova verde e confronto.** `node prova.mjs` (8/8, niente errori shader). Poi `ref-frozen` (con ombre) vs sito sui CROPS braccio/gambe/petto: obiettivo guida **≤ 2.5 / 2.5 / 1.5** (vicino ai numeri senza ombre di prima). Controllo a occhio: niente «acne» a righe, niente ombre staccate (peter-panning), l'ombra del braccio sul fianco al posto giusto. Salva le coppie in `~/Progetti/file-sciolti/robot-confronto/04b-{braccio,gambe,petto}.png`.
+- [ ] **Step 6: costo.** Con 1 point light l'ombra è una cube map (6 passate): misura in pagina il tempo medio di frame su 120 frame prima/dopo (headless, indicativo) e riportalo. Se la scena è ferma tranne la testa, valuta `shadow.autoUpdate`/`needsUpdate` solo quando la testa si muove, **solo** se il costo è alto.
+- [ ] **Step 7: commit** (`estrai`/`verifica` restano fuori repo): `git add website-creation/assets/robot-spline/robot-spline-data.js website-creation/js/robot-spline-glsl.js website-creation/js/robot-spline-materials.js website-creation/js/robot.js` e commit `feat(robot): ombre della point light come Spline su braccia e corpo`.
 
 ---
 
