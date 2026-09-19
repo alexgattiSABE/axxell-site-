@@ -146,6 +146,49 @@ WC.register('robot', function(ctx){
       // la camera Spline lo inquadra così com'è.
       scene.add(model);
       model.updateMatrixWorld(true);
+      // Posa della scena Spline: il GLB di agosto ha le braccia in una posa
+      // diversa (più chiuse). Applichiamo la matrixWorld letta da Spline per
+      // ogni mesh, appaiata per NOME — non per indice di traverse(): l'ordine
+      // di model.traverse() su un GLB Draco-compresso NON è deterministico
+      // (dipende dall'ordine di completamento dei worker Draco — verificato:
+      // 3 caricamenti della stessa pagina hanno dato 3 ordini diversi), il
+      // nome invece resta stabile a ogni caricamento (5/5 letture identiche
+      // verificate). Il nome del duplicato N-esimo di un nome Spline si
+      // ricostruisce contando le occorrenze in ORDINE DI INDICE — l'unico
+      // ordine stabile che condividiamo con D.meshes (stesso ordine
+      // dell'array `nodes` del file GLTF, verificato identico a D.meshes).
+      // Gerarchia FLAT confermata qui (mesh.parent === model per ognuna,
+      // vedi robot-parts.js): niente ramo per genitori diversi da `model`.
+      //
+      // 18 mesh su 80 restano nella posa di agosto invece di ricevere una
+      // posa sbagliata: 12 sono pannelli interni della testa senza nome
+      // (la testa non si muove in questa animazione — impatto visivo nullo)
+      // e 6 sono un'ambiguità reale nei DATI Spline, non nel codice: un nome
+      // grezzo senza numero (es. "Ellipse") alla sua N-esima occorrenza
+      // normalizza allo STESSO nome di un'altra famiglia già numerata (es.
+      // "Ellipse 2" alla 1ª occorrenza) — entrambe diventano "Ellipse_2",
+      // non distinguibili per nome. Riguarda un lato di 3 coppie di pannelli
+      // braccio, dettagli e numeri in task-3-report.md.
+      var seenName = {};
+      var expectedName = D.meshes.map(function (m) {
+        var slug = (m.name || '').replace(/\s+/g, '_');
+        if (!slug) return '';
+        seenName[slug] = (seenName[slug] || 0) + 1;
+        return seenName[slug] === 1 ? slug : slug + '_' + (seenName[slug] - 1);
+      });
+      var nameCount = {};
+      expectedName.forEach(function (n) { if (n) nameCount[n] = (nameCount[n] || 0) + 1; });
+      var poseList = []; model.traverse(function (o) { if (o.isMesh) poseList.push(o); });
+      var byName = {}; poseList.forEach(function (m) { byName[m.name] = m; });
+      var inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
+      D.meshes.forEach(function (dm, i) {
+        var name = expectedName[i];
+        if (!name || nameCount[name] > 1 || !byName[name] || !dm.matrixWorld) return;
+        var mw = new THREE.Matrix4().fromArray(dm.matrixWorld);
+        var local = new THREE.Matrix4().multiplyMatrices(inv, mw);
+        local.decompose(byName[name].position, byName[name].quaternion, byName[name].scale);
+      });
+      model.updateMatrixWorld(true);
       var box = new THREE.Box3().setFromObject(model);
       if (hint) hint.remove();
 
