@@ -88,6 +88,19 @@ WC.robotSplineGLSL = {
     'uniform float uReflectivity;',
     'uniform float uF90;',            // Spline non assegna specularF90 per Parts: ANGLE lo azzera → 0.0
     '#endif',
+    // Logo «A» (Task 7): solo sull'istanza del petto (define LOGO, aggiunta
+    // sopra MAT_BODY da makeChest). Maschera planare in coordinate OGGETTO più
+    // una luce virtuale che segue il puntatore (uLogoLight, view space).
+    '#ifdef LOGO',
+    'uniform sampler2D uLogo;',
+    'uniform vec2 uLogoCenter;',
+    'uniform float uLogoWidth;',
+    'uniform vec3 uLogoLight;',       // view space, segue il puntatore
+    'uniform float uLogoBase;',
+    'uniform float uLogoSpec;',
+    'uniform float uLogoShin;',
+    'uniform float uLogoOn;',         // 0 = petto senza logo (confronto con Spline)
+    '#endif',
     '#ifdef MAT_HEAD',
     'uniform sampler2D uVideo;',
     'uniform mat3 uVideoMat;',
@@ -285,6 +298,20 @@ WC.robotSplineGLSL = {
     '  c = sp_blend(c, sp_matcap(nb), uMatcapAlpha, uMatcapMode);',
     '  c = sp_blend(c, sp_blinnPhong(c, nb), uLightAlpha, uLightMode);',
     '  c = sp_applyRainbow(c);',
+    // Logo «A»: ULTIMO strato, dopo il rainbow — così il bianco resta bianco e
+    // non viene tinto dalla pellicola iridescente del corpo. Bianco lucido =
+    // base piatta + un riflesso stretto (Blinn, normale GEOMETRICA `n`: la «A»
+    // è liscia, il bump del corpo non la increspa) da una luce che insegue il
+    // puntatore. uLogoOn a 0 spegne tutto lo strato (confronto con Spline).
+    '#ifdef LOGO',
+    '  vec2 luv = (vPosition.xy - uLogoCenter) / uLogoWidth + 0.5;',
+    '  float inside = step(0.0, luv.x) * step(luv.x, 1.0) * step(0.0, luv.y) * step(luv.y, 1.0) * step(0.0, vObjectNormal.z);',
+    '  float lm = texture2D(uLogo, luv).a * inside * uLogoOn;',
+    '  vec3 LV = normalize(uLogoLight + vViewPosition);',
+    '  vec3 HV = normalize(LV + normalize(vViewPosition));',
+    '  float lsp = pow(clamp(dot(n, HV), 0.0, 1.0), uLogoShin);',
+    '  c = mix(c, vec3(uLogoBase) + vec3(lsp * uLogoSpec), lm);',
+    '#endif',
     '#endif',
 
     '#ifdef MAT_PARTS',

@@ -271,7 +271,10 @@ WC.register('robot', function(ctx){
           });
           sm.makeInside(inside, asg.visor);
           asg.visor.renderOrder = 2;
-          sm.setCamera(cam);   // dopo makeInside: anche i cloni degli interni ricevono la luce
+          // Task 7: il logo «A» bianco lucido, stampato SOLO sulla mesh del
+          // petto (istanza del materiale Body col define LOGO).
+          if (asg.chest) sm.makeChest(asg.chest);
+          sm.setCamera(cam);   // dopo makeInside/makeChest: anche i cloni ricevono la luce
           window.__robot.parts.inside = inside;
           if (window.__debugParts) console.log('[robot] interni testa:', inside.map(function (m) { return m.name; }));
           sm.setPlaying(sectionVisible);
@@ -471,6 +474,22 @@ WC.register('robot', function(ctx){
         }
       }
 
+      // Task 7 — luce del logo: una luce virtuale (accesa SOLO per la «A»,
+      // nessun effetto sul resto del corpo) messa davanti al logo e spostata
+      // dove punta il mouse, così il riflesso bianco gli scorre sopra. A riposo
+      // torna alla posizione di LOGO_CONFIG.lightRest (in alto a sinistra).
+      // Smorzata come la rotazione della testa: il riflesso insegue, non scatta.
+      var logoRest = (window.__robot.spline && window.__robot.spline.logo)
+        ? window.__robot.spline.logo.lightRest : { x: 0, y: 0 };
+      var logoTarget = new THREE.Vector2(logoRest.x, logoRest.y), logoNow = logoTarget.clone();
+      // Ancora della luce in coordinate di VISTA: la camera non si muove mai
+      // (niente orbit/drag), quindi si calcola una volta sola.
+      var logoView = new THREE.Vector3();
+      if (window.__robot.spline && window.__robot.spline.logo) {
+        logoView.copy(window.__robot.spline.logo.anchor).applyMatrix4(cam.matrixWorldInverse);
+      }
+      var logoLight = new THREE.Vector3();
+
       var raf;
       var lastTick = (window.performance && performance.now) ? performance.now() : Date.now();
       // RITOCCO 2: reveal a TUTTA testa. Un solo Raycaster riusato ogni frame
@@ -570,6 +589,18 @@ WC.register('robot', function(ctx){
           surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
           surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
           robot.fibers.update(dt, surgeL, surgeR);
+        }
+        // Task 7: la luce che fa brillare la «A» insegue il puntatore. Gli
+        // scostamenti sono già in unità mondo, proporzionati alla larghezza
+        // della «A» (LOGO_CONFIG.lightSwing/lightDist): il riflesso resta
+        // DENTRO il logo invece di scappare fuori dal petto. y invertita:
+        // pointer.y cresce verso il basso, la y di vista verso l'alto.
+        if (robot && robot.spline && robot.spline.logo) {
+          var lg = robot.spline.logo;
+          if (pointer.active) logoTarget.set(pointer.x, pointer.y); else logoTarget.set(lg.lightRest.x, lg.lightRest.y);
+          logoNow.lerp(logoTarget, 0.12);
+          logoLight.set(logoView.x + logoNow.x * lg.lightSwing, logoView.y - logoNow.y * lg.lightSwing, logoView.z + lg.lightDist);
+          robot.spline.setLogoLight(logoLight);
         }
         renderer.render(scene, cam);
       })();

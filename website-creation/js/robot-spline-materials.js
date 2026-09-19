@@ -3,6 +3,26 @@
  * INDICE di mesh (stesso ordine della scena Spline) con controllo del nome. */
 window.WC = window.WC || {};
 WC.robotSplineMaterials = (function () {
+  // Logo «A» sul petto (Task 7). Tutta la taratura sta qui — si ritocca con Nike.
+  //  - u/v/width: FRAZIONI del bounding box della mesh del petto (coordinate
+  //    oggetto). u/v = centro del quadrato del logo, width = larghezza. A
+  //    0.5/0.70/0.36 la «A» è un distintivo alto sul petto, ~95 px a 1440×900.
+  //  - base/spec/shininess: il «bianco lucido». base = bianco pieno di fondo
+  //    (0.84 → il logo legge bianco anche dove il riflesso non batte), spec =
+  //    quanto brucia il riflesso (2.2: il cuore satura a 255), shininess =
+  //    quanto è stretto (320: la striscia copre ~1/3 della «A»).
+  //  - lightDist/lightSwing: posizione della luce virtuale, in LARGHEZZE DEL
+  //    LOGO. dist = quanto sta davanti al logo (3.4: abbastanza lontana da dare
+  //    una striscia coerente invece di un puntino), swing = quanto si sposta di
+  //    lato col puntatore a fondo corsa (1.7: oltre, il riflesso esce dalla «A»
+  //    perché il petto è quasi piatto — la normale spazia solo ±12°).
+  //  - lightRest: dove sta la luce quando il puntatore è fuori (in coordinate
+  //    puntatore: x a sinistra, y in alto).
+  var LOGO_CONFIG = { u: 0.5, v: 0.70, width: 0.36, base: 0.84, spec: 2.2, shininess: 320,
+    lightDist: 3.4, lightSwing: 1.7, lightRest: { x: -0.35, y: -0.35 } };
+  var LOGO_SVG = 'assets/robot-spline/logo-axxell-icon.svg';
+  var LOGO_TEX_SIZE = 2048;
+
   function v3(a) { return new THREE.Vector3(a[0], a[1], a[2]); }
   function m3(a) { var m = new THREE.Matrix3(); m.fromArray(a); return m; }
   function tex(path, g, list) {
@@ -123,9 +143,74 @@ WC.robotSplineMaterials = (function () {
     var byName = { Parts: shader('MAT_PARTS', pu), Body: shader('MAT_BODY', bu), Head: head };
     var all = [byName.Parts, byName.Body, head];
     var lightWorld = v3(D.light.worldPosition);
-    return {
+    var api = {
       byName: byName, textures: list, all: all,
       video: video,
+      // Logo «A» sul petto: lo riempie makeChest (null finché non è chiamata).
+      logo: null,
+      // Istanza del SOLO petto: stesso materiale Body più il define LOGO, così
+      // la «A» resta stampata su quella mesh e su nessun'altra delle 10 Body.
+      makeChest: function (mesh) {
+        var m = byName.Body.clone();   // uniform clonate per valore...
+        // ...ma le texture restano quelle condivise (come makeInside: un clone
+        // sarebbe un secondo upload sulla GPU della stessa immagine).
+        m.uniforms.uMatcap.value = byName.Body.uniforms.uMatcap.value;
+        m.uniforms.uTri.value = byName.Body.uniforms.uTri.value;
+        m.defines = { MAT_BODY: '', LOGO: '' };
+        mesh.updateWorldMatrix(true, false);
+        mesh.geometry.computeBoundingBox();
+        var bb = mesh.geometry.boundingBox, sz = bb.getSize(new THREE.Vector3());
+        // L'SVG si rasterizza su un canvas: dell'immagine serve solo l'alpha
+        // (la «A» e l'anello sono pieni, il resto è trasparente). Finché non
+        // carica il canvas è vuoto → alpha 0 → nessun logo, nessun lampo.
+        var canvas = document.createElement('canvas');
+        canvas.width = canvas.height = LOGO_TEX_SIZE;
+        var ltex = new THREE.CanvasTexture(canvas);
+        ltex.encoding = THREE.LinearEncoding;
+        list.push(ltex);
+        var img = new Image();
+        // L'SVG ha il viewBox ma non width/height: senza una dimensione
+        // concreta Chrome lo rasterizzerebbe alla misura di default (300×150).
+        img.width = img.height = LOGO_TEX_SIZE;
+        img.onload = function () {
+          canvas.getContext('2d').drawImage(img, 0, 0, LOGO_TEX_SIZE, LOGO_TEX_SIZE);
+          ltex.needsUpdate = true;
+        };
+        img.onerror = function () { console.warn('[robot] logo non caricato:', LOGO_SVG); };
+        img.src = LOGO_SVG;
+        m.uniforms.uLogo = { value: ltex };
+        m.uniforms.uLogoCenter = { value: new THREE.Vector2(bb.min.x + sz.x * LOGO_CONFIG.u, bb.min.y + sz.y * LOGO_CONFIG.v) };
+        m.uniforms.uLogoWidth = { value: sz.x * LOGO_CONFIG.width };
+        m.uniforms.uLogoLight = { value: new THREE.Vector3() };
+        m.uniforms.uLogoBase = { value: LOGO_CONFIG.base };
+        m.uniforms.uLogoSpec = { value: LOGO_CONFIG.spec };
+        m.uniforms.uLogoShin = { value: LOGO_CONFIG.shininess };
+        m.uniforms.uLogoOn = { value: 1 };
+        m.needsUpdate = true;
+        mesh.material = m;
+        all.push(m);                   // così setCamera aggiorna anche questa
+        var ws = mesh.getWorldScale(new THREE.Vector3());
+        var worldWidth = sz.x * LOGO_CONFIG.width * Math.abs(ws.x);
+        api.logo = {
+          material: m,
+          // Larghezza della «A» in unità MONDO. Tutti gli scostamenti della luce
+          // ci sono proporzionati, così il riflesso resta DENTRO il logo
+          // qualunque sia la scala del GLB.
+          worldWidth: worldWidth,
+          // Punto d'aggancio della luce: il centro del logo sulla FACCIA del
+          // petto (non il centro del bbox del petto, che sta dentro il corpo —
+          // una luce lì nascerebbe quasi sulla superficie e il riflesso sarebbe
+          // un puntino impazzito invece di una striscia).
+          anchor: new THREE.Vector3(m.uniforms.uLogoCenter.value.x, m.uniforms.uLogoCenter.value.y, bb.max.z).applyMatrix4(mesh.matrixWorld),
+          lightDist: worldWidth * LOGO_CONFIG.lightDist,
+          lightSwing: worldWidth * LOGO_CONFIG.lightSwing,
+          lightRest: LOGO_CONFIG.lightRest,
+          setOn: function (on) { m.uniforms.uLogoOn.value = on ? 1 : 0; }
+        };
+        return m;
+      },
+      // Posizione (view space) della luce virtuale che fa brillare la «A».
+      setLogoLight: function (v) { if (api.logo) api.logo.material.uniforms.uLogoLight.value.copy(v); },
       setPlaying: function (on) {
         if (on) { var pr = video.play(); if (pr && pr.catch) pr.catch(function () { hu.uVideo.value = poster; }); }
         else video.pause();
@@ -177,6 +262,7 @@ WC.robotSplineMaterials = (function () {
         list.forEach(function (t) { t.dispose(); });
       }
     };
+    return api;
   }
 
   // GLTFLoader r128 ripulisce i nomi (spazi→_, e deduplica con _1, _2…):
