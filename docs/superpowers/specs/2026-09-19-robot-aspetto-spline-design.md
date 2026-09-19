@@ -83,7 +83,8 @@ Nel repo entra **solo l'output**, in `website-creation/assets/robot-spline/`:
   campo sia un numero/vettore reale (nessun `"object"`/`"array[3]"` segnaposto) e che nomi e indici
   coincidano col GLB.
 - texture come file: `CHROME.png`, `matcap_roughness_3.png`, bump/roughness map.
-- `eyes.mp4` **ritagliato sulla zona degli occhi e ridotto** (larghezza ≤ 512 px, H.264, muto) + `eyes-poster.webp`.
+- `eyes.mp4` **ridotto a 512 px di larghezza** (H.264, muto), **senza ritaglio**: così la matrice UV estratta
+  resta valida così com'è + `eyes-poster.png` (un fotogramma, per il ripiego).
 - `logo-axxell-icon.svg` (copiato nel repo).
 
 ### 5.2 Materiali — `js/robot-spline-materials.js` (sostituisce `robot-materials.js`)
