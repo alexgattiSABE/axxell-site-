@@ -59,7 +59,7 @@
 - Create: `~/Progetti/file-sciolti/robot-spline-tools/confronta.mjs`
 
 **Interfaces:**
-- Produces: `node shot.mjs <ref|site> <out.png> [--w 1440] [--h 900] [--pose rest|hover-head|cursor:X,Y] [--solo] [--wait ms]` → PNG + riga JSON `{errors:[], blocked:[], ...}` su stdout. `--solo` = solo il canvas del robot su sfondo trasparente.
+- Produces: `node shot.mjs <ref|site> <out.png> [--w 1440] [--h 900] [--pose rest|hover-head|cursor:X,Y] [--solo] [--logo-off] [--wait ms]` → PNG + riga JSON `{errors:[], blocked:[], ...}` su stdout. `--solo` = solo il canvas del robot su sfondo trasparente.
 - Produces: `node confronta.mjs <a.png> <b.png> <out.png> [--crop x,y,w,h]` → PNG affiancato (A | B | differenza×4) + JSON `{iou, headTopA, headTopB, meanDiff, pxA, pxB}` su stdout.
 - Produces: `lib.mjs` esporta `REPO`, `TOOLS`, `OUT`, `CROPS`, `serve(root)`, `launch()`.
 
@@ -180,6 +180,7 @@ if (pose === 'hover-head' && what === 'site') {
   await p.waitForTimeout(1500);
 }
 
+if (arg('logo-off', false) && what === 'site') await p.evaluate(() => window.__robot.spline && window.__robot.spline.logo && window.__robot.spline.logo.setOn(false));
 if (solo) {
   if (what === 'site') {
     await p.addStyleTag({ content: `html,body,.wc-robot-card,#cap05{background:transparent!important}
@@ -294,19 +295,19 @@ fs.mkdirSync(path.join(DEST, 'textures'), { recursive: true });
 
 const MAP = {
   Head: { 'base.color': 0, 'base.alpha': 1, 'video.tex': 2, 'video.texSize': 3, 'video.crop': 4, 'video.mat': 5,
-    'video.size': 6, 'video.alpha': 9, 'video.mode': 10, 'light.specular': 11, 'light.shininess': 12,
-    'light.alpha': 14, 'light.mode': 15, 'matcap.tex': 16, 'matcap.alpha': 18, 'matcap.mode': 19, 'matcap.rotation': 20,
+    'video.size': 6, 'video.isMask': 8, 'video.alpha': 9, 'video.mode': 10, 'light.specular': 11, 'light.shininess': 12,
+    'light.alpha': 14, 'light.mode': 15, 'matcap.tex': 16, 'matcap.isMask': 17, 'matcap.alpha': 18, 'matcap.mode': 19, 'matcap.rotation': 20,
     'rainbow.film': 21, 'rainbow.movement': 22, 'rainbow.wavelengths': 23, 'rainbow.noiseStrength': 24,
-    'rainbow.offset': 26, 'rainbow.alpha': 28, 'rainbow.mode': 29 },
+    'rainbow.offset': 26, 'rainbow.isMask': 27, 'rainbow.alpha': 28, 'rainbow.mode': 29 },
   Body: { 'base.color': 0, 'base.alpha': 1, 'tri.tex': 2, 'tri.texSize': 3, 'tri.mat': 5, 'tri.size': 6,
-    'tri.blending': 7, 'tri.alpha': 9, 'tri.mode': 10, 'matcap.tex': 11, 'matcap.alpha': 13, 'matcap.mode': 14,
+    'tri.blending': 7, 'tri.isMask': 8, 'tri.alpha': 9, 'tri.mode': 10, 'matcap.tex': 11, 'matcap.isMask': 12, 'matcap.alpha': 13, 'matcap.mode': 14,
     'matcap.rotation': 15, 'light.specular': 16, 'light.shininess': 17, 'light.alpha': 19, 'light.mode': 20,
     'rainbow.film': 21, 'rainbow.movement': 22, 'rainbow.wavelengths': 23, 'rainbow.noiseStrength': 24,
-    'rainbow.offset': 26, 'rainbow.alpha': 28, 'rainbow.mode': 29, 'bumpScale': 32 },
+    'rainbow.offset': 26, 'rainbow.isMask': 27, 'rainbow.alpha': 28, 'rainbow.mode': 29, 'bumpScale': 32 },
   Parts: { 'base.color': 0, 'base.alpha': 1, 'rainbow.film': 2, 'rainbow.movement': 3, 'rainbow.wavelengths': 4,
-    'rainbow.noiseStrength': 5, 'rainbow.offset': 7, 'rainbow.alpha': 9, 'rainbow.mode': 10, 'matcap.tex': 11,
-    'matcap.alpha': 13, 'matcap.mode': 14, 'matcap.rotation': 15, 'tri.tex': 16, 'tri.texSize': 17, 'tri.mat': 19,
-    'tri.size': 20, 'tri.blending': 21, 'tri.alpha': 23, 'tri.mode': 24, 'light.roughness': 25,
+    'rainbow.noiseStrength': 5, 'rainbow.offset': 7, 'rainbow.isMask': 8, 'rainbow.alpha': 9, 'rainbow.mode': 10, 'matcap.tex': 11,
+    'matcap.isMask': 12, 'matcap.alpha': 13, 'matcap.mode': 14, 'matcap.rotation': 15, 'tri.tex': 16, 'tri.texSize': 17, 'tri.mat': 19,
+    'tri.size': 20, 'tri.blending': 21, 'tri.isMask': 22, 'tri.alpha': 23, 'tri.mode': 24, 'light.roughness': 25,
     'light.metalness': 26, 'light.alpha': 28, 'light.mode': 29, 'light.reflectivity': 31, 'bumpScale': 33 }
 };
 
@@ -356,9 +357,19 @@ const raw = await p.evaluate(() => {
       probe: m.uniforms.lightProbe ? m.uniforms.lightProbe.value.map((v) => v.toArray()) : null };
     (m.layers || []).forEach((L) => { const t = L.data && L.data.texture; if (t && t.video && t.video.data) video = b64(new Uint8Array(t.video.data)); });
   });
+  cam.updateMatrixWorld(true);
+  const wp = cam.position.clone(), wq = cam.quaternion.clone(), ws = cam.scale.clone();
+  cam.matrixWorld.decompose(wp, wq, ws);                       // posa MONDO, non locale
   let light = null;
-  sc.traverse((o) => { if (o.isPointLight) { const v = o.position.clone(); o.getWorldPosition(v); light = { worldPosition: v.toArray(), intensity: o.intensity, color: [o.color.r, o.color.g, o.color.b] }; } });
-  return { camera: { fov: cam.fov, zoom: cam.zoom, near: cam.near, far: cam.far, position: cam.position.toArray(), quaternion: cam.quaternion.toArray() },
+  sc.traverse((o) => { if (o.isPointLight) { const v = o.position.clone(); o.getWorldPosition(v); light = { worldPosition: v.toArray() }; } });
+  if (!light) {                                                 // ripiego: posizione view-space dell'uniform → mondo
+    const anyMat = Object.values(mats)[0]; const m0 = sc.getObjectByProperty('isMesh', true).material;
+    const pl = m0.uniforms.pointLights.value[0]; light = { worldPosition: pl.position.clone().applyMatrix4(cam.matrixWorld).toArray() };
+  }
+  const cv = app.canvas || document.querySelector('spline-viewer').shadowRoot.querySelector('canvas');
+  return { camera: { fov: cam.fov, zoom: cam.zoom, near: cam.near, far: cam.far, position: wp.toArray(), quaternion: wq.toArray(),
+      projectionMatrix: Array.from(cam.projectionMatrix.elements), matrixWorld: Array.from(cam.matrixWorld.elements),
+      aspect: cv.clientWidth / cv.clientHeight },
     light, mats, meshes, texOut, video };
 });
 await b.close(); srv.close();
@@ -445,10 +456,31 @@ arr(D.materials.Head.video.mat, 9, 'Head.video.mat');
 const c = { Head: 0, Body: 0, Parts: 0 }; D.meshes.forEach((m) => c[m.material]++);
 if (D.meshes.length !== 80 || c.Head !== 1 || c.Body !== 10 || c.Parts !== 69) errs.push('mesh/materiali attesi 80 = 1/10/69, trovati ' + JSON.stringify(c));
 ['eyes.mp4', 'eyes-poster.png', 'logo-axxell-icon.svg'].forEach((f) => { if (!fs.existsSync(path.join(dir, f))) errs.push(f + ' mancante'); });
-if (fs.statSync(path.join(dir, 'eyes.mp4')).size > 400000) errs.push('eyes.mp4 troppo grande');
+if (fs.existsSync(path.join(dir, 'eyes.mp4')) && fs.statSync(path.join(dir, 'eyes.mp4')).size > 400000) errs.push('eyes.mp4 troppo grande');
+// isMask: le formule assumono strati che NON fanno da maschera
+for (const [n, m] of Object.entries(D.materials)) for (const [g, o] of Object.entries(m))
+  if (o && typeof o === 'object' && 'isMask' in o && o.isMask !== false) errs.push(`${n}.${g}.isMask non è false`);
+// La camera Spline è una prospettiva three «normale»? PerspectiveCamera(fov, aspect, near, far) con .zoom
+// deve riprodurre la projectionMatrix estratta (x = e[0], y = e[5]).
+{ const C = D.camera, top = C.near * Math.tan(C.fov * Math.PI / 360) / C.zoom, h = 2 * top, w = C.aspect * h;
+  const ex = 2 * C.near / w, ey = 2 * C.near / h, pm = C.projectionMatrix;
+  if (!pm || Math.abs(pm[0] - ex) / ex > 1e-3 || Math.abs(pm[5] - ey) / ey > 1e-3 || Math.abs(pm[8]) > 1e-4 || Math.abs(pm[9]) > 1e-4)
+    errs.push('la projectionMatrix Spline NON è riproducibile con PerspectiveCamera(fov, zoom): ' + JSON.stringify({ pm0: pm && pm[0], ex, pm5: pm && pm[5], ey, pm8: pm && pm[8], pm9: pm && pm[9] })); }
+// Nomi del GLB per indice (stessa normalizzazione di robot-spline-materials.js)
+{ const glb = fs.readFileSync(path.join(REPO, 'website-creation/assets/robot.glb'));
+  const js = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString());
+  const base = (n) => String(n || '').replace(/[\s.\[\]:\/]/g, '_').replace(/(_\d+)+$/, '').toLowerCase();
+  if (js.nodes.length !== D.meshes.length) errs.push('GLB con ' + js.nodes.length + ' nodi, Spline ' + D.meshes.length + ' mesh');
+  D.meshes.forEach((m, i) => { if (m.name && js.nodes[i] && base(m.name) !== base(js.nodes[i].name)) errs.push(`indice ${i}: GLB "${js.nodes[i].name}" ≠ Spline "${m.name}"`); }); }
 console.log(errs.length ? 'FALLITO\n' + errs.join('\n') : 'ok: dati completi');
 process.exit(errs.length ? 1 : 0);
 ```
+
+- [ ] **Step 3b: Riferimento GLSL Spline fuori dal repo**
+
+Il GLSL compilato e il dump letti il 2026-09-19 sono già copiati in `~/Progetti/file-sciolti/robot-spline-tools/spline-ref/`
+(`Head|Body|Parts.frag/.vert`, `scene.json`, `eyes-src-originale.mp4`). Verifica: `ls ~/Progetti/file-sciolti/robot-spline-tools/spline-ref` → 8 file.
+Serve solo a controllare le formule. **Non** entra nel repo.
 
 - [ ] **Step 4: Esegui la verifica PRIMA dell'estrazione (deve fallire)**
 
@@ -458,7 +490,7 @@ Expected: errore `ENOENT … robot-spline-data.js`.
 - [ ] **Step 5: Esegui l'estrazione e poi la verifica**
 
 Run: `node estrai.mjs && node verifica-dati.mjs`
-Expected: `ok 6 texture, 80 mesh` (il numero di texture può variare: devono esserci almeno le matcap di Head/Body/Parts e le tri di Body/Parts) e poi `ok: dati completi`.
+Expected: `ok N texture, 80 mesh` con N ≥ 4 (il video non conta: servono almeno la matcap di Head, quella condivisa Body/Parts e le tri di Body e Parts) e poi `ok: dati completi`. Se fallisce il controllo sulla `projectionMatrix`: **fermarsi e riportare BLOCKED** (la camera Spline non è una prospettiva semplice e l'inquadratura va ripensata).
 Se `verifica-dati` segnala un segnaposto o un indice sbagliato: aprire `out/raw.json`, trovare il valore giusto (tipo atteso: `mat` = 9 numeri, `tex` = texture, `mode` = intero 0–3), correggere `MAP` e rilanciare. **Non** correggere il file generato a mano.
 
 - [ ] **Step 6: Commit (solo l'output)**
@@ -538,6 +570,16 @@ const checks = {
     const v = await p.evaluate(() => window.__robot.brain.points.visible);
     return v === false || 'cervello disegnato a riposo';
   },
+  async 'fibre-al-passaggio'() {
+    const pt = await p.evaluate(() => { const r = window.__robot, v = new THREE.Vector3();
+      new THREE.Box3().setFromObject(r.parts.armL[Math.floor(r.parts.armL.length / 2)]).getCenter(v); v.project(r.camera);
+      const rc = r.renderer.domElement.getBoundingClientRect(); return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height }; });
+    await p.mouse.move(pt.x, pt.y, { steps: 8 }); await p.waitForTimeout(1500);
+    const s = await p.evaluate(() => { const f = window.__robot.fibers, v = []; f.object.traverse((o) => { if (o.material && o.material.uniforms && o.material.uniforms.uSurge) v.push(+o.material.uniforms.uSurge.value.toFixed(2)); });
+      return { visible: f.object.visible, surges: [...new Set(v)] }; });
+    await p.mouse.move(W - 2, 2); await p.waitForTimeout(2500);
+    return (s.visible && Math.max(...s.surges) > 0.5 && Math.min(...s.surges) < 0.1) || JSON.stringify(s);
+  },
   async 'rete-e-console'() {
     return (!errors.length && !blocked.length) || JSON.stringify({ errors, blocked });
   }
@@ -556,7 +598,7 @@ process.exit(fail ? 1 : 0);
 - [ ] **Step 2: Esegui i controlli sul codice attuale (devono fallire)**
 
 Run: `cd ~/Progetti/file-sciolti/robot-spline-tools && node prova.mjs`
-Expected: FAIL su `niente-movimento` (levitazione), `niente-drag`, `fibre-a-riposo`, `cervello-a-riposo`.
+Expected: FAIL su `niente-movimento` (levitazione), `niente-drag`, `fibre-a-riposo`, `cervello-a-riposo`; `fibre-al-passaggio` può già passare.
 
 - [ ] **Step 3: HTML — via titolo e copy, script dati**
 
@@ -583,7 +625,7 @@ In `website-creation/css/sections.css` sostituisci la regola `.wc-robot-stage` (
 ```css
 .wc-robot-stage{position:absolute;inset:0;z-index:1;}
 ```
-Elimina la regola `.wc-robot-card::after{…}` (righe 542–544) e i commenti del velo sopra (537–541); elimina le regole `.wc-robot-copy…`, `.wc-robot-title`, `.wc-robot-title-accent`, `.wc-robot-note` (rimaste senza elementi). Aggiorna il commento sopra `.wc-robot-stage` in una riga: `/* Canvas trasparente: il circuito (z 0) si vede attorno al robot per trasparenza reale, niente blend né filtri — il robot deve essere identico allo Spline. */`
+**Non** toccare la maschera ellittica `.wc-robot-card > .wc-fx` (righe ~490–500, il «buco» del circuito attorno al robot): lo spec lascia il circuito com'è (§3); a riposo attorno al robot resta scuro come nello Spline. Elimina la regola `.wc-robot-card::after{…}` (righe 542–544) e i commenti del velo sopra (537–541); elimina le regole `.wc-robot-copy…`, `.wc-robot-title`, `.wc-robot-title-accent`, `.wc-robot-note` (rimaste senza elementi). Aggiorna il commento sopra `.wc-robot-stage` in una riga: `/* Canvas trasparente: il circuito (z 0) si vede attorno al robot per trasparenza reale, niente blend né filtri — il robot deve essere identico allo Spline. */`
 
 - [ ] **Step 5: `robot-parts.js` — soglia braccia relativa al centro X**
 
@@ -686,7 +728,11 @@ In `update` (righe 535–541) dopo aver scritto `uSurge` di `matL`/`matR` aggiun
           fit();
 ```
    e subito dopo il blocco `if (parts.head.length) {…}` aggiungi `fit();` (per il caso senza testa).
-8. Punti del cervello: sostituisci `var brainUSize = 4 * camDist / 200;` con `var brainUSize = 4 * camDist / 200 * cam.zoom;` (con `zoom 2` la geometria raddoppia a schermo, `gl_PointSize` no).
+8. Punti del cervello: `gl_PointSize` non segue lo zoom né il fov, la geometria sì. Prima: fov 32°. Ora fov 45° con zoom 2 (fov effettivo ≈ 23,4°). Per tenere lo stesso rapporto punti/cervello di prima sostituisci `var brainUSize = 4 * camDist / 200;` con:
+```js
+            var fovScale = Math.tan(THREE.MathUtils.degToRad(16)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
+            var brainUSize = 4 * camDist / 200 * fovScale;
+```
 9. Nel `tick()` sostituisci il calcolo di `targetYaw`/`targetPitch` con:
 ```js
             targetYaw = Math.max(-CONFIG.yawMax, Math.min(CONFIG.yawMax, pointer.x * CONFIG.yawGain));
@@ -699,12 +745,12 @@ In `update` (righe 535–541) dopo aver scritto `uSurge` di `matL`/`matR` aggiun
           robot.brain.points.visible = hoverHead > 0.01;
 ```
 11. Elimina dal `tick()` l'intero blocco «Task 7: levitazione + drag-to-rotate…» (righe 507–529) e la variabile `bobAmount`.
-12. Nel teardown `disposeObject3D(robot.model)` resta; nessun riferimento a `wrap` deve rimanere: `grep -n "wrap\|drag\|bob" website-creation/js/robot.js` → nessun risultato.
+12. Nel teardown `disposeObject3D(robot.model)` resta; nessun riferimento a `wrap`/drag/levitazione nel codice: `grep -nE "wrap\.|dragVel|onDrag|bobAmount" website-creation/js/robot.js` → nessun risultato. Aggiorna anche il commento di robot.js che cita «rotazione futura di `wrap` (drag, Task 7)»: diventa «resta incollato alle braccia».
 
 - [ ] **Step 8: Esegui i controlli**
 
 Run: `cd ~/Progetti/file-sciolti/robot-spline-tools && node prova.mjs`
-Expected: `PASS` su tutti e 6 i controlli.
+Expected: `PASS` su tutti e 7 i controlli.
 
 - [ ] **Step 9: Verifica l'inquadratura contro Spline**
 
@@ -715,7 +761,7 @@ node confronta.mjs out/ref-solo.png out/t3-solo.png ~/Progetti/file-sciolti/robo
 Expected: `iou` ≥ 0.97 e `|headTopA − headTopB|` ≤ 4. (L'aspetto è ancora quello vecchio: qui conta solo la silhouette.) Se `iou` < 0.97: confrontare `D.meshes[i].bboxMin/Max` con `mesh.geometry.boundingBox` in pagina e le posizioni mondo; il GLB deve essere nelle coordinate Spline (review: verificato, 68 nomi per indice).
 
 ```bash
-node shot.mjs site out/t3-1280.png --w 1280 --h 720 && node prova.mjs --w 1280 --h 720 --check conteggi-parti,rete-e-console
+node shot.mjs site out/t3-1280.png --w 1280 --h 720; node prova.mjs --w 1280 --h 720 --check conteggi-parti,rete-e-console
 ```
 Expected: exit 0; nello screenshot la testa è intera sotto la barra di navigazione.
 
@@ -752,12 +798,13 @@ Dentro `checks` aggiungi:
 ```js
   async 'materiali'() {
     const r = await p.evaluate(() => { const c = { Head: 0, Body: 0, Parts: 0, altro: 0 };
-      window.__robot.model.traverse((o) => { if (o.isMesh) c[o.userData.splineMaterial || 'altro']++; }); return c; });
+      const skip = new Set(); if (window.__robot.fibers) window.__robot.fibers.object.traverse((x) => skip.add(x));
+      window.__robot.model.traverse((o) => { if (o.isMesh && !skip.has(o)) c[o.userData.splineMaterial || 'altro']++; }); return c; });
     const got = [r.Head, r.Body, r.Parts].join('/');
     return (got === '1/10/69' || got === '0/10/69') && (r.altro === 0 || (got === '0/10/69' && r.altro === 1)) || 'materiali ' + JSON.stringify(r);
   },
 ```
-Run: `node prova.mjs --check materiali` → Expected: `FAIL materiali — {"Head":0,"Body":0,"Parts":0,"altro":80}`.
+Run: `node prova.mjs --check materiali` → Expected: `FAIL materiali — {"Head":0,"Body":0,"Parts":0,"altro":80}` (le 4 mesh delle fibre sono escluse).
 
 - [ ] **Step 2: `robot-spline-glsl.js`**
 
@@ -836,6 +883,7 @@ WC.robotSplineGLSL = {
     'uniform float uRoughness;',
     'uniform float uMetalness;',
     'uniform float uReflectivity;',
+    'uniform float uF90;',            // Spline non assegna specularF90 per Parts: ANGLE lo azzera → 0.0
     '#endif',
     '#ifdef MAT_HEAD',
     'uniform sampler2D uVideo;',
@@ -911,7 +959,7 @@ WC.robotSplineGLSL = {
     '  float vis = 0.5 / max(gv + gl, SP_EPS);',
     '  float den = nh * nh * (a2 - 1.0) + 1.0;',
     '  float D = SP_RPI * a2 / (den * den);',
-    '  return irr * sp_F(f0, 1.0, vh) * (vis * D) + irr * SP_RPI * dcol + sp_indirect(n) * SP_RPI * dcol;',
+    '  return irr * sp_F(f0, uF90, vh) * (vis * D) + irr * SP_RPI * dcol + sp_indirect(n) * SP_RPI * dcol;',
     '}',
     '#endif',
     '#if defined(MAT_BODY) || defined(MAT_PARTS)',
@@ -1039,6 +1087,7 @@ WC.robotSplineMaterials = (function () {
     pu.uRoughness = { value: P.light.roughness };
     pu.uMetalness = { value: P.light.metalness };
     pu.uReflectivity = { value: P.light.reflectivity };
+    pu.uF90 = { value: 0.0 };   // A/B sulle coppie: 0.0 (come Spline compilato su ANGLE) vs 1.0
     var bu = common(D, B, list); tri(B, bu, list);
     bu.uSpecular = { value: v3(B.light.specular) };
     bu.uShininess = { value: B.light.shininess };
@@ -1097,6 +1146,7 @@ Dopo `robot-fibers.js` e prima di `robot.js`:
 
 - [ ] **Step 5: `robot.js` — applica i materiali Spline (visore escluso fino al Task 5)**
 
+`assign()` va chiamato **prima** che fibre (`model.add(fibers.object)`) e `headGroup` entrino nel modello: la posizione indicata qui sotto (subito dopo i materiali, prima delle fibre) lo garantisce; `assign` lancia un errore se trova più di 80 mesh.
 Subito dopo il blocco `if (WC.robotMaterials) { … }` (i vecchi materiali restano applicati al solo visore) aggiungi:
 ```js
         if (WC.robotSplineMaterials) {
@@ -1163,7 +1213,8 @@ Sostituisci il controllo `materiali` (ora il visore è Spline):
 ```js
   async 'materiali'() {
     const r = await p.evaluate(() => { const c = { Head: 0, Body: 0, Parts: 0, altro: 0 };
-      window.__robot.model.traverse((o) => { if (o.isMesh) c[o.userData.splineMaterial || 'altro']++; }); return c; });
+      const skip = new Set(); if (window.__robot.fibers) window.__robot.fibers.object.traverse((x) => skip.add(x));
+      window.__robot.model.traverse((o) => { if (o.isMesh && !skip.has(o)) c[o.userData.splineMaterial || 'altro']++; }); return c; });
     return ([r.Head, r.Body, r.Parts].join('/') === '1/10/69' && r.altro === 0) || 'materiali ' + JSON.stringify(r);
   },
 ```
@@ -1179,7 +1230,8 @@ In `create(D)`, prima di `var byName = …`:
     video.playsInline = true; video.setAttribute('playsinline', ''); video.preload = 'auto'; video.crossOrigin = 'anonymous';
     var vtex = new THREE.VideoTexture(video);
     vtex.encoding = THREE.LinearEncoding; vtex.flipY = Hd.video.flipY !== false;
-    vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
+    // Mipmap come Spline (minFilter 1008): senza, i puntini dei LED sfarfallano rimpiccioliti.
+    vtex.generateMipmaps = true; vtex.minFilter = THREE.LinearMipmapLinearFilter; vtex.magFilter = THREE.LinearFilter;
     var poster = tex(Hd.video.poster, { flipY: Hd.video.flipY }, list);
     list.push(vtex);
     var hu = common(D, Hd, list);
@@ -1303,17 +1355,18 @@ Run: `node prova.mjs --check reveal` → Expected: FAIL (`inside` indefinito).
 
 - [ ] **Step 2: `robot-spline-materials.js` — reveal completo e interni**
 
-In `create(D)`:
+In `create(D)`, **subito dopo** `var head = shader('MAT_HEAD', hu);`:
 ```js
     var inside = [];
     var REVEAL_MIN_ALPHA = 0.045;   // stesso valore del vetro di agosto (uMinAlpha)
-    head.transparent = true; head.depthWrite = false;
+    head.transparent = true;        // in coda trasparenti (ordine col cervello); a riposo scrive depth come un opaco
 ```
 Sostituisci `setReveal` con:
 ```js
       setReveal: function (r) {
         hu.uEyes.value = 1 - r;
         hu.uOpacity.value = 1 + (REVEAL_MIN_ALPHA - 1) * r;
+        head.depthWrite = r < 0.01;
         inside.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = r < 0.01; });
       },
       makeInside: function (meshes) {
@@ -1382,7 +1435,7 @@ Claude-Session: https://claude.ai/code/session_01Uq4gj26CZnLLaGs9oHjgm8"
 
 **Interfaces:**
 - Consumes: `asg.chest`, `spline.byName.Body`, `pointer` (NDC sulla sezione, `active`).
-- Produces: `spline.makeChest(mesh)` (istanza `Body` + define `LOGO`, solo sul petto); `spline.setLogoLight(viewPos: THREE.Vector3)`; `spline.logo = { material, debug(on) }`. `LOGO_CONFIG` in cima a `robot-spline-materials.js`: `{ u: 0.5, v: 0.70, width: 0.36, base: 0.82, spec: 1.2, shininess: 60 }` (frazioni del bbox del petto; si tarano con Nike).
+- Produces: `spline.makeChest(mesh)` (istanza `Body` + define `LOGO`, solo sul petto); `spline.setLogoLight(viewPos: THREE.Vector3)`; `spline.logo = { material, worldWidth, setOn(bool) }`. `LOGO_CONFIG` in cima a `robot-spline-materials.js`: `{ u: 0.5, v: 0.70, width: 0.36, base: 0.82, spec: 1.2, shininess: 60 }` (frazioni del bbox del petto; si tarano con Nike).
 
 - [ ] **Step 1: Controllo `logo` in `prova.mjs` (deve fallire)**
 
@@ -1390,20 +1443,24 @@ Claude-Session: https://claude.ai/code/session_01Uq4gj26CZnLLaGs9oHjgm8"
   async 'logo'() {
     const shot = async (x, y) => { await p.mouse.move(x, y, { steps: 6 }); await p.waitForTimeout(1200);
       return p.evaluate(() => { const r = window.__robot, g = r.renderer.getContext();
-        r.renderer.render(r.scene, r.camera);
+        const grab = (on) => { r.spline.logo.setOn(on); r.renderer.render(r.scene, r.camera);
         const v = new THREE.Box3().setFromObject(r.parts.chest); const a = v.min.clone().project(r.camera), b = v.max.clone().project(r.camera);
         const W = g.drawingBufferWidth, H = g.drawingBufferHeight;
         const x0 = Math.floor((Math.min(a.x, b.x) + 1) / 2 * W), x1 = Math.ceil((Math.max(a.x, b.x) + 1) / 2 * W);
         const y0 = Math.floor((Math.min(a.y, b.y) + 1) / 2 * H), y1 = Math.ceil((Math.max(a.y, b.y) + 1) / 2 * H);
-        const px = new Uint8Array((x1 - x0) * (y1 - y0) * 4); g.readPixels(x0, y0, x1 - x0, y1 - y0, g.RGBA, g.UNSIGNED_BYTE, px);
-        let best = -1, bx = 0, white = 0;
-        for (let i = 0; i < px.length; i += 4) { const l = px[i] + px[i + 1] + px[i + 2]; if (l > 600) white++; if (l > best) { best = l; bx = (i / 4) % (x1 - x0); } }
-        return { white, bx }; }); };
+        const px = new Uint8Array((x1 - x0) * (y1 - y0) * 4); g.readPixels(x0, y0, x1 - x0, y1 - y0, g.RGBA, g.UNSIGNED_BYTE, px); return px; };
+        const off = grab(false), on = grab(true);
+        // maschera del logo = pixel che cambiano accendendolo; il punto più chiaro deve stare DENTRO
+        let best = -1, bx = 0, inMask = false, white = 0;
+        for (let i = 0; i < on.length; i += 4) { const changed = Math.abs(on[i] - off[i]) + Math.abs(on[i + 1] - off[i + 1]) + Math.abs(on[i + 2] - off[i + 2]) > 30;
+          const l = on[i] + on[i + 1] + on[i + 2]; if (changed && l > 600) white++;
+          if (l > best) { best = l; bx = (i / 4) % (x1 - x0); inMask = changed; } }
+        return { white, bx, inMask, best }; }); };
     const has = await p.evaluate(() => !!(window.__robot.spline && window.__robot.spline.logo));
     if (!has) return 'nessun logo';
     const L = await shot(300, 400), R = await shot(1140, 400);
     const stamped = await p.evaluate(() => { let n = 0; window.__robot.model.traverse((o) => { if (o.isMesh && o.material.defines && 'LOGO' in o.material.defines) n++; }); return n; });
-    return (L.white > 200 && R.white > 200 && R.bx - L.bx > 5 && stamped === 1) || JSON.stringify({ L, R, stamped });
+    return (L.white > 200 && R.white > 200 && L.inMask && R.inMask && L.best > 690 && R.bx - L.bx > 5 && stamped === 1) || JSON.stringify({ L, R, stamped });
   },
 ```
 Nota: `readPixels` dopo un `render()` esplicito nello stesso task legge il buffer appena disegnato (niente `preserveDrawingBuffer`).
@@ -1421,6 +1478,7 @@ Tra le dichiarazioni uniform aggiungi:
     'uniform float uLogoBase;',
     'uniform float uLogoSpec;',
     'uniform float uLogoShin;',
+    'uniform float uLogoOn;',         // 0 = petto senza logo (confronto con Spline)
     '#endif',
 ```
 Nel `main()`, dentro `#ifdef MAT_BODY` **dopo** `c = sp_applyRainbow(c);` (ultimo strato: il bianco non viene tinto):
@@ -1428,7 +1486,7 @@ Nel `main()`, dentro `#ifdef MAT_BODY` **dopo** `c = sp_applyRainbow(c);` (ultim
     '#ifdef LOGO',
     '  vec2 luv = (vPosition.xy - uLogoCenter) / uLogoWidth + 0.5;',
     '  float inside = step(0.0, luv.x) * step(luv.x, 1.0) * step(0.0, luv.y) * step(luv.y, 1.0) * step(0.0, vObjectNormal.z);',
-    '  float lm = texture2D(uLogo, luv).a * inside;',
+    '  float lm = texture2D(uLogo, luv).a * inside * uLogoOn;',
     '  vec3 LV = normalize(uLogoLight + vViewPosition);',
     '  vec3 HV = normalize(LV + normalize(vViewPosition));',
     '  float lsp = pow(clamp(dot(n, HV), 0.0, 1.0), uLogoShin);',
@@ -1466,9 +1524,12 @@ In `create(D)` aggiungi al return:
         m.uniforms.uLogoBase = { value: LOGO_CONFIG.base };
         m.uniforms.uLogoSpec = { value: LOGO_CONFIG.spec };
         m.uniforms.uLogoShin = { value: LOGO_CONFIG.shininess };
+        m.uniforms.uLogoOn = { value: 1 };
         m.needsUpdate = true;
         mesh.material = m; all.push(m);
-        this.logo = { material: m };
+        var ws = mesh.getWorldScale(new THREE.Vector3());
+        this.logo = { material: m, worldWidth: sz.x * LOGO_CONFIG.width * Math.abs(ws.x),
+          setOn: function (on) { m.uniforms.uLogoOn.value = on ? 1 : 0; } };
         return m;
       },
       setLogoLight: function (v) { if (this.logo) this.logo.material.uniforms.uLogoLight.value.copy(v); },
@@ -1491,7 +1552,9 @@ Nel `tick()` prima di `renderer.render(scene, cam);`:
         if (robot && robot.spline && robot.spline.logo) {
           if (pointer.active) logoTarget.set(pointer.x, pointer.y); else logoTarget.set(-0.35, -0.35);
           logoNow.lerp(logoTarget, 0.12);
-          logoLight.set(chestView.x + logoNow.x * 420, chestView.y - logoNow.y * 420, chestView.z + 320);
+          // Offset proporzionale alla «A» (~41 unità): il riflesso resta DENTRO il logo.
+          var LW = robot.spline.logo.worldWidth;
+          logoLight.set(chestView.x + logoNow.x * LW * 0.6, chestView.y - logoNow.y * LW * 0.6, chestView.z + LW * 1.5);
           robot.spline.setLogoLight(logoLight);
         }
 ```
@@ -1569,13 +1632,15 @@ node prova.mjs
 node prova.mjs --w 1280 --h 720 --check conteggi-parti,materiali,rete-e-console
 node shot.mjs site out/f-solo.png --solo
 node confronta.mjs out/ref-solo.png out/f-solo.png ~/Progetti/file-sciolti/robot-confronto/08-intero.png
+node shot.mjs site out/f-solo-nologo.png --solo --logo-off
+node confronta.mjs out/ref-solo.png out/f-solo-nologo.png ~/Progetti/file-sciolti/robot-confronto/08-petto-senza-logo.png --crop 580,315,280,330
 for k in testa petto braccio gambe; do node confronta.mjs out/ref-solo.png out/f-solo.png ~/Progetti/file-sciolti/robot-confronto/08-$k.png --crop $(node -e "import('./lib.mjs').then(m=>console.log(m.CROPS['$k'].join(',')))"); done
 node shot.mjs ref ~/Progetti/file-sciolti/robot-confronto/08-spline-pagina.png
 node shot.mjs site ~/Progetti/file-sciolti/robot-confronto/08-sito-pagina.png
 node shot.mjs site ~/Progetti/file-sciolti/robot-confronto/08-sito-1280.png --w 1280 --h 720
 node shot.mjs site ~/Progetti/file-sciolti/robot-confronto/08-reveal.png --pose hover-head
 ```
-Expected: tutti i controlli `PASS`; `iou` ≥ 0.97; numeri `meanDiff` per zona nel report. Nota: il petto differisce per il logo (voluto).
+Expected: tutti i controlli `PASS`; `iou` ≥ 0.97; numeri `meanDiff` per zona nel report; il petto si giudica su `08-petto-senza-logo.png` (con logo differisce per scelta).
 
 - [ ] **Step 5: Commit**
 
