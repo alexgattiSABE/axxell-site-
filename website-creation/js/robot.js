@@ -8,13 +8,21 @@
  *
  * Il mount resta lazy — sotto la piega la pagina non paga un byte — e la
  * scena si ferma quando la sezione esce dal DOM o quando il browser chiede
- * meno animazioni. Questo file è la fondazione: monta il GLB grezzo,
- * centrato e inquadrato. Materiali (vetro sulla testa, metallo sul corpo),
- * il point-brain e le fibre delle braccia arrivano nei task successivi —
- * `mount()` resta perciò minimale e ritorna gli handle (`window.__robot`)
- * che quei task aggancieranno.
+ * meno animazioni. Questo file è la fondazione: monta il GLB grezzo e lo
+ * inquadra con la camera/luce della scena Spline (`WC.robotSplineData`,
+ * Task 2) — niente ricentratura, il modello resta nelle coordinate Spline.
+ * Materiali (vetro sulla testa, metallo sul corpo), il point-brain e le
+ * fibre delle braccia arrivano nei task successivi — `mount()` resta
+ * perciò minimale e ritorna gli handle (`window.__robot`) che quei task
+ * aggancieranno.
  */
 WC.register('robot', function(ctx){
+  // Tarature del comportamento (non dell'aspetto: quello arriva da Spline).
+  // yawGain: prima il puntatore si misurava su uno stage largo 2,2× la
+  // sezione, quindi lo stesso gesto girava la testa di 0.5/2.2 per unità:
+  // stesso gesto, stessa rotazione di prima.
+  var CONFIG = { yawGain: 0.2273, pitchGain: 0.35, yawMax: 0.5, pitchMax: 0.3, minHeadTopPx: 80 };
+  var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
   var card    = document.getElementById('wcRobotCard');
   var stage   = document.getElementById('wcRobotStage');
@@ -66,7 +74,7 @@ WC.register('robot', function(ctx){
     // Reduced-motion: una scena 3D che gira di continuo è esattamente ciò che
     // l'impostazione chiede di non avere. Resta la card, senza il modello.
     // Stesso esito se three.js (o i loader vendorizzati) non sono disponibili.
-    if (!ctx.motionOk || typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+    if (!ctx.motionOk || typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined' || !D) {
       fail('Modello 3D disattivato');
       return;
     }
@@ -92,46 +100,6 @@ WC.register('robot', function(ctx){
       stage.removeEventListener('mouseleave', onPointerLeave);
     });
 
-    // Task 7: drag-to-rotate dell'intero robot. pointerdown parte sullo
-    // stage (altrimenti un drag iniziato sulla card di testo farebbe
-    // scorrere la pagina invece di girare il modello); pointermove/up
-    // restano su `window`, non su `stage` — durante un trascinamento il
-    // cursore esce spesso dai bordi dello stage e il drag non deve
-    // interrompersi lì. La rotazione va DIRETTAMENTE su wrap.rotation.y,
-    // letta via window.__robot per closure (wrap non esiste finché il GLB
-    // non è caricato — stesso motivo per cui tick() sotto legge sempre
-    // window.__robot invece di chiudere sulla variabile locale). Additiva
-    // rispetto a headGroup.rotation (Task 4): quella ruota la sola testa
-    // DENTRO al gruppo che gira con `wrap`, le due rotazioni si sommano
-    // senza conflitti. `dragVel` resta il delta dell'ultimo movimento; dopo
-    // il rilascio tick() lo fa decadere (inerzia) mentre un ritorno morbido
-    // verso 0 riporta il robot a fronte — vedi tick() più sotto.
-    var drag = { active: false, lastX: 0 };
-    var dragVel = 0;
-    function onDragStart(e) {
-      drag.active = true;
-      drag.lastX = e.clientX;
-      dragVel = 0;
-    }
-    function onDragMove(e) {
-      if (!drag.active) return;
-      var dx = e.clientX - drag.lastX;
-      drag.lastX = e.clientX;
-      var delta = dx * 0.005;
-      dragVel = delta;
-      var robot = window.__robot;
-      if (robot && robot.wrap) robot.wrap.rotation.y += delta;
-    }
-    function onDragEnd() { drag.active = false; }
-    stage.addEventListener('pointerdown', onDragStart);
-    window.addEventListener('pointermove', onDragMove);
-    window.addEventListener('pointerup', onDragEnd);
-    cleanups.push(function () {
-      stage.removeEventListener('pointerdown', onDragStart);
-      window.removeEventListener('pointermove', onDragMove);
-      window.removeEventListener('pointerup', onDragEnd);
-    });
-
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     // r128 lascia l'output in LinearEncoding di default: senza correzione
@@ -140,11 +108,12 @@ WC.register('robot', function(ctx){
     // standard three.js, non un tocco di stile riservato al task materiali.
     renderer.outputEncoding = THREE.sRGBEncoding;
     var scene = new THREE.Scene();
-    var cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-    scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x0a0410, 0.9));
-    var key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(2, 4, 3);
-    scene.add(key);
+    // Camera della scena Spline: stessi fov/zoom/posizione/orientamento.
+    var cam = new THREE.PerspectiveCamera(D.camera.fov, 1, D.camera.near, D.camera.far);
+    cam.zoom = D.camera.zoom;
+    cam.position.fromArray(D.camera.position);
+    cam.quaternion.fromArray(D.camera.quaternion);
+    var headTopWorld = null;
 
     var draco = new THREE.DRACOLoader();
     draco.setDecoderPath('vendor/draco/');
@@ -156,42 +125,34 @@ WC.register('robot', function(ctx){
       if (!w || !h) return;
       renderer.setSize(w, h, false);
       cam.aspect = w / Math.max(1, h);
+      cam.clearViewOffset();
       cam.updateProjectionMatrix();
+      // FOV verticale fisso: il robot occupa sempre la stessa frazione di
+      // altezza, la testa resta intera. Se su schermi bassi la cima della
+      // testa finisse sotto la nav, si abbassa l'immagine del minimo.
+      if (headTopWorld) {
+        var pt = headTopWorld.clone().project(cam);
+        var y = (1 - pt.y) / 2 * h;
+        var need = CONFIG.minHeadTopPx - y;
+        if (need > 0) { cam.setViewOffset(w, h, 0, -need, w, h); cam.updateProjectionMatrix(); }
+      }
     }
     stage.appendChild(renderer.domElement);
 
     gltf.load('assets/robot.glb', function(g){
       if (torn) return;
       var model = g.scene;
-      // centra e scala il modello nell'inquadratura
+      // Il GLB è nelle coordinate della scena Spline: niente ricentratura,
+      // la camera Spline lo inquadra così com'è.
+      scene.add(model);
+      model.updateMatrixWorld(true);
       var box = new THREE.Box3().setFromObject(model);
-      var c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
-      model.position.sub(c);
-      var wrap = new THREE.Group();
-      wrap.add(model);
-      scene.add(wrap);
-      var maxDim = Math.max(s.x, s.y, s.z);
-      // Task 7: ampiezza della levitazione, proporzionale alla scala reale
-      // del GLB (che non è in unità "piccole", vedi cam.near/far sotto) —
-      // un valore fisso sarebbe invisibile o esagerato a seconda del modello.
-      var bobAmount = maxDim * 0.02;
-      cam.position.set(0, 0, maxDim * 1.6);
-      cam.lookAt(0, 0, 0);
-      // Il GLB estratto non è in unità "piccole": la camera va piazzata a
-      // maxDim*1.6 di distanza, che per questo modello supera abbondantemente
-      // il far:100 di partenza. Senza adattare il piano lontano alla scala
-      // reale del modello la camera lo vede sempre oltre il farplane — scena
-      // vuota, canvas trasparente. Il piano vicino segue lo stesso ragionamento.
-      cam.near = Math.max(0.01, maxDim / 1000);
-      cam.far = maxDim * 20;
-      cam.updateProjectionMatrix();
-      fit();
       if (hint) hint.remove();
 
       // Handle esposti per i task successivi (materiali/testa di vetro/
       // point-brain/fibre) e per la verifica headless: window.__robot
       // segnala che il modello è a schermo.
-      window.__robot = { model: model, wrap: wrap, scene: scene, camera: cam, renderer: renderer, box: box, state: { faceAmount: 0 } };
+      window.__robot = { model: model, scene: scene, camera: cam, renderer: renderer, box: box, state: { faceAmount: 0 }, pointer: pointer };
 
       // Split in sotto-parti (testa/corpo/braccia) per i task successivi
       // (materiali per parte, testa che segue il cursore, fibre delle
@@ -222,9 +183,8 @@ WC.register('robot', function(ctx){
         // (vedi robot-fibers.js per il perché: i giunti da soli danno una
         // linea verticale dritta, non la vera piega del braccio). Nessuna
         // dipendenza da headGroup/materiali.
-        // Figlie DIRETTE di `model` (aggiunto sotto), che resta incollato
-        // alle braccia sotto qualunque rotazione futura di `wrap` (drag,
-        // Task 7) — gerarchia FLAT confermata (`mesh.parent === model`).
+        // Figlie DIRETTE di `model` (aggiunto sotto): resta incollato alle
+        // braccia — gerarchia FLAT confermata (`mesh.parent === model`).
         // `model` va passato qui perché `parts.joints` (costruiti in
         // robot-parts.js via `Box3.setFromObject`, quindi in coordinate
         // MONDO, non model-locali — nonostante il commento precedente in
@@ -247,15 +207,13 @@ WC.register('robot', function(ctx){
         // collo invece che attorno al centro dell'intero robot. Task 5
         // parenta il point-brain allo STESSO headGroup.
         //
-        // Le matrixWorld cache sono STALE a questo punto: la prima
-        // Box3().setFromObject(model) (sopra) è girata PRIMA di
-        // model.position.sub(c), quindi mesh.matrixWorld rappresenta ancora
-        // le posizioni pre-centratura finché non arriva il primo
-        // renderer.render() (che chiama scene.updateMatrixWorld()). Un
-        // updateMatrixWorld(true) esplicito qui forza le matrici correnti
-        // (centrate) PRIMA di leggere/scrivere posizioni mondo — altrimenti
-        // il pivot e il re-parenting "preserva mondo" userebbero coordinate
-        // sbagliate e la testa salterebbe visibilmente al primo frame.
+        // updateMatrixWorld(true) di sicurezza prima di leggere/scrivere
+        // posizioni mondo per il pivot della testa: già chiamato una volta
+        // subito dopo scene.add(model) (sopra) e non più invalidato nel
+        // frattempo — il modello non viene più ricentrato e split() non
+        // sposta nulla. Resta qui perché costa nulla e protegge il pivot e
+        // il re-parenting "preserva mondo" (sotto) se in futuro qualcosa a
+        // monte tornasse a muovere il modello prima di questo punto.
         if (parts.head.length) {
           scene.updateMatrixWorld(true);
           var headParent = parts.head[0].parent; // `model`: gerarchia piatta (vedi robot-parts.js)
@@ -284,6 +242,10 @@ WC.register('robot', function(ctx){
           });
 
           window.__robot.headGroup = headGroup;
+
+          var hb = new THREE.Box3(); parts.head.forEach(function (m) { hb.union(new THREE.Box3().setFromObject(m)); });
+          headTopWorld = new THREE.Vector3((hb.min.x + hb.max.x) / 2, hb.max.y, (hb.min.z + hb.max.z) / 2);
+          fit();
 
           // Task 5: il point-brain DENTRO la testa. Stesso helper del cervello
           // di Vesper (WC.pointBrain, js/pointbrain.js). Parentato a headGroup,
@@ -323,14 +285,18 @@ WC.register('robot', function(ctx){
             var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * 0.22, 0));
             // Taratura della dimensione dei punti. Nello shader del brain
             // gl_PointSize ≈ uSize * 200 / (-mv.z), con -mv.z ≈ distanza
-            // camera→testa in unità MONDO. Il modello non è in unità "piccole"
-            // (la camera sta a maxDim*1.6, vedi sopra), quindi la uSize di
-            // Vesper (0.067: camera vicina, raggio ~1) renderebbe punti
-            // invisibili. La lego alla distanza reale così legge a qualunque
-            // scala del GLB — è l'UNICO aggiustamento rispetto a Vesper.
+            // camera→testa in unità MONDO. Il modello non è in unità
+            // "piccole" (la camera Spline sta a ~1000 unità, vedi D.camera
+            // sopra), quindi la uSize di Vesper (0.067: camera vicina,
+            // raggio ~1) renderebbe punti invisibili. La lego alla distanza
+            // reale così legge a qualunque scala del GLB.
             var headCenterWorld = headGroup.localToWorld(headCenterLocal.clone());
             var camDist = cam.position.distanceTo(headCenterWorld);
-            var brainUSize = 4 * camDist / 200;
+            // gl_PointSize non segue lo zoom né il fov, la geometria sì.
+            // Prima: fov 32°. Ora fov 45° con zoom 2 (fov effettivo ≈ 23,4°).
+            // fovScale mantiene lo stesso rapporto punti/cervello di prima.
+            var fovScale = Math.tan(THREE.MathUtils.degToRad(16)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
+            var brainUSize = 4 * camDist / 200 * fovScale;
 
             // Draw order (Task 5b): il vetro (transparent+depthWrite:false) e
             // il brain (THREE.Points, additivo, anch'esso
@@ -386,6 +352,7 @@ WC.register('robot', function(ctx){
             });
           }
         }
+        fit();
 
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
         // testa/braccia/corpo con colori piatti (MeshBasicMaterial, non
@@ -438,13 +405,13 @@ WC.register('robot', function(ctx){
         if (robot && robot.headGroup && robot.state) {
           var targetYaw = 0, targetPitch = 0;
           if (pointer.active) {
-            targetYaw = Math.max(-0.5, Math.min(0.5, pointer.x * 0.5));
-            targetPitch = Math.max(-0.3, Math.min(0.3, -pointer.y * 0.35));
+            targetYaw = Math.max(-CONFIG.yawMax, Math.min(CONFIG.yawMax, pointer.x * CONFIG.yawGain));
+            targetPitch = Math.max(-CONFIG.pitchMax, Math.min(CONFIG.pitchMax, -pointer.y * CONFIG.pitchGain));
             robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
           } else if (robot.hold) {
             // Override deterministico per l'harness (window.__robot.hold): posa
-            // la testa (yaw/pitch) senza puntatore reale — che l'overlay
-            // .wc-robot-copy intercetterebbe al centro.
+            // la testa (yaw/pitch) senza dover simulare un vero mousemove
+            // sul canvas.
             targetYaw = robot.hold.yaw || 0;
             targetPitch = robot.hold.pitch || 0;
           }
@@ -486,6 +453,9 @@ WC.register('robot', function(ctx){
         // (0 = spento/invisibile — visore scuro, niente cervello in vista).
         if (robot && robot.brain) {
           robot.brain.update(dt, hoverHead);
+          // Lo smorzamento esponenziale non arriva mai a 0 esatto: sotto la
+          // soglia il cervello non viene proprio disegnato (decisione 5).
+          robot.brain.points.visible = hoverHead > 0.01;
         }
         // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
         // volta — a differenza del reveal testa (una sola zona, la testa)
@@ -503,29 +473,6 @@ WC.register('robot', function(ctx){
           surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
           surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
           robot.fibers.update(dt, surgeL, surgeR);
-        }
-        // Task 7: levitazione + drag-to-rotate di TUTTO il robot (`wrap`,
-        // il gruppo che contiene `model` — vedi mount() sopra), ultimo
-        // step prima del render così legge lo stato di drag più fresco
-        // possibile (i listener pointermove/up di sopra girano fuori dal
-        // loop rAF). Bob verticale sinusoidale, lento e leggero (non deve
-        // competere con la testa che segue il cursore). Rotazione: mentre
-        // si trascina la rotazione è già scritta direttamente in
-        // onDragMove (sopra); qui, SOLO a riposo (drag non attivo), la
-        // velocità residua dell'ultimo movimento (`dragVel`) decade
-        // (inerzia) e un piccolo richiamo verso 0 riporta il robot a
-        // fronte — "ritorno morbido", non un aggancio rigido: durante il
-        // decadimento dell'inerzia il richiamo è già presente ma debole
-        // (0.02/frame), lascia che l'inerzia "giri" ancora un po' prima
-        // di riassestarsi. Additiva rispetto a headGroup.rotation (Task
-        // 4): quella ruota la sola testa dentro a `wrap`.
-        if (robot && robot.wrap) {
-          robot.wrap.position.y = Math.sin((now - clockStart) / 1000 * 0.8) * bobAmount;
-          if (!drag.active) {
-            robot.wrap.rotation.y += dragVel;
-            dragVel *= 0.9;
-            robot.wrap.rotation.y += (0 - robot.wrap.rotation.y) * 0.02;
-          }
         }
         renderer.render(scene, cam);
       })();

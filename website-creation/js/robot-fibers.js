@@ -168,7 +168,7 @@ WC.robotFibers = (function () {
     '  vec3 N = normalize(vNormalW);',
     '  vec3 V = normalize(vViewDir);',
     '  float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.0);',
-    '  float intensity = uBaseline + band * (0.14 + uSurge * 1.35) + fres * (0.06 + uSurge * 0.3);',
+    '  float intensity = (uBaseline + band * (0.14 + uSurge * 1.35) + fres * (0.06 + uSurge * 0.3)) * smoothstep(0.0, 0.08, uSurge);',
     '  vec3 col = mix(uColorCold, uColorHot, clamp(uSurge * 0.7 + band * 0.3, 0.0, 1.0));',
     '  gl_FragColor = vec4(col * intensity, clamp(intensity, 0.0, 1.0));',
     '}'
@@ -538,6 +538,7 @@ WC.robotFibers = (function () {
         matR.uniforms.uTime.value = time;
         matL.uniforms.uSurge.value = surgeL || 0;
         matR.uniforms.uSurge.value = surgeR || 0;
+        object.visible = (surgeL || 0) > 0.003 || (surgeR || 0) > 0.003;
       }
 
       return { object: object, update: update };

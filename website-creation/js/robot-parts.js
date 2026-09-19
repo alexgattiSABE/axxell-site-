@@ -69,13 +69,17 @@ WC.robotParts = {
 
     function centerOf(m) { return new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()); }
 
-    // Soglia collo: sopra questa Y (mondo/modello, il modello è già
-    // centrato da robot.js) una mesh appartiene al cluster testa/casco.
+    // Soglia collo: sopra questa Y (relativa al bbox, indipendente da dove
+    // sta lo zero) una mesh appartiene al cluster testa/casco. Fascia
+    // toracica: sotto il collo, sopra il bacino — le mesh in questa fascia
+    // con |X-cx| oltre la soglia laterale sono un braccio.
     var neck = min.y + size.y * 0.79;
-    // Fascia toracica: sotto il collo, sopra il bacino — le mesh in
-    // questa fascia con |X| oltre la soglia laterale sono un braccio.
     var armBandLow = min.y + size.y * 0.45;
     var armXThreshold = size.x * 0.16;
+    // Il modello NON è più ricentrato (sta nelle coordinate della scena
+    // Spline): il centro X del bbox è ~−2.9, non 0. Le soglie laterali si
+    // misurano da lì, altrimenti una mesh del corpo finisce in un braccio.
+    var cx = (box.min.x + box.max.x) / 2;
 
     var head = [], body = [], armL = [], armR = [];
     meshes.forEach(function (m) {
@@ -84,8 +88,8 @@ WC.robotParts = {
       var isHead = /head|helmet|visor|face|glass/.test(byName) || c.y >= neck;
       if (isHead) { head.push(m); return; }
       var inArmBand = c.y > armBandLow && c.y < neck;
-      if (inArmBand && Math.abs(c.x) > armXThreshold) {
-        (c.x < 0 ? armL : armR).push(m);
+      if (inArmBand && Math.abs(c.x - cx) > armXThreshold) {
+        (c.x < cx ? armL : armR).push(m);
         return;
       }
       body.push(m);

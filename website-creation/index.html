@@ -294,24 +294,11 @@
        testa a FX.circuit in js/cursorfx.js. -->
   <section class="wc-robot" id="cap05" data-cursor="hidden">
     <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
-      <!-- Il modello occupa tutta la sezione e sta al centro: la copy gli passa
-           davanti in basso, sopra un velo, invece di dividere lo spazio a metà
-           come faceva la griglia di prima. -->
+      <!-- Il modello occupa tutta la sezione e sta al centro, senza copy né
+           velo a fianco: stage pulito, stessa inquadratura dello Spline
+           originale (§3). -->
       <div class="wc-robot-stage" id="wcRobotStage">
         <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
-      </div>
-      <!-- Titolo sopra al robot: solo un invito a interagire (testa → cervello,
-           braccia → circuiti). `pointer-events:none` di proposito — deve
-           restare un'etichetta e non rubare gli eventi mouse al canvas
-           sottostante, che è ciò che pilota quel reveal. Testo isolato in un
-           <p> con classe dedicata così si edita da un punto solo, senza
-           toccare eyebrow/h2/lead a fianco né aggiungere un secondo <h1>. -->
-      <p class="wc-robot-title">Analizza l'<span class="wc-robot-title-accent">anatomia</span> di Axxell</p>
-      <div class="wc-robot-copy">
-        <p class="eyebrow">// 05 — Oggetti vivi</p>
-        <h2>Non un video.<br>Un modello che risponde.</h2>
-        <p class="lead">Trascinalo, giralo, spingilo. È una scena 3D vera che gira nel browser: reagisce al mouse fotogramma per fotogramma, mentre scorri e mentre lo trascini. Dietro, il circuito si accende dove passi — non dove ti fermi.</p>
-        <p class="wc-robot-note">Si carica solo quando arrivi qui</p>
       </div>
     </div>
   </section>
@@ -578,10 +565,11 @@
 <script src="js/saucer.js?v=20260819a"></script>
 <script src="vendor/three-r128/GLTFLoader.js"></script>
 <script src="vendor/three-r128/DRACOLoader.js"></script>
-<script src="js/robot-parts.js?v=20260831a"></script>
+<script src="assets/robot-spline/robot-spline-data.js?v=20260919a"></script>
+<script src="js/robot-parts.js?v=20260919a"></script>
 <script src="js/robot-materials.js?v=20260831a"></script>
-<script src="js/robot-fibers.js?v=20260831a"></script>
-<script src="js/robot.js?v=20260831a"></script>
+<script src="js/robot-fibers.js?v=20260919a"></script>
+<script src="js/robot.js?v=20260919a"></script>
 <script src="js/horizontal.js?v=20260819a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js" integrity="sha384-SALc35EccAf6RzGw4iNsyj7kTPr33K7RoGzYu+7heZhT8s0GZouafRiCg1qy44AS" crossorigin="anonymous"></script>
 <script src="js/lithos.js?v=20260819a"></script>
