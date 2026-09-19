@@ -136,6 +136,7 @@ WC.register('robot', function(ctx){
         var need = CONFIG.minHeadTopPx - y;
         if (need > 0) { cam.setViewOffset(w, h, 0, -need, w, h); cam.updateProjectionMatrix(); }
       }
+      if (window.__robot && window.__robot.spline) window.__robot.spline.setCamera(cam);
     }
     stage.appendChild(renderer.domElement);
 
@@ -208,6 +209,19 @@ WC.register('robot', function(ctx){
           var mats = WC.robotMaterials.applyTo(parts, renderer);
           window.__robot.glass = mats.glass;
           window.__robot.carbon = mats.carbon;
+        }
+
+        if (WC.robotSplineMaterials) {
+          var sm = WC.robotSplineMaterials.create(D);
+          sm.setCamera(cam);
+          // Prima passata: individua il visore (unica mesh 'Head'), poi
+          // assegna Parts/Body a tutto il resto. Il visore tiene per ora il
+          // vetro vecchio (Task 5 lo sostituisce).
+          var probe = WC.robotSplineMaterials.assign(model, D, { byName: {} });
+          var asg = WC.robotSplineMaterials.assign(model, D, sm, { skip: new Set([probe.visor]) });
+          window.__robot.spline = sm;
+          window.__robot.parts.visor = asg.visor;
+          window.__robot.parts.chest = asg.chest;
         }
 
         // Task 6 (rework): le fibre luminose nelle braccia ("i fasci").
@@ -548,6 +562,7 @@ WC.register('robot', function(ctx){
           if (robot.carbon.userData.envMap) robot.carbon.userData.envMap.dispose();
         }
       }
+      if (robot && robot.spline) robot.spline.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
       if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;
