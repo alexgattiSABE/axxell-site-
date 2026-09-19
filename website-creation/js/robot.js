@@ -181,11 +181,13 @@ WC.register('robot', function(ctx){
       // 97 draw call in più per frame (misurate: 165 contro 68). Ma nella
       // scena si muove SOLO la testa, e quasi sempre nemmeno quella: a riposo
       // il fotogramma ricalcolava un'ombra identica a quella del fotogramma
-      // prima. Da qui in poi la mappa si rifà quando c'è un motivo, e i motivi
-      // sono tre — li marca `shadowDirty()`: la testa ha girato abbastanza dal
-      // disegno precedente, il reveal ha attraversato la soglia in cui visore
-      // e interni smettono/riprendono a proiettare (r > 0.5, vedi setReveal in
-      // robot-spline-materials.js), oppure si è appena rifatto il fit.
+      // prima. Da qui in poi la mappa si rifà solo quando c'è un motivo, e i
+      // motivi sono quattro — ognuno rimette `needsUpdate` a true dove
+      // succede: questa riga (la primissima ombra), fit() (poco sotto), la
+      // testa che ha girato di almeno SHADOW_EPS dall'ultimo disegno e il
+      // reveal che attraversa la soglia in cui visore e interni
+      // smettono/riprendono a proiettare (r > 0.5, vedi setReveal in
+      // robot-spline-materials.js). Gli ultimi due stanno in tick().
       // Nota su three r128: NON basta `shadowLight.shadow.needsUpdate`.
       // WebGLShadowMap.render esce subito se `autoUpdate === false &&
       // needsUpdate === false` SULLA MAPPA, prima ancora di guardare i flag
