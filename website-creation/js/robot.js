@@ -418,10 +418,15 @@ WC.register('robot', function(ctx){
               window.__robot.brain = brain;
             }
 
-            // ref1 (correzione utente): il cervello del robot ora campiona LA
-            // STESSA mesh cotta di Vesper (assets/brain-mesh.bin) con la STESSA
-            // palette (WC.pointBrain.vesperBrainUniforms), così legge IDENTICO
-            // a quello di Vesper — non più una nuvola procedurale generica.
+            // ref1 (correzione utente): il cervello del robot campiona LA
+            // STESSA mesh cotta di Vesper (assets/brain-mesh.bin) — non più
+            // una nuvola procedurale generica — quindi la FORMA legge
+            // identica a quella di Vesper e di ATLAS (stessa mesh per
+            // entrambi). Task 7b (correzione utente, 2026-09-19 — "il
+            // cervello fallo di colore uguale al cervello nella sezione
+            // atlas"): la PALETTE però è ora quella di ATLAS, non più quella
+            // di Vesper — WC.pointBrain.atlasBrainUniforms() al posto del
+            // precedente vesperBrainUniforms().
             // Il fetch è asincrono ma dentro il flusso torn-guarded del mount:
             // se il teardown è già scattato (torn) o la mesh non arriva, si
             // ripiega sulla nuvola procedurale (comportamento precedente),
@@ -443,7 +448,7 @@ WC.register('robot', function(ctx){
                 count: 24000,
                 radius: brainRadius,
                 sampleFrom: new THREE.Mesh(srcGeo),
-                uniforms: WC.pointBrain.vesperBrainUniforms()
+                uniforms: WC.pointBrain.atlasBrainUniforms()
               });
               srcGeo.dispose();
               placeBrain(brain);

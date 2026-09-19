@@ -34,6 +34,31 @@ WC.pointBrain = (function () {
     return new THREE.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
   }
 
+  /* Decodifica hex sRGB → lineare (stessa curva gamma di sRGB), verbatim nella
+   * FORMULA da hexToLinear di brain.js (l'estratto ATLAS, ~/Progetti/
+   * cervello-axxell/brain.js — lì implementata come `new THREE.Color(hex)`,
+   * che nella color-management di three fa questa stessa decodifica).
+   *
+   * Serve SOLO qui, non in `toVec3` sopra: quella funzione è corretta per
+   * Vesper (e per le altre canvas del sito: tunnel/warp/dna/particles/spine,
+   * vedi WC.glsl.hexToVec3) perché quei renderer NON ricodificano lineare→sRGB
+   * in uscita — i byte vanno caricati grezzi, convertirli li slaverebbe (vedi
+   * il commento in js/glsl.js). Il renderer del ROBOT (js/robot.js) è nella
+   * situazione OPPOSTA: ha `renderer.outputEncoding = THREE.sRGBEncoding`
+   * (necessario al materiale della testa, altrimenti "renderizza quasi nero",
+   * vedi il commento lì) — la stessa situazione di brain.js/atlas.html
+   * (`outputColorSpace = SRGBColorSpace`). Le altre uniform di colore già
+   * dentro il robot (uBaseColor/uLightColor in robot-spline-materials.js)
+   * arrivano infatti lineari dall'export Spline/glTF: usare byte grezzi per
+   * il brain sarebbe l'eccezione sbagliata, non la regola del file.
+   */
+  function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function hexToLinear(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    return new THREE.Vector3(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
+  }
+
   /* ------------------------------------------------------------------ shader
    * Verbatim dal brainMaterial di js/vesper.js: spostato, non riscritto. Chi lo
    * usa fornisce l'oggetto uniforms — Vesper il suo (palette + coreografia
@@ -293,29 +318,49 @@ WC.pointBrain = (function () {
     return { positions: positions, indices: indices };
   }
 
-  /* Le uniform del cervello di Vesper — la sua PALETTE esatta (gradiente
-   * viola→menta, sinapsi, ecc.), copiata verbatim da BRAIN/brainUniforms in
-   * js/vesper.js. Serve al robot per rendere il cervello AESTHETICAMENTE
-   * IDENTICO a quello di Vesper (correzione utente ref1: prima usava una
-   * nuvola procedurale con tinta unica). A differenza di Vesper — che pilota
-   * da sé la sua coreografia — il robot passa queste uniform a create() e usa
-   * l'update(dt, reveal) incluso: iTime/iAlpha/uExplode vengono guidate da lì
-   * (uExplode resta 0, i punti riposano sulla superficie; iAlpha = reveal
-   * a tutta testa). uSize di partenza è quella di Vesper (0.067) ma il
-   * robot la sovrascrive in base alla distanza reale della camera. */
-  function vesperBrainUniforms() {
+  /* Le uniform del cervello ATLAS — la PALETTE esatta della sezione ATLAS del
+   * sito (ciano in basso → verde in alto, bordo blu, sinapsi quasi bianche),
+   * copiata verbatim da BRAIN_CONFIG in ~/Progetti/cervello-axxell/brain.js
+   * (estrazione 1:1 del canvas #brainCanvas di atlas.html).
+   *
+   * Task 7b (correzione utente, 2026-09-19 — supera la richiesta precedente
+   * di un colore unico): "il cervello fallo di colore uguale al cervello
+   * nella sezione atlas". Prima questa funzione si chiamava
+   * `vesperBrainUniforms` e portava la palette di Vesper (viola→menta,
+   * BRAIN/brainUniforms di js/vesper.js) — sostituita qui, non affiancata:
+   * nessun altro file la chiamava (solo js/robot.js).
+   *
+   * I colori passano da `hexToLinear`, non da `toVec3`: vedi il commento su
+   * `hexToLinear` sopra per il perché (il renderer del robot ricodifica
+   * lineare→sRGB in uscita, come quello di ATLAS; quello di Vesper no).
+   *
+   * I parametri di forma/animazione (raggio e falloff del centro, dimensione
+   * punto, tasso sinapsi, velocità/ampiezza del flusso, glow, buio di
+   * profondità) restano quelli di sempre — sono già IDENTICI a BRAIN_CONFIG
+   * (0.37 / 4 / 0.067 / 0.1 / 2.3 / 0.025 / 1.4 / 1): il cervello di Vesper e
+   * quello di ATLAS condividono la stessa forma e coreografia, cambia solo la
+   * tinta. Confrontati a mano con brain.js prima di questo cambio: nessuno
+   * andava ritoccato.
+   *
+   * A differenza di Vesper — che pilota da sé la sua coreografia — il robot
+   * passa queste uniform a create() e usa l'update(dt, reveal) incluso:
+   * iTime/iAlpha/uExplode vengono guidate da lì (uExplode resta 0, i punti
+   * riposano sulla superficie; iAlpha = reveal a tutta testa). uSize di
+   * partenza è quella di ATLAS/Vesper (0.067) ma il robot la sovrascrive in
+   * base alla distanza reale della camera. */
+  function atlasBrainUniforms() {
     return {
       iTime:              { value: 0 },
       iAlpha:             { value: 0 },
       iResolutionY:       { value: 720 },
-      uCool:              { value: toVec3('#582eff') },
-      uWarm:              { value: toVec3('#52ffa5') },
-      uEdgeColor:         { value: toVec3('#582eff') },
-      uCenterColor:       { value: toVec3('#000000') },
-      uSynapse:           { value: toVec3('#eafff8') },
-      uDeepColor:         { value: toVec3('#02040e') },
-      uCursorColor:       { value: toVec3('#6bfdff') },
-      uHighlightColor:    { value: toVec3('#2563eb') },
+      uCool:              { value: hexToLinear('#00d4ff') },
+      uWarm:              { value: hexToLinear('#00e8a2') },
+      uEdgeColor:         { value: hexToLinear('#0077b3') },
+      uCenterColor:       { value: hexToLinear('#000000') },
+      uSynapse:           { value: hexToLinear('#eafff8') },
+      uDeepColor:         { value: hexToLinear('#02040e') },
+      uCursorColor:       { value: hexToLinear('#7df9ff') },
+      uHighlightColor:    { value: hexToLinear('#2563eb') },
       uCenterRadius:      { value: 0.37 },
       uCenterFalloff:     { value: 4 },
       uSize:              { value: 0.067 },
@@ -413,6 +458,6 @@ WC.pointBrain = (function () {
     sampleCloud: sampleCloud,
     createMaterial: createMaterial,
     decodeBrainMesh: decodeBrainMesh,
-    vesperBrainUniforms: vesperBrainUniforms
+    atlasBrainUniforms: atlasBrainUniforms
   };
 })();
