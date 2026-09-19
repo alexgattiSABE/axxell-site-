@@ -50,7 +50,17 @@ WC.register('robot', function(ctx){
   var mounted = false;
 
   function fail(msg){
-    if (hint) hint.textContent = msg;
+    // `hint` può NON essere più in pagina: dopo un caricamento riuscito lo si
+    // toglie (hint.remove(), dentro la callback di gltf.load), e da lì in poi
+    // un errore — un assert sui dati che scatta, per dire — scriverebbe il
+    // messaggio dentro un nodo staccato. Al visitatore resterebbe un
+    // rettangolo nero alto una schermata e nient'altro. Quindi si riattacca
+    // prima di scrivere, e la classe `-failed` ha il suo stile in
+    // css/sections.css (nasconde il canvas e mostra il messaggio).
+    if (hint) {
+      hint.textContent = msg;
+      if (!hint.parentNode) stage.appendChild(hint);
+    }
     stage.classList.add('-failed');
   }
 
@@ -231,7 +241,19 @@ WC.register('robot', function(ctx){
     }
     stage.appendChild(renderer.domElement);
 
-    gltf.load('assets/robot.glb', function(g){
+    // Il GLB e il file dei dati sono UNA SOLA estrazione: gli assert qui sotto
+    // appaiano mesh per mesh l'uno all'altro (nome, indice di nodo, bbox). Un
+    // visitatore con il GLB vecchio in cache e i dati nuovi li fa saltare, e la
+    // sezione muore. Il file dei dati un `?v=` ce l'ha (index.html), il GLB no:
+    // qui lo prende, e non da una copia scritta a mano — lo legge dal tag
+    // <script> che ha caricato i dati, così i due non possono divergere. Se
+    // quel tag non c'è (pagina montata diversamente) si carica senza token:
+    // com'era prima, non peggio.
+    var dataTag = document.querySelector('script[src*="robot-spline-data.js"]');
+    var dataVer = dataTag && /[?&]v=([^&]*)/.exec(dataTag.getAttribute('src') || '');
+    var GLB_URL = 'assets/robot.glb' + (dataVer && dataVer[1] ? '?v=' + dataVer[1] : '');
+
+    gltf.load(GLB_URL, function(g){
       if (torn) return;
       // Task 8 (pulizia): tutto il corpo di questa callback è avvolto in
       // try/catch. GLTFLoader r128 richiama onLoad da dentro una catena di

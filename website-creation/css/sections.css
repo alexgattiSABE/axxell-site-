@@ -443,6 +443,17 @@ body.wc-locked{overflow:hidden;}
 .wc-robot-hint{position:absolute;inset:0;display:flex;align-items:center;
   justify-content:center;font-family:var(--mono);font-size:.68rem;
   letter-spacing:.16em;color:var(--dim);}
+/* Modello non partito: reduced-motion, three assente, GLB e dati disallineati,
+   rete. `fail()` in js/robot.js mette questa classe e riattacca il nodo del
+   messaggio se era già stato tolto — senza queste due righe la sezione era un
+   rettangolo nero alto una schermata e basta. Il canvas sparisce (una scena a
+   metà non si guarda) e il messaggio si legge, invece di restare grigio scuro
+   su nero.
+   `visibility` e non `display`: il canvas lo crea three, che gli scrive
+   `display:block` come stile INLINE — una regola di classe non lo batte
+   senza `!important`, e resterebbe una riga di CSS che non fa niente. */
+.wc-robot-stage.-failed canvas{visibility:hidden;}
+.wc-robot-stage.-failed .wc-robot-hint{color:var(--muted);}
 
 /* ---- LITHOS — IL FARO CHE SCOPRE ----
    Una schermata sola: non c'è niente da percorrere, c'è una cosa da muovere. */
