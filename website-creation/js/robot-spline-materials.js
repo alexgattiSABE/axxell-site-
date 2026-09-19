@@ -110,6 +110,16 @@ WC.robotSplineMaterials = (function () {
     video.addEventListener('playing', onPlaying);
 
     var head = shader('MAT_HEAD', hu);
+    // Reveal della testa (cursore sul visore): il visore diventa quasi
+    // trasparente, gli occhi si spengono e le mesh DENTRO il visore sfumano,
+    // così il cervello (robot.js) si vede intero. Ordine di disegno, tutti
+    // nella coda trasparente: cervello (renderOrder 0) → interni (1) →
+    // visore (2). A riposo visore e interni hanno alpha 1 e scrivono depth
+    // come un opaco: stesso aspetto di prima del reveal.
+    var inside = [];                // materiali degli interni (makeInside)
+    var castMeshes = [];            // visore + interni: { mesh, cast } — l'ombra segue il reveal
+    var REVEAL_MIN_ALPHA = 0.045;   // stesso valore del vetro di agosto (uMinAlpha)
+    head.transparent = true;
     var byName = { Parts: shader('MAT_PARTS', pu), Body: shader('MAT_BODY', bu), Head: head };
     var all = [byName.Parts, byName.Body, head];
     var lightWorld = v3(D.light.worldPosition);
@@ -120,9 +130,41 @@ WC.robotSplineMaterials = (function () {
         if (on) { var pr = video.play(); if (pr && pr.catch) pr.catch(function () { hu.uVideo.value = poster; }); }
         else video.pause();
       },
-      // r = reveal della testa (0..1): gli occhi si spengono mentre si apre.
-      // L'alpha del visore arriva nel Task 6.
-      setReveal: function (r) { hu.uEyes.value = 1 - r; },
+      // r = reveal della testa (0..1, smorzato in robot.js). Agli estremi si
+      // aggancia al valore esatto: sotto 0.01 è riposo vero (alpha 1, depth
+      // scritta, occhi pieni: identico a prima; il cervello sotto quella
+      // soglia non si disegna), sopra 0.995 è reveal pieno (uEyes 0 → lo
+      // shader del visore salta i 16 prelievi del video).
+      // Ombre: un vetro quasi trasparente non può proiettare l'ombra piena di
+      // un opaco, e la shadow map non conosce l'alpha — visore e interni
+      // smettono di proiettarla a metà reveal (r > 0.5) e la riprendono
+      // tornando sotto, dove il visore è ancora per metà opaco.
+      setReveal: function (r) {
+        r = r > 0.995 ? 1 : (r < 0.01 ? 0 : r);
+        hu.uEyes.value = 1 - r;
+        hu.uOpacity.value = 1 + (REVEAL_MIN_ALPHA - 1) * r;
+        head.depthWrite = r === 0;
+        inside.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = r === 0; });
+        castMeshes.forEach(function (e) { e.mesh.castShadow = e.cast && r <= 0.5; });
+      },
+      // Interni della testa (mesh Parts dentro il visore, scelte da robot.js):
+      // ognuna riceve un clone trasparente di Parts, così sfuma col reveal
+      // senza toccare le altre 68 mesh Parts. `visor` = la mesh del visore:
+      // anche la sua ombra segue il reveal (vedi setReveal).
+      makeInside: function (meshes, visor) {
+        meshes.forEach(function (mesh) {
+          var m = byName.Parts.clone();   // uniform clonate per valore...
+          // ...ma le texture restano quelle condivise (un clone sarebbe un
+          // secondo upload sulla GPU della stessa immagine).
+          m.uniforms.uMatcap.value = byName.Parts.uniforms.uMatcap.value;
+          m.uniforms.uTri.value = byName.Parts.uniforms.uTri.value;
+          m.transparent = true;
+          inside.push(m); all.push(m);
+          mesh.material = m; mesh.renderOrder = 1;
+          castMeshes.push({ mesh: mesh, cast: mesh.castShadow });
+        });
+        if (visor) castMeshes.push({ mesh: visor, cast: visor.castShadow });
+      },
       setCamera: function (cam) {
         cam.updateMatrixWorld(true);
         var lv = lightWorld.clone().applyMatrix4(cam.matrixWorldInverse);

@@ -261,6 +261,10 @@ WC.robotSplineGLSL = {
     '  vec3 mc = sp_matcap(n), rb = sp_rainbow();',
     '  float rba = uRbAlpha * clamp(rb.r + rb.g + rb.b, 0.0, 1.0);',
     '  if (vmask > 0.0) {',
+    // textureGrad c'è in WebGL2 (three lo espone come texture2DGradEXT) e in
+    // WebGL1 solo con EXT_shader_texture_lod; senza, un prelievo semplice
+    // (puntini più spenti, ma lo shader compila).
+    '#if __VERSION__ >= 300 || defined(GL_EXT_shader_texture_lod)',
     '    vec3 acc = vec3(0.0);',
     '    float fs = float(SP_VIDEO_SS);',
     '    for (int i = 0; i < SP_VIDEO_SS; i++) for (int j = 0; j < SP_VIDEO_SS; j++) {',
@@ -269,6 +273,9 @@ WC.robotSplineGLSL = {
     '      acc += sp_head(texture2DGradEXT(uVideo, uv, vdx / fs, vdy / fs), uv, vmask, hk, hs, mc, rb, rba);',
     '    }',
     '    c = acc / (fs * fs);',
+    '#else',
+    '    c = sp_head(texture2D(uVideo, vuv), vuv, vmask, hk, hs, mc, rb, rba);',
+    '#endif',
     '  } else {',
     '    c = sp_head(vec4(0.0), vuv, 0.0, hk, hs, mc, rb, rba);',
     '  }',

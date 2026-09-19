@@ -249,14 +249,31 @@ WC.register('robot', function(ctx){
 
         // Materiali Spline (Head/Body/Parts) su tutte le 80 mesh, per indice
         // di nodo: il visore (unica mesh 'Head') con gli occhi a LED video.
-        // Il reveal (hoverHead, da tick() più sotto) spegne gli occhi.
+        // Il reveal (hoverHead, da tick() più sotto) rende il visore
+        // trasparente, spegne gli occhi e sfuma gli interni.
         if (WC.robotSplineMaterials) {
           var sm = WC.robotSplineMaterials.create(D);
-          sm.setCamera(cam);
-          var asg = WC.robotSplineMaterials.assign(model, D, sm);
+          // Subito in window.__robot: se assign() lancia (errore in console),
+          // il teardown smaltisce comunque video e materiali (spline.dispose()).
           window.__robot.spline = sm;
+          var asg = WC.robotSplineMaterials.assign(model, D, sm);
           window.__robot.parts.visor = asg.visor;
           window.__robot.parts.chest = asg.chest;
+          // Mesh Parts DENTRO il volume del visore (il Cylinder, y 208–261,
+          // dentro il visore y 222–304): al reveal sfumano col vetro, così non
+          // coprono il cervello. Quelle del collo, col centro sotto il visore,
+          // restano opache. Il cervello resta a renderOrder 0: cervello →
+          // interni → visore.
+          var vb = new THREE.Box3().setFromObject(asg.visor);
+          var inside = parts.head.filter(function (m) {
+            if (m === asg.visor || m.userData.splineMaterial !== 'Parts') return false;
+            return vb.containsPoint(new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()));
+          });
+          sm.makeInside(inside, asg.visor);
+          asg.visor.renderOrder = 2;
+          sm.setCamera(cam);   // dopo makeInside: anche i cloni degli interni ricevono la luce
+          window.__robot.parts.inside = inside;
+          if (window.__debugParts) console.log('[robot] interni testa:', inside.map(function (m) { return m.name; }));
           sm.setPlaying(sectionVisible);
         }
 
@@ -386,8 +403,9 @@ WC.register('robot', function(ctx){
             var brainUSize = 4 * camDist / 200 * fovScale;
 
             // Il brain (THREE.Points, additivo, transparent+depthWrite:false)
-            // sta dentro la testa: col visore Spline opaco (Task 5) resta
-            // coperto; la trasparenza del visore col reveal arriva nel Task 6.
+            // sta dentro la testa: a riposo non si disegna affatto (tick()),
+            // col reveal si vede attraverso il visore trasparente. renderOrder
+            // 0: si disegna prima degli interni (1) e del visore (2).
             function placeBrain(brain) {
               brain.points.castShadow = false;   // Task 4b: il cervello non proietta ombre
               brain.points.receiveShadow = false;
@@ -458,9 +476,9 @@ WC.register('robot', function(ctx){
       // RITOCCO 2: reveal a TUTTA testa. Un solo Raycaster riusato ogni frame
       // (niente allocazioni); se il cursore colpisce una qualunque mesh della
       // testa, un fattore smorzato `hoverHead` (0..1, esponenziale come
-      // rotazione/faceAmount) sale a 1 — il visore (spline.setReveal: occhi
-      // spenti; trasparenza nel Task 6) e il brain (update(dt, reveal))
-      // seguono questo stesso segnale.
+      // rotazione/faceAmount) sale a 1 — il visore (spline.setReveal: vetro
+      // trasparente, occhi spenti, interni sfumati) e il brain
+      // (update(dt, reveal)) seguono questo stesso segnale.
       var raycaster = new THREE.Raycaster();
       var lensNdc = new THREE.Vector2();
       var hoverHead = 0;
@@ -515,9 +533,9 @@ WC.register('robot', function(ctx){
         }
         // RITOCCO 2: raycast del cursore sulle mesh testa. Un hit su una
         // QUALSIASI mesh della testa alza il target a 1 (reveal a tutta
-        // testa: per ora spegne gli occhi a LED, la trasparenza del visore è
-        // il Task 6). Nessun hit (cursore fuori dalla testa, o fuori dallo
-        // stage) → target 0, gli occhi si riaccendono morbidamente.
+        // testa: visore trasparente, occhi a LED spenti, cervello in vista).
+        // Nessun hit (cursore fuori dalla testa, o fuori dallo stage) →
+        // target 0: il visore torna quello Spline e gli occhi si riaccendono.
         if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
           var hoverTarget = 0;
           if (pointer.active && raycaster.intersectObjects(robot.parts.head, false).length) {
@@ -556,8 +574,10 @@ WC.register('robot', function(ctx){
         renderer.render(scene, cam);
       })();
       cleanups.push(function(){ cancelAnimationFrame(raf); });
-    }, undefined, function(){
+    }, undefined, function(e){
       if (torn) return;
+      // Rete, Draco o GLB rotto: senza log il perché resterebbe invisibile.
+      console.error(e);
       fail('Modello non caricato');
     });
 
