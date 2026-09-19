@@ -63,14 +63,18 @@ window.WC = window.WC || {};
 
 WC.pointOrb = (function () {
   /* Decodifica hex sRGB → lineare. Stessa funzione (e stessa ragione) di
-   * `hexToLinear` in js/pointbrain.js: il renderer del robot ricodifica
-   * lineare→sRGB in uscita (`outputEncoding = sRGBEncoding`), come quello
-   * della pagina di SABE (`outputColorSpace = SRGBColorSpace`), quindi i
-   * colori devono entrare LINEARI o sbiadiscono. Duplicata invece di
-   * importata: così questo file non dipende dall'ordine di caricamento di
-   * pointbrain.js. In axxell-3d.js la stessa cosa è scritta come
-   * `new THREE.Color(hex)` — in three r185 quel costruttore fa la
-   * decodifica da solo, in r128 (il nostro) no. */
+   * `hexToLinear` in js/pointbrain.js: le uniform devono essere GLI STESSI
+   * NUMERI che la pagina di SABE passa a questo shader. Lì la palette è scritta
+   * come `new THREE.Color(hex)` (axxell-3d.js, three r185: quel costruttore fa
+   * la decodifica da solo; in r128 — il nostro — no), quindi arriva LINEARE:
+   * ricopiarla a byte grezzi darebbe uniform diverse.
+   * NON c'entra `renderer.outputEncoding`: il renderer del robot non ne applica
+   * nessuno, i suoi materiali sono tutti ShaderMaterial senza
+   * `<encodings_fragment>` (vedi js/robot.js). Resta però la stessa differenza
+   * annotata in pointbrain.js: SABE in uscita ricodifica in sRGB e applica ACES,
+   * il robot scrive grezzo — stesse uniform, tinta a schermo non identica.
+   * Duplicata invece di importata: così questo file non dipende dall'ordine di
+   * caricamento di pointbrain.js. */
   function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
   function hexToLinear(hex) {
     var n = parseInt(hex.slice(1), 16);

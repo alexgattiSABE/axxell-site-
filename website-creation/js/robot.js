@@ -113,11 +113,19 @@ WC.register('robot', function(ctx){
 
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    // r128 lascia l'output in LinearEncoding di default: senza correzione
-    // gamma il modello (materiale bianco di default, "geometria soltanto")
-    // renderizza quasi nero — verificato a schermo. sRGBEncoding è la resa
-    // standard three.js, non un tocco di stile riservato al task materiali.
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    // Nessuna codifica in uscita e nessun tone mapping: r128 lascia
+    // `outputEncoding` su LinearEncoding e va bene così. Tutti i materiali di
+    // questa scena sono ShaderMaterial scritti a mano (robot-spline-glsl.js,
+    // pointbrain.js, robot-fibers.js) e NESSUNO include `<encodings_fragment>`:
+    // scrivono nel framebuffer il valore che calcolano, esattamente come fa la
+    // scena Spline.
+    // Qui c'era `renderer.outputEncoding = THREE.sRGBEncoding`, con la
+    // motivazione "senza, il modello renderizza quasi nero". Era vera quando le
+    // mesh avevano ancora il materiale bianco di default di three ("geometria
+    // soltanto"); da quando i materiali sono i nostri quella riga non faceva
+    // più niente. Verificato: forzando la ricompilazione di tutti i materiali,
+    // il frame a sRGBEncoding e quello a LinearEncoding sono identici pixel per
+    // pixel (somma dei canali su 1440×900: 18461001 in entrambi i casi).
     var scene = new THREE.Scene();
     // Ombre come Spline (Task 4b): la point light della scena Spline proietta
     // ombre (shadow map a cubo, PCF). Questa PointLight esiste SOLO per la

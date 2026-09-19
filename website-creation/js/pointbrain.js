@@ -39,18 +39,29 @@ WC.pointBrain = (function () {
    * cervello-axxell/brain.js — lì implementata come `new THREE.Color(hex)`,
    * che nella color-management di three fa questa stessa decodifica).
    *
-   * Serve SOLO qui, non in `toVec3` sopra: quella funzione è corretta per
-   * Vesper (e per le altre canvas del sito: tunnel/warp/dna/particles/spine,
-   * vedi WC.glsl.hexToVec3) perché quei renderer NON ricodificano lineare→sRGB
-   * in uscita — i byte vanno caricati grezzi, convertirli li slaverebbe (vedi
-   * il commento in js/glsl.js). Il renderer del ROBOT (js/robot.js) è nella
-   * situazione OPPOSTA: ha `renderer.outputEncoding = THREE.sRGBEncoding`
-   * (necessario al materiale della testa, altrimenti "renderizza quasi nero",
-   * vedi il commento lì) — la stessa situazione di brain.js/atlas.html
-   * (`outputColorSpace = SRGBColorSpace`). Le altre uniform di colore già
-   * dentro il robot (uBaseColor/uLightColor in robot-spline-materials.js)
-   * arrivano infatti lineari dall'export Spline/glTF: usare byte grezzi per
-   * il brain sarebbe l'eccezione sbagliata, non la regola del file.
+   * Serve SOLO qui, non in `toVec3` sopra — ma NON per via di
+   * `renderer.outputEncoding`: il renderer del robot non ne applica nessuno.
+   * Nessun materiale di quella scena include `<encodings_fragment>`, quindi la
+   * riga `outputEncoding = sRGBEncoding` che stava in js/robot.js non faceva
+   * niente ed è stata tolta (il perché sta scritto lì).
+   *
+   * Il motivo vero è un altro: queste uniform devono essere GLI STESSI NUMERI
+   * che ATLAS passa a questo stesso shader. La palette è copiata da
+   * BRAIN_CONFIG di brain.js, dove ogni hex entra come `new THREE.Color(hex)`,
+   * cioè già decodificato in lineare: ricopiarla a byte grezzi darebbe uniform
+   * diverse da quelle di ATLAS. `toVec3` invece resta giusto per Vesper e per
+   * le altre canvas del sito (tunnel/warp/dna/particles/spine, vedi
+   * WC.glsl.hexToVec3): quegli shader sono tarati sui byte grezzi (vedi il
+   * commento in js/glsl.js). Anche il resto del robot è in lineare — le
+   * uniform di colore di robot-spline-materials.js (uBaseColor/uLightColor)
+   * arrivano lineari dall'export Spline/glTF — quindi il brain segue la regola
+   * del file, non l'eccezione.
+   *
+   * Punto aperto, NON toccato qui: ATLAS in uscita ricodifica in sRGB e applica
+   * ACES (axxell-3d.js e cervello-axxell/brain.js: `outputColorSpace` +
+   * `toneMapping`), il robot scrive grezzo. Stesse uniform, quindi, ma non
+   * esattamente la stessa tinta a schermo: è una decisione sui VALORI, da
+   * prendere con Nike guardando le due sezioni affiancate.
    */
   function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
   function hexToLinear(hex) {
