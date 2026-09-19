@@ -151,6 +151,16 @@ WC.register('robot', function(ctx){
     cam.quaternion.fromArray(D.camera.quaternion);
     var headTopWorld = null;
 
+    // Gli occhi a LED del visore sono un video (Task 5): scorre solo mentre la
+    // sezione è davvero in vista. Noto PRIMA di gltf.load, così il materiale
+    // nasce già nello stato giusto.
+    var sectionVisible = !('IntersectionObserver' in window);
+    var visIO = ('IntersectionObserver' in window) ? new IntersectionObserver(function (es) {
+      sectionVisible = es.some(function (e) { return e.isIntersecting; });
+      if (window.__robot && window.__robot.spline) window.__robot.spline.setPlaying(sectionVisible);
+    }) : null;
+    if (visIO) { visIO.observe(section); cleanups.push(function () { visIO.disconnect(); }); }
+
     var draco = new THREE.DRACOLoader();
     draco.setDecoderPath('vendor/draco/');
     var gltf = new THREE.GLTFLoader();
@@ -237,30 +247,17 @@ WC.register('robot', function(ctx){
         var parts = WC.robotParts.split(model);
         window.__robot.parts = parts;
 
-        // Materiali: carbonio su corpo/braccia, visore scuro con envMap +
-        // reveal a tutta testa (RITOCCO 2 — vedi robot-materials.js).
-        // `mats.glass` è lo ShaderMaterial le cui uniform pilotiamo qui sotto:
-        // uTime nel loop di render, uReveal (0..1) dal raycast del cursore
-        // sulla testa (tick() più sotto).
-        if (WC.robotMaterials) {
-          // `renderer` serve al carbonio per prefiltrare l'envMap via PMREM
-          // (riflesso lucido sul corpo scuro — vedi robot-materials.js).
-          var mats = WC.robotMaterials.applyTo(parts, renderer);
-          window.__robot.glass = mats.glass;
-          window.__robot.carbon = mats.carbon;
-        }
-
+        // Materiali Spline (Head/Body/Parts) su tutte le 80 mesh, per indice
+        // di nodo: il visore (unica mesh 'Head') con gli occhi a LED video.
+        // Il reveal (hoverHead, da tick() più sotto) spegne gli occhi.
         if (WC.robotSplineMaterials) {
           var sm = WC.robotSplineMaterials.create(D);
           sm.setCamera(cam);
-          // Prima passata: individua il visore (unica mesh 'Head'), poi
-          // assegna Parts/Body a tutto il resto. Il visore tiene per ora il
-          // vetro vecchio (Task 5 lo sostituisce).
-          var probe = WC.robotSplineMaterials.assign(model, D, { byName: {} });
-          var asg = WC.robotSplineMaterials.assign(model, D, sm, { skip: new Set([probe.visor]) });
+          var asg = WC.robotSplineMaterials.assign(model, D, sm);
           window.__robot.spline = sm;
           window.__robot.parts.visor = asg.visor;
           window.__robot.parts.chest = asg.chest;
+          sm.setPlaying(sectionVisible);
         }
 
         // Task 6 (rework): le fibre luminose nelle braccia ("i fasci").
@@ -388,14 +385,9 @@ WC.register('robot', function(ctx){
             var fovScale = Math.tan(THREE.MathUtils.degToRad(16)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
             var brainUSize = 4 * camDist / 200 * fovScale;
 
-            // Draw order (Task 5b): il vetro (transparent+depthWrite:false) e
-            // il brain (THREE.Points, additivo, anch'esso
-            // transparent+depthWrite:false) finiscono entrambi nella coda
-            // "trasparenti" di three.js, ordinata per distanza centro-oggetto
-            // — non per pixel. `renderOrder = 2` sul guscio di vetro (in
-            // robot-materials.js) forza SEMPRE guscio-dopo-brain: il suo alpha
-            // globale (uReveal) fa da maschera — a riposo opaco copre il
-            // cervello, rivelato lo lascia vedere su tutta la testa.
+            // Il brain (THREE.Points, additivo, transparent+depthWrite:false)
+            // sta dentro la testa: col visore Spline opaco (Task 5) resta
+            // coperto; la trasparenza del visore col reveal arriva nel Task 6.
             function placeBrain(brain) {
               brain.points.castShadow = false;   // Task 4b: il cervello non proietta ombre
               brain.points.receiveShadow = false;
@@ -462,15 +454,13 @@ WC.register('robot', function(ctx){
       }
 
       var raf;
-      var clockStart = (window.performance && performance.now) ? performance.now() : Date.now();
-      var lastTick = clockStart;
+      var lastTick = (window.performance && performance.now) ? performance.now() : Date.now();
       // RITOCCO 2: reveal a TUTTA testa. Un solo Raycaster riusato ogni frame
       // (niente allocazioni); se il cursore colpisce una qualunque mesh della
       // testa, un fattore smorzato `hoverHead` (0..1, esponenziale come
-      // rotazione/faceAmount) sale a 1 — sia il vetro (uReveal, uguale su
-      // tutta la testa) sia il brain (update(dt, reveal)) seguono questo
-      // stesso segnale, così il visore diventa trasparente e il cervello
-      // intero si accende insieme.
+      // rotazione/faceAmount) sale a 1 — il visore (spline.setReveal: occhi
+      // spenti; trasparenza nel Task 6) e il brain (update(dt, reveal))
+      // seguono questo stesso segnale.
       var raycaster = new THREE.Raycaster();
       var lensNdc = new THREE.Vector2();
       var hoverHead = 0;
@@ -486,9 +476,6 @@ WC.register('robot', function(ctx){
         var robot = window.__robot;
         var now = (window.performance && performance.now) ? performance.now() : Date.now();
         var dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
-        if (robot && robot.glass) {
-          robot.glass.uniforms.uTime.value = (now - clockStart) / 1000;
-        }
         // Task 4: la testa segue il cursore (clampata, smorzata). Task 5b
         // (correzione utente): questo resta INDIPENDENTE dal reveal — la
         // testa gira dietro al cursore anche da visore chiuso. faceAmount
@@ -527,17 +514,17 @@ WC.register('robot', function(ctx){
           raycaster.setFromCamera(lensNdc, cam);
         }
         // RITOCCO 2: raycast del cursore sulle mesh testa. Un hit su una
-        // QUALSIASI mesh della testa alza il target a 1 → il visore diventa
-        // trasparente su TUTTA la testa (uReveal, uguale ovunque). Nessun hit
-        // (cursore fuori dalla testa, o fuori dallo stage) → target 0, il
-        // visore torna scuro/opaco morbidamente.
-        if (robot && robot.glass && robot.parts && robot.parts.head && robot.parts.head.length) {
+        // QUALSIASI mesh della testa alza il target a 1 (reveal a tutta
+        // testa: per ora spegne gli occhi a LED, la trasparenza del visore è
+        // il Task 6). Nessun hit (cursore fuori dalla testa, o fuori dallo
+        // stage) → target 0, gli occhi si riaccendono morbidamente.
+        if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
           var hoverTarget = 0;
           if (pointer.active && raycaster.intersectObjects(robot.parts.head, false).length) {
             hoverTarget = 1;
           }
           hoverHead += (hoverTarget - hoverHead) * 0.18;
-          robot.glass.uniforms.uReveal.value = hoverHead;
+          robot.spline.setReveal(hoverHead);
         }
         // RITOCCO 2: il brain si accende con lo STESSO segnale del reveal a
         // tutta testa (non più la lente locale, non legato a faceAmount).
@@ -588,23 +575,9 @@ WC.register('robot', function(ctx){
         disposeObject3D(robot.model);
         if (robot.brain && robot.brain.points) disposeObject3D(robot.brain.points);
         if (robot.fibers && robot.fibers.object) disposeObject3D(robot.fibers.object);
-        // L'envMap del vetro testa è una CanvasTexture creata ad-hoc
-        // (robot-materials.js), non gestita da nessun altro loader/cache né
-        // toccata da disposeObject3D (che smaltisce geometrie/materiali, non
-        // le texture referenziate dentro le uniform di uno ShaderMaterial) —
-        // va smaltita qui a parte, altrimenti resta un WebGLTexture orfano
-        // ad ogni mount/unmount della sezione.
-        if (robot.glass && robot.glass.userData.envMap) robot.glass.userData.envMap.dispose();
-        // Stesso ragionamento per il carbonio (Task ref1): normalMap +
-        // envMap sono CanvasTexture/PMREM create ad-hoc in robot-materials.js,
-        // non toccate da disposeObject3D (che smaltisce geometrie/materiali,
-        // non le texture referenziate da un materiale) — vanno smaltite qui a
-        // parte, altrimenti restano WebGLTexture orfane ad ogni mount/unmount.
-        if (robot.carbon) {
-          if (robot.carbon.userData.normalMap) robot.carbon.userData.normalMap.dispose();
-          if (robot.carbon.userData.envMap) robot.carbon.userData.envMap.dispose();
-        }
       }
+      // Materiali Spline: le texture nelle uniform (disposeObject3D non le
+      // tocca) e il <video> degli occhi le smaltisce spline.dispose().
       if (robot && robot.spline) robot.spline.dispose();
       // La shadow map della point light è un render target a cubo srotolato
       // (4×2 facce da mapSize: 4096×2048 a 1024) che renderer.dispose() non libera.

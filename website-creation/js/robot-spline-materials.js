@@ -72,17 +72,68 @@ WC.robotSplineMaterials = (function () {
     var bu = common(D, B, list); tri(B, bu, list);
     bu.uSpecular = { value: v3(B.light.specular) };
     bu.uShininess = { value: B.light.shininess };
-    var byName = { Parts: shader('MAT_PARTS', pu), Body: shader('MAT_BODY', bu), Head: null };
-    var all = [byName.Parts, byName.Body];
+
+    // Head (visore): strato «video» planare con gli occhi a LED, poi luce,
+    // matcap e rainbow come Spline. Il video parte/si ferma con la sezione
+    // (setPlaying, da robot.js); finché non scorre davvero si mostra il poster.
+    var Hd = D.materials.Head;
+    var video = document.createElement('video');
+    video.src = Hd.video.src; video.muted = true; video.defaultMuted = true; video.loop = true;
+    video.playsInline = true; video.setAttribute('playsinline', ''); video.preload = 'auto'; video.crossOrigin = 'anonymous';
+    var vtex = new THREE.VideoTexture(video);
+    vtex.encoding = THREE.LinearEncoding; vtex.flipY = Hd.video.flipY !== false;
+    // Mipmap: lo shader preleva il video SP_VIDEO_SS² volte per pixel e ogni
+    // prelievo legge la mipmap adatta al suo passo (textureGrad, sp_head in
+    // robot-spline-glsl.js) — così i puntini dei LED non sfarfallano. Spline a
+    // runtime usa minFilter 1006 senza mipmap e li ammorbidisce con la TAA.
+    vtex.generateMipmaps = true; vtex.minFilter = THREE.LinearMipmapLinearFilter; vtex.magFilter = THREE.LinearFilter;
+    var poster = tex(Hd.video.poster, { flipY: Hd.video.flipY }, list);
+    list.push(vtex);
+    var hu = common(D, Hd, list);
+    hu.uSpecular = { value: v3(Hd.light.specular) };
+    hu.uShininess = { value: Hd.light.shininess };
+    hu.uVideo = { value: poster };         // poster finché il video non scorre davvero
+    hu.uVideoMat = { value: m3(Hd.video.mat) };
+    hu.uVideoSize = { value: new THREE.Vector2(Hd.video.size[0], Hd.video.size[1]) };
+    hu.uVideoCrop = { value: Hd.video.crop ? 1 : 0 };
+    hu.uVideoAlpha = { value: Hd.video.alpha };
+    hu.uVideoMode = { value: Hd.video.mode };
+    hu.uEyes = { value: 1 };
+    // Dal poster al video al primo fotogramma presentato: a quel punto la
+    // VideoTexture (r128, requestVideoFrameCallback) ha già un'immagine da
+    // caricare — niente fotogramma nero fra poster e video.
+    function useVideo() { hu.uVideo.value = vtex; }
+    function onPlaying() {
+      if (hu.uVideo.value === vtex) return;
+      if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback(useVideo); else useVideo();
+    }
+    video.addEventListener('playing', onPlaying);
+
+    var head = shader('MAT_HEAD', hu);
+    var byName = { Parts: shader('MAT_PARTS', pu), Body: shader('MAT_BODY', bu), Head: head };
+    var all = [byName.Parts, byName.Body, head];
     var lightWorld = v3(D.light.worldPosition);
     return {
       byName: byName, textures: list, all: all,
+      video: video,
+      setPlaying: function (on) {
+        if (on) { var pr = video.play(); if (pr && pr.catch) pr.catch(function () { hu.uVideo.value = poster; }); }
+        else video.pause();
+      },
+      // r = reveal della testa (0..1): gli occhi si spengono mentre si apre.
+      // L'alpha del visore arriva nel Task 6.
+      setReveal: function (r) { hu.uEyes.value = 1 - r; },
       setCamera: function (cam) {
         cam.updateMatrixWorld(true);
         var lv = lightWorld.clone().applyMatrix4(cam.matrixWorldInverse);
         all.forEach(function (m) { if (m && m.uniforms.uLightPos) m.uniforms.uLightPos.value.copy(lv); });
       },
-      dispose: function () { all.forEach(function (m) { if (m) m.dispose(); }); list.forEach(function (t) { t.dispose(); }); }
+      dispose: function () {
+        video.removeEventListener('playing', onPlaying);
+        video.pause(); video.removeAttribute('src'); video.load();
+        all.forEach(function (m) { if (m) m.dispose(); });
+        list.forEach(function (t) { t.dispose(); });
+      }
     };
   }
 
@@ -91,14 +142,18 @@ WC.robotSplineMaterials = (function () {
   function base(n) { return String(n || '').replace(/[\s.\[\]:\/]/g, '_').replace(/(_\d+)+$/, '').toLowerCase(); }
 
   // Le mesh portano userData.splineIndex (indice del nodo glTF, messo da
-  // robot.js al caricamento): l'ordine di model.traverse NON è stabile.
+  // robot.js al caricamento): l'ordine di model.traverse NON è stabile, quindi
+  // si ordina per indice (byMaterial esce sempre nello stesso ordine).
   function assign(model, D, mats, opts) {
     var skip = (opts && opts.skip) || null;
     var list = []; model.traverse(function (o) { if (o.isMesh && o.userData.splineIndex !== undefined) list.push(o); });
     if (list.length !== D.meshes.length) throw new Error('[robot] mesh ' + list.length + ' ≠ ' + D.meshes.length);
+    list.sort(function (a, b) { return a.userData.splineIndex - b.userData.splineIndex; });
     var out = { visor: null, chest: null, byMaterial: { Head: [], Body: [], Parts: [] } };
     list.forEach(function (mesh) {
       var i = mesh.userData.splineIndex, d = D.meshes[i];
+      if (!d) throw new Error('[robot] mesh "' + mesh.name + '": indice di nodo ' + i + ' assente nei dati Spline (' + D.meshes.length + ' mesh)');
+      if (!out.byMaterial[d.material]) throw new Error('[robot] mesh ' + i + ': materiale Spline sconosciuto "' + d.material + '"');
       if (d.name && base(d.name) !== base(mesh.name)) throw new Error('[robot] mesh ' + i + ': "' + mesh.name + '" ≠ Spline "' + d.name + '"');
       mesh.geometry.computeBoundingBox();
       var bb = mesh.geometry.boundingBox;
@@ -112,6 +167,9 @@ WC.robotSplineMaterials = (function () {
       mesh.material = m;
       mesh.userData.splineMaterial = d.material;
     });
+    // Il visore è UNO: se i dati ne portassero due, visor/reveal/occhi
+    // finirebbero su una mesh a caso.
+    if (out.byMaterial.Head.length !== 1) throw new Error('[robot] mesh con materiale Head: ' + out.byMaterial.Head.length + ' (atteso 1)');
     return out;
   }
 

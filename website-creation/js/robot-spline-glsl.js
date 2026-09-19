@@ -173,15 +173,20 @@ WC.robotSplineGLSL = {
     '  return uAmbient + r;',
     '}',
     '#if defined(MAT_HEAD) || defined(MAT_BODY)',
-    'vec3 sp_blinnPhong(vec3 diffuse, vec3 n) {',
+    // Blinn-Phong è lineare nel colore diffuso: luce(d) = k·d + s. Si separa
+    // k (diffusa diretta + indiretta) da s (speculare) perché la testa lo
+    // riapplica a più campioni del video senza ricalcolare luce e ombra.
+    'void sp_blinnPhongKS(vec3 n, out vec3 k, out vec3 s) {',
     '  vec3 lc; vec3 L = sp_light(lc); vec3 V = normalize(vViewPosition);',
     '  vec3 irr = clamp(dot(n, L), 0.0, 1.0) * lc;',
     '  vec3 H = normalize(L + V);',
     '  float nh = clamp(dot(n, H), 0.0, 1.0), vh = clamp(dot(V, H), 0.0, 1.0);',
     '  float sh = max(0.0001, uShininess);',
     '  vec3 spec = sp_F(uSpecular, 1.0, vh) * (0.25 * SP_RPI * (sh * 0.5 + 1.0) * pow(nh, sh));',
-    '  return irr * SP_RPI * diffuse + sp_indirect(n) * SP_RPI * diffuse + irr * spec;',
+    '  k = (irr + sp_indirect(n)) * SP_RPI;',
+    '  s = irr * spec;',
     '}',
+    'vec3 sp_blinnPhong(vec3 diffuse, vec3 n) { vec3 k, s; sp_blinnPhongKS(n, k, s); return k * diffuse + s; }',
     '#endif',
     '#ifdef MAT_PARTS',
     'vec3 sp_physical(vec3 diffuse, vec3 n, float rough) {',
@@ -213,6 +218,27 @@ WC.robotSplineGLSL = {
     '  return normalize(abs(det) * n - sign(det) * (dh.x * r1 + dh.y * r2));',
     '}',
     '#endif',
+    // Visore (Head): la catena di strati di Spline per UN campione del video —
+    // video planare sul nero, luce Blinn-Phong (k·c + s), matcap, rainbow.
+    // Spline campiona il video senza mipmap (minFilter 1006 a runtime, anche se
+    // il layer dichiara 1008) e i puntini dei LED li ammorbidisce la sua TAA:
+    // jitter subpixel accumulato, cioè la media del colore FINALE sull'area del
+    // pixel. Qui la stessa media in un colpo: SP_VIDEO_SS² campioni del video
+    // sull'impronta del pixel, ognuno fatto passare per tutta la catena (la
+    // catena non è lineare: mediare prima il video spegne i puntini). Ogni
+    // campione legge la mipmap adatta al suo passo, così niente sfarfallio
+    // anche a testa piccola.
+    '#ifdef MAT_HEAD',
+    '#define SP_VIDEO_SS 4',
+    'vec3 sp_head(vec4 vt, vec2 uv, float vmask, vec3 k, vec3 s, vec3 mc, vec3 rb, float rba) {',
+    '  float va = vmask * vt.a;',
+    '  if (uVideoCrop > 0.5 && (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)) va = 0.0;',
+    '  vec3 c = sp_blend(uBaseColor, vt.rgb, va, uVideoMode);',
+    '  c = sp_blend(c, k * c + s, uLightAlpha, uLightMode);',
+    '  c = sp_blend(c, mc, uMatcapAlpha, uMatcapMode);',
+    '  return sp_blend(c, rb, rba, uRbMode);',
+    '}',
+    '#endif',
 
     'void main() {',
     '  float face = gl_FrontFacing ? 1.0 : -1.0;',
@@ -229,13 +255,23 @@ WC.robotSplineGLSL = {
 
     '#ifdef MAT_HEAD',
     '  vec2 vuv = (uVideoMat * vec3(vPosition.xy / (uVideoSize * 0.5), 1.0) / 2.0 + 0.5).xy;',
-    '  vec4 vt = texture2D(uVideo, vuv);',
-    '  float va = uVideoAlpha * vt.a * step(0.0, dot(vObjectNormal, vec3(0.0, 0.0, 1.0))) * uEyes;',
-    '  if (uVideoCrop > 0.5 && (vuv.x < 0.0 || vuv.x > 1.0 || vuv.y < 0.0 || vuv.y > 1.0)) va = 0.0;',
-    '  c = sp_blend(c, vt.rgb, va, uVideoMode);',
-    '  c = sp_blend(c, sp_blinnPhong(c, n), uLightAlpha, uLightMode);',
-    '  c = sp_blend(c, sp_matcap(n), uMatcapAlpha, uMatcapMode);',
-    '  c = sp_applyRainbow(c);',
+    '  vec2 vdx = dFdx(vuv), vdy = dFdy(vuv);',
+    '  float vmask = uVideoAlpha * step(0.0, dot(vObjectNormal, vec3(0.0, 0.0, 1.0))) * uEyes;',
+    '  vec3 hk, hs; sp_blinnPhongKS(n, hk, hs);',
+    '  vec3 mc = sp_matcap(n), rb = sp_rainbow();',
+    '  float rba = uRbAlpha * clamp(rb.r + rb.g + rb.b, 0.0, 1.0);',
+    '  if (vmask > 0.0) {',
+    '    vec3 acc = vec3(0.0);',
+    '    float fs = float(SP_VIDEO_SS);',
+    '    for (int i = 0; i < SP_VIDEO_SS; i++) for (int j = 0; j < SP_VIDEO_SS; j++) {',
+    '      vec2 o = (vec2(float(i), float(j)) + 0.5) / fs - 0.5;',
+    '      vec2 uv = vuv + o.x * vdx + o.y * vdy;',
+    '      acc += sp_head(texture2DGradEXT(uVideo, uv, vdx / fs, vdy / fs), uv, vmask, hk, hs, mc, rb, rba);',
+    '    }',
+    '    c = acc / (fs * fs);',
+    '  } else {',
+    '    c = sp_head(vec4(0.0), vuv, 0.0, hk, hs, mc, rb, rba);',
+    '  }',
     '#endif',
 
     '#ifdef MAT_BODY',
