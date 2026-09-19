@@ -617,12 +617,12 @@ WC.register('cursorfx', function(ctx){
    * sostituito la torcia, che per rivelare doveva prima coprire tutto di nero.
    */
   FX.circuit = function(host){
-    // z-index 0, cioè DIETRO: il circuito sta sotto la scena Spline (z 1) e
-    // sotto la copy (z 2). Perché si veda lo stesso, è la SCENA a passare in
-    // `mix-blend-mode:screen` (vedi css/sections.css): il suo fondo scuro
-    // diventa trasparente e lascia passare il rame, il robot — che è chiaro —
-    // resta disegnato sopra. Prima era il contrario, il circuito sopra in
-    // screen: si vedeva, ma passava DAVANTI al modello.
+    // z-index 0, cioè DIETRO: il circuito sta sotto lo stage del robot (z 1).
+    // Si vede lo stesso perché quel canvas è TRASPARENTE (WebGLRenderer con
+    // alpha, nessun colore di sfondo): il rame passa attraverso i pixel vuoti
+    // e il modello lo occlude dove è disegnato — occlusione vera, senza
+    // `mix-blend-mode` né maschere (quelli erano i tentativi di quando la
+    // scena era un canvas opaco; entrambi rimossi, vedi css/sections.css).
     var cv = makeCanvas(host, 0), ptr = makePointer(host);
 
     var COL = '0,212,255';       // il ciano del sito, in componenti per rgba()

@@ -418,55 +418,28 @@ body.wc-locked{overflow:hidden;}
 .wc-vesper.-static #wcVesperCanvas{display:none;}
 
 /* ---- MODELLO INTERATTIVO (id cap05, ora "// 04" a schermo) ---- */
-/* Il modello non sta più in metà di una card: prende tutta la sezione e sta
-   al centro. La copy gli passa davanti in basso, su un velo. */
+/* Il modello prende tutta la sezione e sta al centro: niente copy e niente
+   velo a fianco, solo lo stage (vedi index.html #cap05). */
 .wc-robot{padding:0;}
-/* `isolation:isolate`: senza, il `mix-blend-mode` della scena qui sotto va a
-   cercarsi lo sfondo fuori dalla card e il circuito non entra nel calcolo —
-   è il motivo per cui al primo tentativo il rame non si vedeva. Con
-   l'isolamento la fusione avviene ESATTAMENTE contro il contenuto della card:
-   il fondo scuro e, sopra, il canvas del circuito. */
+/* `isolation:isolate` non serve più a un `mix-blend-mode` — qui dentro non ce
+   n'è più nessuno. Resta perché tiene LOCALI gli z-index del capitolo: crea
+   un contesto di impilamento sulla card, così il canvas del circuito (0) e lo
+   stage (1) si ordinano fra loro e non contro il resto della pagina. */
 .wc-robot-card{position:relative;overflow:hidden;isolation:isolate;
   background:var(--bg);min-height:100svh;
   display:flex;align-items:flex-end;}
-/* Canvas trasparente: il circuito (z 0) si vede attorno al robot per
-   trasparenza reale, niente blend né filtri — il robot deve essere identico
-   allo Spline. */
+/* Canvas trasparente: il circuito (il canvas che FX.circuit di js/cursorfx.js
+   crea a z-index 0) sta DIETRO lo stage (z 1) e si vede attraverso i pixel
+   vuoti del canvas del robot. È occlusione VERA — niente blend, niente
+   filtri: il robot deve restare identico allo Spline.
+   QUI C'ERA "IL BUCO ATTORNO AL ROBOT": una maschera a ellisse sul `.wc-fx`
+   della card (più una variante @media per schermi stretti) che spegneva il
+   rame al centro. Serviva quando la scena era un canvas OPACO di cui non si
+   conosceva la silhouette. Da quando è trasparente cancellava il circuito
+   proprio nei VUOTI — fra braccia e torso, fra le gambe, attorno alla testa —
+   cioè dove l'occlusione vera lo mostra al posto giusto. Tolta. */
 .wc-robot-stage{position:absolute;inset:0;z-index:1;}
-/* ---- IL BUCO ATTORNO AL ROBOT ----
-   `lighten` da solo NON basta a mettere il circuito dietro, ed è il motivo per
-   cui prima si vedeva passargli davanti: lighten sceglie il più chiaro CANALE
-   PER CANALE, e questo robot è nero — carbonio, quasi zero su tutti e tre i
-   canali su gran parte del corpo. Una traccia ciano accesa lì è più chiara del
-   modello, quindi vince, e si legge come una riga disegnata SOPRA di lui.
-   Verificato a schermo: le tracce attraversavano torace e gambe.
-
-   Non c'è modo di far occludere il rame dal modello — il canvas di Spline è
-   opaco e la sua silhouette non la conosciamo. Quindi il rame non ci arriva
-   proprio: il canvas del circuito è mascherato con un'ellisse morbida al
-   centro, dove il modello sta sempre (è centrato in orizzontale e prende tutta
-   l'altezza). Dentro l'ellisse la maschera è trasparente e non si disegna
-   niente; il bordo sfuma su ~26 punti, così le tracce non si tagliano di netto
-   ma si spengono avvicinandosi — che è come si comporta uno sfondo dietro un
-   oggetto in primo piano.
-
-   La maschera sta sul `.wc-fx` DENTRO la card del robot e non su tutti: gli
-   altri capitoli hanno effetti che devono coprire tutto il riquadro. */
-.wc-robot-card > .wc-fx{
-  -webkit-mask-image:radial-gradient(26% 52% at 50% 56%,
-    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);
-  mask-image:radial-gradient(26% 52% at 50% 56%,
-    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);}
-@media (max-width:900px){
-  /* Su schermo stretto il modello è inquadrato più largo (vedi lo sbordo a
-     −150% qui sotto): il buco lo segue, se no il rame gli torna addosso. */
-  .wc-robot-card > .wc-fx{
-    -webkit-mask-image:radial-gradient(38% 48% at 50% 52%,
-      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);
-    mask-image:radial-gradient(38% 48% at 50% 52%,
-      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);}
-}
-.wc-robot-stage spline-viewer,.wc-robot-stage canvas{width:100%;height:100%;display:block;}
+.wc-robot-stage canvas{width:100%;height:100%;display:block;}
 .wc-robot-hint{position:absolute;inset:0;display:flex;align-items:center;
   justify-content:center;font-family:var(--mono);font-size:.68rem;
   letter-spacing:.16em;color:var(--dim);}
