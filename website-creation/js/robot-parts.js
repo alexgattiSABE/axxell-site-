@@ -76,10 +76,16 @@ WC.robotParts = {
     var neck = min.y + size.y * 0.79;
     var armBandLow = min.y + size.y * 0.45;
     var armXThreshold = size.x * 0.16;
-    // Il modello NON è più ricentrato (sta nelle coordinate della scena
-    // Spline): il centro X del bbox è ~−2.9, non 0. Le soglie laterali si
-    // misurano da lì, altrimenti una mesh del corpo finisce in un braccio.
-    var cx = (box.min.x + box.max.x) / 2;
+    // Asse di simmetria del robot: il centro X del cluster testa (le coppie
+    // mirror delle braccia sono simmetriche attorno a lui, ~−2.75). Il centro
+    // del bbox intero (~−2.9) è spostato dalla posa asimmetrica delle braccia
+    // e metteva una coppia mirror a cavallo della soglia.
+    var axisBox = new THREE.Box3();
+    meshes.forEach(function (m) {
+      var c = centerOf(m);
+      if (/head|helmet|visor|face|glass/.test((m.name || '').toLowerCase()) || c.y >= neck) axisBox.union(new THREE.Box3().setFromObject(m));
+    });
+    var cx = (axisBox.min.x + axisBox.max.x) / 2;
 
     var head = [], body = [], armL = [], armR = [];
     meshes.forEach(function (m) {
