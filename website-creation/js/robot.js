@@ -154,6 +154,22 @@ WC.register('robot', function(ctx){
       var SHADOW_MAP_LEGGERA = { mapSize: mapSizeLeggera, radius: (S.radius + 5) * mapSizeLeggera / S.mapSize[0] - 5 };
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = S.type;
+      // La shadow map NON si rifà a ogni fotogramma. È una point light: sei
+      // facce di cubo, e ogni faccia ridisegna tutte le mesh che proiettano —
+      // 97 draw call in più per frame (misurate: 165 contro 68). Ma nella
+      // scena si muove SOLO la testa, e quasi sempre nemmeno quella: a riposo
+      // il fotogramma ricalcolava un'ombra identica a quella del fotogramma
+      // prima. Da qui in poi la mappa si rifà quando c'è un motivo, e i motivi
+      // sono tre — li marca `shadowDirty()`: la testa ha girato abbastanza dal
+      // disegno precedente, il reveal ha attraversato la soglia in cui visore
+      // e interni smettono/riprendono a proiettare (r > 0.5, vedi setReveal in
+      // robot-spline-materials.js), oppure si è appena rifatto il fit.
+      // Nota su three r128: NON basta `shadowLight.shadow.needsUpdate`.
+      // WebGLShadowMap.render esce subito se `autoUpdate === false &&
+      // needsUpdate === false` SULLA MAPPA, prima ancora di guardare i flag
+      // della singola luce — quindi la bandierina che conta è questa.
+      renderer.shadowMap.autoUpdate = false;
+      renderer.shadowMap.needsUpdate = true;   // la prima ombra va disegnata
       shadowLight = new THREE.PointLight(0xffffff, 0);
       shadowLight.position.fromArray(D.light.worldPosition);
       shadowLight.castShadow = true;
@@ -206,6 +222,12 @@ WC.register('robot', function(ctx){
         if (need > 0) { cam.setViewOffset(w, h, 0, -need, w, h); cam.updateProjectionMatrix(); }
       }
       if (window.__robot && window.__robot.spline) window.__robot.spline.setCamera(cam);
+      // La mappa d'ombra di una point light non dipende dalla camera di vista,
+      // quindi in teoria un fit() non la invalida. La rifacciamo lo stesso: i
+      // fit sono rari (montaggio e resize della finestra) e costano un frame,
+      // e così l'ombra non può restare indietro per un motivo che qui non
+      // abbiamo previsto.
+      renderer.shadowMap.needsUpdate = true;
     }
     stage.appendChild(renderer.domElement);
 
@@ -560,6 +582,26 @@ WC.register('robot', function(ctx){
       // per frame contro parts.armL/armR separatamente. Persistono fuori da
       // tick() (come hoverHead) per lo smoothing esponenziale frame-su-frame.
       var surgeL = 0, surgeR = 0;
+      // Stato dell'ombra: la rotazione della testa e la soglia di proiezione
+      // del visore al momento in cui la shadow map è stata disegnata l'ultima
+      // volta (vedi shadowMap.autoUpdate = false più sopra). NaN/null = "mai
+      // disegnata", così il primo giro di tick() la marca comunque.
+      // SHADOW_EPS è il minimo di rotazione che vale un ridisegno. Il confronto
+      // è contro l'ULTIMO DISEGNO, non contro il fotogramma precedente: lo
+      // smorzamento (0.12/frame) fa passi sempre più piccoli avvicinandosi al
+      // bersaglio, e misurando frame su frame l'ombra resterebbe ferma mentre
+      // la testa continua a scivolare. Così invece l'errore accumulato non
+      // supera mai SHADOW_EPS.
+      // 0.0005 rad = 0.03°. Misurato confrontando ogni fotogramma con lo
+      // stesso fotogramma a ombra rifatta: mentre la testa gira la differenza è
+      // ZERO (l'ombra si rifà a ogni passo, com'è giusto), e quando si assesta
+      // resta al massimo 8/255 su qualche decina di pixel del bordo di
+      // penombra — su 1,3 milioni. A 0.0015 arrivava a 12/255 su ~116: sarebbe
+      // stato invisibile lo stesso, ma scendere non costa niente (il
+      // decadimento smorzato passa sotto la soglia in qualche fotogramma in
+      // più e poi si ferma comunque).
+      var SHADOW_EPS = 0.0005;
+      var shadowYaw = NaN, shadowPitch = NaN, shadowCast = null;
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
@@ -590,6 +632,15 @@ WC.register('robot', function(ctx){
           }
           robot.headGroup.rotation.y += (targetYaw - robot.headGroup.rotation.y) * 0.12;
           robot.headGroup.rotation.x += (targetPitch - robot.headGroup.rotation.x) * 0.12;
+          // Primo motivo per rifare la shadow map: la testa ha girato
+          // abbastanza dall'ultimo disegno. Scritto con una negazione così il
+          // primo giro (shadowYaw = NaN, ogni confronto falso) la marca.
+          if (!(Math.abs(robot.headGroup.rotation.y - shadowYaw) < SHADOW_EPS &&
+                Math.abs(robot.headGroup.rotation.x - shadowPitch) < SHADOW_EPS)) {
+            shadowYaw = robot.headGroup.rotation.y;
+            shadowPitch = robot.headGroup.rotation.x;
+            renderer.shadowMap.needsUpdate = true;
+          }
         }
         // Task 7 (nit): un solo setFromCamera per frame quando il puntatore
         // è attivo — reveal testa e surge delle fibre (braccia)
@@ -614,6 +665,14 @@ WC.register('robot', function(ctx){
           }
           hoverHead += (hoverTarget - hoverHead) * 0.18;
           robot.spline.setReveal(hoverHead);
+          // Secondo motivo: il reveal ha attraversato la soglia in cui visore
+          // e interni smettono (o riprendono) a proiettare ombra. Stessa
+          // condizione di setReveal in robot-spline-materials.js — lo snap
+          // agli estremi che fa lì (sotto 0.01 → 0, sopra 0.995 → 1) non tocca
+          // il confronto con 0.5. Senza questo, l'ombra del visore resterebbe
+          // stampata a terra a testa trasparente.
+          var castNow = hoverHead <= 0.5;
+          if (castNow !== shadowCast) { shadowCast = castNow; renderer.shadowMap.needsUpdate = true; }
         }
         // RITOCCO 2: il brain si accende con lo STESSO segnale del reveal a
         // tutta testa (non più la lente locale, non legato a faceAmount).
