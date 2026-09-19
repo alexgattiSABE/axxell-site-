@@ -113,19 +113,31 @@ WC.register('robot', function(ctx){
     // shadow map: intensità 0, perché l'illuminazione la calcolano i nostri
     // shader dalle loro uniform (robot-spline-materials.js) e la luce three
     // non deve aggiungerne. Stessa posizione mondo e stessi parametri d'ombra
-    // letti da Spline (WC.robotSplineData.light.shadow).
+    // letti da Spline (WC.robotSplineData.light.shadow), TRANNE mapSize e
+    // radius: vedi SHADOW_MAP_LEGGERA.
     var shadowLight = null;
     if (D.light.shadow && D.light.shadow.enabled) {
       var S = D.light.shadow;
+      // Shadow map più leggera di quella Spline, stessa ombra a schermo.
+      // Spline: 2048 per faccia → atlante del cubo 8192×4096, ≈192–256 MiB di
+      // memoria video (RGBA8 + depth) — troppo per una pagina pubblica su un
+      // portatile normale. 1024 per faccia → 4096×2048, ≈48–64 MiB.
+      // Il filtro (sp_shadow in robot-spline-glsl.js) sposta i prelievi di
+      // (radius + 5) texel, e un texel vale 1/mapSize: per tenere la stessa
+      // penombra in unità mondo il raggio scala con mapSize,
+      //   r' = (r + 5) · 1024 / 2048 − 5 = (98.884 + 5) / 2 − 5 = 46.942.
+      // Misurato vs Spline con la stessa posa (braccio/gambe/petto): 2048 →
+      // 1.73/1.40/0.85, 1024 → 1.73/1.40/0.85 (512 → 1.73/1.41/0.85, non adottato).
+      var SHADOW_MAP_LEGGERA = { mapSize: 1024, radius: (S.radius + 5) * 1024 / S.mapSize[0] - 5 };
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = S.type;
       shadowLight = new THREE.PointLight(0xffffff, 0);
       shadowLight.position.fromArray(D.light.worldPosition);
       shadowLight.castShadow = true;
-      shadowLight.shadow.mapSize.set(S.mapSize[0], S.mapSize[1]);
+      shadowLight.shadow.mapSize.set(SHADOW_MAP_LEGGERA.mapSize, SHADOW_MAP_LEGGERA.mapSize);
       shadowLight.shadow.bias = S.bias;
       shadowLight.shadow.normalBias = S.normalBias;
-      shadowLight.shadow.radius = S.radius;
+      shadowLight.shadow.radius = SHADOW_MAP_LEGGERA.radius;
       // distance 0 → PointLightShadow usa camera.far così com'è (altrimenti la sostituirebbe con distance).
       shadowLight.shadow.camera.near = S.near;
       shadowLight.shadow.camera.far = S.far;
@@ -595,7 +607,7 @@ WC.register('robot', function(ctx){
       }
       if (robot && robot.spline) robot.spline.dispose();
       // La shadow map della point light è un render target a cubo srotolato
-      // (4×2 facce da mapSize: 8192×4096 a 2048) che renderer.dispose() non libera.
+      // (4×2 facce da mapSize: 4096×2048 a 1024) che renderer.dispose() non libera.
       if (shadowLight) shadowLight.shadow.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
