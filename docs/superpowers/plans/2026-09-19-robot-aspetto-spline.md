@@ -790,6 +790,7 @@ Claude-Session: https://claude.ai/code/session_01Uq4gj26CZnLLaGs9oHjgm8"
 **Interfaces:**
 - Consumes: `WC.robotSplineData`; `window.__robot.model`, `camera`.
 - Produces: `WC.robotSplineGLSL = { vert: string, frag: string }`; il fragment usa i define `MAT_HEAD` | `MAT_BODY` | `MAT_PARTS` (+ `LOGO` in Task 7).
+- Consumes (Task 3, fix round 3): ogni mesh del GLB ha `mesh.userData.splineIndex` = indice del nodo glTF (da `g.parser.associations`), la posa Spline è già applicata.
 - Produces: `WC.robotSplineMaterials.create(D) → { byName: {Head, Body, Parts}, textures: THREE.Texture[], setCamera(cam), dispose() }` e `WC.robotSplineMaterials.assign(model, D, mats, opts) → { visor: THREE.Mesh, chest: THREE.Mesh, byMaterial: {Head:[],Body:[],Parts:[]} }` con `opts.skip = Set<Mesh>`; ogni mesh assegnata riceve `mesh.userData.splineMaterial = 'Head'|'Body'|'Parts'`.
 
 - [ ] **Step 1: Aggiungi il controllo `materiali` a `prova.mjs` (deve fallire)**
@@ -1109,13 +1110,15 @@ WC.robotSplineMaterials = (function () {
   // si confrontano le basi senza i suffissi numerici.
   function base(n) { return String(n || '').replace(/[\s.\[\]:\/]/g, '_').replace(/(_\d+)+$/, '').toLowerCase(); }
 
+  // Le mesh portano userData.splineIndex (indice del nodo glTF, messo da
+  // robot.js al caricamento): l'ordine di model.traverse NON è stabile.
   function assign(model, D, mats, opts) {
     var skip = (opts && opts.skip) || null;
-    var list = []; model.traverse(function (o) { if (o.isMesh) list.push(o); });
+    var list = []; model.traverse(function (o) { if (o.isMesh && o.userData.splineIndex !== undefined) list.push(o); });
     if (list.length !== D.meshes.length) throw new Error('[robot] mesh ' + list.length + ' ≠ ' + D.meshes.length);
     var out = { visor: null, chest: null, byMaterial: { Head: [], Body: [], Parts: [] } };
-    list.forEach(function (mesh, i) {
-      var d = D.meshes[i];
+    list.forEach(function (mesh) {
+      var i = mesh.userData.splineIndex, d = D.meshes[i];
       if (d.name && base(d.name) !== base(mesh.name)) throw new Error('[robot] mesh ' + i + ': "' + mesh.name + '" ≠ Spline "' + d.name + '"');
       mesh.geometry.computeBoundingBox();
       var bb = mesh.geometry.boundingBox;
