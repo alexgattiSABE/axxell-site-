@@ -1448,13 +1448,13 @@ Claude-Session: https://claude.ai/code/session_01Uq4gj26CZnLLaGs9oHjgm8"
         const W = g.drawingBufferWidth, H = g.drawingBufferHeight;
         const x0 = Math.floor((Math.min(a.x, b.x) + 1) / 2 * W), x1 = Math.ceil((Math.max(a.x, b.x) + 1) / 2 * W);
         const y0 = Math.floor((Math.min(a.y, b.y) + 1) / 2 * H), y1 = Math.ceil((Math.max(a.y, b.y) + 1) / 2 * H);
-        const px = new Uint8Array((x1 - x0) * (y1 - y0) * 4); g.readPixels(x0, y0, x1 - x0, y1 - y0, g.RGBA, g.UNSIGNED_BYTE, px); return px; };
-        const off = grab(false), on = grab(true);
+        const px = new Uint8Array((x1 - x0) * (y1 - y0) * 4); g.readPixels(x0, y0, x1 - x0, y1 - y0, g.RGBA, g.UNSIGNED_BYTE, px); return { px, w: x1 - x0 }; };
+        const OFF = grab(false), ON = grab(true), off = OFF.px, on = ON.px, rowW = ON.w;
         // maschera del logo = pixel che cambiano accendendolo; il punto più chiaro deve stare DENTRO
         let best = -1, bx = 0, inMask = false, white = 0;
         for (let i = 0; i < on.length; i += 4) { const changed = Math.abs(on[i] - off[i]) + Math.abs(on[i + 1] - off[i + 1]) + Math.abs(on[i + 2] - off[i + 2]) > 30;
           const l = on[i] + on[i + 1] + on[i + 2]; if (changed && l > 600) white++;
-          if (l > best) { best = l; bx = (i / 4) % (x1 - x0); inMask = changed; } }
+          if (l > best) { best = l; bx = (i / 4) % rowW; inMask = changed; } }
         return { white, bx, inMask, best }; }); };
     const has = await p.evaluate(() => !!(window.__robot.spline && window.__robot.spline.logo));
     if (!has) return 'nessun logo';
