@@ -45,10 +45,16 @@ WC.robotSplineMaterials = (function () {
     u.uTriBlend = { value: m.tri.blending };
     u.uBumpScale = { value: m.bumpScale };
   }
+  // lights:true solo per ricevere da three l'ombra della point light (shadow map,
+  // matrice, parametri): l'illuminazione resta nelle nostre uniform. Le uniform
+  // luci di three si clonano da UniformsLib; le nostre si aggiungono così come
+  // sono (UniformsUtils.merge clonerebbe anche le texture).
   function shader(define, uniforms) {
     var d = {}; d[define] = '';
+    var u = THREE.UniformsUtils.merge([THREE.UniformsLib.lights]);
+    Object.keys(uniforms).forEach(function (k) { u[k] = uniforms[k]; });
     var mat = new THREE.ShaderMaterial({
-      defines: d, uniforms: uniforms,
+      defines: d, uniforms: u, lights: true,
       vertexShader: WC.robotSplineGLSL.vert, fragmentShader: WC.robotSplineGLSL.frag,
       extensions: { derivatives: true, shaderTextureLOD: true }
     });

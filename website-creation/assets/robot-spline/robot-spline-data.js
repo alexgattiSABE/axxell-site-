@@ -68,7 +68,22 @@ WC.robotSplineData = {
    15.707963267948966
   ],
   "distance": 2000,
-  "decay": 1
+  "decay": 1,
+  "shadow": {
+   "enabled": true,
+   "castShadow": true,
+   "type": 1,
+   "autoUpdate": true,
+   "mapSize": [
+    2048,
+    2048
+   ],
+   "bias": 0,
+   "normalBias": 1,
+   "radius": 98.884,
+   "near": 100,
+   "far": 2000
+  }
  },
  "ambient": [
   0,
@@ -388,7 +403,9 @@ WC.robotSplineData = {
     254.0294929965823,
     19.728559392796242,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 1,
@@ -421,7 +438,9 @@ WC.robotSplineData = {
     214.0600694657116,
     5.552145079458418,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 2,
@@ -454,7 +473,9 @@ WC.robotSplineData = {
     197.1960870013728,
     3.310323425476432,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 3,
@@ -487,7 +508,9 @@ WC.robotSplineData = {
     217.12554742769993,
     5.313131116857712,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 4,
@@ -520,7 +543,9 @@ WC.robotSplineData = {
     217.12554742769993,
     5.313131116857712,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 5,
@@ -553,7 +578,9 @@ WC.robotSplineData = {
     234.272883973712,
     9.359308047061289,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 6,
@@ -586,7 +613,9 @@ WC.robotSplineData = {
     214.0600694657116,
     5.552145079458418,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 7,
@@ -619,7 +648,9 @@ WC.robotSplineData = {
     213.38978807698328,
     11.011148913485687,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 8,
@@ -652,7 +683,9 @@ WC.robotSplineData = {
     212.89910804506633,
     15.00741707870695,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 9,
@@ -685,7 +718,9 @@ WC.robotSplineData = {
     212.71950668825497,
     16.470152747512962,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 10,
@@ -718,7 +753,9 @@ WC.robotSplineData = {
     212.89910804506633,
     15.007417078706952,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 11,
@@ -751,7 +788,9 @@ WC.robotSplineData = {
     213.38978807698328,
     11.011148913485693,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 12,
@@ -784,7 +823,9 @@ WC.robotSplineData = {
     214.0600694657116,
     5.55214507945842,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 13,
@@ -817,7 +858,9 @@ WC.robotSplineData = {
     214.7303508544399,
     0.09314124543114932,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 14,
@@ -850,7 +893,9 @@ WC.robotSplineData = {
     215.22103088635686,
     -3.903126919790113,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 15,
@@ -883,7 +928,9 @@ WC.robotSplineData = {
     215.40063224316822,
     -5.365862588596125,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 16,
@@ -916,7 +963,9 @@ WC.robotSplineData = {
     215.22103088635686,
     -3.90312691979012,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 17,
@@ -949,7 +998,9 @@ WC.robotSplineData = {
     214.7303508544399,
     0.09314124543114133,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 18,
@@ -982,7 +1033,9 @@ WC.robotSplineData = {
     122.37574087715339,
     24.846531991167218,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 19,
@@ -1015,7 +1068,9 @@ WC.robotSplineData = {
     141.69464484591452,
     17.99638151157562,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 20,
@@ -1048,7 +1103,9 @@ WC.robotSplineData = {
     43.429487965327084,
     58.800647293855356,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 21,
@@ -1081,7 +1138,9 @@ WC.robotSplineData = {
     113.94306592297963,
     30.594483365546438,
     0.9999999999999999
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 22,
@@ -1114,7 +1173,9 @@ WC.robotSplineData = {
     108.62784093035725,
     31.542326921613743,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 23,
@@ -1147,7 +1208,9 @@ WC.robotSplineData = {
     104.62614528757106,
     31.31506917518025,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 24,
@@ -1180,7 +1243,9 @@ WC.robotSplineData = {
     66.64626309125623,
     46.602935415841365,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 25,
@@ -1213,7 +1278,9 @@ WC.robotSplineData = {
     167.5283142854443,
     4.476614151785146,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 26,
@@ -1246,7 +1313,9 @@ WC.robotSplineData = {
     176.62316368244018,
     -1.8459957059325873,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 27,
@@ -1279,7 +1348,9 @@ WC.robotSplineData = {
     176.15297172694204,
     -1.8459957059325873,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 28,
@@ -1312,7 +1383,9 @@ WC.robotSplineData = {
     172.82384203524316,
     -5.582427991680266,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 29,
@@ -1345,7 +1418,9 @@ WC.robotSplineData = {
     122.37574087715339,
     24.846531991167218,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 30,
@@ -1378,7 +1453,9 @@ WC.robotSplineData = {
     141.69464484591452,
     17.99638151157562,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 31,
@@ -1411,7 +1488,9 @@ WC.robotSplineData = {
     43.429487965327084,
     58.800647293855356,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 32,
@@ -1444,7 +1523,9 @@ WC.robotSplineData = {
     113.94306592297963,
     30.594483365546438,
     0.9999999999999999
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 33,
@@ -1477,7 +1558,9 @@ WC.robotSplineData = {
     108.62784093035725,
     31.542326921613743,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 34,
@@ -1510,7 +1593,9 @@ WC.robotSplineData = {
     104.62614528757106,
     31.31506917518025,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 35,
@@ -1543,7 +1628,9 @@ WC.robotSplineData = {
     66.64626309125623,
     46.602935415841365,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 36,
@@ -1576,7 +1663,9 @@ WC.robotSplineData = {
     167.5283142854443,
     4.476614151785146,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 37,
@@ -1609,7 +1698,9 @@ WC.robotSplineData = {
     176.62316368244018,
     -1.8459957059325873,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 38,
@@ -1642,7 +1733,9 @@ WC.robotSplineData = {
     176.15297172694204,
     -1.8459957059325873,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 39,
@@ -1675,7 +1768,9 @@ WC.robotSplineData = {
     172.82384203524316,
     -5.582427991680266,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 40,
@@ -1708,7 +1803,9 @@ WC.robotSplineData = {
     -16.652442606438655,
     10.189175429818729,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 41,
@@ -1741,7 +1838,9 @@ WC.robotSplineData = {
     171.88730296257324,
     -6.423405888159415,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 42,
@@ -1774,7 +1873,9 @@ WC.robotSplineData = {
     171.15300817519056,
     1.552405010503716,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 43,
@@ -1807,7 +1908,9 @@ WC.robotSplineData = {
     171.89119089662222,
     -6.423405888159417,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 44,
@@ -1840,7 +1943,9 @@ WC.robotSplineData = {
     171.17892547159443,
     1.552405010503715,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 45,
@@ -1873,7 +1978,9 @@ WC.robotSplineData = {
     79.54755739356136,
     7.01068816333439,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 46,
@@ -1906,7 +2013,9 @@ WC.robotSplineData = {
     79.54755739356136,
     7.01068816333439,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 47,
@@ -1939,7 +2048,9 @@ WC.robotSplineData = {
     -46.33461216468795,
     9.254151202198065,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 48,
@@ -1972,7 +2083,9 @@ WC.robotSplineData = {
     -7.144778182936946,
     14.416988606822473,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 49,
@@ -2005,7 +2118,9 @@ WC.robotSplineData = {
     -79.4103465273277,
     7.019537853163261,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 50,
@@ -2038,7 +2153,9 @@ WC.robotSplineData = {
     -231.8712711117828,
     2.7049274027639676,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 51,
@@ -2071,7 +2188,9 @@ WC.robotSplineData = {
     -145.54455692170998,
     -20.540317073988916,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 52,
@@ -2104,7 +2223,9 @@ WC.robotSplineData = {
     -157.41261820144018,
     2.779452620026491,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 53,
@@ -2137,7 +2258,9 @@ WC.robotSplineData = {
     -106.32048808795066,
     2.870876642385898,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 54,
@@ -2170,7 +2293,9 @@ WC.robotSplineData = {
     -104.72551798890126,
     0.9621641995824579,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 55,
@@ -2203,7 +2328,9 @@ WC.robotSplineData = {
     -105.57973679356542,
     7.618963780079383,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 56,
@@ -2236,7 +2363,9 @@ WC.robotSplineData = {
     24.108161679114772,
     18.364390974254718,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 57,
@@ -2269,7 +2398,9 @@ WC.robotSplineData = {
     28.97368132136657,
     18.98874736832554,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 58,
@@ -2302,7 +2433,9 @@ WC.robotSplineData = {
     6.314776260418171,
     19.252351257593364,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 59,
@@ -2335,7 +2468,9 @@ WC.robotSplineData = {
     39.49516778258811,
     22.369035068851545,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 60,
@@ -2368,7 +2503,9 @@ WC.robotSplineData = {
     -46.338348144643085,
     9.28326515702802,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 61,
@@ -2401,7 +2538,9 @@ WC.robotSplineData = {
     -7.143520511887502,
     14.407187757095135,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 62,
@@ -2434,7 +2573,9 @@ WC.robotSplineData = {
     -79.39122273621415,
     6.870508897616444,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 63,
@@ -2467,7 +2608,9 @@ WC.robotSplineData = {
     -231.8920615745479,
     2.8669444909459765,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 64,
@@ -2500,7 +2643,9 @@ WC.robotSplineData = {
     -145.5324586647682,
     -20.63459705149289,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 65,
@@ -2533,7 +2678,9 @@ WC.robotSplineData = {
     -157.42303472886096,
     2.8606271210824596,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 66,
@@ -2566,7 +2713,9 @@ WC.robotSplineData = {
     -106.32407221506521,
     2.8988072298544467,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 67,
@@ -2599,7 +2748,9 @@ WC.robotSplineData = {
     -104.74479208553784,
     1.1123644644669783,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 68,
@@ -2632,7 +2783,9 @@ WC.robotSplineData = {
     -105.53456596160137,
     7.266953978842217,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 69,
@@ -2665,7 +2818,9 @@ WC.robotSplineData = {
     24.106023302510522,
     18.381055035789476,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 70,
@@ -2698,7 +2853,9 @@ WC.robotSplineData = {
     28.97154294476232,
     19.0054114298603,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 71,
@@ -2731,7 +2888,9 @@ WC.robotSplineData = {
     6.345637129600959,
     19.011856939585474,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 72,
@@ -2764,7 +2923,9 @@ WC.robotSplineData = {
     39.50184042834374,
     22.31703609951569,
     0.9999999999999998
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 73,
@@ -2797,7 +2958,9 @@ WC.robotSplineData = {
     45.99922678049642,
     16.042941108721347,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 74,
@@ -2830,7 +2993,9 @@ WC.robotSplineData = {
     44.8719800906727,
     -2.7459517606125328,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 75,
@@ -2863,7 +3028,9 @@ WC.robotSplineData = {
     45.99922678049642,
     16.042941108721347,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 76,
@@ -2896,7 +3063,9 @@ WC.robotSplineData = {
     44.8719800906727,
     -2.7459517606125328,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 77,
@@ -2929,7 +3098,9 @@ WC.robotSplineData = {
     45.33112108537971,
     -1.4236917673107992,
     0.9999999999999999
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 78,
@@ -2962,7 +3133,9 @@ WC.robotSplineData = {
     45.331121085379706,
     3.5299100880426977,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   },
   {
    "i": 79,
@@ -2995,7 +3168,9 @@ WC.robotSplineData = {
     105.06046193648703,
     3.529910088042686,
     1
-   ]
+   ],
+   "castShadow": true,
+   "receiveShadow": true
   }
  ]
 };

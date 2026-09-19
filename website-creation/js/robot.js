@@ -108,6 +108,30 @@ WC.register('robot', function(ctx){
     // standard three.js, non un tocco di stile riservato al task materiali.
     renderer.outputEncoding = THREE.sRGBEncoding;
     var scene = new THREE.Scene();
+    // Ombre come Spline (Task 4b): la point light della scena Spline proietta
+    // ombre (shadow map a cubo, PCF). Questa PointLight esiste SOLO per la
+    // shadow map: intensità 0, perché l'illuminazione la calcolano i nostri
+    // shader dalle loro uniform (robot-spline-materials.js) e la luce three
+    // non deve aggiungerne. Stessa posizione mondo e stessi parametri d'ombra
+    // letti da Spline (WC.robotSplineData.light.shadow).
+    var shadowLight = null;
+    if (D.light.shadow && D.light.shadow.enabled) {
+      var S = D.light.shadow;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = S.type;
+      shadowLight = new THREE.PointLight(0xffffff, 0);
+      shadowLight.position.fromArray(D.light.worldPosition);
+      shadowLight.castShadow = true;
+      shadowLight.shadow.mapSize.set(S.mapSize[0], S.mapSize[1]);
+      shadowLight.shadow.bias = S.bias;
+      shadowLight.shadow.normalBias = S.normalBias;
+      shadowLight.shadow.radius = S.radius;
+      // distance 0 → PointLightShadow usa camera.far così com'è (altrimenti la sostituirebbe con distance).
+      shadowLight.shadow.camera.near = S.near;
+      shadowLight.shadow.camera.far = S.far;
+      shadowLight.shadow.camera.updateProjectionMatrix();
+      scene.add(shadowLight);
+    }
     // Camera della scena Spline: stessi fov/zoom/posizione/orientamento.
     var cam = new THREE.PerspectiveCamera(D.camera.fov, 1, D.camera.near, D.camera.far);
     cam.zoom = D.camera.zoom;
@@ -180,6 +204,9 @@ WC.register('robot', function(ctx){
         var mw = new THREE.Matrix4().fromArray(dm.matrixWorld);
         var local = new THREE.Matrix4().multiplyMatrices(inv, mw);
         local.decompose(mesh.position, mesh.quaternion, mesh.scale);
+        // Ombre: chi proietta e chi riceve, come nella scena Spline (per indice).
+        mesh.castShadow = dm.castShadow === true;
+        mesh.receiveShadow = dm.receiveShadow === true;
       });
       model.updateMatrixWorld(true);
       var box = new THREE.Box3().setFromObject(model);
@@ -188,7 +215,7 @@ WC.register('robot', function(ctx){
       // Handle esposti per i task successivi (materiali/testa di vetro/
       // point-brain/fibre) e per la verifica headless: window.__robot
       // segnala che il modello è a schermo.
-      window.__robot = { model: model, scene: scene, camera: cam, renderer: renderer, box: box, state: { faceAmount: 0 }, pointer: pointer };
+      window.__robot = { model: model, scene: scene, camera: cam, renderer: renderer, box: box, state: { faceAmount: 0 }, pointer: pointer, shadowLight: shadowLight };
 
       // Split in sotto-parti (testa/corpo/braccia) per i task successivi
       // (materiali per parte, testa che segue il cursore, fibre delle
@@ -245,6 +272,8 @@ WC.register('robot', function(ctx){
         // cursore sulle mesh-braccio in tick(), più sotto.
         if (WC.robotFibers && parts.joints) {
           var fibers = WC.robotFibers.create({ joints: parts.joints, armL: parts.armL, armR: parts.armR, model: model });
+          // Le fibre sono luce, non materia: niente ombra nella shadow map (Task 4b).
+          fibers.object.traverse(function (o) { o.castShadow = false; o.receiveShadow = false; });
           model.add(fibers.object);
           window.__robot.fibers = fibers;
         }
@@ -356,6 +385,8 @@ WC.register('robot', function(ctx){
             // globale (uReveal) fa da maschera — a riposo opaco copre il
             // cervello, rivelato lo lascia vedere su tutta la testa.
             function placeBrain(brain) {
+              brain.points.castShadow = false;   // Task 4b: il cervello non proietta ombre
+              brain.points.receiveShadow = false;
               brain.points.position.copy(brainPos);
               brain.uniforms.uSize.value = brainUSize;
               headGroup.add(brain.points);
@@ -563,6 +594,9 @@ WC.register('robot', function(ctx){
         }
       }
       if (robot && robot.spline) robot.spline.dispose();
+      // La shadow map della point light è un render target a cubo srotolato
+      // (4×2 facce da mapSize: 8192×4096 a 2048) che renderer.dispose() non libera.
+      if (shadowLight) shadowLight.shadow.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
       if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;

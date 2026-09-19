@@ -3,12 +3,20 @@
  * proiezione planare/triplanare in coordinate OGGETTO (vPosition), bump da
  * derivate, «rainbow» a coseno, Blinn-Phong e GGX con UNA point light
  * (luce non fisica: il colore uniform include già ×π) + ambient + light probe.
+ * Ombra portata della point light (Task 4b): shadow map a cubo di three
+ * (materiale con lights:true, vedi robot-spline-materials.js), filtrata come
+ * Spline e applicata SOLO alla luce diretta (sp_light), se la mesh riceve ombre.
  * Nessun encodings_fragment: output grezzo come la scena Spline (lineare→lineare).
  * Riferimento (NON copiato): GLSL compilato di Spline in
  * ~/Progetti/file-sciolti/robot-spline-tools/spline-ref/. */
 window.WC = window.WC || {};
 WC.robotSplineGLSL = {
   vert: [
+    // Ombra della point light (Task 4b): three calcola vPointShadowCoord (vettore
+    // luce→frammento in mondo, spostato di normalBias lungo la normale) con i suoi
+    // chunk; servono `transformedNormal` e `worldPosition` con questi nomi.
+    '#include <common>',
+    '#include <shadowmap_pars_vertex>',
     'varying vec3 vViewPosition;',
     'varying vec3 vNormal;',
     'varying vec3 vPosition;',
@@ -16,19 +24,25 @@ WC.robotSplineGLSL = {
     'varying vec3 vWNormal;',
     'varying vec3 vWorldViewDir;',
     'void main() {',
-    '  vec3 tn = normalMatrix * normal;',
-    '  vNormal = tn;',
+    '  vec3 transformedNormal = normalMatrix * normal;',
+    '  vNormal = transformedNormal;',
     '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
     '  gl_Position = projectionMatrix * mv;',
     '  vViewPosition = -mv.xyz;',
     '  vPosition = position;',
     '  vObjectNormal = normal;',
-    '  vWNormal = normalize((vec4(tn, 0.0) * viewMatrix).xyz);',
-    '  vWorldViewDir = (modelMatrix * vec4(position, 1.0)).xyz - cameraPosition;',
+    '  vWNormal = normalize((vec4(transformedNormal, 0.0) * viewMatrix).xyz);',
+    '  vec4 worldPosition = modelMatrix * vec4(position, 1.0);',
+    '  vWorldViewDir = worldPosition.xyz - cameraPosition;',
+    '#include <shadowmap_vertex>',
     '}'
   ].join('\n'),
 
   frag: [
+    '#include <common>',
+    '#include <packing>',
+    '#include <shadowmap_pars_fragment>',
+    'uniform bool receiveShadow;',      // three lo imposta per mesh (lights_pars_begin non si include: non serve)
     '#define SP_RPI 0.3183098861837907',
     '#define SP_EPS 1e-6',
     'varying vec3 vViewPosition;',
@@ -108,12 +122,46 @@ WC.robotSplineGLSL = {
     '  vec3 rb = sp_rainbow();',
     '  return sp_blend(c, rb, uRbAlpha * clamp(rb.r + rb.g + rb.b, 0.0, 1.0), uRbMode);',
     '}',
+    // Ombra della point light come la calcola Spline — NON il getPointShadow di
+    // three r128 (9 prelievi fissi a ±radius texel, risultato 0..1: sulle coppie
+    // braccio/gambe/petto dà 2.37/1.97/1.42 contro 1.73/1.40/0.85 di questa).
+    // Di three si usano solo shadow map, vPointShadowCoord, cubeToUV e texture2DCompare.
+    //  - 8 prelievi su un disco di Vogel (angolo aureo), raggio (shadowRadius + 5)
+    //    texel, texel anisotropo 1/(mapSize·(4,2)), spostamento (x, y, −x);
+    //  - Spline ruota il disco a ogni pixel e a ogni frame e lo media con la TAA:
+    //    qui la media si fa in un colpo su SP_SHADOW_ROT rotazioni fisse, senza rumore;
+    //  - Spline parte da 1.0 prima di sommare gli 8 prelievi e divide per 8: in piena
+    //    luce il fattore vale 9/8, in ombra piena 1/8. Tenuto così: è quello che si
+    //    vede in Spline (senza, le coppie peggiorano a 2.39/1.88/1.31).
+    '#if defined(USE_SHADOWMAP) && NUM_POINT_LIGHT_SHADOWS > 0',
+    '#define SP_SHADOW_ROT 4',
+    'float sp_shadow() {',
+    '  PointLightShadow s = pointLightShadows[0];',
+    '  vec2 texel = 1.0 / (s.shadowMapSize * vec2(4.0, 2.0));',
+    '  vec3 lp = vPointShadowCoord[0].xyz;',      // luce → frammento, in mondo
+    '  float cmp = (length(lp) - s.shadowCameraNear) / (s.shadowCameraFar - s.shadowCameraNear) + s.shadowBias;',
+    '  vec3 dir = normalize(lp);',
+    '  float lit = 0.0;',
+    '  for (int k = 0; k < SP_SHADOW_ROT; k++) {',
+    '    float rot = 6.283185307179586 * float(k) / float(SP_SHADOW_ROT);',
+    '    for (int i = 0; i < 8; i++) {',
+    '      float th = float(i) * 2.399963 + rot;',
+    '      vec2 v = vec2(cos(th), sin(th)) * sqrt((float(i) + 0.5) / 8.0) * texel * (s.shadowRadius + 5.0);',
+    '      lit += texture2DCompare(pointShadowMap[0], cubeToUV(dir + vec3(v.x, v.y, -v.x), texel.y), cmp);',
+    '    }',
+    '  }',
+    '  return (1.0 + lit / float(SP_SHADOW_ROT)) / 8.0;',
+    '}',
+    '#endif',
     'vec3 sp_light(out vec3 color) {',
     '  vec3 d = uLightPos + vViewPosition;',   // luce − posizione (posizione = −vViewPosition)
     '  float dist = length(d);',
     '  float att = 1.0;',
     '  if (uLightDistance > 0.0 && uLightDecay > 0.0) att = pow(clamp(-dist / uLightDistance + 1.0, 0.0, 1.0), uLightDecay);',
     '  color = uLightColor * att;',
+    '#if defined(USE_SHADOWMAP) && NUM_POINT_LIGHT_SHADOWS > 0',
+    '  if (receiveShadow) color *= sp_shadow();',
+    '#endif',
     '  return normalize(d);',
     '}',
     'vec3 sp_F(vec3 f0, float f90, float vh) { float f = exp2((-5.55473 * vh - 6.98316) * vh); return f0 * (1.0 - f) + f90 * f; }',
