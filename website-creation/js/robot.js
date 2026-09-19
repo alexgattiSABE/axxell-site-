@@ -1,20 +1,31 @@
-/* CAP 05 — modello 3D interattivo (nostro), a tutta sezione.
+/* CAP 05 — robot 3D nostro con l'aspetto della scena Spline originale.
  *
  * Era la demo pubblica di Spline (`@splinetool/viewer` + una `.splinecode`
  * ospitata da terzi). Ora è un GLB estratto e compresso in Draco, caricato
  * con three.js r128 (globale, stesso <script> già in pagina per gli altri
- * capitoli) via GLTFLoader/DRACOLoader vendorizzati in locale — zero
- * richieste a spline.design o a un CDN a runtime.
+ * capitoli) via GLTFLoader/DRACOLoader vendorizzati in locale, nelle
+ * coordinate della scena Spline — niente ricentratura. Camera, posa (per
+ * ogni mesh, per indice di nodo glTF — l'ordine di `model.traverse()` NON è
+ * stabile con Draco), luce, materiali e video degli occhi arrivano da
+ * `WC.robotSplineData` (generato fuori repo da robot-spline-tools/estrai.mjs).
  *
- * Il mount resta lazy — sotto la piega la pagina non paga un byte — e la
- * scena si ferma quando la sezione esce dal DOM o quando il browser chiede
- * meno animazioni. Questo file è la fondazione: monta il GLB grezzo e lo
- * inquadra con la camera/luce della scena Spline (`WC.robotSplineData`,
- * Task 2) — niente ricentratura, il modello resta nelle coordinate Spline.
- * Materiali (vetro sulla testa, metallo sul corpo), il point-brain e le
- * fibre delle braccia arrivano nei task successivi — `mount()` resta
- * perciò minimale e ritorna gli handle (`window.__robot`) che quei task
- * aggancieranno.
+ * I materiali sono il nostro GLSL a strati (robot-spline-glsl.js /
+ * robot-spline-materials.js) che riscrive le formule Spline: visore-specchio
+ * con occhi a LED via video, corpo/braccia con matcap+rainbow, «A» bianca
+ * lucida sul petto col riflesso che insegue il mouse. La point light Spline
+ * proietta ombre (shadow map a cubo three, filtro `sp_shadow` in
+ * robot-spline-glsl.js) sulle stesse mesh che le proiettano/ricevono nella
+ * scena Spline (`shadowLight` qui sotto, intensità 0: serve solo alla shadow
+ * map, l'illuminazione la calcolano i nostri shader).
+ *
+ * Interazione: SOLO la testa che segue il cursore, sempre (anche a riposo).
+ * Cursore su una qualunque mesh della testa → reveal: visore quasi
+ * trasparente, occhi spenti, interni che sfumano, si vede il cervello a
+ * punti (point-brain, pointbrain.js) con la palette della sezione ATLAS.
+ * Cursore su un braccio → le fibre luminose di quel braccio si accendono.
+ *
+ * Nessuna richiesta a Spline o a un CDN a runtime. Spec:
+ * docs/superpowers/specs/2026-09-19-*.
  */
 WC.register('robot', function(ctx){
   // Tarature del comportamento (non dell'aspetto: quello arriva da Spline).
@@ -128,7 +139,11 @@ WC.register('robot', function(ctx){
       //   r' = (r + 5) · 1024 / 2048 − 5 = (98.884 + 5) / 2 − 5 = 46.942.
       // Misurato vs Spline con la stessa posa (braccio/gambe/petto): 2048 →
       // 1.73/1.40/0.85, 1024 → 1.73/1.40/0.85 (512 → 1.73/1.41/0.85, non adottato).
-      var SHADOW_MAP_LEGGERA = { mapSize: 1024, radius: (S.radius + 5) * 1024 / S.mapSize[0] - 5 };
+      // Il tetto è 1024 (misurato sopra), ma non oltre la mappa estratta da
+      // Spline: se un giorno arrivasse già più piccola di 1024, prenderla per
+      // "leggera" la ingrandirebbe (upscale) invece di alleggerirla.
+      var mapSizeLeggera = Math.min(1024, S.mapSize[0]);
+      var SHADOW_MAP_LEGGERA = { mapSize: mapSizeLeggera, radius: (S.radius + 5) * mapSizeLeggera / S.mapSize[0] - 5 };
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = S.type;
       shadowLight = new THREE.PointLight(0xffffff, 0);
@@ -188,6 +203,18 @@ WC.register('robot', function(ctx){
 
     gltf.load('assets/robot.glb', function(g){
       if (torn) return;
+      // Task 8 (pulizia): tutto il corpo di questa callback è avvolto in
+      // try/catch. GLTFLoader r128 richiama onLoad da dentro una catena di
+      // Promise (parser.parse().then(onLoad)) senza un .catch() proprio: se
+      // onLoad lancia (i vari `throw new Error(...)` di controllo qui sotto —
+      // indice mancante, nome disallineato, gerarchia non piatta...) three
+      // NON la instrada al terzo argomento di gltf.load (quello sotto,
+      // `function(e){...}`, pensato per errori di rete/Draco/GLB) ma la
+      // lascia diventare un unhandled promise rejection: in pagina, e
+      // nell'harness (prova.mjs ascolta 'pageerror' e i console 'error'),
+      // l'assert falliva silenzioso invece di far scattare fail() e il log
+      // di errore. Stesso trattamento del ramo di rete qui sotto.
+      try {
       var model = g.scene;
       // Il GLB è nelle coordinate della scena Spline: niente ricentratura,
       // la camera Spline lo inquadra così com'è.
@@ -203,8 +230,6 @@ WC.register('robot', function(ctx){
       // GLTFLoader.js:3254, `parser.associations`) — quello sì stabile, ed è
       // lo stesso ordine della scena Spline (verificato: verifica-dati.mjs
       // asserisce già i nomi per indice fra GLB grezzo e Spline).
-      // Gerarchia FLAT confermata qui (mesh.parent === model per ognuna,
-      // vedi robot-parts.js): niente ramo per genitori diversi da `model`.
       model.traverse(function (o) {
         if (!o.isMesh) return;
         var a = g.parser.associations.get(o);
@@ -218,6 +243,14 @@ WC.register('robot', function(ctx){
       var inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
       model.traverse(function (mesh) {
         if (!mesh.isMesh) return;
+        // Gerarchia FLAT: questo blocco decompone `inv · matrixWorld-Spline`
+        // (locale a `model`) direttamente in mesh.position/quaternion/scale,
+        // il che è corretto SOLO se mesh è figlia DIRETTA di `model` (vedi
+        // robot-parts.js, che assume la stessa cosa). Verificato vero per il
+        // GLB attuale (80/80), ma un GLB futuro con gruppi intermedi
+        // romperebbe questa math silenziosamente — l'assert lo rende un
+        // errore rumoroso invece di una posa storta.
+        if (mesh.parent !== model) throw new Error('[robot] gerarchia non piatta: "' + mesh.name + '" non è figlia diretta di model');
         var dm = D.meshes[mesh.userData.splineIndex];
         if (!dm || !dm.matrixWorld) return;
         if (dm.name && base(dm.name) !== base(mesh.name)) {
@@ -454,11 +487,17 @@ WC.register('robot', function(ctx){
               placeBrain(brain);
             }).catch(function (err) {
               if (torn || !window.__robot) return;
-              // Fallback: nuvola procedurale azzurra (come prima) — la sezione
-              // resta in piedi anche se la mesh non carica. console.warn (non
-              // error) così l'harness resta "console-clean".
+              // Fallback: nuvola procedurale — la sezione resta in piedi anche
+              // se la mesh cotta non carica. Task 8 (pulizia): usava ancora
+              // l'azzurro di Vesper (0x8bd6ff) da prima del Task 7b — con la
+              // palette ATLAS sul percorso principale, quel ripiego avrebbe
+              // cambiato colore proprio quando la rete fallisce. Stessa
+              // palette ATLAS (atlasBrainUniforms) di sopra, non un color
+              // singolo: la nuvola procedurale legge identica nella tinta,
+              // solo più rada (4000 punti contro i 24000 campionati sulla mesh).
+              // console.warn (non error) così l'harness resta "console-clean".
               console.warn('[robot] mesh del cervello non caricata, uso la nuvola procedurale:', err);
-              placeBrain(WC.pointBrain.create({ count: 4000, radius: brainRadius, color: 0x8bd6ff }));
+              placeBrain(WC.pointBrain.create({ count: 4000, radius: brainRadius, uniforms: WC.pointBrain.atlasBrainUniforms() }));
             });
           }
         }
@@ -610,6 +649,10 @@ WC.register('robot', function(ctx){
         renderer.render(scene, cam);
       })();
       cleanups.push(function(){ cancelAnimationFrame(raf); });
+      } catch (e) {
+        console.error(e);
+        fail('Modello non caricato');
+      }
     }, undefined, function(e){
       if (torn) return;
       // Rete, Draco o GLB rotto: senza log il perché resterebbe invisibile.

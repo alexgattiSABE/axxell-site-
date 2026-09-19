@@ -98,8 +98,13 @@ WC.robotSplineMaterials = (function () {
     // (setPlaying, da robot.js); finché non scorre davvero si mostra il poster.
     var Hd = D.materials.Head;
     var video = document.createElement('video');
+    // crossOrigin PRIMA di src: assegnato dopo, un video già in corso di
+    // fetch (o già in cache CORS-less) può restare senza l'attributo — qui è
+    // innocuo (stesso host), ma è l'ordine giusto per non doverlo ricordare
+    // il giorno in cui eyes.mp4 finisse su un host/CDN diverso.
+    video.crossOrigin = 'anonymous';
     video.src = Hd.video.src; video.muted = true; video.defaultMuted = true; video.loop = true;
-    video.playsInline = true; video.setAttribute('playsinline', ''); video.preload = 'auto'; video.crossOrigin = 'anonymous';
+    video.playsInline = true; video.setAttribute('playsinline', ''); video.preload = 'auto';
     var vtex = new THREE.VideoTexture(video);
     vtex.encoding = THREE.LinearEncoding; vtex.flipY = Hd.video.flipY !== false;
     // Mipmap: lo shader preleva il video SP_VIDEO_SS² volte per pixel e ogni
@@ -157,7 +162,6 @@ WC.robotSplineMaterials = (function () {
         m.uniforms.uMatcap.value = byName.Body.uniforms.uMatcap.value;
         m.uniforms.uTri.value = byName.Body.uniforms.uTri.value;
         m.defines = { MAT_BODY: '', LOGO: '' };
-        mesh.updateWorldMatrix(true, false);
         mesh.geometry.computeBoundingBox();
         var bb = mesh.geometry.boundingBox, sz = bb.getSize(new THREE.Vector3());
         // L'SVG si rasterizza su un canvas: dell'immagine serve solo l'alpha
@@ -169,9 +173,6 @@ WC.robotSplineMaterials = (function () {
         ltex.encoding = THREE.LinearEncoding;
         list.push(ltex);
         var img = new Image();
-        // L'SVG ha il viewBox ma non width/height: senza una dimensione
-        // concreta Chrome lo rasterizzerebbe alla misura di default (300×150).
-        img.width = img.height = LOGO_TEX_SIZE;
         img.onload = function () {
           canvas.getContext('2d').drawImage(img, 0, 0, LOGO_TEX_SIZE, LOGO_TEX_SIZE);
           ltex.needsUpdate = true;
@@ -272,8 +273,7 @@ WC.robotSplineMaterials = (function () {
   // Le mesh portano userData.splineIndex (indice del nodo glTF, messo da
   // robot.js al caricamento): l'ordine di model.traverse NON è stabile, quindi
   // si ordina per indice (byMaterial esce sempre nello stesso ordine).
-  function assign(model, D, mats, opts) {
-    var skip = (opts && opts.skip) || null;
+  function assign(model, D, mats) {
     var list = []; model.traverse(function (o) { if (o.isMesh && o.userData.splineIndex !== undefined) list.push(o); });
     if (list.length !== D.meshes.length) throw new Error('[robot] mesh ' + list.length + ' ≠ ' + D.meshes.length);
     list.sort(function (a, b) { return a.userData.splineIndex - b.userData.splineIndex; });
@@ -289,10 +289,10 @@ WC.robotSplineMaterials = (function () {
       out.byMaterial[d.material].push(mesh);
       if (d.material === 'Head') out.visor = mesh;
       if (d.material === 'Body' && /^body$/i.test(base(d.name))) out.chest = mesh;
-      if (skip && skip.has(mesh)) return;
-      var m = mats.byName[d.material];
-      if (!m) return;
-      mesh.material = m;
+      // mats.byName ha sempre Head/Body/Parts (create(), sopra) e d.material
+      // ha già superato il controllo "materiale Spline sconosciuto" qualche
+      // riga più su: mats.byName[d.material] esiste sempre qui.
+      mesh.material = mats.byName[d.material];
       mesh.userData.splineMaterial = d.material;
     });
     // Il visore è UNO: se i dati ne portassero due, visor/reveal/occhi
