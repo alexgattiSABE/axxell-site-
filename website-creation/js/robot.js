@@ -148,45 +148,37 @@ WC.register('robot', function(ctx){
       model.updateMatrixWorld(true);
       // Posa della scena Spline: il GLB di agosto ha le braccia in una posa
       // diversa (più chiuse). Applichiamo la matrixWorld letta da Spline per
-      // ogni mesh, appaiata per NOME — non per indice di traverse(): l'ordine
-      // di model.traverse() su un GLB Draco-compresso NON è deterministico
-      // (dipende dall'ordine di completamento dei worker Draco — verificato:
-      // 3 caricamenti della stessa pagina hanno dato 3 ordini diversi), il
-      // nome invece resta stabile a ogni caricamento (5/5 letture identiche
-      // verificate). Il nome del duplicato N-esimo di un nome Spline si
-      // ricostruisce contando le occorrenze in ORDINE DI INDICE — l'unico
-      // ordine stabile che condividiamo con D.meshes (stesso ordine
-      // dell'array `nodes` del file GLTF, verificato identico a D.meshes).
+      // ogni mesh, appaiata per INDICE DI NODO GLTF — non per ordine di
+      // model.traverse(), che NON è stabile (i nodi entrano nella scena man
+      // mano che Draco li decodifica, verificato: 3 caricamenti della stessa
+      // pagina hanno dato 3 ordini diversi). GLTFLoader registra però
+      // l'indice di nodo originale per ogni oggetto (vendor/three-r128/
+      // GLTFLoader.js:3254, `parser.associations`) — quello sì stabile, ed è
+      // lo stesso ordine della scena Spline (verificato: verifica-dati.mjs
+      // asserisce già i nomi per indice fra GLB grezzo e Spline).
       // Gerarchia FLAT confermata qui (mesh.parent === model per ognuna,
       // vedi robot-parts.js): niente ramo per genitori diversi da `model`.
-      //
-      // 18 mesh su 80 restano nella posa di agosto invece di ricevere una
-      // posa sbagliata: 12 sono pannelli interni della testa senza nome
-      // (la testa non si muove in questa animazione — impatto visivo nullo)
-      // e 6 sono un'ambiguità reale nei DATI Spline, non nel codice: un nome
-      // grezzo senza numero (es. "Ellipse") alla sua N-esima occorrenza
-      // normalizza allo STESSO nome di un'altra famiglia già numerata (es.
-      // "Ellipse 2" alla 1ª occorrenza) — entrambe diventano "Ellipse_2",
-      // non distinguibili per nome. Riguarda un lato di 3 coppie di pannelli
-      // braccio, dettagli e numeri in task-3-report.md.
-      var seenName = {};
-      var expectedName = D.meshes.map(function (m) {
-        var slug = (m.name || '').replace(/\s+/g, '_');
-        if (!slug) return '';
-        seenName[slug] = (seenName[slug] || 0) + 1;
-        return seenName[slug] === 1 ? slug : slug + '_' + (seenName[slug] - 1);
+      model.traverse(function (o) {
+        if (!o.isMesh) return;
+        var a = g.parser.associations.get(o);
+        if (!a || a.type !== 'nodes') throw new Error('[robot] mesh senza indice di nodo glTF: ' + o.name);
+        o.userData.splineIndex = a.index;
       });
-      var nameCount = {};
-      expectedName.forEach(function (n) { if (n) nameCount[n] = (nameCount[n] || 0) + 1; });
-      var poseList = []; model.traverse(function (o) { if (o.isMesh) poseList.push(o); });
-      var byName = {}; poseList.forEach(function (m) { byName[m.name] = m; });
+      // Controllo di sicurezza: se un nome esiste su entrambi i lati deve
+      // combaciare (stessa normalizzazione di verifica-dati.mjs) — non deve
+      // mai scattare, se scatta l'indice non è più affidabile.
+      function base(n) { return String(n || '').replace(/[\s.\[\]:\/]/g, '_').replace(/(_\d+)+$/, '').toLowerCase(); }
       var inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
-      D.meshes.forEach(function (dm, i) {
-        var name = expectedName[i];
-        if (!name || nameCount[name] > 1 || !byName[name] || !dm.matrixWorld) return;
+      model.traverse(function (mesh) {
+        if (!mesh.isMesh) return;
+        var dm = D.meshes[mesh.userData.splineIndex];
+        if (!dm || !dm.matrixWorld) return;
+        if (dm.name && base(dm.name) !== base(mesh.name)) {
+          throw new Error('[robot] indice ' + mesh.userData.splineIndex + ': GLB "' + mesh.name + '" ≠ Spline "' + dm.name + '"');
+        }
         var mw = new THREE.Matrix4().fromArray(dm.matrixWorld);
         var local = new THREE.Matrix4().multiplyMatrices(inv, mw);
-        local.decompose(byName[name].position, byName[name].quaternion, byName[name].scale);
+        local.decompose(mesh.position, mesh.quaternion, mesh.scale);
       });
       model.updateMatrixWorld(true);
       var box = new THREE.Box3().setFromObject(model);
