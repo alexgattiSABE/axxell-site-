@@ -26,7 +26,14 @@ WC.robotSplineMaterials = (function () {
   function v3(a) { return new THREE.Vector3(a[0], a[1], a[2]); }
   function m3(a) { var m = new THREE.Matrix3(); m.fromArray(a); return m; }
   function tex(path, g, list) {
-    var t = new THREE.TextureLoader().load(path);
+    // onError: senza, una texture che non arriva è uno strato nero
+    // trasparente e basta — il materiale continua a funzionare, cambia solo
+    // l'aspetto, e non si sa da dove. Con il warn il percorso si legge in
+    // console. `console.warn` e non `error`: la sezione non è rotta, e
+    // l'harness deve restare console-clean.
+    var t = new THREE.TextureLoader().load(path, undefined, undefined, function () {
+      console.warn('[robot] texture non caricata:', path);
+    });
     t.encoding = THREE.LinearEncoding;
     t.flipY = g.flipY !== false;
     if (g.wrapS) t.wrapS = g.wrapS;
@@ -172,7 +179,16 @@ WC.robotSplineMaterials = (function () {
         var ltex = new THREE.CanvasTexture(canvas);
         ltex.encoding = THREE.LinearEncoding;
         list.push(ltex);
-        var img = new Image();
+        // Misura PRIMA di src, e non per caso: l'SVG non ha width/height, solo
+        // un viewBox. Chrome lo rasterizza alla dimensione di destinazione di
+        // drawImage e la «A» esce netta; Firefox e i Safari più vecchi lo
+        // rasterizzano alla dimensione INTRINSECA dell'immagine (in mancanza
+        // di width/height, la misura di default di un <img>: 300×150) e poi
+        // ingrandiscono quel francobollo a 2048 — la «A» esce morbida. Dando
+        // all'<img> una misura esplicita la dimensione intrinseca c'è, ed è
+        // quella a cui disegniamo. Va messa prima di `src` perché un'immagine
+        // già in cache può risolversi subito, anche in modo sincrono.
+        var img = new Image(LOGO_TEX_SIZE, LOGO_TEX_SIZE);
         img.onload = function () {
           canvas.getContext('2d').drawImage(img, 0, 0, LOGO_TEX_SIZE, LOGO_TEX_SIZE);
           ltex.needsUpdate = true;

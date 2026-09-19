@@ -43,8 +43,11 @@ WC.register('robot', function(ctx){
   var cleanups = [];
 
   // Qui c'era un faro CSS che seguiva il cursore sulla card. Da quando la
-  // scena occupa tutta la sezione gli sta sopra un canvas opaco: il faro non
-  // si vedeva più. Tolto, insieme al suo listener di mousemove.
+  // scena prende tutta la sezione il faro ci finiva sotto e non si vedeva
+  // più. Tolto, insieme al suo listener di mousemove. Il capitolo il suo
+  // effetto di cursore ce l'ha lo stesso, ed è il circuito (data-cursor-fx
+  // su #wcRobotCard, FX.circuit in js/cursorfx.js): sta DIETRO lo stage e si
+  // vede attraverso i pixel vuoti del canvas.
 
   // --------------------------------------------------------------- caricam.
   var mounted = false;
@@ -66,9 +69,11 @@ WC.register('robot', function(ctx){
 
   // Task 7: cleanup unificato. Un solo helper che attraversa un Object3D e
   // smaltisce geometrie e materiali (array di materiali incluso) — lo
-  // riusa il teardown finale (sotto) per il MODELLO (corpo/braccia in
-  // carbonio, testa in vetro: headGroup è figlio di `model`, quindi anche
-  // il vetro ci rientra), per il BRAIN e per le FIBRE. `.dispose()` su una
+  // riusa il teardown finale (sotto) per il MODELLO (le 80 mesh coi materiali
+  // Spline Head/Body/Parts di robot-spline-materials.js; headGroup è figlio
+  // di `model`, quindi le mesh della testa ci rientrano), per il BRAIN e per
+  // le FIBRE. Le texture dentro le uniform NON le tocca: quelle e il video
+  // degli occhi li smaltisce spline.dispose(). `.dispose()` su una
   // risorsa già smaltita è un no-op sicuro in three.js (spara solo
   // l'evento 'dispose'), quindi se due chiamate si sovrappongono — es. il
   // brain e le fibre sono ENTRAMBI già discendenti di `model` nella
@@ -91,6 +96,13 @@ WC.register('robot', function(ctx){
     if (mounted) return;
     mounted = true;
     var torn = false;
+    // Handle del loop di rendering. Sta QUI e non dentro la callback di
+    // gltf.load (dov'è il loop) perché il suo cleanup va registrato PRIMA di
+    // quello che smaltisce geometrie, materiali e renderer: i cleanup si
+    // eseguono nell'ordine in cui sono stati messi in coda, e la callback di
+    // load arriva molto dopo — il rAF finiva quindi in fondo, cioè il loop
+    // faceva ancora almeno un render su risorse già smaltite.
+    var raf = 0;
 
     // Reduced-motion: una scena 3D che gira di continuo è esattamente ciò che
     // l'impostazione chiede di non avere. Resta la card, senza il modello.
@@ -586,7 +598,7 @@ WC.register('robot', function(ctx){
       }
       var logoLight = new THREE.Vector3();
 
-      var raf;
+      // `raf` è dichiarato in mount() (vedi lì il perché): qui si assegna soltanto.
       var lastTick = (window.performance && performance.now) ? performance.now() : Date.now();
       // RITOCCO 2: reveal a TUTTA testa. Un solo Raycaster riusato ogni frame
       // (niente allocazioni); se il cursore colpisce una qualunque mesh della
@@ -737,7 +749,6 @@ WC.register('robot', function(ctx){
         }
         renderer.render(scene, cam);
       })();
-      cleanups.push(function(){ cancelAnimationFrame(raf); });
       } catch (e) {
         console.error(e);
         fail('Modello non caricato');
@@ -751,6 +762,10 @@ WC.register('robot', function(ctx){
 
     window.addEventListener('resize', fit);
     cleanups.push(function(){ window.removeEventListener('resize', fit); });
+    // PRIMA dello smaltimento qui sotto: si ferma il loop, poi si butta via
+    // ciò su cui girava. All'incontrario il loop arrivava a fare un render in
+    // più su geometrie e materiali già smaltiti.
+    cleanups.push(function(){ cancelAnimationFrame(raf); });
     cleanups.push(function(){
       torn = true;
       draco.dispose();

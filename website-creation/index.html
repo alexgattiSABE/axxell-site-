@@ -27,7 +27,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/website-creation/assets/og.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=20260819a">
+<link rel="stylesheet" href="css/base.css?v=20260920a">
 <link rel="stylesheet" href="css/sections.css?v=20260920a">
 </head>
 <body>
@@ -296,7 +296,13 @@
     <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
       <!-- Il modello occupa tutta la sezione e sta al centro, senza copy né
            velo a fianco: stage pulito, stessa inquadratura dello Spline
-           originale (§3). -->
+           originale (§3). Il rovescio è che questa sezione NON ha testo: chi
+           naviga con uno screen reader ci passa dentro senza sapere cosa
+           sia, e nell'elenco dei titoli della pagina qui c'è un buco. Questo
+           <h2> lo chiude — è nel flusso, quindi viene letto, ma non occupa
+           spazio e non si vede (.sr-only in css/base.css): a schermo la
+           sezione resta esattamente com'era. -->
+      <h2 class="sr-only">Il robot di Axxell</h2>
       <div class="wc-robot-stage" id="wcRobotStage">
         <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
       </div>
