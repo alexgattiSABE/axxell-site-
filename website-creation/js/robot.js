@@ -29,10 +29,33 @@
  */
 WC.register('robot', function(ctx){
   // Tarature del comportamento (non dell'aspetto: quello arriva da Spline).
-  // yawGain: prima il puntatore si misurava su uno stage largo 2,2× la
-  // sezione, quindi lo stesso gesto girava la testa di 0.5/2.2 per unità:
-  // stesso gesto, stessa rotazione di prima.
-  var CONFIG = { yawGain: 0.2273, pitchGain: 0.35, yawMax: 0.5, pitchMax: 0.3, minHeadTopPx: 80 };
+  //
+  // Task B1 — la testa PUNTA il cursore. Prima c'erano due guadagni
+  // (`yawGain`/`pitchGain`) applicati al puntatore misurato sul RETTANGOLO
+  // dello stage: una regola approssimata che non sapeva dove fosse la testa
+  // dentro quel rettangolo. In verticale non era nemmeno approssimata, era
+  // ROVESCIATA — misurato con l'override `robot.hold`: `rotation.x = -0.3`
+  // porta il «davanti» della testa a (0, +0.296, 0.955), cioè guarda in ALTO,
+  // e la formula vecchia (`-pointer.y * pitchGain`) dava proprio -0.3 col
+  // cursore in BASSO. I due guadagni sono spariti: non c'è più niente da
+  // guadagnare, il bersaglio è un punto vero del mondo.
+  //
+  // aimDepth: dove sta il piano su cui si posa il puntatore, in frazione della
+  // distanza camera→testa. 0 = piano sulla camera (la testa non seguirebbe
+  // più niente); 1 = piano ALLA profondità della testa — degenere, perché lì
+  // il bersaglio cade DI FIANCO all'occhio e mai davanti: misurato, chiede
+  // |yaw| ≈ 90° per QUALUNQUE posizione del puntatore, compreso il centro
+  // della testa. A 0.5 il piano sta a metà strada e la mira resta dentro i
+  // limiti su tutto il riquadro (misurato: 1440×900 |yaw| ≤ 0.326 rad e
+  // pitch ≤ 0.353; 1280×720 ≤ 0.358 e ≤ 0.349), quindi il clamp non taglia
+  // mai e la testa punta davvero dove sta il cursore.
+  //
+  // pitchMax sale da 0.30 a 0.38: la testa sta IN ALTO nella sezione, per
+  // guardare il fondo del riquadro deve abbassarsi di 0.353 rad e a 0.30 il
+  // clamp la fermava prima — proprio nei «movimenti verticali» che Nike
+  // segnalava. 0.38 è il tetto indicato dal piano (oltre, il collo comincia a
+  // compenetrare) e resta come guardia, non come taratura attiva.
+  var CONFIG = { aimDepth: 0.5, yawMax: 0.5, pitchMax: 0.38, minHeadTopPx: 80 };
   // Task A2 — l'anima nella pancia: la sfera di SABE (js/pointorb.js) dietro la
   // «A» del petto. Tutti i numeri della sfera stanno qui, si ritoccano a
   // schermo. Le frazioni sono del BOUNDING BOX DEL TORSO (la mesh `Body`
@@ -300,6 +323,13 @@ WC.register('robot', function(ctx){
     cam.position.fromArray(D.camera.position);
     cam.quaternion.fromArray(D.camera.quaternion);
     var headTopWorld = null;
+    // Task B1 — la mira della testa. `aimEyeLocal`: il centro del bbox della
+    // testa in coordinate di headGroup, cioè l'occhio da cui parte lo sguardo
+    // (locale e non mondo perché headGroup GIRA: un punto in mondo varrebbe
+    // solo per la posa a riposo). `aimPlane`: il piano parallelo allo schermo
+    // su cui si posa il puntatore. Restano nulli finché la testa non è stata
+    // riparentata al collo — prima non c'è niente da mirare.
+    var aimEyeLocal = null, aimPlane = null;
     // Raggio della sfera della pancia in unità MONDO: serve alla dimensione dei
     // punti (tuneOrb), che si ricalcola a ogni fit(). 0 = sfera non ancora
     // costruita.
@@ -552,6 +582,17 @@ WC.register('robot', function(ctx){
 
           var headGroup = new THREE.Group();
           headGroup.name = 'headGroup';
+          // Task B1 — ordine degli angoli YXZ (prima l'implicito XYZ di three).
+          // Con YXZ la matrice è Ry·Rx e il «davanti» vale esattamente
+          // (sin yaw·cos pitch, −sin pitch, cos yaw·cos pitch): le due formule
+          // della mira (atan2) sono allora ESATTE. Con XYZ (Rx·Ry) il davanti
+          // è (sin yaw, −sin pitch·cos yaw, cos pitch·cos yaw) e le stesse
+          // formule sbagliano di poco ma non di niente — misurato col
+          // controllo `testa-punta`: 26 px fuori bersaglio negli angoli in
+          // basso, contro 1–2 px in alto dove gli angoli sono piccoli.
+          // A riposo (0,0,0) i due ordini danno la stessa identica matrice,
+          // quindi la scena ferma non cambia di un pixel.
+          headGroup.rotation.order = 'YXZ';
           headParent.add(headGroup);
           headParent.updateWorldMatrix(true, false);
           headGroup.position.copy(headParent.worldToLocal(pivotWorld.clone()));
@@ -575,26 +616,49 @@ WC.register('robot', function(ctx){
           headTopWorld = new THREE.Vector3((hb.min.x + hb.max.x) / 2, hb.max.y, (hb.min.z + hb.max.z) / 2);
           fit();
 
+          // Centro e raggio della testa in coordinate LOCALI di headGroup, non
+          // mondo: headGroup ha solo posizione, ma `model` può portare una
+          // scala propria dal GLB — lavorare in locale slega queste misure da
+          // quella scala (e il centro resta valido anche a testa girata, che è
+          // ciò che serve alla mira del Task B1). Le usano la mira qui sotto e
+          // il point-brain più avanti (il raggio va nelle stesse unità delle
+          // mesh figlie).
+          headGroup.updateMatrixWorld(true);
+          var invHead = new THREE.Matrix4().copy(headGroup.matrixWorld).invert();
+          var localHeadBox = new THREE.Box3();
+          parts.head.forEach(function (m) {
+            m.updateWorldMatrix(true, false);
+            localHeadBox.union(new THREE.Box3().setFromObject(m).applyMatrix4(invHead));
+          });
+          var headCenterLocal = localHeadBox.getCenter(new THREE.Vector3());
+          var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
+          var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
+
+          // Task B1 — il piano di mira. È parallelo allo schermo (normale =
+          // asse Z della camera) e sta FRA la camera e la testa, a
+          // CONFIG.aimDepth della distanza camera→testa. NON alla profondità
+          // della testa: lì l'occhio starebbe SUL piano, il bersaglio gli
+          // cadrebbe sempre di fianco e mai davanti, e la testa dovrebbe
+          // girarsi di 90° per guardarlo (misurato: ±89,9° per ogni posizione
+          // del puntatore, centro della testa compreso). La camera non si
+          // muove mai — niente orbit, niente drag — quindi il piano si calcola
+          // una volta sola qui.
+          aimEyeLocal = headCenterLocal.clone();
+          var camDir = new THREE.Vector3(0, 0, -1).transformDirection(cam.matrixWorld);
+          var eyeWorld0 = headGroup.localToWorld(aimEyeLocal.clone());
+          var aimDist = eyeWorld0.sub(cam.position).dot(camDir) * CONFIG.aimDepth;
+          aimPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+            camDir, cam.position.clone().addScaledVector(camDir, aimDist));
+          // Esposti per la verifica headless (controllo `testa-punta`): con
+          // occhio e piano si ricostruisce da fuori DOVE sta guardando la
+          // testa, senza rifare i conti di qui dentro.
+          window.__robot.aim = { eyeLocal: aimEyeLocal, plane: aimPlane };
+
           // Task 5: il point-brain DENTRO la testa. Stesso helper del cervello
           // di Vesper (WC.pointBrain, js/pointbrain.js). Parentato a headGroup,
           // si muove in sincrono con la testa; si accende col reveal a tutta
           // testa quando il cursore ci passa sopra (RITOCCO 2 — vedi tick()).
           if (WC.pointBrain) {
-            // Centro e raggio della testa in coordinate LOCALI di headGroup, non
-            // mondo: headGroup ha solo posizione, ma `model` può portare una
-            // scala propria dal GLB — lavorare in locale slega il brain da quella
-            // scala (il raggio va nelle stesse unità delle mesh figlie).
-            headGroup.updateMatrixWorld(true);
-            var invHead = new THREE.Matrix4().copy(headGroup.matrixWorld).invert();
-            var localHeadBox = new THREE.Box3();
-            parts.head.forEach(function (m) {
-              m.updateWorldMatrix(true, false);
-              localHeadBox.union(new THREE.Box3().setFromObject(m).applyMatrix4(invHead));
-            });
-            var headCenterLocal = localHeadBox.getCenter(new THREE.Vector3());
-            var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
-            var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
-
             // RITOCCO 2 (correzione utente): ora il reveal è a TUTTA testa —
             // si vede il cervello INTERO, non più una macchia sotto la lente —
             // quindi il cervello va INGRANDITO e CENTRATO per riempire
@@ -865,6 +929,10 @@ WC.register('robot', function(ctx){
       // (update(dt, reveal)) seguono questo stesso segnale.
       var raycaster = new THREE.Raycaster();
       var lensNdc = new THREE.Vector2();
+      // Task B1: i tre appoggi della mira, allocati una volta sola (girano nel
+      // loop) — bersaglio sul piano, occhio corrente, inversa del parent di
+      // headGroup.
+      var vAim = new THREE.Vector3(), vEye = new THREE.Vector3(), mAim = new THREE.Matrix4();
       var hoverHead = 0;
       // Task A2: il gemello per la pancia (raycast sul SOLO torso) e
       // l'orologio della posa della sfera.
@@ -910,16 +978,54 @@ WC.register('robot', function(ctx){
         var robot = window.__robot;
         var now = (window.performance && performance.now) ? performance.now() : Date.now();
         var dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+        // Task 7 (nit) + Task B1: UN SOLO setFromCamera per fotogramma quando
+        // il puntatore è attivo. Lo stesso raggio serve a tre cose — la mira
+        // della testa (subito sotto), il reveal testa/pancia e il surge delle
+        // fibre (più avanti): stesso NDC (pointer.x/y rispetto allo stage, con
+        // il flip di segno su y della convenzione NDC di three), stessa camera
+        // che renderizza lo stage. Sta QUI e non più in mezzo al loop perché
+        // ora anche la testa ne ha bisogno, e la testa si muove per prima.
+        if (pointer.active) {
+          lensNdc.set(pointer.x, -pointer.y);
+          raycaster.setFromCamera(lensNdc, cam);
+        }
         // Task 4: la testa segue il cursore (clampata, smorzata). Task 5b
         // (correzione utente): questo resta INDIPENDENTE dal reveal — la
         // testa gira dietro al cursore anche da visore chiuso. faceAmount
         // resta calcolato (diagnostica dell'harness) ma non pilota più
         // nulla del vetro/brain.
+        //
+        // Task B1: non più due guadagni sul rettangolo dello stage, ma una
+        // mira vera. Il puntatore diventa un punto del mondo (il raggio della
+        // camera posato su `aimPlane`) e la testa gira per guardarlo.
         if (robot && robot.headGroup && robot.state) {
           var targetYaw = 0, targetPitch = 0;
           if (pointer.active) {
-            targetYaw = Math.max(-CONFIG.yawMax, Math.min(CONFIG.yawMax, pointer.x * CONFIG.yawGain));
-            targetPitch = Math.max(-CONFIG.pitchMax, Math.min(CONFIG.pitchMax, -pointer.y * CONFIG.pitchGain));
+            if (aimPlane && raycaster.ray.intersectPlane(aimPlane, vAim)) {
+              // L'occhio NON sta fermo: la testa gira attorno al COLLO, quindi
+              // il centro della testa si sposta con la rotazione. Si parte
+              // dall'occhio di ADESSO (la posa del fotogramma precedente): è
+              // un punto fisso che converge, e a regime lo sguardo passa
+              // esattamente per il bersaglio. Partendo sempre dall'occhio a
+              // riposo la mira sbaglierebbe di una ventina di pixel proprio
+              // dove la testa è più girata.
+              robot.headGroup.updateWorldMatrix(true, false);
+              vEye.copy(aimEyeLocal).applyMatrix4(robot.headGroup.matrixWorld);
+              // Direzione occhio→bersaglio nel frame del PARENT di headGroup:
+              // è il frame in cui vivono headGroup.rotation.x/.y. A riposo la
+              // testa guarda lungo il +Z di quel frame — verificato sulla
+              // scena viva: il «davanti» del visore è (0,0,1) in mondo e il
+              // parent è `model`, che non porta rotazione. Da lì le due
+              // formule: yaw è la rotazione attorno a Y che porta +Z sul
+              // bersaglio, pitch quella attorno a X (positivo = sguardo in
+              // GIÙ, perché il +Z ruotato vale (sin y, −sin x·cos y, cos x·cos y)).
+              mAim.copy(robot.headGroup.parent.matrixWorld).invert();
+              vAim.sub(vEye).transformDirection(mAim);
+              targetYaw = Math.atan2(vAim.x, vAim.z);
+              targetPitch = Math.atan2(-vAim.y, Math.hypot(vAim.x, vAim.z));
+              targetYaw = Math.max(-CONFIG.yawMax, Math.min(CONFIG.yawMax, targetYaw));
+              targetPitch = Math.max(-CONFIG.pitchMax, Math.min(CONFIG.pitchMax, targetPitch));
+            }
             robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
           } else if (robot.hold) {
             // Override deterministico per l'harness (window.__robot.hold): posa
@@ -945,17 +1051,8 @@ WC.register('robot', function(ctx){
             renderer.shadowMap.needsUpdate = true;
           }
         }
-        // Task 7 (nit): un solo setFromCamera per frame quando il puntatore
-        // è attivo — reveal testa e surge delle fibre (braccia)
-        // testano oggetti DIVERSI ma partono dallo STESSO NDC (pointer.x/y
-        // rispetto allo stage, la stessa camera che renderizza lo stage,
-        // flip di segno su y come da convenzione NDC three.js): il secondo
-        // setFromCamera di Task 6 era una ricomputazione ridondante dello
-        // stesso raggio, non un raggio diverso.
-        if (pointer.active) {
-          lensNdc.set(pointer.x, -pointer.y);
-          raycaster.setFromCamera(lensNdc, cam);
-        }
+        // Il raggio del puntatore è già stato costruito una volta sola, prima
+        // della mira della testa (vedi sopra): reveal e fibre lo riusano.
         // RITOCCO 2: raycast del cursore sulle mesh testa. Un hit su una
         // QUALSIASI mesh della testa alza il target a 1 (reveal a tutta
         // testa: visore trasparente, occhi a LED spenti, cervello in vista).
