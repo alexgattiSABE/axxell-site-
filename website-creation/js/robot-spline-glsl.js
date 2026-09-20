@@ -259,6 +259,12 @@ WC.robotSplineGLSL = {
     '  vec3 fn = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));',
     '  if (dot(n, fn) < 0.0) n *= -1.0;',
     '  vec3 c = uBaseColor;',
+    // Alpha in uscita. Di norma è uOpacity e basta (visore e interni al reveal
+    // della testa, torso al reveal della pancia). L'unica eccezione è il logo
+    // «A» sul petto: quando la pancia si apre il torso sparisce ma la «A» resta
+    // PIENA — lo strato del logo si riprende l'alpha (vedi #ifdef LOGO). Sta
+    // qui, fuori dai blocchi per materiale, perché il gl_FragColor è uno solo.
+    '  float outA = uOpacity;',
     '#if defined(MAT_BODY) || defined(MAT_PARTS)',
     '  vec2 uv0 = sp_triUv(vPosition.xy), uv1 = sp_triUv(vPosition.zy), uv2 = sp_triUv(vPosition.xz);',
     '  vec3 tw = pow(abs(normalize(vObjectNormal)), vec3((1.0 - uTriBlend) * 125.0 + 3.0));',
@@ -311,6 +317,9 @@ WC.robotSplineGLSL = {
     '  vec3 HV = normalize(LV + normalize(vViewPosition));',
     '  float lsp = pow(clamp(dot(n, HV), 0.0, 1.0), uLogoShin);',
     '  c = mix(c, vec3(uLogoBase) + vec3(lsp * uLogoSpec), lm);',
+    // La «A» non sfuma col torso: dove c'è il logo l'alpha è quella del logo,
+    // non quella del petto. A riposo uOpacity è 1 e il max non cambia niente.
+    '  outA = max(uOpacity, lm);',
     '#endif',
     '#endif',
 
@@ -321,7 +330,7 @@ WC.robotSplineGLSL = {
     '  c = sp_blend(c, sp_physical(c, nb, rough), uLightAlpha, uLightMode);',
     '#endif',
 
-    '  gl_FragColor = vec4(c, uOpacity);',
+    '  gl_FragColor = vec4(c, outA);',
     '}'
   ].join('\n')
 };
