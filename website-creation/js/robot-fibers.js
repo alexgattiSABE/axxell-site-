@@ -89,40 +89,77 @@ WC.robotFibers = (function () {
     // arrivare alla mano.
     trimTop: 0.0,
     trimBottom: 0.0,
-    // --- dita (Task D2) -----------------------------------------------------
+    // --- dita (Task D2, rifatte nel Task D3) ---------------------------------
     // Quante diramazioni cercare nella mano. Le dita NON sono mesh separate e
     // nemmeno isole della geometria (misurato: la mano è una mesh sola,
     // `Hand`, 2274 vertici, UNA sola componente connessa — le dita sono
-    // saldate al palmo e si toccano fra loro). Si trovano quindi per
-    // POSIZIONE, col metodo del punto più lontano: la prima punta è il vertice
-    // più distante dal polso, la seconda il più distante da quella, e così
-    // via. `dita` è il tetto; quante se ne trovano davvero lo dice
-    // `window.__robot.fibers.dita` (e il report).
-    dita: 5,
+    // saldate al palmo e si toccano fra loro; provato anche a spezzarla
+    // unendo i vertici vicini, e a 2 unità viene fuori un 685+676+93+64+56+
+    // 33+14 che non sono dita). Si trovano quindi per POSIZIONE, col metodo
+    // del punto più lontano: la prima punta è il vertice più distante dal
+    // polso, la seconda il più distante da quella, e così via. `dita` è il
+    // TETTO della ricerca, non il risultato: quante se ne trovano davvero lo
+    // dice `window.__robot.fibers.info` (e il report). Sei, perché i diti
+    // sono cinque e la ricerca va lasciata libera di scartarne uno.
+    dita: 6,
     // Quanto devono essere separate due punte per valere come due dita, in
     // frazione della lunghezza della mano. Sotto questa soglia la ricerca si
     // ferma: è lì che si smette di trovare dita e si comincia a trovare
-    // bitorzoli dello stesso dito.
-    distanzaDita: 0.34,
-    // Fette lungo ogni dito (come `slices` per il braccio, ma un dito è corto
-    // e dritto: ne bastano poche).
+    // bitorzoli dello stesso dito. 0,12 e non più 0,34 perché adesso i
+    // candidati sono solo i polpastrelli (vedi `quotaPunte`): con quelli, due
+    // punte vicine sono due DITA vicine, non due bozzi dello stesso dito, e
+    // una soglia larga ne buttava via tre su cinque.
+    distanzaDita: 0.12,
     // Da che punto in poi un vertice può essere una PUNTA, in frazione della
     // distanza massima dal polso. Con 0,5 (la metà distale) il metodo del
     // punto più lontano andava a pescare anche lo spigolo del DORSO, che è
-    // un'estremità della mano ma non è un dito; con 0,8 restano solo i
-    // polpastrelli e il pollice.
-    quotaPunte: 0.5,
+    // un'estremità della mano ma non è un dito — ed è quello che si vedeva:
+    // rami che partivano di traverso sul dorso invece di scendere nelle dita.
+    // Con 0,78 restano solo i polpastrelli e il pollice.
+    quotaPunte: 0.78,
+    // Quanto è LUNGO un dito, in frazione della distanza massima dal polso, e
+    // quanto è LARGO. Sono i due numeri che tengono il ramo sull'asse del
+    // dito: i vertici di un dito sono quelli che stanno entro `lunghezzaDito`
+    // dietro la punta, misurati LUNGO l'asse del dito, ed entro
+    // `larghezzaDito` di lato. Fuori da quel cilindro c'è il palmo, ed è il
+    // palmo che prima tirava la mediana di traverso. Misurato sul GLB: la
+    // mano è lunga 59 unità dal polso, un dito ne occupa una trentina e il
+    // suo raggio sta sotto le 3.
+    lunghezzaDito: 0.50,
+    larghezzaDito: 0.075,
+    // Quanto il ramo RIENTRA VERSO L'ASSE del dito: 0 = la mediana della
+    // fetta com'è, 1 = esattamente sull'asse che passa per il polpastrello.
+    // La mediana cade dentro la materia ma non al centro, e in un dito largo
+    // 11 px quel po' di scarto è tutto il margine che c'è: misurato, restava
+    // 1÷2 px di fibra fuori dalla sagoma a certe fasi del respiro, sempre a
+    // metà dito. È la seconda leva che nomina il brief («rientrare di più
+    // verso l'asse del dito»), e a 0,75 il ramo resta un ramo — segue ancora
+    // la piega del dito — ma passa di gran lunga più centrato.
+    versoAsse: 0.75,
+    // Fette lungo ogni dito (come `slices` per il braccio, ma un dito è corto
+    // e dritto: ne bastano poche).
     fetteDito: 7,
     // Rientro dentro il dito, in frazione del raggio locale del dito. Più
     // profondo di quello del braccio perché il dito è sottile e la sprite del
     // punto è larga: qui il margine si mangia in fretta.
     rientroDito: 0.93,
     // Quanto può assottigliarsi il punto nelle dita, in frazione della grana
-    // del braccio. Sotto questa soglia non si scende: un punto più piccolo di
-    // così non si vede più, e un ramo che non si vede non è un ramo.
-    scalaMinima: 0.38,
-    // Di quanto il ramo si ferma prima del polpastrello, in ingombri del punto.
-    rientroPunta: 4,
+    // del braccio. È un PAVIMENTO, cioè l'unico posto dove la grana smette di
+    // seguire la geometria: sotto le dita il raggio libero è già zero e il
+    // punto resta grande quanto dice questo numero, non quanto ci sta.
+    // Sceso da 0,38 a 0,26 nel Task D3, e con un motivo misurato: a 0,38 la
+    // fibra usciva dalla sagoma di 1÷2 px in certe fasi del respiro, sempre a
+    // metà dito (`aT` 0,87÷0,88) e sempre con il pixel a 0,7 px dal centro
+    // del punto — cioè era la sprite a sporgere, non il filo a sbagliare
+    // strada. È la leva che chiede il brief: si assottiglia il ramo. Mezza
+    // sprite nelle dita passa da 0,9 a 0,6 px a schermo (1,2 px di ramo su un
+    // dito che ne misura 11).
+    scalaMinima: 0.26,
+    // Di quanto il ramo si ferma prima del polpastrello, in ingombri del
+    // punto. Sceso da 4 a 2,2 perché l'ingombro è quasi raddoppiato (vedi
+    // `gonfiore`): a parità di numero il ramo si sarebbe fermato dieci pixel
+    // prima della punta, cioè a metà dell'ultima falange.
+    rientroPunta: 2.2,
     // --- nuvola di punti ----------------------------------------------------
     // Quanti punti per braccio, divisi fra il tratto spalla→polso e le dita in
     // proporzione alla lunghezza (così la densità è la stessa dappertutto).
@@ -140,6 +177,18 @@ WC.robotFibers = (function () {
     // occupa sempre lo stesso pezzo di MONDO. Vedi INGOMBRO, più sotto.
     pointSizeK: 1.45,
     fovRef: 22.5,   // come SFERA_CONFIG: il fov a cui la grana è tarata
+    // Task D3 — di quanto il punto si GONFIA sulla cresta dell'impulso. Era un
+    // 0.9 scritto a mano nel vertex shader e basta, e questo era un errore di
+    // misura, non di stile: l'ingombro del punto — il numero con cui si decide
+    // quanto la fibra deve rientrare per restare dentro la sagoma — lo
+    // calcolava senza. Il punto però sulla cresta è 1,9 volte più largo, e la
+    // cresta passa: il controllo `braccio-reveal` misurava quindi ora 0 px
+    // fuori ora 2, a seconda di dove fosse l'onda in quell'istante (visto
+    // fallire a 1440×900 con la fibra dei tubi già sostituita, e passare tre
+    // volte di fila rilanciato da solo). Adesso il numero è uno solo, sta qui,
+    // e va sia nello shader sia in INGOMBRO: la fibra rientra di quanto serve
+    // al punto PIÙ GROSSO che quel punto diventerà.
+    gonfiore: 0.9,
     // Sparpaglio laterale dei punti attorno al filo, in frazione del raggio
     // locale che resta libero dopo il rientro. 0 = tutti in fila su una linea
     // (legge finto), 1 = fino a sfiorare la pelle. È il numero che fa leggere
@@ -197,7 +246,11 @@ WC.robotFibers = (function () {
   // Mezza sprite in unità MONDO (vedi pointSizeK): non dipende né dalla
   // distanza né dalla misura del riquadro. È quanto si toglie al rientro,
   // così a stare dentro la sagoma non è la linea di mezzo ma i PIXEL.
-  var INGOMBRO = CONFIG.pointSizeK * Math.tan(CONFIG.fovRef * Math.PI / 180);
+  // Task D3: misurata sul punto al suo MASSIMO, cioè sulla cresta dell'impulso
+  // (vedi `gonfiore`) — se no il margine si calcolava su un punto che non
+  // esiste mai da solo, e bastava che l'onda passasse sulle dita perché la
+  // fibra sbordasse di un paio di pixel.
+  var INGOMBRO = CONFIG.pointSizeK * Math.tan(CONFIG.fovRef * Math.PI / 180) * (1 + CONFIG.gonfiore);
 
   // Task D2 — i PUNTI. Stessa impalcatura del cervello e della sfera: sprite
   // tonda e morbida (`gl_PointCoord`), additiva, dimensione che scala con
@@ -229,7 +282,7 @@ WC.robotFibers = (function () {
     '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
     // Il punto si gonfia un po' sulla cresta: è così che una fila di punti
     // fermi legge come qualcosa che SCORRE.
-    '  gl_PointSize = uSize * uPR * aScala * (1.0 + vPulse * 0.9) * (1.0 / max(0.1, -mv.z));',
+    '  gl_PointSize = uSize * uPR * aScala * (1.0 + vPulse * ' + CONFIG.gonfiore.toFixed(2) + ') * (1.0 / max(0.1, -mv.z));',
     '  gl_Position = projectionMatrix * mv;',
     '}'
   ].join('\n');
@@ -488,16 +541,36 @@ WC.robotFibers = (function () {
    *   - ci si ferma quando la nuova punta è più vicina di `distanzaDita` alla
    *     più vicina delle altre: da lì in poi non sono più dita ma bozzi dello
    *     stesso dito.
-   * Poi ogni vertice della metà distale va al dito della punta più vicina, e
-   * il ramo è la mediana per fetta di quel gruppo — la stessa regola del
-   * braccio, su scala di dito.
+   * ------------------------------------------------------------------------
+   * Task D3 — QUELLO CHE NON ANDAVA, e come si vedeva. Nel dettaglio della
+   * mano i rami si leggevano «sparsi e spezzati sul dorso» invece che come un
+   * flusso che entra nelle dita, e di rami ce n'erano quattro su cinque
+   * diti. Le due cose avevano la stessa causa: i candidati a essere PUNTA
+   * erano tutta la metà distale della mano (`quotaPunte` 0,5), e in quella
+   * metà lo spigolo del DORSO è un'estremità esattamente come un
+   * polpastrello. Il metodo del punto più lontano ne sceglieva quindi uno, e
+   * una volta scelto si portava dietro il suo gruppo di vertici — mezzo dorso
+   * — la cui mediana per fetta sta sul dorso e non su un dito.
+   *
+   * Due cambiamenti, nessuna tolleranza allargata:
+   *   1. i candidati sono solo i veri polpastrelli (`quotaPunte` 0,78), e la
+   *      soglia fra due punte scende di conseguenza (`distanzaDita` 0,12:
+   *      fra polpastrelli, due punte vicine sono due dita vicine);
+   *   2. il gruppo di un dito non è più «i vertici che hanno quella punta come
+   *      più vicina» ma «i vertici dentro il CILINDRO del dito»: entro
+   *      `lunghezzaDito` dietro la punta lungo l'asse del dito, entro
+   *      `larghezzaDito` di lato. L'asse si raffina due volte (si parte dalla
+   *      direzione polso→punta, si rifà col baricentro di quel che si è
+   *      preso), e un vertice conteso va al dito il cui asse gli passa più
+   *      vicino. È la stessa regola del braccio — seguire un asse, non una
+   *      nuvola — portata sulla scala del dito.
    */
   function ramiDelleDita(manoVerts, polso, ingombro) {
     if (manoVerts.length < 30) return [];
     var dPolso = manoVerts.map(function (v) { return v.distanceTo(polso); });
     var dMax = Math.max.apply(null, dPolso);
     var soglia = dMax * CONFIG.distanzaDita;
-    // candidati: la metà distale della mano (le dita, non il palmo)
+    // candidati a essere PUNTA: solo i polpastrelli, non la metà distale
     var cand = [];
     for (var i = 0; i < manoVerts.length; i++) if (dPolso[i] > dMax * CONFIG.quotaPunte) cand.push(i);
     if (cand.length < 20) return [];
@@ -516,40 +589,113 @@ WC.robotFibers = (function () {
       if (scelto < 0 || migliore < soglia) break;
       punte.push(scelto);
     }
-    // ogni vertice distale va alla punta più vicina
+    var L = dMax * CONFIG.lunghezzaDito;      // quanto indietro arriva un dito
+    var R = dMax * CONFIG.larghezzaDito;      // quanto è largo il suo cilindro
+    // L'ASSE di ogni dito. Si parte da polso→punta e si raffina due volte sul
+    // baricentro dei vertici che quel cilindro raccoglie: il palmo è largo e
+    // l'asse grezzo ci pesca dentro, il secondo giro lo raddrizza sul dito.
+    var assi = punte.map(function (j) {
+      var punta = manoVerts[j];
+      var a = punta.clone().sub(polso);
+      if (a.lengthSq() < 1e-8) return null;
+      a.normalize();
+      for (var giro = 0; giro < 2; giro++) {
+        var c = new THREE.Vector3(), n = 0;
+        for (var q = 0; q < manoVerts.length; q++) {
+          var w = manoVerts[q].clone().sub(punta);
+          var s = -w.dot(a);
+          if (s < 0 || s > L) continue;
+          if (w.addScaledVector(a, s).length() > R) continue;
+          c.add(manoVerts[q]); n++;
+        }
+        if (n < 8) break;
+        c.multiplyScalar(1 / n);
+        var a2 = punta.clone().sub(c);
+        if (a2.lengthSq() < 1e-8) break;
+        a.copy(a2.normalize());
+      }
+      return a;
+    });
+    // DUE PUNTE SULLO STESSO DITO. Il metodo del punto più lontano ragiona
+    // sulle distanze FRA le punte, e su questa mano quelle fra due dita
+    // vicine e quelle fra due estremità dello stesso dito (il polpastrello e
+    // lo spigolo della nocca) sono lo stesso numero: misurate, 11,3 — 11,7 —
+    // 12,3 — 13,7 unità fra dita diverse contro 13,1 fra due punte dello
+    // stesso dito. Nessuna soglia le separa, e infatti la ricerca trovava sei
+    // punte su cinque diti. Le separa la GEOMETRIA: se una punta cade dentro
+    // il CILINDRO di un'altra, quelle due sono lo stesso dito, e resta la più
+    // lontana dal polso — la punta di un dito è il suo punto estremo, per
+    // definizione, non una questione di gusto.
+    var dentroCilindro = function (v, q) {
+      var a = assi[q];
+      if (!a) return false;
+      var w = v.clone().sub(manoVerts[punte[q]]);
+      var s = -w.dot(a);
+      return s > 0 && s <= L && w.addScaledVector(a, s).length() <= R;
+    };
+    var scartate = {};
+    for (var u = 0; u < punte.length; u++) {
+      for (var z = 0; z < punte.length; z++) {
+        if (u === z || scartate[u] || scartate[z]) continue;
+        if (!dentroCilindro(manoVerts[punte[u]], z)) continue;
+        scartate[dPolso[punte[u]] < dPolso[punte[z]] ? u : z] = true;
+      }
+    }
+    punte = punte.filter(function (_, q) { return !scartate[q]; });
+    assi = assi.filter(function (_, q) { return !scartate[q]; });
+    // Ogni vertice va al dito il cui ASSE gli passa più vicino — non alla
+    // punta più vicina. Un vertice fra due dita finisce così in quello di cui
+    // è davvero la carne, e il palmo resta fuori da tutti e due.
     var gruppi = punte.map(function () { return []; });
-    cand.forEach(function (i) {
-      var k = 0, dmin = Infinity;
-      punte.forEach(function (j, q) { var d = manoVerts[i].distanceTo(manoVerts[j]); if (d < dmin) { dmin = d; k = q; } });
-      gruppi[k].push(manoVerts[i]);
+    manoVerts.forEach(function (v) {
+      var k = -1, best2 = Infinity;
+      punte.forEach(function (j, q) {
+        var a = assi[q];
+        if (!a) return;
+        var w = v.clone().sub(manoVerts[j]);
+        var s = -w.dot(a);
+        if (s < 0 || s > L) return;
+        var lat = w.addScaledVector(a, s).length();
+        if (lat <= R && lat < best2) { best2 = lat; k = q; }
+      });
+      if (k >= 0) gruppi[k].push(v);
     });
     var rami = [];
     gruppi.forEach(function (g, k) {
       if (g.length < 12) return;
       var punta = manoVerts[punte[k]];
-      var base = new THREE.Vector3();
-      // base del dito: il baricentro del quarto di vertici più vicino al polso
-      var ord = g.slice().sort(function (a, b) { return a.distanceTo(polso) - b.distanceTo(polso); });
-      var nb = Math.max(3, Math.round(ord.length * 0.25));
-      for (var i2 = 0; i2 < nb; i2++) base.add(ord[i2]);
-      base.multiplyScalar(1 / nb);
-      var asse = punta.clone().sub(base);
-      var lung = asse.length();
+      var asse = assi[k];
+      if (!asse) return;
+      // Le fette si contano DALLA PUNTA all'indietro lungo l'asse, e la
+      // lunghezza vera del ramo è quella del vertice più arretrato del
+      // gruppo: un dito corto non si allunga fino a L per forza.
+      var lung = 0;
+      g.forEach(function (v) { var s = -v.clone().sub(punta).dot(asse); if (s > lung) lung = s; });
       if (lung < 1e-3) return;
-      asse.normalize();
-      // fette lungo il dito: mediana dei vertici di ogni fetta, che cade
-      // dentro la materia del dito
       var bins = [];
       for (var b2 = 0; b2 < CONFIG.fetteDito; b2++) bins.push([]);
       g.forEach(function (v) {
-        var t = v.clone().sub(base).dot(asse);
-        var q = Math.floor(t / lung * CONFIG.fetteDito);
+        var s = -v.clone().sub(punta).dot(asse);
+        var q = Math.floor((1 - s / lung) * CONFIG.fetteDito);   // 0 = nocca, ultima = punta
         bins[Math.max(0, Math.min(CONFIG.fetteDito - 1, q))].push(v);
       });
       var via = [];
-      bins.forEach(function (bin) {
+      bins.forEach(function (bin, iBin) {
         if (bin.length < 3) return;
         var m = mediana(bin);
+        // Task D3 — e poi si rientra verso l'ASSE (vedi `versoAsse`): il punto
+        // dell'asse alla stessa quota, e la mediana ci si avvicina. Il raggio
+        // locale qui sotto si misura DOPO, dal punto dove il ramo passa
+        // davvero, se no si misurerebbe una distanza che nessun punto ha.
+        // Il rientro CRESCE verso la punta e alla nocca è zero, e non è un
+        // ripiego: l'asse è la retta che passa per il polpastrello, e
+        // prolungata all'indietro esce dalla carne. Misurato tirando tutto il
+        // ramo sull'asse: la fibra usciva dalla sagoma in TUTTE e 12 le fasi
+        // del respiro e su tutti e due i bracci, sempre all'attacco della
+        // mano — il contrario di quello che si voleva.
+        var peso = CONFIG.versoAsse * (CONFIG.fetteDito > 1 ? iBin / (CONFIG.fetteDito - 1) : 1);
+        var sAsse = -m.clone().sub(punta).dot(asse);
+        m.lerp(punta.clone().addScaledVector(asse, -sAsse), peso);
         // raggio locale del dito in questa fetta: la distanza tipica dei suoi
         // vertici dalla mediana, tolta la componente lungo il dito
         var rr = bin.map(function (v) { var w = v.clone().sub(m); w.addScaledVector(asse, -w.dot(asse)); return w.length(); })
@@ -567,11 +713,9 @@ WC.robotFibers = (function () {
       if (via.length < 2) return;
       // la punta vera, tirata dentro di quanto serve a non sbordare
       var ult = via[via.length - 1];
-      // La punta del ramo si ferma un po' PRIMA della punta del dito: quanto
-      // basta a tenerci dentro la sprite, che è tonda e larga. Misurato: con
-      // un rientro di 2,5 ingombri restava un pixel di fibra fuori dal
-      // polpastrello (uno solo, ma fuori è fuori); a 4 ingombri — ~2,6 unità
-      // mondo, 6 px a schermo su un dito lungo una trentina — non esce più.
+      // La punta del ramo si ferma un po' PRIMA del polpastrello: quanto basta
+      // a tenerci dentro la sprite, che è tonda e larga — e la sprite si
+      // misura sulla cresta dell'impulso, dov'è più grossa (vedi INGOMBRO).
       var pInt = punta.clone().addScaledVector(asse, -Math.max(ingombro * CONFIG.rientroPunta, ult.raggio));
       pInt.raggio = ult.raggio; pInt.libero = ult.libero;
       via.push(pInt);
@@ -701,7 +845,12 @@ WC.robotFibers = (function () {
     punti.frustumCulled = false;
     group.add(punti);
     return { punti: off, dita: rami.length, tPolso: tPolso,
-      punte: rami.map(function (r) { return r.punta.toArray().map(function (x) { return +x.toFixed(2); }); }) };
+      punte: rami.map(function (r) { return r.punta.toArray().map(function (x) { return +x.toFixed(2); }); }),
+      // Diagnostica delle diramazioni (Task D3): quanto è lungo ogni ramo e
+      // quanti nodi ha. Serve da fuori a distinguere un dito da uno spigolo
+      // pescato per sbaglio — un dito è lungo, uno spigolo è un moncone — e
+      // costa due numeri per ramo.
+      rami: rami.map(function (r) { return { lung: +r.lung.toFixed(1), nodi: r.via.length }; }) };
   }
 
   return {
