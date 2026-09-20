@@ -56,6 +56,64 @@ WC.register('robot', function(ctx){
   // segnalava. 0.38 è il tetto indicato dal piano (oltre, il collo comincia a
   // compenetrare) e resta come guardia, non come taratura attiva.
   var CONFIG = { aimDepth: 0.5, yawMax: 0.5, pitchMax: 0.38, minHeadTopPx: 80 };
+  // Task C1 — «robot più grande, niente gambe» (Nike): l'inquadratura si
+  // stringe su testa, busto e braccia, tagliata poco sotto il bacino. Le
+  // gambe RESTANO nella scena (nessuna mesh nascosta, nessun GLB toccato):
+  // semplicemente cadono fuori dal ritaglio.
+  //
+  // COME, e perché così. La camera Spline non si tocca: stessa posizione,
+  // stesso orientamento, stesso fov 45 e stesso zoom 2. L'inquadratura la fa
+  // `camera.setViewOffset`, che è un RITAGLIO: dice alla camera «di
+  // quest'immagine larga W·m e alta H·m disegnami solo il rettangolo W×H che
+  // parte da (offX, offY)». Le altre due strade sono peggiori, e non di poco:
+  //   - avvicinare `camera.position` cambia la PROSPETTIVA (il robot si
+  //     deforma, le braccia si allargano) e sposta la luce in coordinate di
+  //     vista — cioè cambia l'aspetto dei materiali, che è l'unica cosa che
+  //     NON deve cambiare (matcap e rainbow leggono la normale in vista);
+  //   - spostare il modello fa la stessa cosa al contrario, e in più sposta
+  //     le ombre, che sono cotte sulla posizione mondo della point light.
+  // Col ritaglio invece ogni punto del mondo sta dove stava in coordinate di
+  // vista: gli shader ricevono gli stessi numeri di prima e l'unica cosa che
+  // cambia è quanti pixel occupa il risultato. L'unica conseguenza da
+  // rincorrere è la dimensione dei PUNTI (gl_PointSize non passa per la
+  // matrice di proiezione): cervello e sfera si moltiplicano per
+  // `ingrandimento`, vedi più sotto.
+  //
+  // I tre numeri sono FRAZIONI DELL'ALTEZZA DEL ROBOT (bbox del modello,
+  // 547,7 unità mondo), non pixel: reggono a qualunque dimensione del
+  // riquadro e a un GLB riesportato con un'altra scala.
+  //  - aria: quanto vuoto resta SOPRA la cima della testa. Non è estetica e
+  //    basta: `minHeadTopPx` (80 px) vieta alla testa di finire sotto la
+  //    barra di navigazione, e la cima della testa cade sempre alla stessa
+  //    FRAZIONE dell'altezza del riquadro — aria/(aria+taglio) = 14,5%.
+  //    A 900 px sono 105 px, a 720 px 84: la regola non scatta mai, e
+  //    questo tiene ESATTA la formula degli agganci fermi in anatomia.js
+  //    (FISSI), che il `setViewOffset` di emergenza non saprebbe riprodurre.
+  //    Il minimo utile è aria = 0,125 · taglio (è lì che a 720 px la cima
+  //    della testa cade esattamente a 80 px): sotto, la guardia scatta.
+  //  - taglio: dove cade il bordo BASSO, contato dalla cima della testa.
+  //    Due vincoli, non uno. «Poco sotto il bacino» lo mette sotto le sfere
+  //    dell'anca (quota mondo y 9÷31); «braccia INTERE» (parole di Nike:
+  //    testa, busto e braccia interi) lo mette sotto le dita, che scendono
+  //    fino a y ≈ −1. 0,566 · 547,7 = 310 sotto la cima, cioè y ≈ −6,4:
+  //    appena sotto tutti e due, con ~14 px di respiro sotto le mani a
+  //    1440×900. Provato prima a 0,54 (y ≈ 7,8): il taglio cadeva bene
+  //    rispetto al bacino ma tranciava le dita — vedi il report C1.
+  //  - scartoX: spostamento orizzontale del robot (positivo = verso destra).
+  //    Serve perché le etichette NON sono simmetriche: a sinistra esce
+  //    «website creation» dal bordo del braccio (che sporge molto), a destra
+  //    «cervello» e «anima» dal bordo del busto (che sporge poco). Misurato a
+  //    1440×900 dopo l'ingrandimento, senza scarto il margine dal lato del
+  //    braccio scende sotto i 10 px; 0,0154 · 547,7 ≈ 8,4 unità mondo (21 px
+  //    a 900 di altezza) lo riporta a ~27 px senza togliere la corsa lunga
+  //    (≥ 0,25 W) alle due etichette di destra.
+  // L'ingrandimento che ne esce (m ≈ 1,14) non è un quarto numero: si ricava
+  // da aria+taglio ed è COSTANTE, perché il campo verticale della camera è
+  // fisso e la scala in pixel di un punto fermo è proporzionale alla sola
+  // altezza del riquadro. Più su non si va: oltre m ≈ 1,2 il bordo del
+  // braccio si avvicina troppo al bordo sinistro e «website creation» non ha
+  // più la corsa minima (0,12 W) da quel lato — misurato, vedi il report C1.
+  var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154 };
   // Task A2 — l'anima nella pancia: la sfera di SABE (js/pointorb.js) dietro la
   // «A» del petto. Tutti i numeri della sfera stanno qui, si ritoccano a
   // schermo. Le frazioni sono del BOUNDING BOX DEL TORSO (la mesh `Body`
@@ -334,15 +392,24 @@ WC.register('robot', function(ctx){
     // punti (tuneOrb), che si ricalcola a ogni fit(). 0 = sfera non ancora
     // costruita.
     var orbWorldRadius = 0;
+    // Task C1 — i tre punti MONDO che definiscono il ritaglio (li riempie il
+    // callback di gltf.load, quando il bbox del modello è noto) e
+    // l'ingrandimento che ne esce. `ingrandimento` è 1 finché non c'è un
+    // modello da inquadrare, così tutto quello che lo moltiplica resta com'era.
+    var quadro = null, ingrandimento = 1;
     // `uSize` e `uPR` della sfera sono fissati alla costruzione (pointorb.js)
     // ma dipendono dall'altezza in CSS della canvas e dal pixel ratio: qui si
     // rifanno, come già si fa con uSize del cervello.
+    // Task C1: `ingrandimento` in più. gl_PointSize non passa per la matrice
+    // di proiezione, quindi il ritaglio dell'inquadratura ingrandisce la
+    // GEOMETRIA ma lascia i punti della stessa misura in pixel: senza questo
+    // fattore la sfera diventerebbe più rada del 16% rispetto a prima.
     function tuneOrb() {
       var orb = window.__robot && window.__robot.orb;
       var h = stage.clientHeight;
       if (!orb || !orbWorldRadius || !h) return;
       var fovScale = Math.tan(THREE.MathUtils.degToRad(BELLY_CONFIG.fovRef)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
-      orb.uniforms.uSize.value = BELLY_CONFIG.pointSizeK * h * orbWorldRadius * fovScale;
+      orb.uniforms.uSize.value = BELLY_CONFIG.pointSizeK * h * orbWorldRadius * fovScale * ingrandimento;
       orb.uniforms.uPR.value = renderer.getPixelRatio();
     }
 
@@ -375,14 +442,45 @@ WC.register('robot', function(ctx){
       cam.aspect = w / Math.max(1, h);
       cam.clearViewOffset();
       cam.updateProjectionMatrix();
-      // FOV verticale fisso: il robot occupa sempre la stessa frazione di
-      // altezza, la testa resta intera. Se su schermi bassi la cima della
-      // testa finisse sotto la nav, si abbassa l'immagine del minimo.
-      if (headTopWorld) {
-        var pt = headTopWorld.clone().project(cam);
-        var y = (1 - pt.y) / 2 * h;
-        var need = CONFIG.minHeadTopPx - y;
-        if (need > 0) { cam.setViewOffset(w, h, 0, -need, w, h); cam.updateProjectionMatrix(); }
+      // Task C1 — l'inquadratura. Si proiettano i tre punti del quadro con la
+      // camera SENZA ritaglio (appena azzerato qui sopra), e da lì si ricava
+      // il ritaglio che porta `quadro.alto` sul bordo superiore e
+      // `quadro.basso` su quello inferiore. Con un ritaglio
+      // (fullW, fullH, offX, offY, w, h) di ingrandimento m = fullW/w vale
+      //   pixel = m · pixel_senza_ritaglio − off
+      // in tutte e due le direzioni: da qui le tre righe qui sotto.
+      // L'ingrandimento NON dipende da w/h — il campo verticale è fisso,
+      // quindi la distanza in pixel fra due punti fermi del mondo è
+      // proporzionale alla sola altezza del riquadro e il rapporto si
+      // semplifica — ma si ricalcola lo stesso a ogni fit(): costa tre
+      // proiezioni su un evento raro, e non lascia in giro un numero che
+      // «vale solo per la prima misura».
+      if (quadro) {
+        var ya = aSchermo(quadro.alto).y, yb = aSchermo(quadro.basso).y;
+        ingrandimento = h / Math.max(1, yb - ya);
+        var offX = ingrandimento * aSchermo(quadro.centro).x - w / 2;
+        var offY = ingrandimento * ya;
+        // La regola della nav sopravvive al ritaglio, e col ritaglio è ancora
+        // più facile da applicare: l'immagine si abbassa dei pixel che
+        // mancano (l'offset è già in pixel del riquadro finale). Con
+        // INQUADRATURA.aria attuale non scatta né a 900 né a 720 px di
+        // altezza — resta una guardia, non una taratura.
+        if (headTopWorld) {
+          var need = CONFIG.minHeadTopPx - (ingrandimento * aSchermo(headTopWorld).y - offY);
+          if (need > 0) offY -= need;
+        }
+        cam.setViewOffset(w * ingrandimento, h * ingrandimento, offX, offY, w, h);
+        cam.updateProjectionMatrix();
+        // Esposto per la verifica headless: l'ingrandimento è il numero da cui
+        // dipendono la dimensione dei punti e la formula di FISSI.
+        if (window.__robot) window.__robot.ingrandimento = ingrandimento;
+      } else if (headTopWorld) {
+        // Nessun quadro (non dovrebbe capitare: lo si costruisce insieme al
+        // bbox del modello): resta la vecchia regola, FOV verticale fisso e
+        // testa tenuta sotto la nav.
+        var y = aSchermo(headTopWorld).y;
+        var need0 = CONFIG.minHeadTopPx - y;
+        if (need0 > 0) { cam.setViewOffset(w, h, 0, -need0, w, h); cam.updateProjectionMatrix(); }
       }
       if (window.__robot && window.__robot.spline) window.__robot.spline.setCamera(cam);
       // La mappa d'ombra di una point light non dipende dalla camera di vista,
@@ -478,6 +576,19 @@ WC.register('robot', function(ctx){
       });
       model.updateMatrixWorld(true);
       var box = new THREE.Box3().setFromObject(model);
+      // Task C1 — il quadro dell'inquadratura, in punti MONDO ricavati dal
+      // bbox del modello e dalle frazioni di INQUADRATURA. Tutti e tre alla
+      // stessa profondità (la z del centro del modello): la proiezione
+      // prospettica dipende anche da z, e prendere i due estremi verticali a
+      // due profondità diverse vorrebbe dire misurare l'altezza del quadro
+      // con due righelli differenti. `centro` porta lo scarto orizzontale.
+      var altezzaRobot = box.max.y - box.min.y;
+      var cBox = box.getCenter(new THREE.Vector3());
+      quadro = {
+        alto:   new THREE.Vector3(cBox.x, box.max.y + INQUADRATURA.aria * altezzaRobot, cBox.z),
+        basso:  new THREE.Vector3(cBox.x, box.max.y - INQUADRATURA.taglio * altezzaRobot, cBox.z),
+        centro: new THREE.Vector3(cBox.x - INQUADRATURA.scartoX * altezzaRobot, cBox.y, cBox.z)
+      };
       if (hint) hint.remove();
 
       // Handle esposti per i task successivi (materiali/testa di vetro/
@@ -692,8 +803,15 @@ WC.register('robot', function(ctx){
             // gl_PointSize non segue lo zoom né il fov, la geometria sì.
             // Prima: fov 32°. Ora fov 45° con zoom 2 (fov effettivo ≈ 23,4°).
             // fovScale mantiene lo stesso rapporto punti/cervello di prima.
+            // Task C1: `ingrandimento` in più, per lo stesso motivo di
+            // tuneOrb — il ritaglio dell'inquadratura ingrandisce la geometria
+            // ma non gl_PointSize, e senza questo fattore il cervello
+            // risulterebbe più rado del 16% dentro una testa più grande.
+            // `ingrandimento` è una costante della scena (non dipende dalla
+            // misura del riquadro, vedi fit()) e qui è già stato calcolato:
+            // fit() gira qualche riga più su, appena headTopWorld è noto.
             var fovScale = Math.tan(THREE.MathUtils.degToRad(16)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
-            var brainUSize = 4 * camDist / 200 * fovScale;
+            var brainUSize = 4 * camDist / 200 * fovScale * ingrandimento;
 
             // Il brain (THREE.Points, additivo, transparent+depthWrite:false)
             // sta dentro la testa: a riposo non si disegna affatto (tick()),

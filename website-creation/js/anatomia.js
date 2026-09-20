@@ -51,8 +51,20 @@ WC.anatomia = (function () {
   // alla corsa orizzontale tiene la FORMA dell'etichetta identica a ogni
   // dimensione e su ogni zona — un valore in pixel, invece, farebbe un gomito
   // grande su una linea corta e un gomito minuscolo su una lunga.
+  // Task C1 — `obliquoFrazione` da 0,42 a 0,22. Non è un ritocco estetico: il
+  // robot è più grande (INQUADRATURA in robot.js) e i punti d'aggancio si
+  // sono spostati verso i bordi, quindi lo spazio orizzontale per le
+  // etichette è calato. Il tratto obliquo COSTA orizzontale: l'intera
+  // spezzata occupa corsa · (1 + obliquoFrazione · cos 38°), cioè 1,33 corse
+  // a 0,42 e 1,17 a 0,22. Misurato a 1440×900 con la nuova inquadratura: a
+  // 0,42 il braccio di sinistra non ha più la corsa minima (0,12 W) dal suo
+  // lato e l'etichetta salterebbe a DESTRA, attraversando tutto il corpo; a
+  // 0,22 resta dal lato giusto con ~22 px di margine, e la stessa riduzione
+  // ridà a «anima» la corsa lunga (≥ 0,25 W) che l'ingrandimento le aveva
+  // tolto. Il gomito resta un gomito: a corsa 390 sono 86 px di obliquo che
+  // salgono di 53, non un angolo appena accennato.
   var LINEA = { orizzontaleObiettivo: 0.27, orizzontaleMinimo: 0.12, obliquoGradi: 38,
-    staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.42 };
+    staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.22 };
   // ---- AGGANCI SENZA SCENA ----
   // Con reduced-motion robot.js non monta niente: non c'è camera, non c'è GLB,
   // e gli agganci se li deve dare l'overlay. Non sono però una tabella di
@@ -78,10 +90,22 @@ WC.anatomia = (function () {
   // L'unica cosa che questa formula non riproduce è il `setViewOffset` che
   // `fit()` applica sui riquadri bassi per non far uscire la testa dalla nav:
   // qui non c'è nessuna testa da tenere dentro.
+  //
+  // Task C1 — la nuova inquadratura (INQUADRATURA in robot.js) è un RITAGLIO
+  // della stessa camera: `pixel = m · pixel_senza_ritaglio − offset`, con m
+  // costante e l'offset proporzionale all'altezza del riquadro (l'ingrandimento
+  // non dipende dalla sua misura, vedi fit()). Sostituendolo nella formula qui
+  // sopra la FORMA non cambia — sempre «centro in orizzontale più uno
+  // scostamento proporzionale alla sola ALTEZZA» — cambiano solo i sei numeri.
+  // Rimisurati sulla scena viva a 1440×900 e ricontrollati a 1280×720: le due
+  // letture danno le stesse cinque cifre decimali. La regola `minHeadTopPx`
+  // non scatta a nessuna delle due misure (cima della testa a 111 px e a
+  // 89 px), quindi non c'è nemmeno più lo scarto che il commento qui sopra
+  // segnalava come unico limite.
   var FISSI = {
-    testa:     [ 0.07064, -0.20841 ],
-    pancia:    [ 0.13103, -0.12151 ],
-    braccioSx: [-0.37251,  0.10988 ]
+    testa:     [ 0.11225, -0.19559 ],
+    pancia:    [ 0.18241, -0.09601 ],
+    braccioSx: [-0.39432,  0.16901 ]
   };
   // Quanto si allarga il rettangolo dell'etichetta per decidere «il puntatore
   // è sull'etichetta». La linea SVG è pointer-events:none, quindi il corridoio
