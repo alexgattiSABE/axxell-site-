@@ -166,6 +166,22 @@ WC.register('robot', function(ctx){
   //    rotazione): 0,27 → fino a 37 px fuori; 0,25 → 0 px fuori, margine
   //    minimo 2 px, 18 px di franco laterale dagli anelli. Sotto non conviene
   //    scendere: a 0,23 la nuvola si legge appena. Quindi 0,25.
+  //  - presa: il raggio del COLLISORE invisibile attorno alla sfera, in raggi
+  //    della sfera. Nike: «si fa fatica a farla comparire». Misurato a
+  //    1440×900, chiedendo al raggio pixel per pixel chi vince: la lamiera del
+  //    collo da sola dà 4284 px di area di presa (un riquadro di 124×60 px, e
+  //    dentro quel riquadro solo il metallo), cioè tre millesimi dello
+  //    schermo. Il collisore è una sfera `visible = false` — non si disegna,
+  //    non fa ombra, non entra in nessuna maschera, ma il raggio la colpisce.
+  //    Misurate quattro misure: 1,8 → 5940 px (+39%); 2,5 → 13236 px (×3,1,
+  //    riquadro 200×94); 3,5 → 36844 (×8,6, 280×178); 4,5 → 80740 (×19,
+  //    360×290, cioè grande come la testa). **2,5**: basta puntare la GOLA e
+  //    un po' d'aria attorno, e non si accende il collo stando sul mento.
+  //    Non ruba niente alle zone vicine, ed è geometria e non taratura: dove
+  //    c'è il visore (z 55 contro 3) o il petto, quelli stanno davanti e
+  //    vincono sulla distanza; il collisore vince solo dove davanti non c'è
+  //    nient'altro, cioè nella fessura del collo, nei vuoti fra le lamelle e
+  //    nel buio subito attorno alla gola.
   //  - count / pointSizeK / fovRef / spin / tilt: invariati dalla pancia e
   //    dalla bocca — sono la grana e la posa della pagina di SABE. pointSize =
   //    0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom),
@@ -177,7 +193,7 @@ WC.register('robot', function(ctx){
   // il visore — e il confine col collo non è più una quota dentro una mesh ma
   // il passaggio da una mesh all'altra: due insiemi disgiunti non hanno un
   // confine da far tremare.
-  var SFERA_CONFIG = { raggio: 0.25,
+  var SFERA_CONFIG = { raggio: 0.25, presa: 2.5,
     count: 26000, pointSizeK: 0.03, fovRef: 22.5, spin: 0.21, tilt: 0.46 };
   // Task A2/C3 — la pancia: «anima», cioè il gestionale. Della sfera non resta
   // niente (Task C2: è salita nella testa) e dentro, per ora, non c'è NULLA —
@@ -788,6 +804,10 @@ WC.register('robot', function(ctx){
             window.__robot.collo = { yMento: yMento, yLogo: yLogo, box: colloBox.clone() };
           }
           window.__robot.parts.collo = collo;
+          // Con cosa si interroga il raggio. Di default le mesh del collo e
+          // basta; se la sfera esiste, ci si aggiunge il suo collisore
+          // invisibile (vedi più avanti, `colloPresa`).
+          window.__robot.parts.colloPresa = collo;
           window.__robot.parts.testaSola = parts.head.filter(function (m) { return collo.indexOf(m) < 0; });
           sm.setCamera(cam);   // dopo makeInside/makeChest/makeApribile: anche i cloni ricevono la luce
           window.__robot.parts.inside = inside;
@@ -1055,16 +1075,50 @@ WC.register('robot', function(ctx){
             orb.points.castShadow = false;      // è luce, non materia
             orb.points.receiveShadow = false;
             orb.points.position.copy(colloCentroLocal);
-            // renderOrder 2 come le fibre dentro il braccio, e per lo stesso
-            // motivo: il guscio che la copre (il collo aperto) si disegna
-            // prima, a renderOrder 0, e la sfera si SOMMA sopra invece di
-            // essere smorzata dal (1 − alpha) della lamiera. Era 0 quando
-            // stava dietro il vetro del visore, che è l'esatto contrario.
-            orb.points.renderOrder = 2;
+            // renderOrder 4: ULTIMA di tutta la coda trasparente, dopo il
+            // petto (3). È la correzione di Nike — «la sfera non la riesco a
+            // vedere completamente perché risulta coperta dal busto e dal
+            // collo». Misurato a renderOrder 2: dei 1558 px della nuvola, 999
+            // (il 64%) finivano sotto il PETTO, che si disegna dopo e li
+            // ripassa con alpha 1; il visore invece non ne copriva nessuno.
+            // Disegnandola per ultima la nuvola si SOMMA sopra la lamiera
+            // invece di esserne cancellata — è la stessa regola che le fibre
+            // usano dentro la manica del braccio (renderOrder 2 contro lo 0
+            // del guscio). E non sporca niente attorno: la sua maschera sta
+            // tutta DENTRO la sagoma del collo (0 px fuori, misurato), quindi
+            // quello che si accende è la gola e nient'altro.
+            //
+            // Quello che si vede DAVVERO è però più largo della maschera
+            // alpha: la corona di punti più deboli sta sotto la soglia di 8/255
+            // con cui si misura, e sul carbonio scuro del petto si vede lo
+            // stesso. Nel fotogramma vero l'alone scende una trentina di pixel
+            // sotto il colletto. È il prezzo di vedere la sfera INTERA: metà
+            // della nuvola sta dentro il volume del torso (il petto arriva a
+            // y 213, il centro della sfera è a 205), quindi o la si taglia o
+            // la si lascia brillare sopra la lamiera. Nike ha chiesto di
+            // vederla tutta.
+            orb.points.renderOrder = 4;
             orb.points.visible = false;         // a riposo non si disegna affatto
             headGroup.add(orb.points);
             window.__robot.orb = orb;
             orbWorldRadius = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
+            // L'AREA DI PRESA della zona (Nike: «si fa fatica a farla
+            // comparire»). Una sfera invisibile attorno alla nuvola: non si
+            // disegna e non entra in nessuna maschera, ma il raycast la
+            // colpisce. Sta in `parts.colloPresa` — la lista con cui si
+            // interroga il raggio — e NON in `parts.collo`, che è la lista
+            // delle mesh vere: quella serve ad aprire il collo e a misurarne
+            // la sagoma, e un collisore lì dentro le falserebbe tutte e due.
+            var presa = new THREE.Mesh(
+              new THREE.SphereGeometry(orbRadius * SFERA_CONFIG.presa, 12, 8),
+              new THREE.MeshBasicMaterial());
+            presa.name = 'colloPresa';
+            presa.visible = false;              // non si disegna MAI
+            presa.castShadow = false; presa.receiveShadow = false;
+            presa.position.copy(colloCentroLocal);
+            headGroup.add(presa);
+            window.__robot.parts.colliderCollo = presa;
+            window.__robot.parts.colloPresa = window.__robot.parts.collo.concat([presa]);
           }
         }
 
@@ -1548,8 +1602,11 @@ WC.register('robot', function(ctx){
             var hitHead = raycaster.intersectObjects(robot.parts.testaSola, false);
             if (hitHead.length) dTesta = hitHead[0].distance;
           }
-          if (robot.parts.collo && robot.parts.collo.length) {
-            var hitCollo = raycaster.intersectObjects(robot.parts.collo, false);
+          // `colloPresa` e non `collo`: la lamiera del collo PIÙ il collisore
+          // invisibile attorno alla sfera (vedi SFERA_CONFIG.presa). Il
+          // raycast di three colpisce anche le mesh con `visible = false`.
+          if (robot.parts.colloPresa && robot.parts.colloPresa.length) {
+            var hitCollo = raycaster.intersectObjects(robot.parts.colloPresa, false);
             if (hitCollo.length) dCollo = hitCollo[0].distance;
           }
           if (robot.parts.chest) {
@@ -1604,6 +1661,21 @@ WC.register('robot', function(ctx){
           robot.spline.setReveal(hoverHead);
           robot.spline.setBellyReveal(hoverBelly);
           robot.spline.setApertura('collo', hoverCollo);
+          // Task D1b — col collo acceso il petto smette di scrivere depth, se
+          // no respinge la metà bassa della nuvola che gli sta dietro (vedi
+          // setPettoScriveDepth). Va DOPO setBellyReveal, che la depth la
+          // riscrive per conto suo. A collo spento torna alla regola della
+          // pancia — depth scritta se il torso è chiuso — e il fotogramma a
+          // riposo resta identico.
+          // Le due soglie sono 0,01 e non «=== 0» per una ragione misurata:
+          // hoverBelly è uno smorzamento esponenziale e a ZERO ESATTO non ci
+          // arriva mai — `setBellyReveal` infatti lo aggancia a 0 sotto 0,01,
+          // ma aggancia la SUA copia, non questa. Con «=== 0» il petto non
+          // tornava più a scrivere depth nemmeno a riposo (beccato da
+          // `pancia-reveal`, che controlla proprio quello stato).
+          if (robot.spline.setPettoScriveDepth) {
+            robot.spline.setPettoScriveDepth(hoverBelly < 0.01 && hoverCollo < 0.01);
+          }
           // Secondo motivo: un reveal ha attraversato la soglia in cui i pezzi
           // che la zona copre smettono (o riprendono) a proiettare ombra.
           // Stessa condizione di fadeInside in robot-spline-materials.js — lo

@@ -329,6 +329,19 @@ WC.robotSplineMaterials = (function () {
         m.depthWrite = r === 0;
         fadeInside(groups.belly, r);
       },
+      // Task D1b — il petto smette di SCRIVERE DEPTH (ma resta opaco esattamente
+      // com'era) mentre il collo è acceso. Serve alla sfera di SABE, che sta
+      // nella gola e in parte DIETRO la parete del torso: disegnandosi per
+      // ultima (renderOrder 4) si sommerebbe sopra, ma il test di profondità la
+      // respingeva — misurato, il 31% della nuvola spariva lì. È lo stesso
+      // meccanismo del braccio aperto che lascia vedere le sue fibre, applicato
+      // a una lamiera che NON si apre: del petto non cambia un pixel, cambia
+      // solo che cosa può disegnarsi sopra di lui.
+      // Va chiamata DOPO setBellyReveal, che la depth la riscrive ogni volta.
+      setPettoScriveDepth: function (scrive) {
+        if (!api.logo) return;
+        api.logo.material.depthWrite = scrive;
+      },
       // Task B2 — le mesh di UN gruppo apribile ricevono ognuna un'istanza del
       // proprio materiale col define ARM_REVEAL in più, così il reveal apre
       // solo il pezzo sotto il cursore e non le decine di altre mesh che
