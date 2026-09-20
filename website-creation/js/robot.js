@@ -40,13 +40,19 @@ WC.register('robot', function(ctx){
   //  - back: quanto la sfera arretra dal centro della «A» (che sta sulla
   //    FACCIA del petto), in frazioni della profondità del torso. Serve perché
   //    la sfera stia DENTRO il corpo e si veda attraverso il logo.
-  //  - radius: frazione della larghezza del torso, ed è la manopola da girare
-  //    se il centro legge male. La sfera ha un foro sull'asse della camera —
-  //    c'è anche in SABE, è il suo aspetto ad anello — e il foro scala col
-  //    raggio: ALLARGARLA non lo riempie, semmai va STRETTA finché la corona
-  //    di punti non arriva dietro la «A». A 0.42 il foro è largo quanto la
-  //    «A», che così esce bianca su fondo scuro, netta (09-pancia-reveal.png):
-  //    per questo resta.
+  //  - radius: frazione della larghezza del torso. È la manopola dell'aspetto,
+  //    quella che Nike gira, e la regola che la tiene è UNA: la nuvola di punti
+  //    deve restare DENTRO la sagoma del torso, come il cervello resta dentro
+  //    quella della testa — altrimenti la sfera legge come una palla appiccicata
+  //    ADDOSSO al robot invece che viva dentro la pancia. Non basta guardare il
+  //    raggio geometrico: a sbordare è la corona di punti, che il rumore gonfia
+  //    (uDeform) e la sprite allarga. Misurato a 1440×900 confrontando riga per
+  //    riga la maschera della sfera con quella del torso (le due renderizzate da
+  //    sole): a 0.42 sforava di 17 px di lato e per 19 righe sopra il torso;
+  //    a 0.32 sta dentro con 35 px di margine. Chi lo rialza rifaccia la misura.
+  //    Il foro sull'asse della camera (c'è anche in SABE, è il suo aspetto ad
+  //    anello) scala col raggio: a 0.32 è largo ~61 px contro i ~95 della «A»,
+  //    quindi gli sta dietro e non si legge come buco.
   //  - count: gli stessi punti del tier desktop di SABE (axxell-3d.js, ≤1440),
   //    così la densità di punti SULLA SFERA — cioè la grana — è la sua.
   //  - pointSizeK / fovRef: la formula di pointorb.js,
@@ -55,7 +61,7 @@ WC.register('robot', function(ctx){
   //  - spin/tilt: la posa della pagina di SABE (giro lento e oscillazione).
   //  - insideShrink: quanto si stringe il bbox del torso per decidere cosa gli
   //    sta DENTRO (vedi più sotto).
-  var BELLY_CONFIG = { back: 0.18, radius: 0.42, count: 26000, pointSizeK: 0.03, fovRef: 22.5,
+  var BELLY_CONFIG = { back: 0.18, radius: 0.32, count: 26000, pointSizeK: 0.03, fovRef: 22.5,
     spin: 0.21, tilt: 0.46, insideShrink: 0.85 };
   var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
