@@ -165,8 +165,20 @@ WC.anatomia = (function () {
     var sopra = null;         // zona il cui rettangolo-etichetta ha il puntatore
     var fuoco = null;         // zona il cui link ha il fuoco
     var mano = false;         // il puntatore è sopra una zona cliccabile ADESSO
-    var lar = 0, alt = 0;
+    // Misura del riquadro, in cache. `rifai()` gira dentro il loop di
+    // rendering: leggere clientWidth/clientHeight lì vorrebbe dire chiedere al
+    // browser un layout sessanta volte al secondo per un numero che cambia solo
+    // quando la finestra cambia. Chi la aggiorna è il ResizeObserver qui sotto
+    // — che, a differenza di `window.resize`, vede anche i cambi di misura del
+    // riquadro che la finestra non ha causato.
+    var lar = 0, alt = 0, vbScritto = '';
     function ora() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+    function misuraRiquadro() {
+      var w = host.clientWidth, h = host.clientHeight;
+      if (w === lar && h === alt) return false;
+      lar = w; alt = h;
+      return true;
+    }
 
     // ------------------------------------------------------------- misure
     // Larghezza e altezze del testo: si leggono UNA VOLTA (e dopo il carico
@@ -230,18 +242,23 @@ WC.anatomia = (function () {
     function n2(v) { return Math.round(v * 100) / 100; }
 
     function rifai(forza) {
-      var w = host.clientWidth, h = host.clientHeight;
-      if (!w || !h) return;
-      var misuraCambiata = (w !== lar || h !== alt);
-      if (misuraCambiata) { forza = true; lar = w; alt = h; }
+      if (!lar || !alt) return;
+      // Il viewBox segue il riquadro, quindi cambia solo quando cambia lui:
+      // riscriverlo a ogni fotogramma sarebbe un attributo SVG toccato per
+      // niente sessanta volte al secondo.
+      var vb = '0 0 ' + lar + ' ' + alt;
+      if (vb !== vbScritto) {
+        vbScritto = vb; forza = true;
+        Object.keys(el).forEach(function (id) { el[id].svg.setAttribute('viewBox', vb); });
+      }
       Object.keys(el).forEach(function (id) {
         var e = el[id];
-        // Il viewBox segue il riquadro, quindi cambia solo quando cambia lui:
-        // riscriverlo a ogni fotogramma sarebbe un attributo SVG toccato per
-        // niente sessanta volte al secondo.
-        if (misuraCambiata) e.svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
         var g = geometria(e);
-        if (!g) { if (e.box) { e.box = null; e.linea.setAttribute('points', ''); } return; }
+        // Niente aggancio: la linea sparisce e la chiave si azzera, così
+        // quando l'aggancio torna — magari identico a prima — il confronto
+        // qui sotto non scambia «uguale all'ultima volta» per «già scritto» e
+        // lascia la polyline vuota.
+        if (!g) { if (e.box || e.scritto) { e.box = null; e.scritto = ''; e.linea.setAttribute('points', ''); } return; }
         var chiave = [g.ax, g.ay, g.gx, g.gy, g.fx, g.tx, g.ty].map(n2).join(' ');
         if (!forza && chiave === e.scritto) return;
         e.scritto = chiave;
@@ -354,7 +371,7 @@ WC.anatomia = (function () {
         layer.removeEventListener('focusin', onFocusIn);
         layer.removeEventListener('focusout', onFocusOut);
         layer.removeEventListener('click', onClick);
-        if (statico) window.removeEventListener('resize', suResize);
+        if (ro) ro.disconnect(); else window.removeEventListener('resize', suResize);
         if (stage) stage.classList.remove('-zona');
         if (layer.parentNode) layer.parentNode.removeChild(layer);
       }
@@ -366,13 +383,19 @@ WC.anatomia = (function () {
         ancore[id] = { x: FISSI[id][0] * host.clientWidth, y: FISSI[id][1] * host.clientHeight };
       });
     }
-    function suResize() { ancoreFisse(); rifai(true); }
-    if (statico) {
-      // Nessuno chiama update(): gli agganci sono fissi e il layer si rifà
-      // solo quando cambia la misura del riquadro.
-      ancoreFisse();
-      window.addEventListener('resize', suResize);
+    // Il riquadro ha cambiato misura: si rileggono gli agganci fissi (quelli
+    // veri li riproietta robot.js da sé) e si ridisegna tutto.
+    function suResize() {
+      if (!misuraRiquadro()) return;
+      if (statico) ancoreFisse();
+      rifai(true);
     }
+    var ro = null;
+    if (window.ResizeObserver) { ro = new ResizeObserver(suResize); ro.observe(host); }
+    else window.addEventListener('resize', suResize);
+
+    misuraRiquadro();
+    if (statico) ancoreFisse();
 
     misura();
     if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
