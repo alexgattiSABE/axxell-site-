@@ -164,6 +164,7 @@ WC.anatomia = (function () {
     var spentoA = 0;
     var sopra = null;         // zona il cui rettangolo-etichetta ha il puntatore
     var fuoco = null;         // zona il cui link ha il fuoco
+    var mano = false;         // il puntatore è sopra una zona cliccabile ADESSO
     var lar = 0, alt = 0;
     function ora() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
 
@@ -304,16 +305,28 @@ WC.anatomia = (function () {
       if (attivo && attivo !== id) { ultimo = attivo; spentoA = ora(); }
       attivo = id || null;
       Object.keys(el).forEach(function (k) { el[k].wrap.classList.toggle('-on', k === attivo); });
-      if (stage) stage.classList.toggle('-zona', !!attivo);
+    }
+    // La mano NON segue l'etichetta accesa ma il raggio: l'etichetta resta su
+    // per la grazia e per tutto il tempo in cui ha il fuoco, e in quei momenti
+    // il puntatore può essere sul vuoto — dove un clic non porta da nessuna
+    // parte e quindi il cursore non deve promettere niente.
+    function segnalaMano(colpita) {
+      var ora_mano = !!(colpita && colpita === attivo);
+      if (ora_mano === mano) return;
+      mano = ora_mano;
+      if (stage) stage.classList.toggle('-zona', mano);
     }
 
     // ------------------------------------------------------------ interfaccia
     var api = {
       // robot.js, ogni fotogramma: la zona colpita dal raycast e i punti
       // d'aggancio già proiettati.
-      update: function (activeId, punti) {
+      // `hitId` è la zona che il raggio colpisce in questo fotogramma, senza
+      // grazia né fuoco: decide il cursore (e, in robot.js, il clic).
+      update: function (activeId, punti, hitId) {
         if (punti) ancore = punti;
         if (activeId !== attivo) accendi(activeId);
+        segnalaMano(hitId);
         rifai(false);
       },
       // La zona «tenuta viva» dall'etichetta. Il fuoco da tastiera vale sempre.

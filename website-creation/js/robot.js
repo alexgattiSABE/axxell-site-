@@ -188,6 +188,15 @@ WC.register('robot', function(ctx){
     // esiste) e un trascinamento non deve navigare. La destinazione non si
     // ricalcola qui: si chiede all'overlay di premere il SUO link, così la
     // strada del mouse e quella della tastiera non possono divergere.
+    //
+    // NAVIGA SOLO SE IL RAGGIO STA COLPENDO DAVVERO LA ZONA, adesso. Non basta
+    // `activeId`: quello sopravvive alla grazia di 320 ms e resta acceso a
+    // tempo indeterminato finché un'etichetta ha il fuoco. Col solo `activeId`
+    // bastava passare sulla testa, saltare in un angolo vuoto della scena e
+    // cliccare lì per ritrovarsi su /atlas.html — un clic sul nulla che
+    // portava da un'altra parte. `hitId` è la zona colpita in QUESTO
+    // fotogramma: se le due non coincidono, il puntatore non è sulla zona e il
+    // clic non è un clic sulla zona.
     var giu = null;
     function onDown(e) { giu = (e.button === 0) ? { x: e.clientX, y: e.clientY } : null; }
     function onUpStage(e) {
@@ -195,7 +204,8 @@ WC.register('robot', function(ctx){
       if (!g || !anat || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
       var st = window.__robot && window.__robot.anatomia;
-      if (st && st.activeId && anat.attiva(st.activeId)) anat.vai(st.activeId);
+      if (!st || !st.activeId || st.hitId !== st.activeId) return;
+      if (anat.attiva(st.activeId)) anat.vai(st.activeId);
     }
     function onCancel() { giu = null; }
     stage.addEventListener('pointerdown', onDown);
@@ -1098,8 +1108,12 @@ WC.register('robot', function(ctx){
           }
           if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
           if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
-          anat.update(zonaAttiva, anc);
-          if (robot) robot.anatomia = { activeId: zonaAttiva, anchors: anc };
+          // `hitId` accanto ad `activeId`: la zona colpita GREZZA, senza
+          // grazia e senza il tenere-in-vita dell'etichetta. La usano il clic
+          // (vedi onUpStage) e il cursore a mano, che devono parlare della
+          // posizione di adesso, non di quella di mezzo secondo fa.
+          anat.update(zonaAttiva, anc, vicina);
+          if (robot) robot.anatomia = { activeId: zonaAttiva, hitId: vicina, anchors: anc };
         }
         renderer.render(scene, cam);
       })();
