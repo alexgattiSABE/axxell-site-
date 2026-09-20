@@ -38,10 +38,11 @@ WC.anatomia = (function () {
   // 308). L'href vero si scrive a runtime come location.pathname + '#cap01', e
   // il clic fa preventDefault + scroll morbido: lo scroll nativo andrebbe
   // contro Lenis, che quella pagina la muove lui.
-  // Task C2 — la testa porta DUE zone: sopra la linea della bocca il cervello
-  // (Atlas), sotto la sfera di SABE. Sono due voci distinte perché sono due
-  // prodotti distinti, anche se il raycast colpisce la stessa mesh (il
-  // visore): a dividerle è la Y del punto colpito, in robot.js.
+  // Task D1 — la testa e il COLLO: sul visore il cervello (Atlas), nel collo
+  // — fra il mento e il logo — la sfera di SABE. Sono due voci distinte
+  // perché sono due prodotti distinti, e adesso anche due gruppi di MESH
+  // distinti: a dividerle non è più una quota dentro il visore (Task C2) ma la
+  // geometria del GLB, in robot.js.
   // Task C3 — `href: ''` NON vuol dire «zona spenta». La pancia è una zona a
   // tutti gli effetti (il torso si apre, l'etichetta «anima / gestionale»
   // esce) ma non porta da nessuna parte: la pagina del gestionale la sta
@@ -54,7 +55,7 @@ WC.anatomia = (function () {
   // un indirizzo finto, vedi il report C3).
   var ZONE = [
     { id: 'testa',     lato: 'destra',   testo: 'cervello',         sotto: 'Atlas',      href: '../atlas.html',  attiva: true },
-    { id: 'bocca',     lato: 'destra',   testo: 'sabe',             sotto: 'SABE',       href: '../sabe.html',   attiva: true },
+    { id: 'collo',     lato: 'destra',   testo: 'sabe',             sotto: 'SABE',       href: '../sabe.html',   attiva: true },
     { id: 'pancia',    lato: 'destra',   testo: 'anima',            sotto: 'gestionale', href: '',               attiva: true },
     { id: 'braccioSx', lato: 'sinistra', testo: 'website creation', sotto: 'atelier',    href: 'CORRENTE#cap01', attiva: true },
     { id: 'braccioDx', lato: 'destra',   testo: '',                 sotto: '',           href: '',               attiva: false }
@@ -117,13 +118,15 @@ WC.anatomia = (function () {
   // non scatta a nessuna delle due misure (cima della testa a 111 px e a
   // 89 px), quindi non c'è nemmeno più lo scarto che il commento qui sopra
   // segnalava come unico limite.
-  // Task C2 — quattro agganci: la testa ne ha DUE, il cervello nella calotta
-  // e la sfera all'altezza della bocca. Rimisurati anche i primi due, perché
-  // l'aggancio della testa è salito (prima era a metà del bbox, cioè SOTTO la
-  // linea della bocca: «cervello» avrebbe indicato la bocca).
+  // Task C2 — quattro agganci: il cervello nella calotta e la sfera di SABE.
+  // Task D1 — la sfera è scesa nel COLLO, quindi il suo aggancio è sceso con
+  // lei ed è stato rimisurato sulla scena viva (il bordo esterno del bbox
+  // delle mesh del collo, all'altezza del centro della sfera). Gli altri tre
+  // non sono cambiati, ma sono stati riletti lo stesso: erano gli stessi fino
+  // alla quinta cifra.
   var FISSI = {
     testa:     [ 0.11252, -0.32044 ],
-    bocca:     [ 0.11254, -0.21664 ],
+    collo:     [ 0.09509, -0.09856 ],
     pancia:    [ 0.18241, -0.09601 ],
     braccioSx: [-0.39432,  0.16901 ]
   };
