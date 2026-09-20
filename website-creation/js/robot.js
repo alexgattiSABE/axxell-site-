@@ -538,12 +538,20 @@ WC.register('robot', function(ctx){
     // GEOMETRIA ma lascia i punti della stessa misura in pixel: senza questo
     // fattore la sfera diventerebbe più rada del 16% rispetto a prima.
     function tuneOrb() {
-      var orb = window.__robot && window.__robot.orb;
       var h = stage.clientHeight;
-      if (!orb || !orbWorldRadius || !h) return;
+      if (!h) return;
+      var orb = window.__robot && window.__robot.orb;
       var fovScale = Math.tan(THREE.MathUtils.degToRad(SFERA_CONFIG.fovRef)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
-      orb.uniforms.uSize.value = SFERA_CONFIG.pointSizeK * h * orbWorldRadius * fovScale * ingrandimento;
-      orb.uniforms.uPR.value = renderer.getPixelRatio();
+      if (orb && orbWorldRadius) {
+        orb.uniforms.uSize.value = SFERA_CONFIG.pointSizeK * h * orbWorldRadius * fovScale * ingrandimento;
+        orb.uniforms.uPR.value = renderer.getPixelRatio();
+      }
+      // Task D2: le fibre sono diventate una nuvola di punti e hanno la
+      // stessa fame di questa taratura — stessa formula, stesso motivo
+      // (gl_PointSize non passa per la matrice di proiezione, quindi né lo
+      // zoom né il ritaglio dell'inquadratura la toccano).
+      var fib = window.__robot && window.__robot.fibers;
+      if (fib && fib.tune) fib.tune(h, fovScale, ingrandimento, renderer.getPixelRatio());
     }
 
     // Gli occhi a LED del visore sono un video (Task 5): scorre solo mentre la
@@ -852,6 +860,7 @@ WC.register('robot', function(ctx){
         // sotto, e pilota a sua volta l'apertura del braccio.
         if (WC.robotFibers && (parts.armL.length || parts.armR.length)) {
           var fibers = WC.robotFibers.create({ armL: parts.armL, armR: parts.armR, model: model });
+          if (window.__debugParts) console.log('[robot] fibre:', JSON.stringify(fibers.info));
           // Le fibre sono luce, non materia: niente ombra nella shadow map (Task 4b).
           fibers.object.traverse(function (o) { o.castShadow = false; o.receiveShadow = false; });
           model.add(fibers.object);
