@@ -20,6 +20,17 @@ WC.robotSplineMaterials = (function () {
   //    puntatore: x a sinistra, y in alto).
   var LOGO_CONFIG = { u: 0.5, v: 0.70, width: 0.36, base: 0.84, spec: 2.2, shininess: 320,
     lightDist: 3.4, lightSwing: 1.7, lightRest: { x: -0.35, y: -0.35 } };
+  // Task B2 — l'apertura del braccio. Tutte le manopole stanno qui: Nike ha
+  // annunciato una nuova inquadratura (robot più grande, tagliato sopra le
+  // gambe) e questi numeri andranno ritarati a schermo, non ricercati nel
+  // corpo dello shader.
+  //  - minAlpha: quanto resta al CENTRO del braccio aperto. 0.10 come da
+  //    piano: il braccio non sparisce come il visore (0.045) perché la fibra
+  //    che ha dentro è un filo, non un cervello — serve ancora una massa
+  //    attorno, altrimenti il filo galleggia nel vuoto.
+  //  - rimPow: quanto è stretto il contorno. Più alto = più sottile. A 2.0 il
+  //    bordo resta una fascia leggibile su un arto cilindrico.
+  var ARM_CONFIG = { minAlpha: 0.10, rimPow: 2.0 };
   var LOGO_SVG = 'assets/robot-spline/logo-axxell-icon.svg';
   var LOGO_TEX_SIZE = 2048;
 
@@ -148,9 +159,14 @@ WC.robotSplineMaterials = (function () {
     // torso): il torso diventa quasi trasparente e si vede la sfera, mentre la
     // «A» resta piena. A riposo ogni pezzo ha alpha 1 e scrive depth come un
     // opaco: stesso aspetto di prima del reveal, pixel per pixel.
-    // Ordine di disegno, tutto nella coda trasparente: sfera della pancia e
-    // cervello (renderOrder 0) → interni (1) → visore (2) → torso (3), scritto
-    // in robot.js dove le mesh sono note.
+    // Ordine di disegno nella coda trasparente: sfera della pancia, cervello e
+    // guscio del braccio aperto (renderOrder 0) → interni della zona (1) →
+    // visore e fibre del braccio (2) → torso (3). Lo scrive robot.js dove le
+    // mesh sono note; qui lo imposta makeInside (1).
+    // Task B2 — il braccio è il terzo reveal, e si comporta diversamente dagli
+    // altri due: non sparisce, si apre tenendo il contorno (vedi makeArm). Il
+    // suo guscio resta a renderOrder 0 e le sue fibre vanno a 2, così la
+    // corrente si somma SOPRA la manica invece di esserne smorzata.
     //
     // Due reveal indipendenti, due gruppi di interni. Prima ce n'era UNO solo,
     // del modulo: aprire la testa avrebbe sfumato anche gli interni della
@@ -160,6 +176,12 @@ WC.robotSplineMaterials = (function () {
       head:  { materials: [], castMeshes: [] },
       belly: { materials: [], castMeshes: [] }
     };
+    // Task B2 — i due gruppi-braccio. Non stanno in `groups` perché non
+    // sfumano allo stesso modo: testa e pancia abbassano `uOpacity` e
+    // spariscono, il braccio tiene il contorno (vedi ARM_REVEAL in
+    // robot-spline-glsl.js). Un gruppo per lato, così si apre solo il braccio
+    // sotto il cursore.
+    var arms = { armL: [], armR: [] };
     var REVEAL_MIN_ALPHA = 0.045;   // stesso valore del vetro di agosto (uMinAlpha)
     // Il minimo del torso è staccato da quello del visore perché i due pezzi
     // non si assomigliano: il visore è uno specchietto, il torso è la massa più
@@ -297,6 +319,72 @@ WC.robotSplineMaterials = (function () {
         // (scriverla da trasparente cancellerebbe la sfera che sta dietro).
         m.depthWrite = r === 0;
         fadeInside(groups.belly, r);
+      },
+      // Task B2 — le mesh di UN braccio ricevono ognuna un'istanza del proprio
+      // materiale col define ARM_REVEAL in più, così il reveal apre solo il
+      // lato sotto il cursore e non le decine di altre mesh che condividono
+      // gli stessi materiali. `gruppo` = 'armL' | 'armR' (i nomi di comodo
+      // dello split: quale dei due sia a sinistra DELLO SCHERMO lo decide la
+      // proiezione, in robot.js).
+      makeArm: function (meshes, gruppo) {
+        var g = arms[gruppo];
+        if (!g) throw new Error('[robot] makeArm: gruppo sconosciuto "' + gruppo + '"');
+        meshes.forEach(function (mesh) {
+          // Si clona il materiale CHE QUELLA MESH HA GIÀ, non Parts per tutte:
+          // un braccio non è fatto di un materiale solo (misurato sul GLB: 11
+          // mesh Parts e 2 Body per lato, e le due Body sono proprio le
+          // scocche lisce di bicipite e avambraccio). Imporre Parts a tutte
+          // cambiava l'aspetto del braccio a riposo.
+          var nome = mesh.userData.splineMaterial;
+          var base = byName[nome];
+          if (!base) throw new Error('[robot] makeArm: mesh "' + mesh.name + '" senza materiale Spline');
+          var m = base.clone();           // uniform clonate per valore...
+          // ...ma le texture restano quelle condivise (un clone sarebbe un
+          // secondo upload sulla GPU della stessa immagine).
+          m.uniforms.uMatcap.value = base.uniforms.uMatcap.value;
+          if (m.uniforms.uTri) m.uniforms.uTri.value = base.uniforms.uTri.value;
+          m.uniforms.uArmReveal = { value: 0 };
+          m.uniforms.uArmMinAlpha = { value: ARM_CONFIG.minAlpha };
+          m.uniforms.uArmRimPow = { value: ARM_CONFIG.rimPow };
+          // Il define del materiale resta il suo (MAT_PARTS o MAT_BODY): si
+          // aggiunge solo lo strato dell'apertura.
+          m.defines = Object.assign({}, base.defines);
+          m.defines.ARM_REVEAL = '';
+          // A riposo il braccio resta OPACO. Non è una questione di
+          // correttezza: misurato, tenerlo `transparent` sempre (com'è il
+          // petto) dà a riposo lo STESSO fotogramma, meanDiff 0 — alpha 1 e
+          // depthWrite attiva si comportano da opaco. È una questione di
+          // costo: sono 26 mesh, e nella coda trasparente verrebbero
+          // riordinate e fuse a ogni fotogramma per niente. `setArmReveal`
+          // accende `transparent` quando il braccio si apre.
+          m.transparent = false;
+          m.needsUpdate = true;
+          mesh.material = m;
+          g.push(m); all.push(m);
+        });
+        return g;
+      },
+      // r = reveal del braccio (0..1: è il `surge` del lato, già smorzato in
+      // robot.js — una manopola sola per apertura, intensità e velocità della
+      // fibra). Stessi agganci agli estremi degli altri due reveal: sotto 0.01
+      // è riposo vero (alpha 1, depth scritta, identico a prima), sopra 0.995
+      // è apertura piena. Il braccio CONTINUA a proiettare ombra anche aperto,
+      // come il torso: è la sua ombra a cadere sul busto e sulle gambe, e
+      // spegnerla a metà apertura accenderebbe mezzo robot di colpo.
+      setArmReveal: function (gruppo, r) {
+        var g = arms[gruppo];
+        if (!g) return;
+        r = r > 0.995 ? 1 : (r < 0.01 ? 0 : r);
+        g.forEach(function (m) {
+          m.uniforms.uArmReveal.value = r;
+          // `transparent` si accende SOLO mentre il braccio è aperto (vedi
+          // makeArm per il perché). Non serve `needsUpdate`: in three r128 la
+          // coda (opaca o trasparente) e lo stato di blending si rileggono dal
+          // materiale a ogni fotogramma, e `transparent` non entra nella
+          // chiave di cache del programma — nessuna ricompilazione.
+          m.transparent = r > 0;
+          m.depthWrite = r === 0;
+        });
       },
       // Interni di una zona (le mesh Parts dentro il volume del visore o del
       // torso, scelte da robot.js): ognuna riceve un clone trasparente di

@@ -1,137 +1,134 @@
-/* CAP 05 — fibre luminose lungo le braccia ("i fasci").
+/* CAP 05 — fibre luminose DENTRO le braccia ("i fasci").
  *
- * REWORK (Task 6, dopo revisione): la prima versione ancorava le curve ai
- * tre `joints` di WC.robotParts.split (Task 2) — shoulder/elbow/wrist sono
- * lì SOLO il centro X/Z del bounding-box dell'intero gruppo-braccio, quindi
- * una linea perfettamente VERTICALE (shoulder.x === elbow.x === wrist.x)
- * dentro un braccio che invece si piega in X. Risultato a schermo: barre
- * dritte fluttuanti fra braccio e busto, sempre in vista (depthTest:false),
- * mai sulla superficie del braccio — vedi task-6-report.md, sezione
- * "Concerns" della prima consegna.
+ * Il percorso si ricava dalle mesh-braccio vere (`parts.armL`/`parts.armR` da
+ * WC.robotParts.split), in coordinate MODEL-LOCALI — le stesse in cui vivono
+ * le mesh, che sono figlie dirette di `model` (gerarchia piatta). robot.js
+ * aggiunge `object` come figlio dello STESSO `model`, così le fibre restano
+ * incollate alle braccia, e ogni fotogramma chiama `update(dt, surgeL,
+ * surgeR)` col segnale del raycast sulle braccia (vedi tick() in robot.js).
  *
- * Questa versione ricava il percorso DIRETTAMENTE dalla mesh del braccio:
+ * Come nasce il percorso, per lato:
+ *  1. si campionano i vertici, ognuno marcato con la PIASTRA da cui viene
+ *     (`sampleArmVertices`): il braccio è un'armatura di pezzi staccati, e
+ *     sapere di quale pezzo è un vertice è ciò che tiene il percorso dentro
+ *     la materia;
+ *  2. l'asse è il segmento fra il baricentro del 5% di vertici più alto e
+ *     quello del 5% più basso (`armAxis`) — la spalla e la mano vere, non il
+ *     bbox del gruppo;
+ *  3. i vertici si affettano lungo quell'asse su TUTTA la loro escursione, e
+ *     ogni fetta dà un punto: la mediana della piastra che continua quella
+ *     della fetta prima (`puntoDellaFetta`);
+ *  4. il punto si porta DENTRO il volume, a (1 − `rientro`) del raggio locale
+ *     misurato sui vertici di quella fetta (`offsetInside`);
+ *  5. da lì due tubi Catmull-Rom vicini (`buildArmFibers`), con `depthTest`
+ *     normale: il braccio lontano nasconde le proprie fibre dietro il busto.
  *
- * 1. Si campionano i vertici reali (spazio MODEL-LOCALE, ogni mesh-braccio è
- *    figlia diretta di `model` — gerarchia piatta, vedi robot-parts.js — si
- *    applica `mesh.matrix`, la trasformazione locale rispetto a quel
- *    parent).
- * 2. Si usa la direzione shoulder→wrist (`joints`, Task 2) solo come SEME
- *    dell'asse lungo cui affettare — non come percorso. Si affettano i
- *    vertici in ~9 fette lungo quell'asse; il CENTROIDE reale di ogni fetta
- *    (media dei vertici che ci cadono dentro) segue la vera sezione del
- *    braccio in quel punto, piega inclusa — a differenza della linea dei
- *    giunti, il centroide si sposta in X quando il braccio si piega in X.
- * 3. Ogni centroide viene spinto verso l'esterno (superficie visibile del
- *    braccio, non il suo asse interno) lungo una direzione fissa per
- *    braccio — "lontano dal busto, leggermente verso la camera" — di una
- *    distanza pari all'estensione reale dei vertici di quella fetta in
- *    quella direzione (l'80° percentile delle proiezioni, non il vertice
- *    più lontano in assoluto, per non farsi tirare fuori da un singolo
- *    vertice di dettaglio/bullone).
- * 4. Da questa polilinea "in superficie" si costruiscono 2 tubi Catmull-Rom
- *    vicini (fascio stretto, non barre larghe), con `depthTest` NORMALE —
- *    ora che le fibre corrono davvero sulla pelle del braccio hanno senso
- *    fisico rispetto al resto della scena: quando il robot ruota, il
- *    braccio lontano nasconde le proprie fibre dietro il busto.
+ * Storia, perché non si ripeta: le prime tre versioni ancoravano il percorso
+ * ai `joints` di robot-parts.js (shoulder/elbow/wrist = centro X/Z del bbox
+ * del gruppo). Erano una linea verticale dentro un braccio che si piega, ed
+ * erano in coordinate MONDO mentre i vertici si campionano in model-locale:
+ * mescolare i due frame sbagliava di un vettore costante per lato, e la fibra
+ * deviava. Oggi `joints` non viene più nemmeno chiesto, e l'asse esce dagli
+ * stessi vertici del percorso: un secondo frame da cui sbagliare non esiste.
  *
- * Il modulo consuma `{ joints, armL, armR }`: `joints` (Task 2) resta il
- * seme dell'asse per lato, `armL`/`armR` (le mesh-braccio vere, anch'esse
- * da WC.robotParts.split) sono la nuova dipendenza — servono per campionare
- * i vertici. robot.js aggiunge `object` come figlio di `model` (stesso
- * parent delle mesh-braccio) e ogni frame chiama `update(dt, surgeL,
- * surgeR)` col segnale di raycast sulle braccia (vedi tick() in robot.js).
- * Essendo figlie di `model`, le fibre restano incollate alle braccia sotto
- * qualunque rotazione del `wrap` (drag, Task 7): tutto il calcolo qui sopra
- * lavora in coordinate MODEL-LOCALI (le stesse di `joints` e delle mesh).
- *
- * REWORK 2 (ref1, dopo revisione utente): il braccio SINISTRO del robot
- * (destra di chi guarda) derivava ancora — la fibra curvava verso l'esterno
- * verso il fondo e finiva OLTRE la mano, verso l'anca. Tre fix, applicati
- * insieme (il primo dei tre è la causa radice vera, gli altri due sono
- * comunque corretti/utili e restano):
- *
- * (a) CAUSA RADICE — mismatch di frame fra `joints` e i vertici campionati.
- *     `joints` (shoulder/wrist, da `robot-parts.js`) sono costruiti con
- *     `new THREE.Box3().setFromObject(m)`, che usa SEMPRE `mesh.matrixWorld`
- *     — sono quindi in coordinate MONDO vere, NON "model-locali" come il
- *     commento del punto 2 sopra (e il JSDoc di `create`, prima di questo
- *     fix) assumevano. `sampleArmVertices` invece campiona in coordinate
- *     MODEL-LOCALI (relative a `model`, che ha una sua traslazione reale —
- *     verificato con una pagina viva: `model.position` ≈ (2.9,-29.8,-5.6) —
- *     rispetto al mondo; NON per una gerarchia nascosta: verificato anche
- *     quello, `mesh.parent === model` è vero, la gerarchia È piatta come
- *     documentato). Confrontare le due (`t = (v−shoulder).dot(axis)` con v
- *     model-locale e shoulder mondo) sballa ogni calcolo di un vettore
- *     costante per lato — l'origine reale del "pinch"/dell'estremo che
- *     finiva vicino al busto invece che al polso, sopravvissuta al rework
- *     precedente perché la piega del braccio mascherava l'errore quanto
- *     bastava da sembrare "quasi giusto" in anteprima. Fix in `buildArm`:
- *     `shoulder`/`wrist` vengono convertiti in MODEL-LOCALE una volta sola
- *     (inversa di `model.matrixWorld`) prima di ogni uso — vedi lì.
- * (b) `joints.wrist*` resta comunque il fondo del bbox dell'INTERO
- *     gruppo-braccio (mano inclusa, vedi `robot-parts.js` `jointsFor`): a
- *     frame corretto, affettare fino a t=1.0 su quell'asse arriverebbe
- *     ancora dentro la mano. `findWristCut` calcola il vero taglio dalla
- *     geometria reale del nodo `Hand`/`Hand_1` invece di un fondo-bbox o
- *     una percentuale indovinata — vedi lì per i dettagli e il fallback.
- * (c) L'offset verso l'esterno è pesato da una finestra `sin(pi*t01)` che
- *     vale ~1 a metà braccio e →0 a entrambi gli estremi (spalla e polso),
- *     così i punti iniziale/finale restano vicini al centroide reale
- *     invece che spinti a piena intensità dove la sezione del braccio è
- *     meno affidabile (attacco spalla, imbocco mano) — vedi
- *     `offsetToSurface`.
- *
- * Simmetrico per costruzione: nessun ramo per-braccio in nessuno dei tre
- * punti, si applicano a `buildArm()` una sola volta per lato con lo stesso
- * codice.
+ * Simmetrico per costruzione: nessun ramo per-braccio: `buildArm()` gira una
+ * volta per lato con lo stesso codice.
  */
 window.WC = window.WC || {};
 
 WC.robotFibers = (function () {
-  var TUBULAR_SEGMENTS = 40;
+  /* ------------------------------------------------------------------ TASK B2
+   * «le fibre ora non sono dentro le braccia, ma sono fuori e non sono nemmeno
+   * lungo tutti i bracci» — e «non è un flusso che scorre», «il colore non va
+   * bene». Tre difetti, tre rimedi, tutti tarabili da qui sotto: Nike ha
+   * annunciato una nuova inquadratura (robot più grande, tagliato sopra le
+   * gambe) e questi numeri andranno rivisti a schermo, non cercati in mezzo al
+   * codice.
+   *
+   * 1. FUORI DAL BRACCIO. Prima il percorso veniva spinto SULLA superficie
+   *    visibile (`offsetToSurface`, più il raggio del tubo e lo scostamento
+   *    fra i due fili): sull'orlo, e con la posa Spline che ruota gli
+   *    avambracci, sbordava. Ora il punto sta DENTRO il volume, a
+   *    (1 − `rientro`) del raggio locale della fetta: si vede lo stesso perché
+   *    il braccio si apre (ARM_REVEAL), e non può sbordare perché il raggio
+   *    locale è misurato sui vertici veri di quella fetta.
+   * 2. NON COPRE TUTTO IL BRACCIO. Prima il percorso nasceva dai `joints`
+   *    (bbox del gruppo) e si fermava al gomito (`ARM_END_FRACTION` 0.72, più
+   *    un taglio prima della mano): spalla e mano restavano scoperte. Ora
+   *    l'asse si ricava dai VERTICI (baricentro delle fette estreme) e le
+   *    fette coprono tutta l'escursione dei vertici lungo quell'asse — dalla
+   *    spalla alla mano. `joints` non serve più a niente e non viene più
+   *    chiesto.
+   * 3. NON SCORRE. Prima la fase era `uTime * speed` con `speed` funzione del
+   *    surge: mentre il surge saliva, la stessa `uTime` veniva rimoltiplicata
+   *    e il disegno SALTAVA avanti e indietro invece di scorrere. Ora la fase
+   *    si integra in JS (`phase += dt * velocità`), così la velocità può
+   *    cambiare senza che il motivo si sposti di colpo.
+   */
+  var CONFIG = {
+    // --- percorso -----------------------------------------------------------
+    // Quante fette lungo l'asse del braccio. Più fette = percorso che segue
+    // meglio la piega; sotto le ~10 la mano e la spalla si tagliano gli angoli.
+    slices: 16,
+    // Quante passate di lisciatura (media a tre punti) sul percorso. Le fette
+    // cambiano pezzo strada facendo — placca della spalla, bicipite,
+    // avambraccio, mano — e a ogni cambio il punto fa un gradino: una passata
+    // lo toglie senza appiattire la piega vera del braccio.
+    lisciature: 1,
+    // Quanto la fibra RIENTRA dalla superficie, in frazione del raggio locale
+    // della fetta: 0 = sulla pelle, 1 = sull'asse. A 0.55 il filo sta poco
+    // sotto la metà del raggio — abbastanza fuori asse da leggersi come una
+    // vena, abbastanza dentro da non sfiorare mai il profilo. Alzato da 0.45
+    // per un motivo misurato e non estetico: al polso il braccio si strozza
+    // (la sagoma ha una strizione fra avambraccio e mano) e a 0.45 il margine
+    // minimo scendeva a 3 px a 1280×720, sotto la soglia.
+    rientro: 0.55,
+    // Raggio del tubo (in frazione della lunghezza del braccio) e distanza fra
+    // i due fili (in raggi del tubo). Assottigliati da 0.005/2.4: la fibra è
+    // DUE tubi, e l'ingombro totale a schermo è ciò che consuma il margine
+    // dentro la mano — a 0.005/2.4 il margine minimo era 2 px.
+    tubeRadius: 0.0032,
+    sideOffset: 1.8,
+    // Quanto si accorcia ai due capi, in frazione della lunghezza del braccio.
+    // Tenuti a ZERO: la corrente deve partire dall'attacco della spalla e
+    // arrivare alla mano, ed è così che la copertura misurata sta a 0,93.
+    // Restano come manopola per la nuova inquadratura.
+    trimTop: 0.0,
+    trimBottom: 0.0,
+    // --- flusso -------------------------------------------------------------
+    pulses: 2.0,          // impulsi per braccio (Task B2: due)
+    speed: 0.28,          // periodi al secondo a braccio appena acceso
+    speedSurge: 1.5,      // quanto accelera a surge pieno
+    rise: 0.07,           // fronte dell'impulso, in frazione del periodo (ripido)
+    tailK: 4.5,           // quanto in fretta si spegne la coda (più basso = più lunga)
+    pulseGain: 1.35,      // intensità della cresta
+    baseline: 0.12,       // filo di base continuo, SOLO a braccio aperto
+    rim: 0.18,            // quanto il bordo del tubo si accende (dà volume al filo)
+    // Azzurro del sito; la cresta dell'impulso schiarisce verso il bianco.
+    colorCold: '#3fb9ff',
+    colorHot: '#eaf8ff'
+  };
+
+  var TUBULAR_SEGMENTS = 64;
   var RADIAL_SEGMENTS = 6;
-  // Quante fette lungo l'asse spalla→polso (brief: 8-10). Ogni fetta con
-  // <3 vertici campionati è scartata (centroide inaffidabile) — la curva
-  // resta comunque continua sulle fette valide, CatmullRom non richiede
-  // punti equispaziati.
-  var SLICE_COUNT = 9;
-  // Raggio del tubo come frazione della lunghezza del braccio — dimezzato
-  // ancora rispetto alla prima consegna (0.014): ora che le fibre sono in
-  // superficie (non più "sepolte" nel volume del braccio, vedi depthTest
-  // sotto) un tubo sottile legge già come filo acceso; uno spesso come
-  // prima leggerebbe come un cavo esterno grosso, non un vena sottile.
-  var TUBE_RADIUS_FACTOR = 0.006;
-  // Percentile (non il massimo) usato per stimare quanto una fetta si
-  // estende verso l'esterno lungo la direzione scelta — vedi
-  // `offsetToSurface`: robusto a un singolo vertice fuori scala (bullone,
-  // dettaglio) che altrimenti spingerebbe il centroide ben oltre la
-  // superficie reale.
+
+  // sRGB → lineare, stessa formula di `hexToLinear` in js/pointbrain.js e
+  // js/pointorb.js (lì è privata del modulo, non esportata). Il resto della
+  // scena è in lineare: passare i byte grezzi darebbe un azzurro diverso da
+  // quello del cervello e della sfera, che è esattamente ciò che si vuole
+  // evitare — «il colore del sito» dev'essere UN colore solo.
+  function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function hexToLinear(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return new THREE.Vector3(srgbToLinear(((n >> 16) & 255) / 255),
+      srgbToLinear(((n >> 8) & 255) / 255), srgbToLinear((n & 255) / 255));
+  }
+  // Percentile (non il massimo) con cui si stima il RAGGIO LOCALE di una
+  // fetta: robusto a un singolo vertice fuori scala (un bullone, un dettaglio)
+  // che altrimenti allargherebbe la sezione ben oltre quella vera — e qui il
+  // raggio locale è ciò che tiene la fibra dentro il braccio, quindi
+  // sovrastimarlo è esattamente l'errore da non fare.
   var SURFACE_PERCENTILE = 0.8;
-  // FIX drift residuo (ref1, dopo revisione): `joints.wrist*` (robot-parts.js,
-  // jointsFor) è il FONDO del bbox dell'intero gruppo-braccio, mano inclusa —
-  // NON il polso vero. Affettare fino a t=1.0 su quell'asse porta le ultime
-  // fette dentro/oltre la mano, dove la sezione si allarga e si piega per le
-  // dita: il centroide (e quindi `offsetToSurface`, spinto a piena intensità)
-  // sbanda verso l'esterno, la fibra "spara" oltre la mano verso il fianco —
-  // esattamente il bug segnalato. Il taglio vero lo calcola `findWristCut`
-  // dalla geometria reale del nodo `Hand`/`Hand_1` (misurato: comincia al
-  // ~73% dell'asse spalla→bbox-bottom, NON all'87.5% indovinato a vista in
-  // un primo tentativo). Questa frazione fissa resta solo come FALLBACK
-  // se quel nodo non si trovasse in un GLB futuro — volutamente generosa
-  // (non deve mai essere il taglio "vero" usato oggi).
-  var ARM_CLAMP_END = 0.875;
-  // RITOCCO 2 (correzione utente, dopo TRE derive): la fibra dell'avambraccio
-  // sul braccio "surgiato" ha continuato a tagliare verso l'anca — la posa
-  // mano-al-fianco + il glow additivo la fanno leggere come staccata, e la
-  // sezione del basso avambraccio è dove l'offset-di-superficie è meno
-  // affidabile. Decisione: PULIZIA > COPERTURA. Si accorcia la corsa: la fibra
-  // parte dalla spalla e si FERMA ben sopra il polso/l'anca, intorno al gomito
-  // (parte alta + solo la porzione superiore dell'avambraccio), dove resta
-  // inequivocabilmente sull'arto. Frazione del taglio-polso REALE
-  // (findWristCut): 0.72 → finisce circa al gomito (il gomito, joints, è a
-  // ~0.68 del taglio-polso), un filo oltre. Abbassare ancora (verso 0.6, solo
-  // braccio alto) se dovesse ancora sbandare.
-  var ARM_END_FRACTION = 0.72;
 
   var VERT = [
     'varying vec2 vUv;',
@@ -147,29 +144,46 @@ WC.robotFibers = (function () {
   ].join('\n');
 
   // uv.x (three.js TubeGeometry) è la coordinata LUNGO il tubo, 0 al primo
-  // punto della curva (lato spalla) e 1 all'ultimo (lato polso) —
-  // esattamente la `u` della spec.
+  // punto della curva (lato spalla) e 1 all'ultimo (lato mano).
+  //
+  // Task B2 — la corrente che scorre. `uPhase` non è più «tempo × velocità»
+  // calcolato qui dentro (vedi il punto 3 in testa al file: con la velocità
+  // che cambia col surge, il motivo saltava invece di scorrere) ma una fase
+  // già integrata in JS. L'impulso è asimmetrico: fronte ripido sulla testa
+  // (q = 0, il punto che avanza verso la mano) e coda esponenziale dietro,
+  // cioè verso la spalla — una cometa, non una banda simmetrica.
   var FRAG = [
     'precision highp float;',
     'varying vec2 vUv;',
     'varying vec3 vNormalW;',
     'varying vec3 vViewDir;',
-    'uniform float uTime;',
+    'uniform float uPhase;',
     'uniform float uSurge;',
-    'uniform float uSpeed;',
+    'uniform float uPulses;',
+    'uniform float uRise;',
+    'uniform float uTailK;',
+    'uniform float uPulseGain;',
     'uniform float uBaseline;',
+    'uniform float uRim;',
     'uniform vec3 uColorCold;',
     'uniform vec3 uColorHot;',
     'void main() {',
-    '  float speed = uSpeed * (1.0 + uSurge * 3.0);',
-    '  float repeats = 3.0;',
-    '  float phase = fract(vUv.x * repeats - uTime * speed);',
-    '  float band = pow(clamp(1.0 - abs(phase - 0.5) * 2.0, 0.0, 1.0), 5.0);',
+    // q cresce andando verso la SPALLA: q = 0 è la testa dell'impulso (il
+    // fronte, verso la mano), q grande è la coda che si allunga dietro.
+    '  float q = fract(uPhase - vUv.x * uPulses);',
+    '  float pulse = smoothstep(0.0, uRise, q) * exp(-q * uTailK);',
     '  vec3 N = normalize(vNormalW);',
     '  vec3 V = normalize(vViewDir);',
     '  float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.0);',
-    '  float intensity = (uBaseline + band * (0.14 + uSurge * 1.35) + fres * (0.06 + uSurge * 0.3)) * smoothstep(0.0, 0.08, uSurge);',
-    '  vec3 col = mix(uColorCold, uColorHot, clamp(uSurge * 0.7 + band * 0.3, 0.0, 1.0));',
+    // Tutto si spegne col surge: a riposo il braccio è chiuso e non c'è niente
+    // da vedere (regola del piano: niente disegnato a riposo). Il filo di base
+    // c'è SOLO a braccio aperto, ed è quello che fa leggere il percorso intero
+    // anche fra un impulso e l'altro.
+    '  float acceso = smoothstep(0.0, 0.08, uSurge);',
+    '  float intensity = (uBaseline + pulse * uPulseGain + fres * uRim) * acceso * (0.35 + 0.65 * uSurge);',
+    // L'azzurro è il colore del filo; a schiarire verso il bianco è SOLO la
+    // cresta dell'impulso, non tutto il braccio quando il surge sale.
+    '  vec3 col = mix(uColorCold, uColorHot, clamp(pulse * 1.2, 0.0, 1.0));',
     '  gl_FragColor = vec4(col * intensity, clamp(intensity, 0.0, 1.0));',
     '}'
   ].join('\n');
@@ -177,39 +191,35 @@ WC.robotFibers = (function () {
   function makeMaterial() {
     return new THREE.ShaderMaterial({
       uniforms: {
-        uTime: { value: 0 },
+        uPhase: { value: 0 },
         uSurge: { value: 0 },
-        uSpeed: { value: 0.22 },
-        uBaseline: { value: 0.16 },
-        // Azzurro del sito (correzione utente ref1): non più rame. ~0x3fb9ff,
-        // l'azzurro dell'eyebrow "// 05" e del cervello — legge con più
-        // carattere del più chiaro 0x8bd6ff in additivo sul corpo scuro.
-        uColorCold: { value: new THREE.Vector3(0.247, 0.725, 1.0) },  // ~0x3fb9ff, azzurro
-        // Sul surge sale verso un ciano quasi bianco (non più bianco caldo).
-        uColorHot: { value: new THREE.Vector3(0.75, 0.95, 1.0) }
+        uPulses: { value: CONFIG.pulses },
+        uRise: { value: CONFIG.rise },
+        uTailK: { value: CONFIG.tailK },
+        uPulseGain: { value: CONFIG.pulseGain },
+        uBaseline: { value: CONFIG.baseline },
+        uRim: { value: CONFIG.rim },
+        // Azzurro del sito, decodificato in lineare come il cervello e la
+        // sfera (vedi hexToLinear sopra): #3fb9ff grezzo darebbe un azzurro
+        // più slavato di quello delle altre due zone.
+        uColorCold: { value: hexToLinear(CONFIG.colorCold) },
+        uColorHot: { value: hexToLinear(CONFIG.colorHot) }
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
       transparent: true,
       depthWrite: false,
-      // REWORK Task 6: depthTest torna NORMALE (era false). Con le fibre
-      // ancorate alla linea verticale dei giunti (dentro il volume del
-      // braccio) l'occlusione fisica le rendeva quasi sempre invisibili —
-      // da qui la scelta precedente. Ora che il percorso è ricavato dalla
-      // mesh vera e spinto sulla sua superficie visibile (vedi
-      // offsetToSurface più sotto), l'occlusione fisica è quella corretta:
-      // quando il robot ruota, il braccio lontano nasconde le proprie
-      // fibre dietro il busto, esattamente come farebbe un filo vero
-      // incollato alla pelle del braccio.
+      // depthTest NORMALE: il braccio lontano deve continuare a nascondere le
+      // proprie fibre dietro il busto. Funziona anche ora che la fibra sta
+      // DENTRO il braccio perché il guscio del braccio, mentre è aperto, non
+      // scrive più depth (setArmReveal in robot-spline-materials.js): la fibra
+      // si vede attraverso la sua stessa manica, ma non attraverso il torso.
       depthTest: true,
-      // Le fibre corrono a ridosso della superficie reale (offset piccolo,
-      // frazione del raggio del tubo): un polygonOffset negativo (spinge
-      // verso la camera nello z-buffer) evita z-fighting a schermo nei
-      // punti dove il tubo sfiora la mesh del braccio, senza rinunciare al
-      // depth test vero e proprio.
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits: -4,
+      // Qui c'era un polygonOffset negativo: serviva quando il tubo SFIORAVA
+      // la pelle del braccio (z-fighting). Ora corre dentro il volume, a un
+      // terzo di raggio dalla superficie: non c'è più niente da sfiorare, e un
+      // offset che spinge verso la camera rischierebbe solo di farlo
+      // affiorare.
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
@@ -226,12 +236,17 @@ WC.robotFibers = (function () {
   // ANCHE `joints` (shoulder/wrist) allo stesso frame model-locale prima di
   // usarli — vedi `buildArm` per il perché era il pezzo mancante vero (i
   // `joints` da soli sono in coordinate MONDO, non model-locali).
+  // Ogni punto porta `pezzo`: l'indice della mesh da cui viene. Il braccio non
+  // è un tubo solo, è un'armatura di piastre staccate (deltoide, connettore
+  // della spalla, avambraccio, mano...), e sapere di quale piastra è un
+  // vertice è ciò che permette a una fetta di seguire il pezzo PRINCIPALE
+  // invece di mediare fra due pezzi distinti — vedi `sliceArm`.
   function sampleArmVertices(meshes, model) {
     var pts = [];
     var v = new THREE.Vector3();
     model.updateMatrixWorld(true);
     var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
-    meshes.forEach(function (mesh) {
+    meshes.forEach(function (mesh, idx) {
       var geo = mesh.geometry;
       if (!geo || !geo.attributes || !geo.attributes.position) return;
       mesh.updateMatrixWorld(true);
@@ -240,97 +255,132 @@ WC.robotFibers = (function () {
       var localMat = new THREE.Matrix4().multiplyMatrices(invModel, mesh.matrixWorld);
       var pos = geo.attributes.position;
       for (var i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(localMat);
-        pts.push(v.clone());
+        var p = v.fromBufferAttribute(pos, i).applyMatrix4(localMat).clone();
+        p.pezzo = idx;
+        pts.push(p);
       }
     });
     return pts;
   }
 
-  // Trova il vero polso lungo l'asse shoulder→wrist-bbox, misurandolo sulla
-  // geometria reale invece di indovinare una frazione fissa. Sui due
-  // gruppi-braccio compare un nodo nominato affidabile: `Hand`/`Hand_1`
-  // (vedi robot-parts.js, header: uno dei pochi nomi affidabili nel GLB).
-  // Verificato coi dati reali (dump vertici su pagina viva, ref1): quel nodo
-  // NON è un dito o un dettaglio, è la mano intera — la sua faccia rivolta
-  // verso la spalla (proiezione MINIMA lungo l'asse, presa su un CLUSTER di
-  // ~100+ vertici del bordo prossimale, non un singolo outlier) è
-  // esattamente il polso. Con questo, il taglio è geometrico (si adatta a
-  // qualunque posa/modello), non una percentuale tarata a vista — vedi
-  // ref1-report.md per la frazione effettiva misurata a frame corretto (fix
-  // del mismatch mondo/model-locale in `buildArm`, sotto — a frame SBAGLIATO
-  // il nodo Hand sembrava cominciare altrove, da cui il tentativo iniziale
-  // con una frazione fissa, sostituito da questa misura geometrica).
-  // Fallback a una frazione (ARM_CLAMP_END) SOLO se il nodo non si trova o
-  // dà una proiezione degenere — non dovrebbe succedere (nome verificato
-  // per entrambi i lati) ma niente NaN/curve vuote se il GLB cambiasse.
-  function findWristCut(meshes, shoulder, axis, armLenFull, model) {
-    var handMeshes = meshes.filter(function (m) { return /hand/i.test(m.name || ''); });
-    if (handMeshes.length) {
-      var handVerts = sampleArmVertices(handMeshes, model);
-      if (handVerts.length) {
-        var minT = Infinity;
-        handVerts.forEach(function (v) {
-          var t = v.clone().sub(shoulder).dot(axis);
-          if (t < minT) minT = t;
-        });
-        if (isFinite(minT) && minT > armLenFull * 0.3 && minT < armLenFull * 0.98) {
-          return minT;
-        }
-      }
+  // Task B2 — l'ASSE REALE del braccio, ricavato dai vertici. Prima l'asse era
+  // la linea `shoulder`→`wrist` dei `joints` (robot-parts.js), cioè il centro
+  // X/Z del bbox dell'intero gruppo: una verticale perfetta, che con la posa
+  // Spline (avambracci ruotati) non è l'asse del braccio ma la sua ombra
+  // verticale. Qui si prende il baricentro del 5% di vertici più in alto e di
+  // quello più in basso: due punti veri, dentro la materia, uno all'attacco
+  // della spalla e uno in fondo alla mano.
+  // Il punto della fetta: la mediana della PIASTRA che continua quella della
+  // fetta precedente. Il braccio è un'armatura di pezzi staccati e a certe
+  // altezze una fetta ne prende due — il deltoide e il connettore che va verso
+  // il busto — separati, in proiezione, da un vuoto vero. Media e mediana su
+  // tutti i vertici cadono FRA i due, cioè nel vuoto, e la fibra ci passa in
+  // mezzo: misurato, usciva dalla sagoma del robot per 307 px (media) e 151
+  // (mediana su tutto). Scegliere ogni volta il pezzo con più materia è
+  // peggio ancora (471): il percorso salta da una piastra all'altra a ogni
+  // cambio di maggioranza. Il criterio giusto è la CONTINUITÀ — si resta sul
+  // pezzo che sta più vicino a dove eravamo — e per la prima fetta (in cima,
+  // dove c'è solo la calotta della spalla) quello con più materia.
+  function puntoDellaFetta(bin, prec) {
+    var per = {};
+    bin.forEach(function (v) { (per[v.pezzo] || (per[v.pezzo] = [])).push(v); });
+    var cand = Object.keys(per).filter(function (k) { return per[k].length >= 3; })
+      .map(function (k) { return { n: per[k].length, p: mediana(per[k]) }; });
+    if (!cand.length) return mediana(bin);
+    if (!prec) {
+      cand.sort(function (a, b) { return b.n - a.n; });
+      return cand[0].p;
     }
-    return armLenFull * ARM_CLAMP_END;
+    cand.sort(function (a, b) { return a.p.distanceToSquared(prec) - b.p.distanceToSquared(prec); });
+    return cand[0].p;
   }
 
-  // Affetta i vertici lungo l'asse shoulder→wrist (seme, non percorso) e
-  // ritorna, per ogni fetta valida, { point: centroide, verts: vertici
-  // della fetta } — servono entrambi: il centroide per il percorso, i
-  // vertici grezzi per stimare quanto spingerlo verso la superficie
-  // (offsetToSurface).
-  function sliceArm(meshes, shoulder, wrist, sliceCount, model) {
-    var axis = new THREE.Vector3().subVectors(wrist, shoulder);
-    var armLenFull = axis.length();
-    if (armLenFull < 1e-4) return null; // giunti degeneri (braccio vuoto)
-    axis.normalize();
-    // Fix drift: affettiamo solo fino al polso vero (findWristCut), non
-    // fino al fondo del bbox (che include la mano). RITOCCO 2: e ci fermiamo
-    // ancora prima (ARM_END_FRACTION del taglio-polso), intorno al gomito,
-    // così la fibra resta chiaramente sull'arto e non taglia verso l'anca.
-    var armLen = findWristCut(meshes, shoulder, axis, armLenFull, model) * ARM_END_FRACTION;
+  // Mediana componente per componente di un insieme di punti. Non è un punto
+  // dell'insieme, ma con una sezione di braccio (un pezzo grosso, al più
+  // qualche dettaglio attorno) cade dentro la materia, che è ciò che serve.
+  function mediana(pts) {
+    var m = function (asse) {
+      var a = pts.map(function (v) { return v[asse]; }).sort(function (x, y) { return x - y; });
+      var h = a.length >> 1;
+      return a.length % 2 ? a[h] : (a[h - 1] + a[h]) / 2;
+    };
+    return new THREE.Vector3(m('x'), m('y'), m('z'));
+  }
 
+  function armAxis(verts) {
+    var byY = verts.slice().sort(function (a, b) { return b.y - a.y; });
+    var n = Math.max(3, Math.round(verts.length * 0.05));
+    var top = new THREE.Vector3(), bottom = new THREE.Vector3();
+    for (var i = 0; i < n; i++) { top.add(byY[i]); bottom.add(byY[byY.length - 1 - i]); }
+    top.multiplyScalar(1 / n); bottom.multiplyScalar(1 / n);
+    var axis = new THREE.Vector3().subVectors(bottom, top);
+    if (axis.lengthSq() < 1e-8) return null;
+    return { axis: axis.normalize(), origin: top };
+  }
+
+  // Affetta i vertici lungo l'asse reale e ritorna, per ogni fetta valida,
+  // { point: centroide, verts: vertici della fetta } — servono entrambi: il
+  // centroide per il percorso, i vertici grezzi per misurare il raggio locale
+  // (offsetInside).
+  //
+  // Task B2 — COPERTURA. Le fette coprono tutta l'escursione VERA dei vertici
+  // lungo l'asse (da `tMin` a `tMax`), meno gli eventuali trim di CONFIG:
+  // prima si fermavano a una frazione indovinata (0.72 del taglio-polso,
+  // cioè al gomito) e spalla e mano restavano scoperte. Così la copertura è
+  // completa per costruzione, non per taratura.
+  function sliceArm(meshes, sliceCount, model) {
     var verts = sampleArmVertices(meshes, model);
     if (verts.length < sliceCount * 3) return null; // troppo pochi vertici per un binning affidabile
+    var A = armAxis(verts);
+    if (!A) return null;
+    var axis = A.axis, origin = A.origin;
+
+    var ts = new Array(verts.length), tMin = Infinity, tMax = -Infinity;
+    for (var i = 0; i < verts.length; i++) {
+      var t = verts[i].x * axis.x + verts[i].y * axis.y + verts[i].z * axis.z
+        - (origin.x * axis.x + origin.y * axis.y + origin.z * axis.z);
+      ts[i] = t;
+      if (t < tMin) tMin = t;
+      if (t > tMax) tMax = t;
+    }
+    var span = tMax - tMin;
+    if (span < 1e-4) return null;
+    var t0 = tMin + span * CONFIG.trimTop, t1 = tMax - span * CONFIG.trimBottom;
+    var armLen = t1 - t0;
+    if (armLen < 1e-4) return null;
 
     var bins = [];
-    for (var i = 0; i < sliceCount; i++) bins.push([]);
-    verts.forEach(function (v) {
-      var t = v.clone().sub(shoulder).dot(axis);
-      if (t < 0 || t > armLen) return; // fuori dallo span spalla→polso (clampato prima della mano)
-      var bin = Math.min(sliceCount - 1, Math.floor((t / armLen) * sliceCount));
-      bins[bin].push(v);
-    });
+    for (var b = 0; b < sliceCount; b++) bins.push([]);
+    for (var k = 0; k < verts.length; k++) {
+      if (ts[k] < t0 || ts[k] > t1) continue;
+      bins[Math.min(sliceCount - 1, Math.floor((ts[k] - t0) / armLen * sliceCount))].push(verts[k]);
+    }
 
-    var slices = [];
+    var slices = [], prec = null;
     bins.forEach(function (bin, i) {
       if (bin.length < 3) return; // fetta troppo scarsa: salto, la curva resta continua sulle altre
-      var c = new THREE.Vector3();
-      bin.forEach(function (v) { c.add(v); });
-      c.multiplyScalar(1 / bin.length);
-      // t01: posizione normalizzata 0 (spalla) → 1 (polso, dopo il clamp) di
-      // QUESTA fetta — dal centro del bin, non dall'indice grezzo (i bin
-      // scartati non devono comprimere lo spacing di quelli rimasti). Usata
-      // solo dalla finestra di taper in `offsetToSurface`.
-      var t01 = (i + 0.5) / sliceCount;
-      slices.push({ point: c, verts: bin, t01: t01 });
+      // `verts` resta l'INTERA fetta: il raggio locale (offsetInside) va
+      // misurato sul braccio tutto, non sul solo pezzo scelto per il percorso.
+      prec = puntoDellaFetta(bin, prec);
+      slices.push({ point: prec.clone(), verts: bin, t01: (i + 0.5) / sliceCount });
     });
     if (slices.length < 3) return null;
-    // Task 7 (nit): `armLen` (già calcolato sopra per il binning) viaggia
-    // appeso all'array — un array resta un oggetto normale in JS, la
-    // proprietà extra non disturba `.length`/`.forEach`/`.map` di chi lo
-    // consuma — così buildArm() lo rilegge invece di ricalcolare
-    // `shoulder.distanceTo(wrist)`, la stessa identica distanza. Da ref1
-    // in poi è già la lunghezza CLAMPATA (fino al polso, non alla mano).
+    // Lisciatura del percorso: i capi restano dove sono (la fibra deve
+    // arrivare fino alla spalla e fino alla mano), gli interni fanno la media
+    // a tre punti coi vicini.
+    for (var pass = 0; pass < CONFIG.lisciature; pass++) {
+      var prima = slices.map(function (s) { return s.point.clone(); });
+      for (var j = 1; j < slices.length - 1; j++) {
+        slices[j].point.copy(prima[j]).multiplyScalar(0.5)
+          .addScaledVector(prima[j - 1], 0.25).addScaledVector(prima[j + 1], 0.25);
+      }
+    }
+    // Asse, origine e lunghezza viaggiano appesi all'array — un array resta un
+    // oggetto normale in JS, le proprietà extra non disturbano
+    // `.length`/`.forEach`/`.map` di chi lo consuma.
     slices.armLen = armLen;
+    slices.axis = axis;
+    slices.origin = origin;
     return slices;
   }
 
@@ -368,55 +418,40 @@ WC.robotFibers = (function () {
     });
   }
 
-  // Spinge ogni centroide verso l'esterno lungo la SUA direzione per-fetta
-  // (dirs[i], vedi computeOutwardDirs) di una distanza pari all'estensione
-  // reale della fetta in quella direzione (percentile robusto delle proiezioni
-  // dei suoi vertici, vedi SURFACE_PERCENTILE), più una piccola spinta extra
-  // così il tubo (che ha un suo raggio) sporge per lo più FUORI dalla mesh —
-  // leggibile — invece che restarne per metà dentro.
+  // Task B2 — DENTRO il braccio. Prima questa funzione spingeva il centroide
+  // FUORI, fin sulla pelle (e un po' oltre, `extraPush`): di lì la fibra
+  // sbordava dalla sagoma. Ora porta il punto a (1 − CONFIG.rientro) del
+  // raggio locale, cioè un terzo di raggio sotto la superficie, e toglie anche
+  // l'INGOMBRO del tubo (il suo raggio più metà della distanza fra i due
+  // fili) — altrimenti "dentro" varrebbe per la linea di mezzo e non per i
+  // pixel che si vedono, che è quello che poi si misura.
   //
-  // FIX drift (ref1, dopo revisione): la spinta a piena intensità fin sui due
-  // capi è la seconda metà del bug — anche col clamp sopra (niente più fette
-  // dentro la mano), la fetta immediatamente prima del polso è comunque dove
-  // il braccio comincia ad allargarsi/piegarsi per il polso stesso, quindi
-  // l'offset lì è già meno affidabile; e alla spalla l'offset "verso
-  // l'esterno" non ha senso fisico (è dove il braccio si innesta nel busto).
-  // Si applica quindi una finestra `sin(pi * t01)`: 1 a metà braccio (dove il
-  // bulge verso la superficie ha più senso ed è più stabile), →0 a entrambi
-  // gli estremi — lì il punto resta sul centroide reale (asse del braccio),
-  // niente spinta laterale che possa farlo sbandare. Stesso metodo su
-  // ENTRAMBE le braccia (t01 viene da sliceArm, simmetrico per costruzione).
-  function offsetToSurface(slices, dirs, extraPush) {
+  // Il raggio locale è il percentile delle proiezioni dei vertici della fetta
+  // sulla direzione esterna (SURFACE_PERCENTILE): la distanza vera fra
+  // centroide e pelle, IN QUEL PUNTO e IN QUELLA DIREZIONE. Niente taper: la
+  // finestra `sin(pi·t01)` serviva a non far sbandare un punto spinto fuori,
+  // ma un punto che sta dentro non ha da dove sbandare, e ai due capi
+  // (attacco della spalla, mano) la fibra deve esserci — è metà del lavoro di
+  // questo task.
+  function offsetInside(slices, dirs, ingombro) {
     return slices.map(function (s, i) {
       var dir = dirs[i];
       var proj = s.verts.map(function (v) { return v.clone().sub(s.point).dot(dir); })
         .sort(function (a, b) { return a - b; });
       var idx = Math.min(proj.length - 1, Math.floor(proj.length * SURFACE_PERCENTILE));
-      var dist = Math.max(0, proj[idx]);
-      // Pavimento 0.4 (non 0, verificato a schermo, ref1): un taper che
-      // arriva a ESATTAMENTE 0 fa collassare il punto sul centroide reale,
-      // che vicino al polso può stare leggermente SOTTO la superficie
-      // visibile (dentro il volume del braccio) — con `depthTest:true` quel
-      // tratto risultava invisibile (occluso), la fibra sembrava fermarsi
-      // prima del vero polso pur essendo geometricamente presente. Un
-      // pavimento tiene il punto un minimo spinto FUORI anche ai due
-      // estremi (40% dell'offset pieno — comunque molto meno del 100%
-      // originale, che causava lo sbandamento), abbastanza per restare
-      // sopra la superficie e visibile.
-      var taper = Math.max(0.4, Math.sin(Math.PI * Math.min(1, Math.max(0, s.t01))));
-      return s.point.clone().addScaledVector(dir, (dist + extraPush) * taper);
+      var rLocal = Math.max(0, proj[idx]);
+      return s.point.clone().addScaledVector(dir, Math.max(0, rLocal * (1 - CONFIG.rientro) - ingombro));
     });
   }
 
   // Costruisce il fascio di 2 tubi vicini (fascio stretto, non barre
-  // larghe) attorno alla polilinea "in superficie": ad ogni punto calcola
-  // la tangente locale (differenza coi vicini) e una direzione "laterale"
-  // (perpendicolare sia alla tangente sia alla direzione esterna PER-FETTA
-  // `dirs[i]`, cioè che cammina lungo la superficie, non sopra/sotto) su cui
+  // larghe) attorno alla polilinea: ad ogni punto calcola la tangente locale
+  // (differenza coi vicini) e una direzione "laterale" (perpendicolare sia
+  // alla tangente sia alla direzione esterna PER-FETTA `dirs[i]`) su cui
   // sposta i due fili di un piccolo offset simmetrico.
   function buildArmFibers(surfacePoints, dirs, radius, material, group) {
     if (surfacePoints.length < 3) return;
-    var sideOffset = radius * 3.0;
+    var sideOffset = radius * CONFIG.sideOffset;
     [-1, 1].forEach(function (sign) {
       var pts = surfacePoints.map(function (p, i) {
         var prev = surfacePoints[Math.max(0, i - 1)];
@@ -434,84 +469,55 @@ WC.robotFibers = (function () {
     });
   }
 
-  // Costruisce il percorso+fascio per un braccio; ritorna false se la
-  // mesh non ha dato abbastanza vertici per un binning affidabile (braccio
-  // vuoto o mesh anomala) — il chiamante lascia il gruppo vuoto in quel
-  // caso, nessuna geometria NaN.
-  // FIX drift — CAUSA RADICE reale (ref1, trovata solo dopo aver escluso
-  // tutto il resto con misure dirette su pagina viva, non a occhio):
-  // `joints` (shoulder/wrist, da WC.robotParts.split → `centerOf()`) sono
-  // costruiti con `new THREE.Box3().setFromObject(m)`, che usa SEMPRE
-  // `mesh.matrixWorld` — sono quindi in coordinate MONDO vere, non
-  // "model-locali" come il commento originale (Task 6) e i JSDoc di questo
-  // file assumevano. `sampleArmVertices` invece campiona i vertici in
-  // coordinate MODEL-LOCALI (relative a `model`, che ha una sua traslazione
-  // reale — verificato: (2.9, -29.8, -5.6) — rispetto al mondo). Mescolare
-  // i due (com'era: `t = (v − shoulder).dot(axis)` con v model-locale e
-  // shoulder mondo) confronta due origini diverse: il risultato non è "quasi
-  // giusto", è sistematicamente sballato di un vettore costante per lato —
-  // la causa reale dietro il "pinch"/l'estremo che finiva vicino al busto
-  // invece che al polso, sopravvissuta a entrambi i rework precedenti
-  // perché la piega del braccio mascherava l'errore quanto bastava da
-  // sembrare "quasi giusto" in anteprima.
-  // Fix: si converte `shoulder`/`wrist` in MODEL-LOCALE una volta sola qui
-  // (stesso frame dei vertici campionati), con l'inversa di
-  // `model.matrixWorld` — la trasformazione COMPLETA world→model, corretta
-  // qualunque sia la rotazione/traslazione di `model` o dei suoi antenati
-  // (`wrap`) al momento della build (mount, prima che il drag tocchi `wrap`).
-  function buildArm(meshes, shoulder, wrist, material, group, model) {
-    if (!shoulder || !wrist || !meshes || !meshes.length) return false;
-    model.updateMatrixWorld(true);
-    var worldToModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
-    shoulder = shoulder.clone().applyMatrix4(worldToModel);
-    wrist = wrist.clone().applyMatrix4(worldToModel);
-
-    var slices = sliceArm(meshes, shoulder, wrist, SLICE_COUNT, model);
+  // Costruisce il percorso+fascio per un braccio; ritorna false se la mesh non
+  // ha dato abbastanza vertici per un binning affidabile (braccio vuoto o mesh
+  // anomala) — il chiamante lascia il gruppo vuoto in quel caso, nessuna
+  // geometria NaN.
+  //
+  // Task B2: non prende più `joints`. Prima li prendeva, e con essi si portava
+  // dietro un tranello che è costato tre rework — i `joints` sono in coordinate
+  // MONDO (`Box3.setFromObject` legge sempre `matrixWorld`) mentre i vertici si
+  // campionano in coordinate MODEL-LOCALI, e mescolarli sbagliava di un vettore
+  // costante per lato. Ora l'asse esce dai vertici stessi (`armAxis`), cioè
+  // dallo stesso identico frame: quel tranello non può più ripresentarsi,
+  // perché non c'è più un secondo frame da cui sbagliare.
+  function buildArm(meshes, material, group, model) {
+    if (!meshes || !meshes.length || !model) return false;
+    var slices = sliceArm(meshes, CONFIG.slices, model);
     if (!slices) return false;
 
-    var radius = slices.armLen * TUBE_RADIUS_FACTOR;
-    // Riferimento fisso (SOLO fallback ora, vedi computeOutwardDirs): lontano
-    // dal busto (X, segno secondo il lato) e un po' verso la camera (+Z, la
-    // camera sta su +Z guardando verso l'origine — vedi mount() in robot.js).
-    // La vera direzione esterna la calcola computeOutwardDirs PER-FETTA
-    // dall'asse del braccio, e ripiega su questo riferimento solo dove la
-    // piega è trascurabile — così la fibra segue la faccia esterna su
-    // ENTRAMBE le braccia, anche quella che si piega diversamente.
-    var side = shoulder.x < 0 ? -1 : 1;
+    var radius = slices.armLen * CONFIG.tubeRadius;
+    // Riferimento fisso (SOLO fallback, vedi computeOutwardDirs): lontano dal
+    // busto (X, segno secondo il lato) e un po' verso la camera (+Z, la camera
+    // sta su +Z guardando verso l'origine — vedi mount() in robot.js). La vera
+    // direzione la calcola computeOutwardDirs PER-FETTA dall'asse del braccio.
+    var side = slices.origin.x < 0 ? -1 : 1;
     var fallbackDir = new THREE.Vector3(side * 0.55, 0.05, 0.85).normalize();
 
-    var axis = new THREE.Vector3().subVectors(wrist, shoulder).normalize();
-    var dirs = computeOutwardDirs(slices, axis, shoulder, fallbackDir);
-    var surfacePoints = offsetToSurface(slices, dirs, radius * 0.6);
-    buildArmFibers(surfacePoints, dirs, radius, material, group);
+    var dirs = computeOutwardDirs(slices, slices.axis, slices.origin, fallbackDir);
+    // Ingombro della fibra a schermo: il raggio del tubo più metà della
+    // distanza fra i due fili. Si toglie dal rientro, così a stare dentro il
+    // braccio non è la linea di mezzo ma i PIXEL — che è quello che si misura.
+    var pts = offsetInside(slices, dirs, radius * (1 + CONFIG.sideOffset * 0.5));
+    buildArmFibers(pts, dirs, radius, material, group);
     return true;
   }
 
   return {
+    config: CONFIG,
     /**
-     * @param {Object} input
-     * @param {Object} input.joints - parts.joints da WC.robotParts.split:
-     *   Vector3 in coordinate MONDO (costruiti via `Box3.setFromObject`,
-     *   ref1: NON model-locali, nonostante l'assunzione originale di Task 6)
-     *   — usati solo come SEME dell'asse lungo cui affettare, non come
-     *   percorso (vedi sliceArm). `buildArm` li converte in model-locale
-     *   prima di ogni uso (serve `input.model`, sotto).
      * @param {THREE.Mesh[]} input.armL - mesh-braccio sinistro, da
      *   WC.robotParts.split (parts.armL) — campionate per il percorso reale.
      * @param {THREE.Mesh[]} input.armR - mesh-braccio destro (parts.armR).
      * @param {THREE.Object3D} input.model - il gruppo `model` di robot.js
      *   (radice della scena GLTF, parent DIRETTO di ogni mesh-braccio —
      *   gerarchia piatta). `object` (il ritorno) viene aggiunto come figlio
-     *   DIRETTO di questo stesso `model` da robot.js. Serve qui per
-     *   convertire `joints` (coordinate MONDO) in model-locale — vedi
-     *   `buildArm` — nello stesso frame dei vertici campionati da
-     *   `sampleArmVertices`, così i punti costruiti finiscono nello STESSO
-     *   frame in cui verranno renderizzati.
+     *   DIRETTO di questo stesso `model` da robot.js, così il percorso vive
+     *   nello STESSO frame in cui verrà renderizzato.
      * @returns {{object: THREE.Object3D, update: function(dt, surgeL, surgeR)}}
      */
     create: function (input) {
       input = input || {};
-      var joints = input.joints || {};
       var armL = input.armL || [];
       var armR = input.armR || [];
       var model = input.model;
@@ -527,21 +533,35 @@ WC.robotFibers = (function () {
       object.add(groupL, groupR);
 
       if (model) {
-        buildArm(armL, joints.shoulderL, joints.wristL, matL, groupL, model);
-        buildArm(armR, joints.shoulderR, joints.wristR, matR, groupR, model);
+        buildArm(armL, matL, groupL, model);
+        buildArm(armR, matR, groupR, model);
       }
+      // Le fibre sono l'INTERNO del braccio, ma si disegnano DOPO il suo
+      // guscio (renderOrder 1, makeArm in robot-spline-materials.js): additive,
+      // così la corrente si legge a piena intensità invece di essere smorzata
+      // dal (1 − alpha) della manica che le sta davanti.
+      object.traverse(function (o) { if (o.isMesh) o.renderOrder = 2; });
 
-      var time = 0;
+      // Task B2 — la fase si INTEGRA qui, non si ricalcola nello shader come
+      // `uTime * velocità`: la velocità dipende dal surge, e rimoltiplicare
+      // tutto il tempo trascorso per una velocità che cambia faceva SALTARE il
+      // motivo avanti e indietro invece di farlo scorrere. Integrandola, la
+      // velocità può cambiare quanto vuole e il flusso resta continuo.
+      var phaseL = 0, phaseR = 0;
+      function passo(dt, surge) {
+        return (dt || 0) * CONFIG.speed * (1 + (surge || 0) * CONFIG.speedSurge);
+      }
       function update(dt, surgeL, surgeR) {
-        time += dt || 0;
-        matL.uniforms.uTime.value = time;
-        matR.uniforms.uTime.value = time;
+        phaseL = (phaseL + passo(dt, surgeL)) % 1;
+        phaseR = (phaseR + passo(dt, surgeR)) % 1;
+        matL.uniforms.uPhase.value = phaseL;
+        matR.uniforms.uPhase.value = phaseR;
         matL.uniforms.uSurge.value = surgeL || 0;
         matR.uniforms.uSurge.value = surgeR || 0;
         object.visible = (surgeL || 0) > 0.003 || (surgeR || 0) > 0.003;
       }
 
-      return { object: object, update: update };
+      return { object: object, update: update, groups: { armL: groupL, armR: groupR } };
     }
   };
 })();

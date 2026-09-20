@@ -511,10 +511,11 @@ WC.register('robot', function(ctx){
           // restano opache.
           //
           // ORDINE DI DISEGNO, esplicito e distinto per tutta la coda
-          // trasparente (Task A2): sfera della pancia 0 → interni (testa e
-          // pancia) 1 → visore 2 → petto 3. Il petto ora è trasparente (porta
-          // il reveal della pancia): senza un renderOrder più ALTO della sfera
-          // finirebbe per coprirla.
+          // trasparente (Task A2, esteso dal Task B2): sfera della pancia,
+          // cervello e guscio delle braccia 0 → interni (testa e pancia) 1 →
+          // visore e fibre delle braccia 2 → petto 3. Il petto è trasparente
+          // (porta il reveal della pancia): senza un renderOrder più ALTO
+          // della sfera finirebbe per coprirla.
           var vb = new THREE.Box3().setFromObject(asg.visor);
           var inside = parts.head.filter(function (m) {
             if (m === asg.visor || m.userData.splineMaterial !== 'Parts') return false;
@@ -525,33 +526,37 @@ WC.register('robot', function(ctx){
           // Task 7: il logo «A» bianco lucido, stampato SOLO sulla mesh del
           // petto (istanza del materiale Body col define LOGO).
           if (asg.chest) { sm.makeChest(asg.chest); asg.chest.renderOrder = 3; }
-          sm.setCamera(cam);   // dopo makeInside/makeChest: anche i cloni ricevono la luce
+          // Task B2: il braccio si apre come la testa, ma tenendo il contorno.
+          // Ogni mesh-braccio riceve un'ISTANZA del materiale che già aveva
+          // (Parts o Body: sul GLB sono 11 e 2 per lato) col define ARM_REVEAL
+          // in più, così si apre solo il braccio sotto il cursore e non le
+          // altre decine di mesh che condividono quegli stessi materiali.
+          // A riposo uArmReveal è 0: alpha 1, depth scritta — il braccio di
+          // prima, pixel per pixel (verificato, meanDiff 0).
+          sm.makeArm(parts.armL, 'armL');
+          sm.makeArm(parts.armR, 'armR');
+          sm.setCamera(cam);   // dopo makeInside/makeChest/makeArm: anche i cloni ricevono la luce
           window.__robot.parts.inside = inside;
           if (window.__debugParts) console.log('[robot] interni testa:', inside.map(function (m) { return m.name; }));
           sm.setPlaying(sectionVisible);
         }
 
-        // Task 6 (rework): le fibre luminose nelle braccia ("i fasci").
-        // robot-fibers.js ora ricava il percorso dalle mesh-braccio VERE
-        // (`parts.armL`/`parts.armR`, campionate e affettate lungo l'asse
-        // spalla→polso) e lo spinge sulla superficie visibile del braccio —
-        // `parts.joints` resta il seme dell'asse, non più il percorso stesso
-        // (vedi robot-fibers.js per il perché: i giunti da soli danno una
-        // linea verticale dritta, non la vera piega del braccio). Nessuna
-        // dipendenza da headGroup/materiali.
-        // Figlie DIRETTE di `model` (aggiunto sotto): resta incollato alle
+        // Task 6 (rework) + Task B2: le fibre luminose DENTRO le braccia
+        // ("i fasci"). robot-fibers.js ricava tutto dalle mesh-braccio vere
+        // (`parts.armL`/`parts.armR`): asse, fette, raggio locale, percorso.
+        // Task B2 — `parts.joints` non serve più e non viene più passato: era
+        // in coordinate MONDO mentre i vertici si campionano in model-locale,
+        // e mescolare i due frame è stata la causa radice di tre derive di
+        // fila. Ora l'asse esce dagli stessi vertici del percorso, quindi un
+        // secondo frame da cui sbagliare non esiste più. (`split` continua a
+        // calcolare i giunti: nessuno li consuma oggi.)
+        // Figlie DIRETTE di `model` (aggiunto sotto): restano incollate alle
         // braccia — gerarchia FLAT confermata (`mesh.parent === model`).
-        // `model` va passato qui perché `parts.joints` (costruiti in
-        // robot-parts.js via `Box3.setFromObject`, quindi in coordinate
-        // MONDO, non model-locali — nonostante il commento precedente in
-        // questo file lo desse per scontato) va convertito in model-locale
-        // prima di combinarlo con i vertici campionati (vedi
-        // robot-fibers.js `buildArm`, fix ref1: quel mismatch di frame era
-        // la causa radice della fibra che deviava). Il surge per lato (0..1,
-        // "la corrente si accende dove passi") è pilotato dal raycast del
-        // cursore sulle mesh-braccio in tick(), più sotto.
-        if (WC.robotFibers && parts.joints) {
-          var fibers = WC.robotFibers.create({ joints: parts.joints, armL: parts.armL, armR: parts.armR, model: model });
+        // Il surge per lato (0..1, "la corrente si accende dove passi") è
+        // pilotato dal raycast del cursore sulle mesh-braccio in tick(), più
+        // sotto, e pilota a sua volta l'apertura del braccio.
+        if (WC.robotFibers && (parts.armL.length || parts.armR.length)) {
+          var fibers = WC.robotFibers.create({ armL: parts.armL, armR: parts.armR, model: model });
           // Le fibre sono luce, non materia: niente ombra nella shadow map (Task 4b).
           fibers.object.traverse(function (o) { o.castShadow = false; o.receiveShadow = false; });
           model.add(fibers.object);
@@ -1178,6 +1183,13 @@ WC.register('robot', function(ctx){
           // suo braccio si tiene accesa piena.
           if (puntata === 'braccioSx') { if (sxEArmL) surgeL = 1; else surgeR = 1; }
           robot.fibers.update(dt, surgeL, surgeR);
+          // Task B2: lo STESSO segnale apre il braccio. Una manopola sola per
+          // apertura, intensità e velocità della corrente — il braccio si apre
+          // dove passi, come la testa, e dentro si vede scorrere la fibra.
+          if (robot.spline && robot.spline.setArmReveal) {
+            robot.spline.setArmReveal('armL', surgeL);
+            robot.spline.setArmReveal('armR', surgeR);
+          }
         }
         // Task 7: la luce che fa brillare la «A» insegue il puntatore. Gli
         // scostamenti sono già in unità mondo, proporzionati alla larghezza

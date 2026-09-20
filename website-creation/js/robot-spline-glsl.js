@@ -88,6 +88,15 @@ WC.robotSplineGLSL = {
     'uniform float uReflectivity;',
     'uniform float uF90;',            // Spline non assegna specularF90 per Parts: ANGLE lo azzera → 0.0
     '#endif',
+    // Task B2 — il braccio si apre come la testa, ma NON sparisce come il
+    // visore: la fibra che ha dentro è molto più sottile del braccio, e senza
+    // un contorno resterebbe un filo che galleggia nel vuoto. Define solo
+    // sulle istanze delle mesh-braccio (makeArm in robot-spline-materials.js).
+    '#ifdef ARM_REVEAL',
+    'uniform float uArmReveal;',      // 0 = braccio chiuso (identico a prima), 1 = aperto
+    'uniform float uArmMinAlpha;',    // quanto resta al CENTRO del braccio
+    'uniform float uArmRimPow;',      // quanto è stretto il bordo (più alto = più sottile)
+    '#endif',
     // Logo «A» (Task 7): solo sull'istanza del petto (define LOGO, aggiunta
     // sopra MAT_BODY da makeChest). Maschera planare in coordinate OGGETTO più
     // una luce virtuale che segue il puntatore (uLogoLight, view space).
@@ -328,6 +337,26 @@ WC.robotSplineGLSL = {
     '  c = sp_blend(c, sp_matcap(nb), uMatcapAlpha, uMatcapMode);',
     '  float rough = clamp((sp_lum(texture2D(uTri, uv0).rgb) * tw.z + sp_lum(texture2D(uTri, uv1).rgb) * tw.x + sp_lum(texture2D(uTri, uv2).rgb) * tw.y) * uRoughness, 0.04, 1.0);',
     '  c = sp_blend(c, sp_physical(c, nb, rough), uLightAlpha, uLightMode);',
+    '#endif',
+
+    // Task B2: l'alpha del braccio aperto. Al centro (normale rivolta alla
+    // camera, dot(N,V)→1) scende a uArmMinAlpha e si vede dentro; sul contorno
+    // (normale quasi perpendicolare allo sguardo, dot(N,V)→0) resta alta e il
+    // profilo del braccio continua a leggersi. `n` e non `nb`: la normale
+    // GEOMETRICA, non quella increspata dal bump del corpo — il contorno
+    // dev'essere una linea pulita, non un bordo granuloso. A uArmReveal 0 vale
+    // esattamente 1, cioè il braccio di prima.
+    //
+    // FUORI dai blocchi per materiale, come `outA`: un braccio non è fatto di
+    // un materiale solo. Misurato sul GLB: 11 mesh Parts e 2 Body per lato —
+    // le due Body sono le scocche lisce del bicipite e dell'avambraccio, ed è
+    // il pezzo che si vede di più. Tenere questo strato dentro `#ifdef
+    // MAT_PARTS` obbligava makeArm a dare a tutte le mesh un materiale Parts:
+    // a riposo le due scocche cambiavano aspetto (meanDiff 2,94, i bordi dei
+    // pannelli che spuntavano dove prima c'era carbonio liscio).
+    '#ifdef ARM_REVEAL',
+    '  float armRim = pow(1.0 - abs(dot(normalize(n), normalize(vViewPosition))), uArmRimPow);',
+    '  outA = mix(1.0, max(uArmMinAlpha, armRim), uArmReveal);',
     '#endif',
 
     '  gl_FragColor = vec4(c, outA);',
