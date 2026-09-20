@@ -22,7 +22,7 @@
  *
  * ## Le trappole (tutte già pagate, non ripeterle)
  * - **Raggio 1 + scale.** Lo shader ha soglie ASSOLUTE pensate per una sfera
- *   di raggio 1 (`uFadeNear` 1.7, `uFadeFar` 3.1, il foro `bore` 0.36, gli
+ *   di raggio 1 (`uFadeNear` 1.7, `uFadeFar` 3.1, il foro `uBore` 0.36, gli
  *   offset di spawn 1.3–1.9). La geometria si costruisce SEMPRE a raggio 1 e
  *   la misura vera la dà `points.scale`: passare 60 unità al costruttore
  *   manderebbe `vEdgeFade` a zero e non si vedrebbe niente.
@@ -31,7 +31,10 @@
  *   animata, qui non serve.
  * - **Il reveal passa da `uAppear`**, che il fragment moltiplica sull'alpha
  *   finale: spegne i punti senza spostarli. `uOut` (dissolvenza esplosa) e
- *   `uCore` (foro passante) restano a 0 — deformano.
+ *   `uCore` (foro passante) restano a 0 — deformano. `uBore` invece NON
+ *   deforma: sceglie solo quanti punti attorno alla linea di vista non si
+ *   disegnano, e su una sfera piccola quel buco si legge come una fascia
+ *   scura ferma in mezzo alla nuvola (Task D3).
  * - **`uCursor` non va mai lasciata a (0,0,0)**: nel vertex c'è un
  *   `normalize(uCursor)`, e `normalize(vec3(0))` fa NaN di tutto il vertex.
  * - **`uCamLocal` è la camera in coordinate LOCALI della sfera** (ci pensa
@@ -107,6 +110,13 @@ WC.pointOrb = (function () {
     iridescence:   0.72,    // ORB_CONFIG: 0.6 — sabe.html
     fadeNear:      1.7,
     fadeFar:       3.1,
+    // Raggio del FORO, in raggi della sfera: i punti che cadono entro questa
+    // distanza dalla LINEA DI VISTA non si disegnano. Non ruota via col
+    // `spin`, perché è agganciato all'asse della camera: è un buco fermo in
+    // mezzo alla nuvola, e su una sfera piccola si legge come una fascia
+    // scura di traverso. 0.36 è il valore della pagina di SABE e resta il
+    // default (vedi uBore nello shader).
+    bore:          0.36,
     // Rotazione della pagina di SABE (spin 0.21, tilt 0.46). NON è una
     // uniform e `update` non la applica: la posa la decide chi monta la
     // sfera, come per il cervello dentro la testa.
@@ -183,6 +193,13 @@ WC.pointOrb = (function () {
     'uniform float uEnergy, uPointerRadius, uOilBulge, uOilRipple, uOilDrag;',
     'uniform float uRippleFreq, uRippleSpeed;',
     'uniform float uFadeNear, uFadeFar;',
+    // Task D3 — il FORO, cioè il pezzo di nuvola che non si disegna attorno
+    // alla linea di vista. Era un 0.36 scritto dentro la formula: il valore
+    // di nascita della pagina di SABE, dove la sfera è grande mezzo schermo e
+    // il foro le dà il volume di una ciambella. Adesso è una uniform col
+    // MEDESIMO default, quindi la pagina di SABE e chiunque non lo tocchi non
+    // cambiano di un pixel; chi ha una sfera piccola può chiuderlo.
+    'uniform float uBore;',
     '',
     'attribute vec3 aRandom;',
     'varying float vAlpha, vLit, vVert, vSide, vOil, vEdgeFade;'
@@ -202,7 +219,7 @@ WC.pointOrb = (function () {
     '  vec3 axis = normalize(uCamLocal);',
     '  float axial = dot(pos, axis);',
     '  float radial = length(pos - axis * axial);',
-    '  float bore = mix(0.36, 0.56, uCore) * (1.0 + disp * 0.55);',
+    '  float bore = mix(uBore, 0.56, uCore) * (1.0 + disp * 0.55);',
     '  float hole = smoothstep(bore, bore + 0.10, radial);',
     '',
     '  // Ingresso: i punti arrivano dalla camera e si radunano sulla sfera.',
@@ -344,6 +361,7 @@ WC.pointOrb = (function () {
       uOut:           { value: 0 },
       uAssemble:      { value: 1 },
       uCore:          { value: 0 },
+      uBore:          { value: ORB.bore },
       uCentre:        { value: new THREE.Vector3() },
       uCamLocal:      { value: new THREE.Vector3(0, 0, 1) },
       uColTop:        { value: hexToLinear(ORB.colorTop) },

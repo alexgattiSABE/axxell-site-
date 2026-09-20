@@ -210,6 +210,17 @@ WC.register('robot', function(ctx){
   //    anche con margine 1,0. Resta 0,35 perché sta comodamente dentro quel
   //    salto, non perché sia una taratura fine: è un valore che può muoversi
   //    del triplo senza cambiare una sola mesh.
+  //  - foro (Task D3): il buco che la nuvola ha in mezzo, in raggi della
+  //    sfera (`uBore` in pointorb.js, default 0,36). È la FASCIA SCURA che
+  //    attraversava la nuvola, e non era una lamiera rimasta opaca: misurato,
+  //    nascondendo TUTTE e 18 le mesh del collo e il petto la fascia resta
+  //    identica (al più 5 pixel di scarto per riga, cioè il rumore fra due
+  //    caricamenti). Il buco lo fa lo shader, ed è agganciato alla LINEA DI
+  //    VISTA — quindi non ruota via col `spin`, sta fermo in mezzo. A 0,36 è
+  //    tarato sulla pagina di SABE, dove la sfera è grande mezzo schermo e il
+  //    buco le dà il volume di una ciambella; qui la nuvola è larga 88 px e
+  //    quel buco se ne mangia 32 nel mezzo. A 0,10 resta il filo di vuoto che
+  //    la fa leggere cava senza spaccarla in due.
   //  - count / pointSizeK / fovRef / spin / tilt: invariati dalla pancia e
   //    dalla bocca — sono la grana e la posa della pagina di SABE. pointSize =
   //    0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom),
@@ -221,7 +232,7 @@ WC.register('robot', function(ctx){
   // il visore — e il confine col collo non è più una quota dentro una mesh ma
   // il passaggio da una mesh all'altra: due insiemi disgiunti non hanno un
   // confine da far tremare.
-  var SFERA_CONFIG = { raggio: 0.25, presa: 2.5, margineSfumatura: 0.35,
+  var SFERA_CONFIG = { raggio: 0.25, presa: 2.5, margineSfumatura: 0.35, foro: 0,
     count: 26000, pointSizeK: 0.03, fovRef: 22.5, spin: 0.21, tilt: 0.46 };
   // Task A2/C3 — la pancia: «anima», cioè il gestionale. Della sfera non resta
   // niente (Task C2: è salita nella testa) e dentro, per ora, non c'è NULLA —
@@ -1131,6 +1142,10 @@ WC.register('robot', function(ctx){
           if (WC.pointOrb && colloCentroLocal) {
             var orbRadius = headRadius * SFERA_CONFIG.raggio;
             var orb = WC.pointOrb.create({ count: SFERA_CONFIG.count, radius: orbRadius });
+            // Task D3 — il foro della nuvola, che è fermo sulla linea di vista
+            // e su una sfera di 88 px la attraversa come una fascia scura.
+            // Il default resta quello di SABE: si scrive solo qui.
+            orb.uniforms.uBore.value = SFERA_CONFIG.foro;
             orb.points.castShadow = false;      // è luce, non materia
             orb.points.receiveShadow = false;
             orb.points.position.copy(colloCentroLocal);
