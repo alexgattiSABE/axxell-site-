@@ -163,11 +163,26 @@ WC.register('robot', function(ctx){
   //    rifatto a ogni fit() (tuneOrb).
   var SFERA_CONFIG = { altezza: 0.30, raggio: 0.31, arretra: 0.45, isteresi: 0.04,
     count: 26000, pointSizeK: 0.03, fovRef: 22.5, spin: 0.21, tilt: 0.46 };
-  // Task A2 — la pancia. Della sfera non resta niente (Task C2: è salita nella
-  // testa); resta la regola che decide quali mesh sfumano DENTRO il torso
-  // quando la pancia si apre: quanto si stringe il bbox del torso per dire
-  // «questa sta dentro» (vedi più sotto).
-  var BELLY_CONFIG = { insideShrink: 0.85 };
+  // Task A2/C3 — la pancia: «anima», cioè il gestionale. Della sfera non resta
+  // niente (Task C2: è salita nella testa) e dentro, per ora, non c'è NULLA —
+  // Nike: «per ora niente animazione, poi la sceglierò». Il torso si apre lo
+  // stesso e l'etichetta esce lo stesso: la zona è viva, è il suo contenuto
+  // che manca.
+  //  - insideShrink: quanto si stringe il bbox del torso per decidere quali
+  //    mesh gli stanno DENTRO e quindi sfumano col reveal (vedi più sotto).
+  //  - contenuto: IL PUNTO D'INNESTO, e si accende con una riga sola. È una
+  //    fabbrica: riceve il contesto della scena e restituisce
+  //    `{ object, update(dt, reveal, camera) }` — un Object3D qualunque
+  //    (Points, Mesh, Group) più la sua animazione. Ci pensa poi robot.js a
+  //    metterlo dentro il modello, a spegnergli le ombre, a disegnarlo solo
+  //    col reveal della pancia e a smaltirlo al teardown, esattamente come
+  //    faceva con la sfera. Esempio, da scrivere QUI quando Nike avrà scelto:
+  //      contenuto: function (ctx) {
+  //        var o = WC.pointOrb.create({ count: 26000, radius: ctx.size.x * 0.32 });
+  //        o.points.position.copy(ctx.centro);
+  //        return { object: o.points, update: function (dt, r, cam) { o.update(dt, r, cam); } };
+  //      }
+  var BELLY_CONFIG = { insideShrink: 0.85, contenuto: null };
   var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
   var card    = document.getElementById('wcRobotCard');
@@ -310,7 +325,10 @@ WC.register('robot', function(ctx){
       if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
       var st = window.__robot && window.__robot.anatomia;
       if (!st || !st.activeId || st.hitId !== st.activeId) return;
-      if (anat.attiva(st.activeId)) anat.vai(st.activeId);
+      // Task C3: `cliccabile` e non `attiva`. La pancia è una zona attiva (si
+      // apre, l'etichetta esce) ma non ha ancora una pagina dove andare: il
+      // clic non deve fare niente, come non lo fa sull'etichetta.
+      if (anat.cliccabile(st.activeId)) anat.vai(st.activeId);
     }
     function onCancel() { giu = null; }
     stage.addEventListener('pointerdown', onDown);
@@ -990,6 +1008,29 @@ WC.register('robot', function(ctx){
           // blocco di headGroup). Con lei decade la regola «il logo sparisce
           // quando compare la sfera»: la «A» resta piena, a riposo e a pancia
           // aperta, perché non ha più niente da lasciar vedere dietro di sé.
+          //
+          // Task C3 — al suo posto il PUNTO D'INNESTO di ciò che Nike
+          // sceglierà di mettere nella pancia. Oggi BELLY_CONFIG.contenuto è
+          // null e questo blocco non fa niente: il torso si apre e dentro non
+          // c'è nulla. Domani basta la fabbrica in BELLY_CONFIG (in cima al
+          // file) e tutto il resto — ombre spente, ordine di disegno, accendi
+          // e spegni col reveal, smaltimento — è già scritto qui.
+          if (BELLY_CONFIG.contenuto) {
+            var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
+            var chestLocal = chestBox.clone().applyMatrix4(invModel);
+            var dentro = BELLY_CONFIG.contenuto({
+              chest: chest, model: model, camera: cam, logo: spline.logo,
+              centro: chestLocal.getCenter(new THREE.Vector3()),
+              size: chestLocal.getSize(new THREE.Vector3())
+            });
+            if (dentro && dentro.object) {
+              dentro.object.traverse(function (o) { o.castShadow = false; o.receiveShadow = false; });
+              dentro.object.renderOrder = 0;   // prima di interni (1), visore (2), petto (3)
+              dentro.object.visible = false;   // a riposo non si disegna affatto
+              model.add(dentro.object);
+              window.__robot.bellyContent = dentro;
+            }
+          }
           // I cloni trasparenti degli interni della pancia nascono DOPO il
           // setCamera di qui sopra: senza questo secondo giro resterebbero con
           // uLightPos a zero, cioè illuminati da un punto che non c'è.
@@ -1389,6 +1430,13 @@ WC.register('robot', function(ctx){
           robot.orb.update(dt, hoverSfera, cam);
           robot.orb.points.visible = hoverSfera > 0.01;
         }
+        // Task C3 — il contenuto della pancia, quando ci sarà: si accende col
+        // reveal del torso come il cervello col suo. Oggi non c'è (vedi
+        // BELLY_CONFIG.contenuto) e questo blocco non gira.
+        if (robot && robot.bellyContent) {
+          if (robot.bellyContent.update) robot.bellyContent.update(dt, hoverBelly, cam);
+          robot.bellyContent.object.visible = hoverBelly > 0.01;
+        }
         // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
         // volta — a differenza del reveal testa (una sola zona, la testa)
         // qui servono DUE segnali indipendenti, uno per braccio, così il
@@ -1486,6 +1534,7 @@ WC.register('robot', function(ctx){
         disposeObject3D(robot.model);
         if (robot.brain && robot.brain.points) disposeObject3D(robot.brain.points);
         if (robot.orb && robot.orb.points) disposeObject3D(robot.orb.points);
+        if (robot.bellyContent && robot.bellyContent.object) disposeObject3D(robot.bellyContent.object);
         if (robot.fibers && robot.fibers.object) disposeObject3D(robot.fibers.object);
       }
       // Materiali Spline: le texture nelle uniform (disposeObject3D non le

@@ -42,12 +42,22 @@ WC.anatomia = (function () {
   // (Atlas), sotto la sfera di SABE. Sono due voci distinte perché sono due
   // prodotti distinti, anche se il raycast colpisce la stessa mesh (il
   // visore): a dividerle è la Y del punto colpito, in robot.js.
+  // Task C3 — `href: ''` NON vuol dire «zona spenta». La pancia è una zona a
+  // tutti gli effetti (il torso si apre, l'etichetta «anima / gestionale»
+  // esce) ma non porta da nessuna parte: la pagina del gestionale la sta
+  // scrivendo Alex (Nike, 09:21: «alex sta creando la pagina quindi per ora
+  // lascialo vuoto»). Finché quella riga è vuota l'etichetta NON è un
+  // `<a href>` ma uno `<span>`: non prende il fuoco col tab, il clic non fa
+  // niente e il cursore non diventa una mano — non si promette un link morto.
+  // Il giorno in cui la pagina c'è, si scrive l'indirizzo QUI e basta: zona
+  // cliccabile, etichetta linkabile e tastiera tornano da sole (provato con
+  // un indirizzo finto, vedi il report C3).
   var ZONE = [
-    { id: 'testa',     lato: 'destra',   testo: 'cervello',         sotto: 'Atlas',   href: '../atlas.html',  attiva: true },
-    { id: 'bocca',     lato: 'destra',   testo: 'sabe',             sotto: 'SABE',    href: '../sabe.html',   attiva: true },
-    { id: 'pancia',    lato: 'destra',   testo: 'anima',            sotto: 'sabe',    href: '../sabe.html',   attiva: true },
-    { id: 'braccioSx', lato: 'sinistra', testo: 'website creation', sotto: 'atelier', href: 'CORRENTE#cap01', attiva: true },
-    { id: 'braccioDx', lato: 'destra',   testo: '',                 sotto: '',        href: '',               attiva: false }
+    { id: 'testa',     lato: 'destra',   testo: 'cervello',         sotto: 'Atlas',      href: '../atlas.html',  attiva: true },
+    { id: 'bocca',     lato: 'destra',   testo: 'sabe',             sotto: 'SABE',       href: '../sabe.html',   attiva: true },
+    { id: 'pancia',    lato: 'destra',   testo: 'anima',            sotto: 'gestionale', href: '',               attiva: true },
+    { id: 'braccioSx', lato: 'sinistra', testo: 'website creation', sotto: 'atelier',    href: 'CORRENTE#cap01', attiva: true },
+    { id: 'braccioDx', lato: 'destra',   testo: '',                 sotto: '',           href: '',               attiva: false }
   ];
   // Misure in frazione della LARGHEZZA del riquadro (così valgono a ogni
   // dimensione), tranne `margineBordo` (px) e `staccoTesto` (altezze di riga).
@@ -136,6 +146,12 @@ WC.anatomia = (function () {
     return null;
   }
 
+  // Task C3 — una zona ha una DESTINAZIONE solo se è attiva e ha un indirizzo.
+  // È l'unico posto in cui si decide, e da qui dipendono tutte le promesse che
+  // l'interfaccia fa: il tipo dell'elemento (<a> o <span>), il fuoco da
+  // tastiera, il cursore a mano e il clic sulla zona 3D.
+  function conDestinazione(z) { return !!(z && z.attiva && z.href); }
+
   // L'href di «CORRENTE#frammento» dipende dalla url di adesso: <base> in
   // pagina rende «#cap01» da solo un link a un'altra risorsa.
   function hrefVero(z) {
@@ -194,11 +210,19 @@ WC.anatomia = (function () {
       var linea = document.createElementNS(SVGNS, 'polyline');
       svg.appendChild(linea);
 
-      var a = document.createElement('a');
+      // Task C3: `<a>` solo se c'è dove andare. Senza indirizzo è uno `<span>`
+      // — niente tab, niente Invio, niente aria-label che annuncerebbe un link
+      // che non esiste. Il resto (classe, data-zona, testi, posizionamento) è
+      // identico, così tutto il codice che cerca `.wc-anat` continua a
+      // trovarlo e il giorno in cui l'indirizzo arriva non cambia nient'altro.
+      var link = conDestinazione(z);
+      var a = document.createElement(link ? 'a' : 'span');
       a.className = 'wc-anat' + (z.lato === 'sinistra' ? ' -sinistra' : ' -destra');
       a.setAttribute('data-zona', z.id);
-      a.href = hrefVero(z);
-      a.setAttribute('aria-label', z.testo + ' — ' + z.sotto);
+      if (link) {
+        a.href = hrefVero(z);
+        a.setAttribute('aria-label', z.testo + ' — ' + z.sotto);
+      }
       var voce = document.createElement('span');
       voce.className = 'wc-anat-voce';
       voce.textContent = z.testo;
@@ -385,8 +409,11 @@ WC.anatomia = (function () {
     // per la grazia e per tutto il tempo in cui ha il fuoco, e in quei momenti
     // il puntatore può essere sul vuoto — dove un clic non porta da nessuna
     // parte e quindi il cursore non deve promettere niente.
+    // Task C3: e la mano si vede solo dove il clic porta davvero da qualche
+    // parte. La pancia è una zona (si apre, l'etichetta esce) ma finché la
+    // pagina del gestionale non c'è il cursore non deve promettere niente.
     function segnalaMano(colpita) {
-      var ora_mano = !!(colpita && colpita === attivo);
+      var ora_mano = !!(colpita && colpita === attivo && conDestinazione(perId(colpita)));
       if (ora_mano === mano) return;
       mano = ora_mano;
       if (stage) stage.classList.toggle('-zona', mano);
@@ -419,9 +446,16 @@ WC.anatomia = (function () {
         return null;
       },
       // Il clic sulla zona 3D passa di qui: un `click()` sul link vero, così
-      // c'è UNA sola strada e le due non possono divergere.
-      vai: function (id) { var e = el[id]; if (e) e.a.click(); },
+      // c'è UNA sola strada e le due non possono divergere. Task C3: senza
+      // destinazione l'elemento è uno `<span>` e `click()` non farebbe niente
+      // comunque — ma la condizione è esplicita, perché «non succede niente
+      // per caso» non è una garanzia.
+      vai: function (id) { var e = el[id]; if (e && conDestinazione(e.z)) e.a.click(); },
       attiva: function (id) { var z = perId(id); return !!(z && z.attiva); },
+      // Task C3 — «questa zona si accende» e «questa zona porta da qualche
+      // parte» sono due domande diverse: la pancia risponde sì alla prima e no
+      // alla seconda. robot.js chiede la seconda prima di navigare.
+      cliccabile: function (id) { return conDestinazione(perId(id)); },
       layer: layer,
       dispose: function () {
         host.removeEventListener('pointermove', onMove);
