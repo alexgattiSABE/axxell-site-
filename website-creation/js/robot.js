@@ -72,6 +72,27 @@ WC.register('robot', function(ctx){
 
   var cleanups = [];
 
+  // Task A3 — le etichette anatomiche (js/anatomia.js). `anat` è l'overlay dei
+  // tre link: lo monta la scena passandogli la camera, oppure — se la scena
+  // non parte affatto (reduced-motion, three assente, GLB che non arriva) —
+  // lo monta fail() nella sua versione FERMA, con gli agganci in punti fissi.
+  // Non è un ripiego cosmetico: in questa sezione non c'è nessun altro
+  // collegamento ad Atlas, SABE e Atelier, e senza overlay non ne resterebbe
+  // nessuno per chi naviga da tastiera o con uno screen reader.
+  var anat = null;
+  function montaAnatomia(camera) {
+    if (anat || !WC.anatomia) return;
+    anat = WC.anatomia.mount({ stage: stage, host: card, camera: camera || null });
+    if (anat) cleanups.push(function () { if (anat) { anat.dispose(); anat = null; } });
+  }
+  // Le condizioni per cui la scena non partirà MAI (si sanno già qui, non
+  // serve aspettare che la sezione entri in vista): reduced-motion, three o i
+  // suoi loader assenti, dati Spline mancanti.
+  function scenaImpossibile() {
+    return !ctx.motionOk || typeof THREE === 'undefined'
+      || typeof THREE.GLTFLoader === 'undefined' || !D;
+  }
+
   // Qui c'era un faro CSS che seguiva il cursore sulla card. Da quando la
   // scena prende tutta la sezione il faro ci finiva sotto e non si vedeva
   // più. Tolto, insieme al suo listener di mousemove. Il capitolo il suo
@@ -95,6 +116,8 @@ WC.register('robot', function(ctx){
       if (!hint.parentNode) stage.appendChild(hint);
     }
     stage.classList.add('-failed');
+    // Task A3: niente scena → l'overlay si monta lo stesso, fermo.
+    montaAnatomia(null);
   }
 
   // Task 7: cleanup unificato. Un solo helper che attraversa un Object3D e
@@ -137,7 +160,7 @@ WC.register('robot', function(ctx){
     // Reduced-motion: una scena 3D che gira di continuo è esattamente ciò che
     // l'impostazione chiede di non avere. Resta la card, senza il modello.
     // Stesso esito se three.js (o i loader vendorizzati) non sono disponibili.
-    if (!ctx.motionOk || typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined' || !D) {
+    if (scenaImpossibile()) {
       fail('Modello 3D disattivato');
       return;
     }
@@ -158,9 +181,33 @@ WC.register('robot', function(ctx){
     function onPointerLeave() { pointer.active = false; }
     stage.addEventListener('mousemove', onPointerMove);
     stage.addEventListener('mouseleave', onPointerLeave);
+
+    // Task A3 — il clic DENTRO l'animazione porta alla sezione («la prima è
+    // meglio», Nike). Non un `click` ma pointerdown/pointerup con la soglia
+    // dei 5 px: sullo stage si trascina (il robot non ruota, ma il gesto
+    // esiste) e un trascinamento non deve navigare. La destinazione non si
+    // ricalcola qui: si chiede all'overlay di premere il SUO link, così la
+    // strada del mouse e quella della tastiera non possono divergere.
+    var giu = null;
+    function onDown(e) { giu = (e.button === 0) ? { x: e.clientX, y: e.clientY } : null; }
+    function onUpStage(e) {
+      var g = giu; giu = null;
+      if (!g || !anat || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
+      var st = window.__robot && window.__robot.anatomia;
+      if (st && st.activeId && anat.attiva(st.activeId)) anat.vai(st.activeId);
+    }
+    function onCancel() { giu = null; }
+    stage.addEventListener('pointerdown', onDown);
+    stage.addEventListener('pointerup', onUpStage);
+    stage.addEventListener('pointercancel', onCancel);
+
     cleanups.push(function () {
       stage.removeEventListener('mousemove', onPointerMove);
       stage.removeEventListener('mouseleave', onPointerLeave);
+      stage.removeEventListener('pointerdown', onDown);
+      stage.removeEventListener('pointerup', onUpStage);
+      stage.removeEventListener('pointercancel', onCancel);
     });
 
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -274,9 +321,16 @@ WC.register('robot', function(ctx){
     var gltf = new THREE.GLTFLoader();
     gltf.setDRACOLoader(draco);
 
+    // Misura in CSS px dello stage, letta in fit() e riusata da aSchermo():
+    // proiettare tre agganci per fotogramma leggendo clientWidth/clientHeight
+    // ogni volta costringerebbe il browser a rifare il layout dentro il loop
+    // di rendering.
+    var pxW = 0, pxH = 0;
+
     function fit(){
       var w = stage.clientWidth, h = stage.clientHeight;
       if (!w || !h) return;
+      pxW = w; pxH = h;
       renderer.setSize(w, h, false);
       cam.aspect = w / Math.max(1, h);
       cam.clearViewOffset();
@@ -298,6 +352,13 @@ WC.register('robot', function(ctx){
       // abbiamo previsto.
       renderer.shadowMap.needsUpdate = true;
       tuneOrb();
+    }
+    // Task A3: da punto MONDO a pixel del riquadro (lo stesso rettangolo su cui
+    // sta l'overlay delle etichette). Un solo Vector3 riusato: gira nel loop.
+    var vProj = new THREE.Vector3();
+    function aSchermo(p) {
+      vProj.copy(p).project(cam);
+      return { x: (vProj.x + 1) / 2 * pxW, y: (1 - vProj.y) / 2 * pxH };
     }
     stage.appendChild(renderer.domElement);
 
@@ -694,6 +755,65 @@ WC.register('robot', function(ctx){
         }
         fit();
 
+        // ---------------------------------------------- Task A3: gli agganci
+        // Dove nasce la linea spezzata di ogni zona. Il punto sta sul BORDO
+        // ESTERNO della zona — quello rivolto via dal corpo — così la linea
+        // esce verso il vuoto e non attraversa il robot.
+        //
+        // «Esterno» NON si decide per nome della variabile: `parts.armL` e
+        // `parts.armR` sono nomi di comodo dello split (robot-parts.js), e
+        // l'ordine di model.traverse() non è stabile. Si proiettano ENTRAMBI
+        // gli estremi in X con la camera e si prende quello che a schermo
+        // cade più in là dalla parte giusta — stesso metodo con cui si decide
+        // quale dei due gruppi-braccio è quello a SINISTRA DELLO SCHERMO.
+        function unione(arr) {
+          var b = new THREE.Box3();
+          arr.forEach(function (m) { b.union(new THREE.Box3().setFromObject(m)); });
+          return b;
+        }
+        // `dallAlto`, se c'è, è l'altezza dell'aggancio in frazione del bbox
+        // della zona contata DALL'ALTO (Y del mondo cresce verso l'alto, la Y
+        // dello schermo verso il basso); se manca si prende la metà.
+        function bordoEsterno(box, verso, dallAlto) {
+          var c = box.getCenter(new THREE.Vector3());
+          var y = (dallAlto === undefined) ? c.y : box.max.y - (box.max.y - box.min.y) * dallAlto;
+          var a = new THREE.Vector3(box.min.x, y, c.z), b = new THREE.Vector3(box.max.x, y, c.z);
+          var pa = aSchermo(a), pb = aSchermo(b);
+          return (verso > 0 ? (pa.x > pb.x) : (pa.x < pb.x)) ? a : b;
+        }
+        // Agganci: la testa in coordinate LOCALI di headGroup (gira col collo,
+        // e l'etichetta le resta attaccata), pancia e braccio in mondo — non
+        // si muovono mai.
+        var ancoraTestaLoc = null, ancoraPancia = null, ancoraBraccio = null;
+        var braccioSx = null, braccioDx = null;
+        if (parts.armL.length && parts.armR.length) {
+          var boxL = unione(parts.armL), boxR = unione(parts.armR);
+          var sinistraEL = aSchermo(boxL.getCenter(new THREE.Vector3())).x <= aSchermo(boxR.getCenter(new THREE.Vector3())).x;
+          braccioSx = sinistraEL ? parts.armL : parts.armR;
+          braccioDx = sinistraEL ? parts.armR : parts.armL;
+          ancoraBraccio = bordoEsterno(sinistraEL ? boxL : boxR, -1);
+        }
+        if (window.__robot.parts.chest) {
+          // La pancia NON si aggancia a metà altezza del torso, e non è una
+          // licenza estetica: le braccia pendono a fianco del busto e a
+          // schermo lo chiudono da entrambi i lati per tutta la sua altezza —
+          // misurato a 1440×900, il braccio di destra occupa x 850÷1000 fra
+          // y 330 e y 800, cioè esattamente la fascia che una linea uscita a
+          // metà torso (y ≈ 485) dovrebbe attraversare per andarsene.
+          // Provato: la linea passava sopra il bicipite per ~125 px e
+          // l'aggancio finiva nascosto dietro il braccio, come se la linea
+          // nascesse dal nulla. A 0,06 dall'alto (y ≈ 331 a schermo) esce
+          // dalla spalla e va via sul vuoto: è la prima altezza che libera il
+          // braccio con un margine che regge anche a 1280×720.
+          ancoraPancia = bordoEsterno(new THREE.Box3().setFromObject(window.__robot.parts.chest), 1, 0.06);
+        }
+        if (window.__robot.headGroup && parts.head.length) {
+          var hg = window.__robot.headGroup;
+          hg.updateMatrixWorld(true);
+          ancoraTestaLoc = hg.worldToLocal(bordoEsterno(unione(parts.head), 1));
+        }
+        montaAnatomia(cam);
+
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
         // testa/braccia/corpo con colori piatti (MeshBasicMaterial, non
         // sensibile alla luce) così lo screenshot dell'harness mostra
@@ -746,6 +866,15 @@ WC.register('robot', function(ctx){
       // per frame contro parts.armL/armR separatamente. Persistono fuori da
       // tick() (come hoverHead) per lo smoothing esponenziale frame-su-frame.
       var surgeL = 0, surgeR = 0;
+      // Task A3: la zona con l'etichetta accesa, e per quanto resta accesa
+      // dopo che il raggio non colpisce più niente. 320 ms coprono il primo
+      // tratto del corridoio vuoto fra modello e testo (~400 px) e non fanno
+      // strascico quando si esce dal robot e basta; il resto del tragitto lo
+      // copre `RIPRESA` in anatomia.js, che riaccende la zona quando il
+      // puntatore arriva davvero sull'etichetta.
+      var GRAZIA = 320;
+      var zonaAttiva = null, zonaUltima = null, zonaScadenza = 0;
+      var vAnc = new THREE.Vector3();
       // Stato dell'ombra: la rotazione della testa e la soglia di proiezione
       // del visore al momento in cui la shadow map è stata disegnata l'ultima
       // volta (vedi shadowMap.autoUpdate = false più sopra). NaN/null = "mai
@@ -827,18 +956,55 @@ WC.register('robot', function(ctx){
         // «la testa sempre»: all'altezza del collo il raggio può colpire sia un
         // pezzo della testa sia il petto, e va aperto quello che sta davanti.
         // intersectObjects/intersectObject tornano già ordinati per distanza.
-        if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
-          var dHead = Infinity, dBelly = Infinity;
-          if (pointer.active) {
+        //
+        // Task A3: le quattro distanze si misurano QUI, una volta sola, e le
+        // riusano reveal, fibre ed etichette. La zona con l'etichetta accesa è
+        // quella COLPITA IN QUESTO FOTOGRAMMA, non quella col segnale smorzato
+        // più alto: le fibre decadono di 0,05 a fotogramma e terrebbero
+        // «website creation» acceso per una quindicina di fotogrammi mentre il
+        // puntatore è già sulla pancia. I valori smorzati restano, ma pilotano
+        // solo il DISEGNO.
+        var dTesta = Infinity, dPancia = Infinity, dBrSx = Infinity, dBrDx = Infinity;
+        if (pointer.active && robot && robot.parts) {
+          if (robot.parts.head && robot.parts.head.length) {
             var hitHead = raycaster.intersectObjects(robot.parts.head, false);
-            if (hitHead.length) dHead = hitHead[0].distance;
-            if (robot.parts.chest) {
-              var hitBelly = raycaster.intersectObject(robot.parts.chest, false);
-              if (hitBelly.length) dBelly = hitBelly[0].distance;
-            }
+            if (hitHead.length) dTesta = hitHead[0].distance;
           }
-          hoverHead += (((dHead < Infinity && dHead <= dBelly) ? 1 : 0) - hoverHead) * 0.18;
-          hoverBelly += (((dBelly < dHead) ? 1 : 0) - hoverBelly) * 0.18;
+          if (robot.parts.chest) {
+            var hitBelly = raycaster.intersectObject(robot.parts.chest, false);
+            if (hitBelly.length) dPancia = hitBelly[0].distance;
+          }
+          if (braccioSx && braccioSx.length) {
+            var hitSx = raycaster.intersectObjects(braccioSx, false);
+            if (hitSx.length) dBrSx = hitSx[0].distance;
+          }
+          if (braccioDx && braccioDx.length) {
+            var hitDx = raycaster.intersectObjects(braccioDx, false);
+            if (hitDx.length) dBrDx = hitDx[0].distance;
+          }
+        }
+        var vicina = null, dVicina = Infinity;
+        if (dTesta < dVicina) { dVicina = dTesta; vicina = 'testa'; }
+        if (dPancia < dVicina) { dVicina = dPancia; vicina = 'pancia'; }
+        if (dBrSx < dVicina) { dVicina = dBrSx; vicina = 'braccioSx'; }
+        if (dBrDx < dVicina) { dVicina = dBrDx; vicina = 'braccioDx'; }
+        // Il puntatore SULL'ETICHETTA (o il fuoco da tastiera sul suo link)
+        // tiene viva la zona. Il braccio senza etichetta (`attiva: false`)
+        // invece spegne tutto all'istante: è comunque «un'altra zona».
+        var puntata = anat ? anat.puntata() : null;
+        if (puntata) { zonaUltima = puntata; zonaScadenza = now + GRAZIA; zonaAttiva = puntata; }
+        else if (vicina && anat && anat.attiva(vicina)) { zonaUltima = vicina; zonaScadenza = now + GRAZIA; zonaAttiva = vicina; }
+        else if (vicina) { zonaUltima = null; zonaScadenza = 0; zonaAttiva = null; }
+        else zonaAttiva = (zonaUltima && now < zonaScadenza) ? zonaUltima : null;
+
+        if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
+          hoverHead += (((dTesta < Infinity && dTesta <= dPancia) ? 1 : 0) - hoverHead) * 0.18;
+          hoverBelly += (((dPancia < dTesta) ? 1 : 0) - hoverBelly) * 0.18;
+          // Etichetta puntata: il suo hover si TIENE a 1 finché il puntatore
+          // (o il fuoco) ci resta — se no il reveal si spegnerebbe sotto
+          // un'etichetta accesa, che è il contrario di quello che serve.
+          if (puntata === 'testa') hoverHead = 1;
+          if (puntata === 'pancia') hoverBelly = 1;
           robot.spline.setReveal(hoverHead);
           robot.spline.setBellyReveal(hoverBelly);
           // Secondo motivo: un reveal ha attraversato la soglia in cui i pezzi
@@ -891,13 +1057,19 @@ WC.register('robot', function(ctx){
         // (0.05/frame) quando se ne va — "la corrente si accende dove
         // passi" (copy §5) e si spegne morbida, non di scatto.
         if (robot && robot.fibers && robot.parts) {
-          var armLHit = false, armRHit = false;
-          if (pointer.active) {
-            if (robot.parts.armL.length && raycaster.intersectObjects(robot.parts.armL, false).length) armLHit = true;
-            if (robot.parts.armR.length && raycaster.intersectObjects(robot.parts.armR, false).length) armRHit = true;
-          }
+          // Task A3: i due hit vengono dalle distanze già misurate sopra
+          // (stesso raggio, stessi oggetti: `braccioSx`/`braccioDx` sono
+          // `parts.armL`/`armR` riordinati per posizione A SCHERMO). Il
+          // rimappaggio serve perché surgeL/surgeR appartengono ai gruppi,
+          // non ai lati dello schermo.
+          var sxEArmL = braccioSx === robot.parts.armL;
+          var armSxHit = dBrSx < Infinity, armDxHit = dBrDx < Infinity;
+          var armLHit = sxEArmL ? armSxHit : armDxHit, armRHit = sxEArmL ? armDxHit : armSxHit;
           surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
           surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
+          // Puntatore/fuoco sull'etichetta «website creation»: la corrente del
+          // suo braccio si tiene accesa piena.
+          if (puntata === 'braccioSx') { if (sxEArmL) surgeL = 1; else surgeR = 1; }
           robot.fibers.update(dt, surgeL, surgeR);
         }
         // Task 7: la luce che fa brillare la «A» insegue il puntatore. Gli
@@ -911,6 +1083,23 @@ WC.register('robot', function(ctx){
           logoNow.lerp(logoTarget, 0.12);
           logoLight.set(logoView.x + logoNow.x * lg.lightSwing, logoView.y - logoNow.y * lg.lightSwing, logoView.z + lg.lightDist);
           robot.spline.setLogoLight(logoLight);
+        }
+        // Task A3: gli agganci si proiettano con la camera e vanno all'overlay
+        // insieme alla zona attiva. La testa è l'unica che si muove (gira col
+        // collo): il suo aggancio vive in coordinate di headGroup e torna in
+        // mondo qui, così l'etichetta le resta attaccata mentre segue il
+        // cursore. `updateWorldMatrix(true, false)` e non `updateMatrixWorld`:
+        // serve la matrice di headGroup, non quella delle sue 18 mesh figlie.
+        if (anat) {
+          var anc = {};
+          if (ancoraTestaLoc && robot && robot.headGroup) {
+            robot.headGroup.updateWorldMatrix(true, false);
+            anc.testa = aSchermo(vAnc.copy(ancoraTestaLoc).applyMatrix4(robot.headGroup.matrixWorld));
+          }
+          if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
+          if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
+          anat.update(zonaAttiva, anc);
+          if (robot) robot.anatomia = { activeId: zonaAttiva, anchors: anc };
         }
         renderer.render(scene, cam);
       })();
@@ -956,6 +1145,13 @@ WC.register('robot', function(ctx){
       if (window.__robot && window.__robot.renderer === renderer) window.__robot = undefined;
     });
   }
+
+  // Task A3: se la scena non partirà mai, i tre link vanno montati SUBITO e
+  // non quando la sezione si avvicina. Chi naviga col tab dall'inizio della
+  // pagina passa dal capitolo prima che un IntersectionObserver abbia avuto
+  // motivo di scattare: aspettarlo vorrebbe dire far comparire i link DIETRO
+  // il punto in cui il fuoco è già arrivato.
+  if (scenaImpossibile()) montaAnatomia(null);
 
   // Monta con un margine di una schermata: il modello è già in piedi quando
   // la sezione entra, invece di comparire sotto gli occhi di chi guarda.
