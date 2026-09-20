@@ -382,7 +382,14 @@ WC.register('robot', function(ctx){
       pointer.y = ((e.clientY - r.top) / r.height) * 2 - 1;
       pointer.active = true;
     }
-    function onPointerLeave() { pointer.active = false; }
+    // Task D1d — uscendo dallo stage la grazia di 320 ms NON sopravvive.
+    // Quella finestra serve ad attraversare il corridoio DENTRO il riquadro
+    // per arrivare all'etichetta; se il puntatore se n'è andato del tutto non
+    // c'è nessun corridoio da attraversare e il robot deve tornare quello di
+    // prima subito. `svuotaGrazia` lo assegna tick() (closure), e resta null
+    // finché il loop non parte.
+    var svuotaGrazia = null;
+    function onPointerLeave() { pointer.active = false; if (svuotaGrazia) svuotaGrazia(); }
     stage.addEventListener('mousemove', onPointerMove);
     stage.addEventListener('mouseleave', onPointerLeave);
 
@@ -1459,7 +1466,26 @@ WC.register('robot', function(ctx){
       // copre `RIPRESA` in anatomia.js, che riaccende la zona quando il
       // puntatore arriva davvero sull'etichetta.
       var GRAZIA = 320;
+      // Task D1d — APRIRE e CHIUDERE non hanno la stessa fretta.
+      //  - APERTURA 0,18 a fotogramma: è la salita di sempre (~12 fotogrammi,
+      //    200 ms), abbastanza morbida da non sembrare un interruttore.
+      //  - CHIUSURA 0,35: ~8 fotogrammi, 130 ms. Serve perché il difetto che
+      //    Nike ha fotografato è proprio una chiusura lenta — col vecchio 0,18
+      //    (e 0,05 sulle braccia) il pezzo che si stava spegnendo restava
+      //    visibile mentre quello nuovo si accendeva, e per mezzo secondo si
+      //    vedevano DUE cose aperte. Non è uno scatto: 130 ms si vedono.
+      //  - SOGLIA_SPENTO: sotto questa, zero ESATTO. Lo smorzamento
+      //    esponenziale non ci arriva mai da solo, e «quasi zero» vuol dire
+      //    un cervello ancora disegnato (points.visible legge la stessa soglia)
+      //    e un vetro ancora un filo trasparente.
+      var APERTURA = 0.18, CHIUSURA = 0.35, SOGLIA_SPENTO = 0.004;
+      function verso(v, acceso) {
+        v += ((acceso ? 1 : 0) - v) * (acceso ? APERTURA : CHIUSURA);
+        if (!acceso && v < SOGLIA_SPENTO) v = 0;
+        return v;
+      }
       var zonaAttiva = null, zonaUltima = null, zonaScadenza = 0;
+      svuotaGrazia = function () { zonaUltima = null; zonaScadenza = 0; };
       var vAnc = new THREE.Vector3();
       // Stato dell'ombra: la rotazione della testa e la soglia di proiezione
       // del visore al momento in cui la shadow map è stata disegnata l'ultima
@@ -1668,24 +1694,34 @@ WC.register('robot', function(ctx){
         else if (vicina) { zonaUltima = null; zonaScadenza = 0; zonaAttiva = null; }
         else zonaAttiva = (zonaUltima && now < zonaScadenza) ? zonaUltima : null;
 
+        // Task D1d — LA ZONA APERTA, che non è la zona con l'ETICHETTA accesa.
+        // Nike, guardando la pagina: «quando esco dall'immagine di un prodotto
+        // deve ripristinarsi la vista robot, non mostrare due cose insieme, il
+        // puntatore scopre solo quando passa effettivamente sopra e nasconde
+        // quando esce».
+        //
+        // Sono due domande diverse e prima avevano una risposta sola:
+        //  - CHE ETICHETTA SI VEDE: `zonaAttiva`, con la grazia di 320 ms che
+        //    serve al puntatore per attraversare il corridoio vuoto e arrivare
+        //    sul testo. Quella resta com'era.
+        //  - CHE COSA SI APRE SUL ROBOT: `zonaViva`, senza nessuna grazia. È
+        //    la zona colpita ADESSO, o quella la cui etichetta ha il puntatore
+        //    o il fuoco. Esci dalla zona e il vetro si richiude, anche se
+        //    l'etichetta resta su ancora un momento per farsi raggiungere.
+        // Ed è UNA SOLA per costruzione: prima i cinque segnali si alzavano
+        // ognuno per conto suo leggendo le distanze, e nel passaggio da una
+        // zona all'altra restavano accesi in due — il cervello e la sfera
+        // insieme, che è proprio lo screenshot di Nike.
+        var zonaViva = puntata || vicina;
+
         if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
-          // Task D1 — TRE zone in gara qui (visore, collo, torso) invece di
-          // due, e la regola resta quella del Task A2: vince la più VICINA
-          // alla camera, con la parità che va alla testa e al collo (il petto
-          // è dietro). Il VISORE adesso si apre SOLO per il cervello: quando
-          // si accende il collo il vetro resta com'è — «il visore non si apre
-          // più per la sfera» — e ad aprirsi è il collo.
-          var testaVince = dTesta < Infinity && dTesta <= dPancia;
-          var colloVince = dCollo < Infinity && dCollo <= dPancia;
-          hoverHead += ((testaVince ? 1 : 0) - hoverHead) * 0.18;
-          hoverCollo += ((colloVince ? 1 : 0) - hoverCollo) * 0.18;
-          hoverBelly += (((dPancia < dHead) ? 1 : 0) - hoverBelly) * 0.18;
-          // Etichetta puntata: il suo hover si TIENE a 1 finché il puntatore
-          // (o il fuoco) ci resta — se no il reveal si spegnerebbe sotto
-          // un'etichetta accesa, che è il contrario di quello che serve.
-          if (puntata === 'testa') hoverHead = 1;
-          if (puntata === 'collo') hoverCollo = 1;
-          if (puntata === 'pancia') hoverBelly = 1;
+          // Task D1d — i tre segnali del corpo escono tutti da `zonaViva`:
+          // una zona sola può valere 1, le altre hanno per forza bersaglio 0.
+          // La gara fra le distanze (quale zona il raggio colpisce per prima)
+          // l'ha già fatta `vicina`, più sopra.
+          hoverHead = verso(hoverHead, zonaViva === 'testa');
+          hoverCollo = verso(hoverCollo, zonaViva === 'collo');
+          hoverBelly = verso(hoverBelly, zonaViva === 'pancia');
           robot.spline.setReveal(hoverHead);
           robot.spline.setBellyReveal(hoverBelly);
           robot.spline.setApertura('collo', hoverCollo);
@@ -1767,13 +1803,15 @@ WC.register('robot', function(ctx){
           // rimappaggio serve perché surgeL/surgeR appartengono ai gruppi,
           // non ai lati dello schermo.
           var sxEArmL = braccioSx === robot.parts.armL;
-          var armSxHit = dBrSx < Infinity, armDxHit = dBrDx < Infinity;
-          var armLHit = sxEArmL ? armSxHit : armDxHit, armRHit = sxEArmL ? armDxHit : armSxHit;
-          surgeL += ((armLHit ? 1 : 0) - surgeL) * (armLHit ? 0.15 : 0.05);
-          surgeR += ((armRHit ? 1 : 0) - surgeR) * (armRHit ? 0.15 : 0.05);
-          // Puntatore/fuoco sull'etichetta «website creation»: la corrente del
-          // suo braccio si tiene accesa piena.
-          if (puntata === 'braccioSx') { if (sxEArmL) surgeL = 1; else surgeR = 1; }
+          // Task D1d: anche le braccia leggono `zonaViva` e non le distanze.
+          // Prima salivano a 0,15 e scendevano a 0,05 per fotogramma — un
+          // decadimento lento e voluto («si spegne morbida»), che però teneva
+          // acceso un braccio mentre si apriva un'altra zona: due cose insieme.
+          // Adesso chiudono alla stessa velocità di tutti (vedi `verso`), che
+          // resta una discesa vista — 8 fotogrammi — non uno scatto.
+          var vivaSx = zonaViva === 'braccioSx', vivaDx = zonaViva === 'braccioDx';
+          surgeL = verso(surgeL, sxEArmL ? vivaSx : vivaDx);
+          surgeR = verso(surgeR, sxEArmL ? vivaDx : vivaSx);
           robot.fibers.update(dt, surgeL, surgeR);
           // Task B2: lo STESSO segnale apre il braccio. Una manopola sola per
           // apertura, intensità e velocità della corrente — il braccio si apre
@@ -1844,6 +1882,13 @@ WC.register('robot', function(ctx){
           // posizione di adesso, non di quella di mezzo secondo fa.
           anat.update(zonaAttiva, anc, vicina);
           if (robot) robot.anatomia = { activeId: zonaAttiva, hitId: vicina, anchors: anc };
+        }
+        // Esposto per la verifica headless (`zone-esclusive`): i cinque
+        // segnali di apertura, quelli veri, non quello che si intuisce dai
+        // pixel. Il controllo chiede che UNO solo sia acceso e gli altri
+        // ZERO ESATTO.
+        if (robot) {
+          robot.hover = { testa: hoverHead, collo: hoverCollo, pancia: hoverBelly, armL: surgeL, armR: surgeR };
         }
         renderer.render(scene, cam);
       })();
