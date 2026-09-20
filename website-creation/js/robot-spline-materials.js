@@ -142,19 +142,45 @@ WC.robotSplineMaterials = (function () {
     video.addEventListener('playing', onPlaying);
 
     var head = shader('MAT_HEAD', hu);
-    // Reveal della testa (cursore sul visore): il visore diventa quasi
-    // trasparente, gli occhi si spengono e le mesh DENTRO il visore sfumano,
-    // così il cervello (robot.js) si vede intero. Ordine di disegno, tutti
-    // nella coda trasparente: cervello (renderOrder 0) → interni (1) →
-    // visore (2). A riposo visore e interni hanno alpha 1 e scrivono depth
-    // come un opaco: stesso aspetto di prima del reveal.
-    var inside = [];                // materiali degli interni (makeInside)
-    var castMeshes = [];            // visore + interni: { mesh, cast } — l'ombra segue il reveal
+    // DUE reveal, uno per zona. Testa (cursore sul visore): il visore diventa
+    // quasi trasparente, gli occhi si spengono e le mesh DENTRO il visore
+    // sfumano, così il cervello (robot.js) si vede intero. Pancia (cursore sul
+    // torso): il torso diventa quasi trasparente e si vede la sfera, mentre la
+    // «A» resta piena. A riposo ogni pezzo ha alpha 1 e scrive depth come un
+    // opaco: stesso aspetto di prima del reveal, pixel per pixel.
+    // Ordine di disegno, tutto nella coda trasparente: sfera della pancia e
+    // cervello (renderOrder 0) → interni (1) → visore (2) → torso (3), scritto
+    // in robot.js dove le mesh sono note.
+    //
+    // Due reveal indipendenti, due gruppi di interni. Prima ce n'era UNO solo,
+    // del modulo: aprire la testa avrebbe sfumato anche gli interni della
+    // pancia e viceversa. Ogni gruppo tiene i materiali che sfumano col SUO
+    // reveal e le mesh la cui ombra segue lo stesso reveal.
+    var groups = {
+      head:  { materials: [], castMeshes: [] },
+      belly: { materials: [], castMeshes: [] }
+    };
     var REVEAL_MIN_ALPHA = 0.045;   // stesso valore del vetro di agosto (uMinAlpha)
+    // Il minimo del torso è staccato da quello del visore perché i due pezzi
+    // non si assomigliano: il visore è uno specchietto, il torso è la massa più
+    // grande del robot. Lo spec lo indica come la manopola da girare se
+    // l'interno «legge come un buco» — guardato a schermo (09-pancia-reveal.png,
+    // fondo quasi nero della sezione) a 0.06 il torso si apre e la sagoma resta
+    // leggibile, quindi resta questo.
+    var BELLY_MIN_ALPHA = 0.06;
     head.transparent = true;
     var byName = { Parts: shader('MAT_PARTS', pu), Body: shader('MAT_BODY', bu), Head: head };
     var all = [byName.Parts, byName.Body, head];
     var lightWorld = v3(D.light.worldPosition);
+    // Sfumatura degli interni di un gruppo, uguale per testa e pancia.
+    // Ombre: un pezzo quasi trasparente non può proiettare l'ombra piena di un
+    // opaco, e la shadow map non conosce l'alpha — le mesh del gruppo smettono
+    // di proiettarla a metà reveal (r > 0.5) e la riprendono tornando sotto,
+    // dove il pezzo che le copre è ancora per metà opaco.
+    function fadeInside(g, r) {
+      g.materials.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = r === 0; });
+      g.castMeshes.forEach(function (e) { e.mesh.castShadow = e.cast && r <= 0.5; });
+    }
     var api = {
       byName: byName, textures: list, all: all,
       video: video,
@@ -169,6 +195,11 @@ WC.robotSplineMaterials = (function () {
         m.uniforms.uMatcap.value = byName.Body.uniforms.uMatcap.value;
         m.uniforms.uTri.value = byName.Body.uniforms.uTri.value;
         m.defines = { MAT_BODY: '', LOGO: '' };
+        // Il clone eredita `transparent: false` da Body: senza questo, uOpacity
+        // scenderebbe e non succederebbe niente — la pancia non si aprirebbe.
+        // A riposo non cambia un pixel: alpha 1 e depthWrite attiva danno lo
+        // stesso risultato di un opaco, solo disegnato nella coda trasparente.
+        m.transparent = true;
         mesh.geometry.computeBoundingBox();
         var bb = mesh.geometry.boundingBox, sz = bb.getSize(new THREE.Vector3());
         // L'SVG si rasterizza su un canvas: dell'immagine serve solo l'alpha
@@ -246,14 +277,37 @@ WC.robotSplineMaterials = (function () {
         hu.uEyes.value = 1 - r;
         hu.uOpacity.value = 1 + (REVEAL_MIN_ALPHA - 1) * r;
         head.depthWrite = r === 0;
-        inside.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = r === 0; });
-        castMeshes.forEach(function (e) { e.mesh.castShadow = e.cast && r <= 0.5; });
+        fadeInside(groups.head, r);
       },
-      // Interni della testa (mesh Parts dentro il visore, scelte da robot.js):
-      // ognuna riceve un clone trasparente di Parts, così sfuma col reveal
-      // senza toccare le altre 68 mesh Parts. `visor` = la mesh del visore:
-      // anche la sua ombra segue il reveal (vedi setReveal).
-      makeInside: function (meshes, visor) {
+      // r = reveal della pancia (0..1, smorzato in robot.js), gemello di
+      // setReveal: il torso diventa quasi trasparente e si vede la sfera di
+      // SABE dietro la «A» — che resta PIENA, perché il suo strato si riprende
+      // l'alpha nel fragment (outA = max(uOpacity, lm), robot-spline-glsl.js).
+      // Stessi agganci agli estremi del reveal della testa: sotto 0.01 è riposo
+      // vero (alpha 1, depth scritta: identico a prima, e la sfera sotto quella
+      // soglia non si disegna), sopra 0.995 è reveal pieno.
+      // Il petto è l'ISTANZA col logo creata da makeChest: senza quella non
+      // c'è niente da aprire (e il reveal non ha senso), quindi qui si esce.
+      setBellyReveal: function (r) {
+        if (!api.logo) return;
+        r = r > 0.995 ? 1 : (r < 0.01 ? 0 : r);
+        var m = api.logo.material;
+        m.uniforms.uOpacity.value = 1 + (BELLY_MIN_ALPHA - 1) * r;
+        // r === 0 ⟺ uOpacity tornata a 1: sotto, il torso non scrive più depth
+        // (scriverla da trasparente cancellerebbe la sfera che sta dietro).
+        m.depthWrite = r === 0;
+        fadeInside(groups.belly, r);
+      },
+      // Interni di una zona (le mesh Parts dentro il volume del visore o del
+      // torso, scelte da robot.js): ognuna riceve un clone trasparente di
+      // Parts, così sfuma col reveal della SUA zona senza toccare le altre
+      // mesh Parts. `capo` = la mesh che copre la zona (visore o torso): anche
+      // la sua ombra segue quel reveal. `gruppo` = 'head' | 'belly'.
+      // Restituisce il gruppo (materiali + mesh che proiettano), così chi lo
+      // chiama può esporlo senza che i due reveal si pestino i piedi.
+      makeInside: function (meshes, capo, gruppo) {
+        var g = groups[gruppo];
+        if (!g) throw new Error('[robot] makeInside: gruppo sconosciuto "' + gruppo + '"');
         meshes.forEach(function (mesh) {
           var m = byName.Parts.clone();   // uniform clonate per valore...
           // ...ma le texture restano quelle condivise (un clone sarebbe un
@@ -261,11 +315,12 @@ WC.robotSplineMaterials = (function () {
           m.uniforms.uMatcap.value = byName.Parts.uniforms.uMatcap.value;
           m.uniforms.uTri.value = byName.Parts.uniforms.uTri.value;
           m.transparent = true;
-          inside.push(m); all.push(m);
+          g.materials.push(m); all.push(m);
           mesh.material = m; mesh.renderOrder = 1;
-          castMeshes.push({ mesh: mesh, cast: mesh.castShadow });
+          g.castMeshes.push({ mesh: mesh, cast: mesh.castShadow });
         });
-        if (visor) castMeshes.push({ mesh: visor, cast: visor.castShadow });
+        if (capo) g.castMeshes.push({ mesh: capo, cast: capo.castShadow });
+        return g;
       },
       setCamera: function (cam) {
         cam.updateMatrixWorld(true);
