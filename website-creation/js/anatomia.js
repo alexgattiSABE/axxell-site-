@@ -38,8 +38,13 @@ WC.anatomia = (function () {
   // 308). L'href vero si scrive a runtime come location.pathname + '#cap01', e
   // il clic fa preventDefault + scroll morbido: lo scroll nativo andrebbe
   // contro Lenis, che quella pagina la muove lui.
+  // Task C2 — la testa porta DUE zone: sopra la linea della bocca il cervello
+  // (Atlas), sotto la sfera di SABE. Sono due voci distinte perché sono due
+  // prodotti distinti, anche se il raycast colpisce la stessa mesh (il
+  // visore): a dividerle è la Y del punto colpito, in robot.js.
   var ZONE = [
     { id: 'testa',     lato: 'destra',   testo: 'cervello',         sotto: 'Atlas',   href: '../atlas.html',  attiva: true },
+    { id: 'bocca',     lato: 'destra',   testo: 'sabe',             sotto: 'SABE',    href: '../sabe.html',   attiva: true },
     { id: 'pancia',    lato: 'destra',   testo: 'anima',            sotto: 'sabe',    href: '../sabe.html',   attiva: true },
     { id: 'braccioSx', lato: 'sinistra', testo: 'website creation', sotto: 'atelier', href: 'CORRENTE#cap01', attiva: true },
     { id: 'braccioDx', lato: 'destra',   testo: '',                 sotto: '',        href: '',               attiva: false }
@@ -102,8 +107,13 @@ WC.anatomia = (function () {
   // non scatta a nessuna delle due misure (cima della testa a 111 px e a
   // 89 px), quindi non c'è nemmeno più lo scarto che il commento qui sopra
   // segnalava come unico limite.
+  // Task C2 — quattro agganci: la testa ne ha DUE, il cervello nella calotta
+  // e la sfera all'altezza della bocca. Rimisurati anche i primi due, perché
+  // l'aggancio della testa è salito (prima era a metà del bbox, cioè SOTTO la
+  // linea della bocca: «cervello» avrebbe indicato la bocca).
   var FISSI = {
-    testa:     [ 0.11225, -0.19559 ],
+    testa:     [ 0.11252, -0.32044 ],
+    bocca:     [ 0.11254, -0.21664 ],
     pancia:    [ 0.18241, -0.09601 ],
     braccioSx: [-0.39432,  0.16901 ]
   };

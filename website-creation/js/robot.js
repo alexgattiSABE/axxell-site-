@@ -114,36 +114,60 @@ WC.register('robot', function(ctx){
   // braccio si avvicina troppo al bordo sinistro e «website creation» non ha
   // più la corsa minima (0,12 W) da quel lato — misurato, vedi il report C1.
   var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154 };
-  // Task A2 — l'anima nella pancia: la sfera di SABE (js/pointorb.js) dietro la
-  // «A» del petto. Tutti i numeri della sfera stanno qui, si ritoccano a
-  // schermo. Le frazioni sono del BOUNDING BOX DEL TORSO (la mesh `Body`
-  // indice 40, già nota come parts.chest), così reggono a qualunque scala.
-  //  - back: quanto la sfera arretra dal centro della «A» (che sta sulla
-  //    FACCIA del petto), in frazioni della profondità del torso. Serve perché
-  //    la sfera stia DENTRO il corpo e si veda attraverso il logo.
-  //  - radius: frazione della larghezza del torso. È la manopola dell'aspetto,
-  //    quella che Nike gira, e la regola che la tiene è UNA: la nuvola di punti
-  //    deve restare DENTRO la sagoma del torso, come il cervello resta dentro
-  //    quella della testa — altrimenti la sfera legge come una palla appiccicata
-  //    ADDOSSO al robot invece che viva dentro la pancia. Non basta guardare il
-  //    raggio geometrico: a sbordare è la corona di punti, che il rumore gonfia
-  //    (uDeform) e la sprite allarga. Misurato a 1440×900 confrontando riga per
-  //    riga la maschera della sfera con quella del torso (le due renderizzate da
-  //    sole): a 0.42 sforava di 17 px di lato e per 19 righe sopra il torso;
-  //    a 0.32 sta dentro con 35 px di margine. Chi lo rialza rifaccia la misura.
-  //    Il foro sull'asse della camera (c'è anche in SABE, è il suo aspetto ad
-  //    anello) scala col raggio: a 0.32 è largo ~61 px contro i ~95 della «A»,
-  //    quindi gli sta dietro e non si legge come buco.
-  //  - count: gli stessi punti del tier desktop di SABE (axxell-3d.js, ≤1440),
-  //    così la densità di punti SULLA SFERA — cioè la grana — è la sua.
-  //  - pointSizeK / fovRef: la formula di pointorb.js,
-  //    pointSize = 0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom).
-  //    Si ricalcola a ogni fit(): uSize e uPR sono fissati alla costruzione.
-  //  - spin/tilt: la posa della pagina di SABE (giro lento e oscillazione).
-  //  - insideShrink: quanto si stringe il bbox del torso per decidere cosa gli
-  //    sta DENTRO (vedi più sotto).
-  var BELLY_CONFIG = { back: 0.18, radius: 0.32, count: 26000, pointSizeK: 0.03, fovRef: 22.5,
-    spin: 0.21, tilt: 0.46, insideShrink: 0.85 };
+  // Task C2 — il cervello a punti dentro la calotta. Nike: «cervello più
+  // piccolo». Frazioni del RAGGIO e dell'ALTEZZA della testa (bbox delle 18
+  // mesh della testa in coordinate di headGroup, collo compreso).
+  //  - raggio: 0,46 (era 0,66, che riempiva quasi tutto il volume interno).
+  //    A 0,46 il cervello sta nella CALOTTA — sopra la linea della bocca, che
+  //    da questo task è la quota dell'altra zona — invece di attraversare
+  //    tutta la testa. Misurato a 1440×900 con la maschera alpha (cervello da
+  //    solo contro testa da sola, come già per la sfera e per la fibra): vedi
+  //    il report C2.
+  //  - alzata: di quanto il centro del cervello sta SOPRA il centro del bbox
+  //    della testa, in frazioni dell'altezza della testa. Il bbox è tirato in
+  //    basso dal collo, e adesso serve anche tenere il cervello sopra la
+  //    linea della bocca: 0,26 lo centra nella calotta.
+  //  - raggioTarato: il raggio a cui è stata tarata la DIMENSIONE DEI PUNTI
+  //    (RITOCCO 2). Il punto scala col cervello — uSize · raggio/raggioTarato
+  //    — perché a scalare deve essere l'oggetto, non la sua grana: coi punti
+  //    della stessa misura dentro una forma più piccola i 24000 punti si
+  //    sovrappongono e il cervello diventa una macchia piena, senza più
+  //    emisferi né solchi (provato: vedi il report C2). È la stessa regola
+  //    che tuneOrb applica alla sfera, dove uSize è proporzionale al raggio.
+  var CERVELLO_CONFIG = { raggio: 0.46, alzata: 0.26, raggioTarato: 0.66 };
+  // Task C2 — la sfera di SABE passa dalla PANCIA alla TESTA, all'altezza
+  // della bocca (Nike: «a livello della bocca metti la sfera di sabe»).
+  // Parentata a headGroup: si muove con la testa, come il cervello.
+  // Le frazioni sono del bbox del VISORE (l'unica mesh col materiale Head),
+  // tranne `raggio` che è del raggio della testa — la stessa unità del
+  // cervello, così i due si confrontano a colpo d'occhio.
+  //  - altezza: il centro, in frazioni dell'altezza del visore contate dal
+  //    BASSO. 0,30 è la «linea della bocca», ed è LO STESSO numero che divide
+  //    le due zone della testa (vedi sotto): la sfera sta esattamente dove si
+  //    accende.
+  //  - raggio: 0,34 del raggio della testa. Vale la stessa regola della
+  //    sfera nella pancia: la nuvola deve restare DENTRO la sagoma, e a
+  //    sbordare non è il raggio geometrico ma la corona di punti che il
+  //    rumore gonfia e la sprite allarga. Misurato con la maschera alpha.
+  //  - arretra: quanto il centro arretra dalla faccia del visore, in frazioni
+  //    della profondità del visore. Serve perché la sfera non sporga dal
+  //    vetro: la camera guarda lungo −Z, quindi il «davanti» del visore è il
+  //    suo z massimo.
+  //  - isteresi: di quanto si sposta la linea della bocca quando si passa da
+  //    una zona all'altra, in frazioni dell'altezza del visore. 0,04 · 82 =
+  //    3,3 unità mondo ≈ 8 px a 1440×900 e 7 a 1280×720: il puntatore che
+  //    striscia sul confine non fa lampeggiare le due etichette.
+  //  - count / pointSizeK / fovRef / spin / tilt: invariati dalla pancia —
+  //    sono la grana e la posa della pagina di SABE. pointSize =
+  //    0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom),
+  //    rifatto a ogni fit() (tuneOrb).
+  var SFERA_CONFIG = { altezza: 0.30, raggio: 0.31, arretra: 0.45, isteresi: 0.04,
+    count: 26000, pointSizeK: 0.03, fovRef: 22.5, spin: 0.21, tilt: 0.46 };
+  // Task A2 — la pancia. Della sfera non resta niente (Task C2: è salita nella
+  // testa); resta la regola che decide quali mesh sfumano DENTRO il torso
+  // quando la pancia si apre: quanto si stringe il bbox del torso per dire
+  // «questa sta dentro» (vedi più sotto).
+  var BELLY_CONFIG = { insideShrink: 0.85 };
   var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
   var card    = document.getElementById('wcRobotCard');
@@ -388,9 +412,9 @@ WC.register('robot', function(ctx){
     // su cui si posa il puntatore. Restano nulli finché la testa non è stata
     // riparentata al collo — prima non c'è niente da mirare.
     var aimEyeLocal = null, aimPlane = null;
-    // Raggio della sfera della pancia in unità MONDO: serve alla dimensione dei
-    // punti (tuneOrb), che si ricalcola a ogni fit(). 0 = sfera non ancora
-    // costruita.
+    // Raggio della sfera (Task C2: nella TESTA, all'altezza della bocca) in
+    // unità MONDO: serve alla dimensione dei punti (tuneOrb), che si ricalcola
+    // a ogni fit(). 0 = sfera non ancora costruita.
     var orbWorldRadius = 0;
     // Task C1 — i tre punti MONDO che definiscono il ritaglio (li riempie il
     // callback di gltf.load, quando il bbox del modello è noto) e
@@ -408,8 +432,8 @@ WC.register('robot', function(ctx){
       var orb = window.__robot && window.__robot.orb;
       var h = stage.clientHeight;
       if (!orb || !orbWorldRadius || !h) return;
-      var fovScale = Math.tan(THREE.MathUtils.degToRad(BELLY_CONFIG.fovRef)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
-      orb.uniforms.uSize.value = BELLY_CONFIG.pointSizeK * h * orbWorldRadius * fovScale * ingrandimento;
+      var fovScale = Math.tan(THREE.MathUtils.degToRad(SFERA_CONFIG.fovRef)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
+      orb.uniforms.uSize.value = SFERA_CONFIG.pointSizeK * h * orbWorldRadius * fovScale * ingrandimento;
       orb.uniforms.uPR.value = renderer.getPixelRatio();
     }
 
@@ -750,6 +774,22 @@ WC.register('robot', function(ctx){
           var headSizeLocal = localHeadBox.getSize(new THREE.Vector3());
           var headRadius = Math.max(headSizeLocal.x, headSizeLocal.y, headSizeLocal.z) * 0.5;
 
+          // Task C2 — il bbox del VISORE in coordinate di headGroup, e la
+          // LINEA DELLA BOCCA che ne esce. Da qui in poi la testa ospita DUE
+          // zone: sopra questa quota il cervello, sotto la sfera di SABE. Il
+          // numero è uno solo (SFERA_CONFIG.altezza) e lo usano tre cose — il
+          // centro della sfera, il confine fra le due zone (tick()) e
+          // l'aggancio dell'etichetta «sabe» — così non possono divergere.
+          var visorBoxLocal = window.__robot.parts.visor
+            ? new THREE.Box3().setFromObject(window.__robot.parts.visor).applyMatrix4(invHead) : null;
+          var boccaY = null, boccaIsteresi = 0;
+          if (visorBoxLocal) {
+            var vSize = visorBoxLocal.getSize(new THREE.Vector3());
+            boccaY = visorBoxLocal.min.y + vSize.y * SFERA_CONFIG.altezza;
+            boccaIsteresi = vSize.y * SFERA_CONFIG.isteresi;
+            window.__robot.bocca = { y: boccaY, isteresi: boccaIsteresi };
+          }
+
           // Task B1 — il piano di mira. È parallelo allo schermo (normale =
           // asse Z della camera) e sta FRA la camera e la testa, a
           // CONFIG.aimDepth della distanza camera→testa. NON alla profondità
@@ -775,22 +815,15 @@ WC.register('robot', function(ctx){
           // si muove in sincrono con la testa; si accende col reveal a tutta
           // testa quando il cursore ci passa sopra (RITOCCO 2 — vedi tick()).
           if (WC.pointBrain) {
-            // RITOCCO 2 (correzione utente): ora il reveal è a TUTTA testa —
-            // si vede il cervello INTERO, non più una macchia sotto la lente —
-            // quindi il cervello va INGRANDITO e CENTRATO per riempire
-            // l'interno della testa e leggere chiaramente come cervello
-            // (emisferi + cervelletto), non piccolo nella calotta.
-            //   - raggio: 0.66 del raggio-testa (era 0.42) → occupa gran parte
-            //     del volume interno. headRadius è ricavato dal bbox testa che
-            //     include il collo, quindi 0.66 riempie la calotta cranica
-            //     senza sfondare la silhouette del visore (tarato a schermo,
-            //     ref2-head-reveal).
-            //   - offset verticale ridotto (0.22 invece di 0.35 dell'altezza):
-            //     il bbox testa è tirato in basso dal collo, un piccolo
-            //     rialzo centra il cervello nel cranio; troppo alto (0.35) lo
-            //     spingeva contro la calotta ora che è grande.
-            var brainRadius = headRadius * 0.66;
-            var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * 0.22, 0));
+            // Task C2 (Nike: «cervello più piccolo»): il cervello torna nella
+            // CALOTTA. Prima riempiva quasi tutto il volume interno (0.66 del
+            // raggio-testa, RITOCCO 2, quando la testa aveva una zona sola);
+            // adesso la testa ne ha DUE — cervello sopra la linea della bocca,
+            // sfera di SABE sotto — e un cervello che scende fino al mento
+            // finirebbe addosso alla sfera. I due numeri stanno in
+            // CERVELLO_CONFIG, in cima al file.
+            var brainRadius = headRadius * CERVELLO_CONFIG.raggio;
+            var brainPos = headCenterLocal.clone().add(new THREE.Vector3(0, headSizeLocal.y * CERVELLO_CONFIG.alzata, 0));
             // Taratura della dimensione dei punti. Nello shader del brain
             // gl_PointSize ≈ uSize * 200 / (-mv.z), con -mv.z ≈ distanza
             // camera→testa in unità MONDO. Il modello non è in unità
@@ -810,8 +843,12 @@ WC.register('robot', function(ctx){
             // `ingrandimento` è una costante della scena (non dipende dalla
             // misura del riquadro, vedi fit()) e qui è già stato calcolato:
             // fit() gira qualche riga più su, appena headTopWorld è noto.
+            // Task C2: e il fattore raggio/raggioTarato, perché il cervello si
+            // è rimpicciolito e la GRANA deve restare quella (vedi
+            // CERVELLO_CONFIG in cima al file).
             var fovScale = Math.tan(THREE.MathUtils.degToRad(16)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
-            var brainUSize = 4 * camDist / 200 * fovScale * ingrandimento;
+            var brainUSize = 4 * camDist / 200 * fovScale * ingrandimento
+              * (CERVELLO_CONFIG.raggio / CERVELLO_CONFIG.raggioTarato);
 
             // Il brain (THREE.Points, additivo, transparent+depthWrite:false)
             // sta dentro la testa: a riposo non si disegna affatto (tick()),
@@ -875,6 +912,36 @@ WC.register('robot', function(ctx){
               placeBrain(WC.pointBrain.create({ count: 4000, radius: brainRadius, uniforms: WC.pointBrain.atlasBrainUniforms() }));
             });
           }
+
+          // Task C2 — la sfera di SABE all'altezza della BOCCA, dentro il
+          // volume del visore. Era nella pancia (Task A2, dietro la «A»);
+          // Nike l'ha spostata qui. Parentata a headGroup come il cervello:
+          // si muove con la testa, e a testa girata resta dentro il vetro —
+          // cosa che con `model` come genitore non potrebbe fare.
+          // Tutto in coordinate LOCALI di headGroup: `model` può portare una
+          // scala propria dal GLB, e points.scale va nelle unità del genitore.
+          if (WC.pointOrb && visorBoxLocal) {
+            var vSz = visorBoxLocal.getSize(new THREE.Vector3());
+            var vCt = visorBoxLocal.getCenter(new THREE.Vector3());
+            var orbRadius = headRadius * SFERA_CONFIG.raggio;
+            // x: il centro del visore. y: la linea della bocca (lo STESSO
+            // numero che divide le due zone). z: arretrata dalla FACCIA del
+            // visore — la camera guarda lungo −Z, quindi il davanti del
+            // visore è il suo z massimo — quanto basta a non sporgere dal
+            // vetro.
+            var orbPos = new THREE.Vector3(vCt.x, boccaY,
+              visorBoxLocal.max.z - vSz.z * SFERA_CONFIG.arretra);
+
+            var orb = WC.pointOrb.create({ count: SFERA_CONFIG.count, radius: orbRadius });
+            orb.points.castShadow = false;      // è luce, non materia
+            orb.points.receiveShadow = false;
+            orb.points.position.copy(orbPos);
+            orb.points.renderOrder = 0;         // prima di interni (1), visore (2), petto (3)
+            orb.points.visible = false;         // a riposo non si disegna affatto
+            headGroup.add(orb.points);
+            window.__robot.orb = orb;
+            orbWorldRadius = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
+          }
         }
 
         // Task A2 — l'anima nella pancia. Stesso meccanismo del cervello dentro
@@ -918,33 +985,11 @@ WC.register('robot', function(ctx){
           window.__robot.parts.bellyInside = bellyInside;
           if (window.__debugParts) console.log('[robot] interni pancia:', bellyInside.map(function (m) { return m.name; }));
 
-          if (WC.pointOrb && spline.logo) {
-            // Tutto in coordinate LOCALI di `model` (come il cervello dentro
-            // headGroup): `model` può portare una scala propria dal GLB, e
-            // points.scale va nelle unità del suo genitore.
-            var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
-            var chestLocal = chestBox.clone().applyMatrix4(invModel);
-            var chestSizeLocal = chestLocal.getSize(new THREE.Vector3());
-            var orbRadius = chestSizeLocal.x * BELLY_CONFIG.radius;
-            // Il punto d'aggancio è il centro della «A», non il centro del
-            // bbox del torso: a 1440×900 quel centro sta ~68 px più in basso, e
-            // la richiesta era «esattamente dietro la A». La «A» sta sulla
-            // faccia del petto, quindi la sfera arretra dentro il corpo lungo
-            // la Z locale del modello, che nelle coordinate della scena Spline
-            // è l'asse della profondità (la camera guarda lungo +Z).
-            var orbPos = spline.logo.anchor.clone().applyMatrix4(invModel);
-            orbPos.z -= chestSizeLocal.z * BELLY_CONFIG.back;
-
-            var orb = WC.pointOrb.create({ count: BELLY_CONFIG.count, radius: orbRadius });
-            orb.points.castShadow = false;      // è luce, non materia
-            orb.points.receiveShadow = false;
-            orb.points.position.copy(orbPos);
-            orb.points.renderOrder = 0;         // prima di interni (1), visore (2), petto (3)
-            orb.points.visible = false;         // a riposo non si disegna affatto
-            model.add(orb.points);
-            window.__robot.orb = orb;
-            orbWorldRadius = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
-          }
+          // Task C2: qui c'era la sfera di SABE, dietro la «A» del petto. È
+          // salita nella TESTA, all'altezza della bocca (vedi più sopra, nel
+          // blocco di headGroup). Con lei decade la regola «il logo sparisce
+          // quando compare la sfera»: la «A» resta piena, a riposo e a pancia
+          // aperta, perché non ha più niente da lasciar vedere dietro di sé.
           // I cloni trasparenti degli interni della pancia nascono DOPO il
           // setCamera di qui sopra: senza questo secondo giro resterebbero con
           // uLightPos a zero, cioè illuminati da un punto che non c'è.
@@ -981,7 +1026,7 @@ WC.register('robot', function(ctx){
         // Agganci: la testa in coordinate LOCALI di headGroup (gira col collo,
         // e l'etichetta le resta attaccata), pancia e braccio in mondo — non
         // si muovono mai.
-        var ancoraTestaLoc = null, ancoraPancia = null, ancoraBraccio = null;
+        var ancoraTestaLoc = null, ancoraBoccaLoc = null, ancoraPancia = null, ancoraBraccio = null;
         var braccioSx = null, braccioDx = null;
         if (parts.armL.length && parts.armR.length) {
           var boxL = unione(parts.armL), boxR = unione(parts.armR);
@@ -1007,7 +1052,22 @@ WC.register('robot', function(ctx){
         if (window.__robot.headGroup && parts.head.length) {
           var hg = window.__robot.headGroup;
           hg.updateMatrixWorld(true);
-          ancoraTestaLoc = hg.worldToLocal(bordoEsterno(unione(parts.head), 1));
+          // Task C2 — la testa ha DUE agganci, e nessuno dei due è più a metà
+          // del bbox. Quel punto (la vecchia regola) cadeva a y 239, cioè
+          // SOTTO la linea della bocca (246): l'etichetta «cervello» avrebbe
+          // indicato la bocca, e quella di «sabe» le sarebbe finita addosso.
+          // Adesso escono dal bordo esterno del VISORE, uno per zona:
+          //   - «cervello» a 0,25 dall'alto, in mezzo alla calotta dov'è il
+          //     cervello;
+          //   - «sabe» alla linea della bocca, cioè a 1 − SFERA_CONFIG.altezza
+          //     dall'alto: lo stesso numero della sfera e del confine fra le
+          //     zone, non una seconda taratura che può scollarsi.
+          // A 1440×900 i due agganci distano ~95 px in verticale: le due
+          // etichette non si sovrappongono nemmeno quando la testa è girata.
+          var visorBoxW = window.__robot.parts.visor
+            ? new THREE.Box3().setFromObject(window.__robot.parts.visor) : unione(parts.head);
+          ancoraTestaLoc = hg.worldToLocal(bordoEsterno(visorBoxW, 1, 0.25));
+          ancoraBoccaLoc = hg.worldToLocal(bordoEsterno(visorBoxW, 1, 1 - SFERA_CONFIG.altezza));
         }
         montaAnatomia(cam);
 
@@ -1057,6 +1117,21 @@ WC.register('robot', function(ctx){
       // headGroup.
       var vAim = new THREE.Vector3(), vEye = new THREE.Vector3(), mAim = new THREE.Matrix4();
       var hoverHead = 0;
+      // Task C2 — DUE zone sulla stessa testa. Il visore si apre uguale in
+      // tutti e due i casi (`hoverHead`, sopra), ma cambia cosa si accende
+      // dentro: sopra la linea della bocca il cervello, sotto la sfera di
+      // SABE. Due segnali smorzati distinti, così l'uno può spegnersi mentre
+      // l'altro si accende senza lampi.
+      var hoverCervello = 0, hoverSfera = 0;
+      // Quale delle due zone della testa è quella «in corso». Non si ricalcola
+      // da zero a ogni fotogramma: il confine ha un'ISTERESI (SFERA_CONFIG),
+      // cioè la linea si sposta in su quando si sta nella bocca e in giù
+      // quando si sta nella testa, e serve sapere da dove si viene. Resta
+      // l'ultima anche quando il raggio esce dalla testa, così rientrare nello
+      // stesso punto non fa scattare l'altra zona.
+      // `null` finché il raggio non ha mai colpito la testa.
+      var zonaTesta = null;
+      var vHit = new THREE.Vector3(), mHitInv = new THREE.Matrix4();
       // Task A2: il gemello per la pancia (raycast sul SOLO torso) e
       // l'orologio della posa della sfera.
       var hoverBelly = 0, orbTime = 0;
@@ -1194,11 +1269,34 @@ WC.register('robot', function(ctx){
         // «website creation» acceso per una quindicina di fotogrammi mentre il
         // puntatore è già sulla pancia. I valori smorzati restano, ma pilotano
         // solo il DISEGNO.
-        var dTesta = Infinity, dPancia = Infinity, dBrSx = Infinity, dBrDx = Infinity;
+        //
+        // Task C2 — la testa ne produce DUE, di zone, e si escludono: il
+        // raggio colpisce il visore in un punto solo, e quel punto sta sopra o
+        // sotto la linea della bocca. Quindi una delle due distanze è sempre
+        // Infinity, e il confronto «chi è più vicino» qui sotto non cambia.
+        var dTesta = Infinity, dBocca = Infinity, dPancia = Infinity, dBrSx = Infinity, dBrDx = Infinity;
         if (pointer.active && robot && robot.parts) {
           if (robot.parts.head && robot.parts.head.length) {
             var hitHead = raycaster.intersectObjects(robot.parts.head, false);
-            if (hitHead.length) dTesta = hitHead[0].distance;
+            if (hitHead.length) {
+              // Sopra o sotto la bocca. La Y va letta in coordinate di
+              // headGroup, non in mondo: la testa GIRA, e una quota mondo
+              // fissa scivolerebbe sul visore man mano che si alza o si
+              // abbassa. L'isteresi sposta la linea di qualche pixel nel
+              // verso che CONFERMA la zona in corso: per uscire dalla testa
+              // bisogna scendere sotto la linea meno l'isteresi, per uscire
+              // dalla bocca salire sopra la linea più l'isteresi. Il
+              // puntatore che striscia sul confine resta dov'era.
+              if (robot.bocca && robot.headGroup) {
+                mHitInv.copy(robot.headGroup.matrixWorld).invert();
+                var yHit = vHit.copy(hitHead[0].point).applyMatrix4(mHitInv).y;
+                var soglia = robot.bocca.y + (zonaTesta === 'testa' ? -robot.bocca.isteresi
+                  : zonaTesta === 'bocca' ? robot.bocca.isteresi : 0);
+                zonaTesta = (yHit > soglia) ? 'testa' : 'bocca';
+              } else zonaTesta = 'testa';
+              if (zonaTesta === 'bocca') dBocca = hitHead[0].distance;
+              else dTesta = hitHead[0].distance;
+            }
           }
           if (robot.parts.chest) {
             var hitBelly = raycaster.intersectObject(robot.parts.chest, false);
@@ -1213,8 +1311,12 @@ WC.register('robot', function(ctx){
             if (hitDx.length) dBrDx = hitDx[0].distance;
           }
         }
+        // Task C2: la distanza della testa — quale che sia la sua zona — serve
+        // al reveal del visore, che si apre in tutti e due i casi.
+        var dHead = Math.min(dTesta, dBocca);
         var vicina = null, dVicina = Infinity;
         if (dTesta < dVicina) { dVicina = dTesta; vicina = 'testa'; }
+        if (dBocca < dVicina) { dVicina = dBocca; vicina = 'bocca'; }
         if (dPancia < dVicina) { dVicina = dPancia; vicina = 'pancia'; }
         if (dBrSx < dVicina) { dVicina = dBrSx; vicina = 'braccioSx'; }
         if (dBrDx < dVicina) { dVicina = dBrDx; vicina = 'braccioDx'; }
@@ -1228,12 +1330,19 @@ WC.register('robot', function(ctx){
         else zonaAttiva = (zonaUltima && now < zonaScadenza) ? zonaUltima : null;
 
         if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
-          hoverHead += (((dTesta < Infinity && dTesta <= dPancia) ? 1 : 0) - hoverHead) * 0.18;
-          hoverBelly += (((dPancia < dTesta) ? 1 : 0) - hoverBelly) * 0.18;
+          var testaVince = dHead < Infinity && dHead <= dPancia;
+          hoverHead += ((testaVince ? 1 : 0) - hoverHead) * 0.18;
+          hoverBelly += (((dPancia < dHead) ? 1 : 0) - hoverBelly) * 0.18;
+          // Task C2 — dentro la testa si accende UNA cosa sola: il cervello se
+          // il raggio è sopra la linea della bocca, la sfera se è sotto. Il
+          // vetro (hoverHead) si apre uguale nei due casi.
+          hoverCervello += (((testaVince && vicina === 'testa') ? 1 : 0) - hoverCervello) * 0.18;
+          hoverSfera += (((testaVince && vicina === 'bocca') ? 1 : 0) - hoverSfera) * 0.18;
           // Etichetta puntata: il suo hover si TIENE a 1 finché il puntatore
           // (o il fuoco) ci resta — se no il reveal si spegnerebbe sotto
           // un'etichetta accesa, che è il contrario di quello che serve.
-          if (puntata === 'testa') hoverHead = 1;
+          if (puntata === 'testa') { hoverHead = 1; hoverCervello = 1; }
+          if (puntata === 'bocca') { hoverHead = 1; hoverSfera = 1; }
           if (puntata === 'pancia') hoverBelly = 1;
           robot.spline.setReveal(hoverHead);
           robot.spline.setBellyReveal(hoverBelly);
@@ -1252,32 +1361,33 @@ WC.register('robot', function(ctx){
             renderer.shadowMap.needsUpdate = true;
           }
         }
-        // RITOCCO 2: il brain si accende con lo STESSO segnale del reveal a
-        // tutta testa (non più la lente locale, non legato a faceAmount).
+        // RITOCCO 2: il brain si accende col reveal della testa. Task C2: non
+        // più con TUTTO il reveal della testa ma con la sua zona ALTA — il
+        // vetro si apre anche quando il puntatore è sulla bocca, e lì dentro
+        // deve accendersi la sfera, non il cervello.
         // update() fa respirare i punti e pilota opacità/emissione con reveal
         // (0 = spento/invisibile — visore scuro, niente cervello in vista).
         if (robot && robot.brain) {
-          robot.brain.update(dt, hoverHead);
+          robot.brain.update(dt, hoverCervello);
           // Lo smorzamento esponenziale non arriva mai a 0 esatto: sotto la
           // soglia il cervello non viene proprio disegnato (decisione 5).
-          robot.brain.points.visible = hoverHead > 0.01;
+          robot.brain.points.visible = hoverCervello > 0.01;
         }
-        // Task A2: la sfera nella pancia si accende con il reveal della pancia,
-        // esattamente come il cervello con quello della testa (update scrive il
-        // reveal in uAppear e riporta la camera in coordinate locali). La POSA
-        // — giro lento e oscillazione — la decide chi monta la sfera: qui è
-        // quella della pagina di SABE (BELLY_CONFIG.spin/tilt). Sotto la soglia
-        // la sfera non viene proprio disegnata.
+        // Task C2: la sfera si accende con la zona BASSA della testa (era la
+        // pancia, Task A2), esattamente come il cervello con quella alta —
+        // update scrive il reveal in uAppear e riporta la camera in coordinate
+        // locali. La POSA — giro lento e oscillazione — è quella della pagina
+        // di SABE (SFERA_CONFIG.spin/tilt). Sotto la soglia non si disegna.
         if (robot && robot.orb) {
           orbTime += dt;
           // La posa PRIMA di update(): update legge la matrice mondo della
           // sfera per portarci dentro la camera (uCamLocal, da cui lo shader
           // ricava il foro sull'asse della camera). Al contrario userebbe la
           // posa del fotogramma prima.
-          robot.orb.points.rotation.y = orbTime * BELLY_CONFIG.spin;
-          robot.orb.points.rotation.x = Math.sin(orbTime * 0.1) * BELLY_CONFIG.tilt;
-          robot.orb.update(dt, hoverBelly, cam);
-          robot.orb.points.visible = hoverBelly > 0.01;
+          robot.orb.points.rotation.y = orbTime * SFERA_CONFIG.spin;
+          robot.orb.points.rotation.x = Math.sin(orbTime * 0.1) * SFERA_CONFIG.tilt;
+          robot.orb.update(dt, hoverSfera, cam);
+          robot.orb.points.visible = hoverSfera > 0.01;
         }
         // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
         // volta — a differenza del reveal testa (una sola zona, la testa)
@@ -1329,9 +1439,12 @@ WC.register('robot', function(ctx){
         // serve la matrice di headGroup, non quella delle sue 18 mesh figlie.
         if (anat) {
           var anc = {};
-          if (ancoraTestaLoc && robot && robot.headGroup) {
+          if (robot && robot.headGroup && (ancoraTestaLoc || ancoraBoccaLoc)) {
             robot.headGroup.updateWorldMatrix(true, false);
-            anc.testa = aSchermo(vAnc.copy(ancoraTestaLoc).applyMatrix4(robot.headGroup.matrixWorld));
+            if (ancoraTestaLoc) anc.testa = aSchermo(vAnc.copy(ancoraTestaLoc).applyMatrix4(robot.headGroup.matrixWorld));
+            // Task C2: la bocca è la seconda zona della testa, e il suo
+            // aggancio gira con la testa come quello del cervello.
+            if (ancoraBoccaLoc) anc.bocca = aSchermo(vAnc.copy(ancoraBoccaLoc).applyMatrix4(robot.headGroup.matrixWorld));
           }
           if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
           if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
