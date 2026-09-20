@@ -183,6 +183,45 @@ WC.register('robot', function(ctx){
   //        return { object: o.points, update: function (dt, r, cam) { o.update(dt, r, cam); } };
   //      }
   var BELLY_CONFIG = { insideShrink: 0.85, contenuto: null };
+  // Task C4 — il RESPIRO. Nike: «se riesci fai in modo che si muovano
+  // leggermente anche le braccia e il tronco». Piccolo e lento: non è una
+  // levitazione — il robot non TRASLA, né in verticale né altrove, e quello
+  // resta vietato — è un tronco che oscilla sul bacino e due braccia che si
+  // aprono e si chiudono di un grado e mezzo.
+  //
+  // IL RIG, e perché non è una rotazione sola. Un gruppo BUSTO incernierato
+  // alla vita che porta con sé torso, testa e braccia: se il torso ruotasse da
+  // solo, il collo e le spalle — che gli stanno infilate dentro — si
+  // staccherebbero di qualche pixel a ogni respiro. E due gruppi BRACCIO
+  // incernierati alla spalla, figli del busto, che portano con sé anche le
+  // FIBRE. Le fibre dentro il gruppo non sono un dettaglio: sono il vincolo
+  // («il movimento non deve far uscire le fibre dalla sagoma del braccio»), e
+  // messe lì dentro la sagoma non può uscirne PER COSTRUZIONE, non per
+  // taratura.
+  //
+  //  - gradi: le ampiezze (±). Tronco entro 0,8° su due assi, braccia entro
+  //    1,5°, come da brief.
+  //  - periodi: in secondi, e non multipli fra loro (7,3 / 5,1 / 4,3 / 6,7).
+  //    Il minimo comune multiplo è dell'ordine delle migliaia di secondi:
+  //    non c'è un istante in cui «riparte tutto insieme», quindi il ciclo non
+  //    si sente. Tutte le sinusoidi partono da zero, così il primo fotogramma
+  //    è ESATTAMENTE la posa di prima di questo task.
+  //  - attivo: l'interruttore. A false le rotazioni vanno a zero ESATTO (non
+  //    smorzate): serve alla verifica, che confronta il fotogramma a respiro
+  //    spento con quello di fine C1 e lo vuole identico al pixel.
+  //  - epsOmbra: quanta rotazione vale un ridisegno della shadow map. La testa
+  //    usa 0,0005 rad perché si muove a scatti e poi si FERMA; il respiro non
+  //    si ferma mai, e con quella soglia la mappa si rifarebbe a ogni
+  //    fotogramma (97 draw call in più, misurate al Task 4b). 0,0026 rad =
+  //    0,15° la rifà ~3 volte al secondo e tiene l'errore dell'ombra sotto il
+  //    pixel (0,15° sul braccio più lungo = 0,58 unità mondo = 1,5 px... vedi
+  //    il report C4 per la misura vera).
+  var RESPIRO = {
+    attivo: true,
+    gradi:   { bustoX: 0.8, bustoZ: 0.8, braccioZ: 1.5, braccioX: 0.6 },
+    periodi: { bustoX: 7.3, bustoZ: 5.1, braccioZ: 4.3, braccioX: 6.7 },
+    epsOmbra: 0.0026
+  };
   var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
   var card    = document.getElementById('wcRobotCard');
@@ -1067,6 +1106,15 @@ WC.register('robot', function(ctx){
         // Agganci: la testa in coordinate LOCALI di headGroup (gira col collo,
         // e l'etichetta le resta attaccata), pancia e braccio in mondo — non
         // si muovono mai.
+        //
+        // Task C4 — e continuano a non muoversi col respiro, che è il vincolo
+        // del brief («non deve far ballare gli agganci delle etichette»).
+        // Pancia e braccio sono punti MONDO letti adesso, a respiro fermo: il
+        // respiro è una sinusoide simmetrica attorno allo zero, quindi questa
+        // è esattamente la POSA MEDIA. La testa, che il suo aggancio ce l'ha
+        // in locale, si riporta in mondo con una matrice del busto senza
+        // respiro (vedi `mBustoFermo`, più sotto): segue la mira del cursore,
+        // non l'oscillazione.
         var ancoraTestaLoc = null, ancoraBoccaLoc = null, ancoraPancia = null, ancoraBraccio = null;
         var braccioSx = null, braccioDx = null;
         if (parts.armL.length && parts.armR.length) {
@@ -1109,6 +1157,79 @@ WC.register('robot', function(ctx){
             ? new THREE.Box3().setFromObject(window.__robot.parts.visor) : unione(parts.head);
           ancoraTestaLoc = hg.worldToLocal(bordoEsterno(visorBoxW, 1, 0.25));
           ancoraBoccaLoc = hg.worldToLocal(bordoEsterno(visorBoxW, 1, 1 - SFERA_CONFIG.altezza));
+        }
+
+        // ------------------------------------------------ Task C4: il respiro
+        // Si monta DOPO gli agganci, e non è indifferente: gli agganci sono
+        // punti mondo letti dalla posa a riposo, e il riparentamento qui sotto
+        // preserva il mondo — quindi leggerli prima o dopo dà lo stesso
+        // risultato, ma prima è più facile da credere.
+        var busto = null, braccia = [], mBustoFermo = null, pivotTestaFermo = null, scalaModello = null;
+        // Riparentamento «preserva mondo»: per ogni figlio si calcola la
+        // trasformazione locale rispetto al nuovo genitore che riproduce
+        // esattamente la sua matrixWorld attuale. È lo stesso passo già usato
+        // per headGroup, e vale la stessa nota: `decompose` scrive nel
+        // quaternion, e three tiene in sincrono `rotation` rispettando il suo
+        // `order` (headGroup è YXZ e lo resta).
+        function riparenta(nuovo, figli) {
+          figli.forEach(function (o) {
+            if (!o) return;
+            o.updateWorldMatrix(true, false);
+            var local = new THREE.Matrix4().copy(nuovo.matrixWorld).invert().multiply(o.matrixWorld);
+            nuovo.add(o);
+            local.decompose(o.position, o.quaternion, o.scale);
+          });
+        }
+        function gruppoPivot(nome, pivotWorld, genitore) {
+          var g = new THREE.Group();
+          g.name = nome;
+          genitore.add(g);
+          genitore.updateWorldMatrix(true, false);
+          g.position.copy(genitore.worldToLocal(pivotWorld.clone()));
+          g.updateMatrixWorld(true);
+          return g;
+        }
+        if (window.__robot.parts.chest) {
+          model.updateMatrixWorld(true);
+          var torsoBox = new THREE.Box3().setFromObject(window.__robot.parts.chest);
+          var torsoC = torsoBox.getCenter(new THREE.Vector3());
+          // Cerniera del busto: bottom-center del torso, cioè la VITA. Sopra
+          // ci sta tutto quello che respira, sotto il bacino che resta fermo.
+          busto = gruppoPivot('respiroBusto', new THREE.Vector3(torsoC.x, torsoBox.min.y, torsoC.z), model);
+          riparenta(busto, [window.__robot.parts.chest, window.__robot.headGroup]);
+          var fibre = window.__robot.fibers ? window.__robot.fibers.groups : null;
+          [[parts.armL, fibre && fibre.armL], [parts.armR, fibre && fibre.armR]].forEach(function (coppia) {
+            if (!coppia[0].length) return;
+            var bb = unione(coppia[0]);
+            var cc = bb.getCenter(new THREE.Vector3());
+            // Cerniera del braccio: top-center del suo bbox, cioè la SPALLA.
+            var g = gruppoPivot('respiroBraccio', new THREE.Vector3(cc.x, bb.max.y, cc.z), busto);
+            riparenta(g, coppia[0].concat(coppia[1] ? [coppia[1]] : []));
+            // `verso`: il braccio dalla parte delle x minori gira
+            // all'incontrario, così le due braccia si aprono e si chiudono
+            // INSIEME invece di sbandare tutte e due dalla stessa parte (che
+            // sarebbe un'anca che oscilla, non un respiro). Il lato si decide
+            // dalla geometria — la x del suo centro rispetto a quella del
+            // torso — e non dal nome `armL`/`armR`, che è un nome di comodo
+            // dello split.
+            braccia.push({ gruppo: g, verso: (cc.x < torsoC.x) ? -1 : 1 });
+          });
+          // La matrice del busto SENZA respiro: solo la sua posizione. Serve
+          // agli agganci della testa (vedi tick()) e si calcola una volta
+          // sola, perché né `model` né il pivot si muovono più.
+          mBustoFermo = new THREE.Matrix4().copy(model.matrixWorld)
+            .multiply(new THREE.Matrix4().makeTranslation(busto.position.x, busto.position.y, busto.position.z));
+          // Dove sta il pivot del collo quando il busto non respira. È fisso
+          // (né `model` né i due pivot si muovono più) e lo usano gli agganci
+          // delle etichette della testa, vedi tick().
+          if (window.__robot.headGroup) {
+            pivotTestaFermo = window.__robot.headGroup.position.clone().applyMatrix4(mBustoFermo);
+          }
+          scalaModello = model.getWorldScale(new THREE.Vector3());
+          // Esposto per la verifica headless (`niente-movimento`): da fuori si
+          // leggono ampiezze, posizioni (che NON devono cambiare) e
+          // l'interruttore.
+          window.__robot.respiro = { config: RESPIRO, busto: busto, braccia: braccia };
         }
         montaAnatomia(cam);
 
@@ -1212,11 +1333,49 @@ WC.register('robot', function(ctx){
       // più e poi si ferma comunque).
       var SHADOW_EPS = 0.0005;
       var shadowYaw = NaN, shadowPitch = NaN, shadowCast = null, shadowCastBelly = null;
+      // Task C4: orologio del respiro, angoli dell'ultima ombra disegnata
+      // (NaN = mai) e la matrice della testa senza respiro, allocata una volta.
+      var respiroT = 0, ombraRespiro = [NaN, NaN, NaN, NaN];
+      var mTestaFerma = new THREE.Matrix4();
+      var vFwdTesta = new THREE.Vector3(), eTestaFerma = new THREE.Euler(0, 0, 0, 'YXZ');
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
         var now = (window.performance && performance.now) ? performance.now() : Date.now();
         var dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+        // Task C4 — il respiro, PRIMA di tutto il resto: la mira della testa
+        // legge la matrice del suo genitore (che adesso è il busto) e il
+        // raycast lavora sulle mesh che il busto porta con sé.
+        // `ctx.motionOk` è la seconda serratura di prefers-reduced-motion: con
+        // quell'impostazione la scena non parte nemmeno (scenaImpossibile), ma
+        // se un giorno partisse, il respiro resterebbe fermo lo stesso.
+        if (busto) {
+          var acceso = RESPIRO.attivo && ctx.motionOk;
+          respiroT += dt;
+          var G = RESPIRO.gradi, T = RESPIRO.periodi;
+          var onda = function (periodo) { return Math.sin(respiroT * 2 * Math.PI / periodo); };
+          var ampiezza = function (gradi, periodo) {
+            return acceso ? THREE.MathUtils.degToRad(gradi) * onda(periodo) : 0;
+          };
+          busto.rotation.x = ampiezza(G.bustoX, T.bustoX);
+          busto.rotation.z = ampiezza(G.bustoZ, T.bustoZ);
+          var braccioZ = ampiezza(G.braccioZ, T.braccioZ), braccioX = ampiezza(G.braccioX, T.braccioX);
+          braccia.forEach(function (b) {
+            b.gruppo.rotation.z = b.verso * braccioZ;
+            b.gruppo.rotation.x = braccioX;
+          });
+          // Terzo motivo per rifare la shadow map: il respiro ha spostato il
+          // corpo abbastanza. Soglia più larga di quella della testa — vedi
+          // RESPIRO.epsOmbra — perché questo movimento non si ferma mai.
+          var ora4 = [busto.rotation.x, busto.rotation.z, braccioZ, braccioX];
+          for (var q = 0; q < 4; q++) {
+            if (!(Math.abs(ora4[q] - ombraRespiro[q]) < RESPIRO.epsOmbra)) {
+              ombraRespiro = ora4;
+              renderer.shadowMap.needsUpdate = true;
+              break;
+            }
+          }
+        }
         // Task 7 (nit) + Task B1: UN SOLO setFromCamera per fotogramma quando
         // il puntatore è attivo. Lo stesso raggio serve a tre cose — la mira
         // della testa (subito sotto), il reveal testa/pancia e il surge delle
@@ -1489,10 +1648,35 @@ WC.register('robot', function(ctx){
           var anc = {};
           if (robot && robot.headGroup && (ancoraTestaLoc || ancoraBoccaLoc)) {
             robot.headGroup.updateWorldMatrix(true, false);
-            if (ancoraTestaLoc) anc.testa = aSchermo(vAnc.copy(ancoraTestaLoc).applyMatrix4(robot.headGroup.matrixWorld));
+            // Task C4 — POSA MEDIA, non posa istantanea, altrimenti le due
+            // etichette della testa ballano da sole mentre il robot respira.
+            // La matrice mondo della testa porta dentro il respiro in DUE
+            // modi, e la prima versione di questo blocco ne toglieva uno solo
+            // (misurato: restavano 2,6 px di oscillazione):
+            //  - la POSIZIONE: il pivot del collo sta ~180 unità sopra la
+            //    vita, e 0,8° di busto lo spostano di 2,5;
+            //  - il ROLLIO: il busto si inclina di lato e la testa con lui,
+            //    perché la mira corregge imbardata e beccheggio ma non il
+            //    rollio (headGroup.rotation.z resta 0).
+            // Il PUNTAMENTO invece il respiro non ce l'ha: la mira gira la
+            // testa nel frame del busto proprio per cancellarlo — il «davanti»
+            // della testa punta il cursore comunque. Quindi si ricompone: si
+            // prende il davanti in mondo, se ne tengono solo imbardata e
+            // beccheggio (rollio a zero) e si rimette la posizione a riposo.
+            var mTesta = robot.headGroup.matrixWorld;
+            if (mBustoFermo && pivotTestaFermo) {
+              vFwdTesta.set(0, 0, 1).transformDirection(robot.headGroup.matrixWorld);
+              eTestaFerma.set(Math.atan2(-vFwdTesta.y, Math.hypot(vFwdTesta.x, vFwdTesta.z)),
+                Math.atan2(vFwdTesta.x, vFwdTesta.z), 0, 'YXZ');
+              mTestaFerma.makeRotationFromEuler(eTestaFerma);
+              if (scalaModello) mTestaFerma.scale(scalaModello);
+              mTestaFerma.setPosition(pivotTestaFermo);
+              mTesta = mTestaFerma;
+            }
+            if (ancoraTestaLoc) anc.testa = aSchermo(vAnc.copy(ancoraTestaLoc).applyMatrix4(mTesta));
             // Task C2: la bocca è la seconda zona della testa, e il suo
             // aggancio gira con la testa come quello del cervello.
-            if (ancoraBoccaLoc) anc.bocca = aSchermo(vAnc.copy(ancoraBoccaLoc).applyMatrix4(robot.headGroup.matrixWorld));
+            if (ancoraBoccaLoc) anc.bocca = aSchermo(vAnc.copy(ancoraBoccaLoc).applyMatrix4(mTesta));
           }
           if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
           if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
@@ -1535,7 +1719,18 @@ WC.register('robot', function(ctx){
         if (robot.brain && robot.brain.points) disposeObject3D(robot.brain.points);
         if (robot.orb && robot.orb.points) disposeObject3D(robot.orb.points);
         if (robot.bellyContent && robot.bellyContent.object) disposeObject3D(robot.bellyContent.object);
-        if (robot.fibers && robot.fibers.object) disposeObject3D(robot.fibers.object);
+        // Task C4: i due gruppi delle fibre NON stanno più dentro
+        // `fibers.object` (robot.js li appende ai gruppi-braccio del respiro),
+        // quindi smaltire `object` non li toccherebbe. `disposeObject3D(model)`
+        // qui sopra li coprirebbe comunque — sono suoi discendenti — ma la
+        // regola di questo blocco è non fare affidamento sulla gerarchia.
+        if (robot.fibers) {
+          disposeObject3D(robot.fibers.object);
+          if (robot.fibers.groups) {
+            disposeObject3D(robot.fibers.groups.armL);
+            disposeObject3D(robot.fibers.groups.armR);
+          }
+        }
       }
       // Materiali Spline: le texture nelle uniform (disposeObject3D non le
       // tocca) e il <video> degli occhi le smaltisce spline.dispose().

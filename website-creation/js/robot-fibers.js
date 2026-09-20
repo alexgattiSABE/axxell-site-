@@ -558,7 +558,16 @@ WC.robotFibers = (function () {
         matR.uniforms.uPhase.value = phaseR;
         matL.uniforms.uSurge.value = surgeL || 0;
         matR.uniforms.uSurge.value = surgeR || 0;
-        object.visible = (surgeL || 0) > 0.003 || (surgeR || 0) > 0.003;
+        // Task C4: la visibilità va messa anche sui DUE gruppi, non solo su
+        // `object`. Da quel task robot.js li riparenta ai gruppi-braccio del
+        // respiro — così la fibra si muove insieme al braccio e non gli esce
+        // dalla sagoma — e `object` non è più il loro genitore, quindi
+        // spegnere lui non li spegnerebbe più. `object.visible` resta la
+        // risposta a «le fibre si disegnano?»: i due gruppi la rispecchiano.
+        var vis = (surgeL || 0) > 0.003 || (surgeR || 0) > 0.003;
+        object.visible = vis;
+        groupL.visible = vis;
+        groupR.visible = vis;
       }
 
       return { object: object, update: update, groups: { armL: groupL, armR: groupR } };

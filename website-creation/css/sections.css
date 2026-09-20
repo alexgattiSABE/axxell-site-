@@ -482,8 +482,27 @@ body.wc-locked{overflow:hidden;}
   transition:opacity .18s linear;outline-offset:6px;}
 .wc-anat-voce{display:block;font-family:var(--font);font-size:.95rem;font-weight:500;
   letter-spacing:.01em;line-height:1.3;}
-.wc-anat-sotto{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--muted);line-height:1.5;}
+/* Task C4 — «i prodotti indicati nell'anatomia devono essere più evidenti»
+   (Nike), e alla domanda di cosa intendesse: «nome del prodotto più grande —
+   la riga piccola (ATLAS, SABE, ATELIER, GESTIONALE) va portata alla scala
+   del titolo, in bianco pieno». Era .7rem, grigia (var(--muted)) e con .16em
+   di spaziatura: una didascalia. Adesso è .86rem — appena sotto la scala
+   della voce, che è .95rem — bianca piena e di peso 400 contro il 500 della
+   voce. Resta in MAIUSCOLO, e resta in mono: provate tutte e due le varianti
+   che il brief chiedeva di confrontare (screenshot 11-etichette.png) e
+   guardate fianco a fianco, la versione col testo come l'ha scritto Nike
+   («anima / gestionale», nello stesso carattere della voce) perde la cosa che
+   serviva: il nome del prodotto smette di leggersi come un NOME e diventa la
+   seconda parola di una frase, indistinguibile dalla riga sopra. In maiuscolo
+   e in mono «GESTIONALE» è un marchio, e si legge benissimo a tutte e due le
+   misure di prova.
+   La spaziatura scende da .16em a .06em: a .86rem con .16em «GESTIONALE»
+   diventa largo 99 px e la corsa della sua linea scende a 360, cioè ESATTAMENTE
+   il minimo che il controllo chiede alle etichette lunghe (0,25 della
+   larghezza), senza un pixel di margine. A .06em sono 91 px e la corsa resta
+   372, com'era prima di questo task. */
+.wc-anat-sotto{display:block;font-family:var(--mono);font-size:.86rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--white);font-weight:400;line-height:1.35;}
 .wc-anat.-sinistra{text-align:right;}
 /* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
    secondo caso è quello che tiene in piedi il montaggio fermo, dove non c'è
