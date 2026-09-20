@@ -1132,50 +1132,20 @@ WC.register('robot', function(ctx){
             });
           }
 
-          // Task D1 — la sfera di SABE nel COLLO. Era nella pancia (Task A2,
-          // dietro la «A»), poi dentro il visore all'altezza della bocca (Task
-          // C2); Nike l'ha spostata qui: «tra il mento e il logo».
-          // Parentata a headGroup come il cervello, e per lo stesso motivo
-          // delle mesh che le stanno attorno: il collo è figlio di headGroup e
-          // gira con la mira, quindi solo lì dentro la sfera resta ferma NEL
-          // COLLO (vedi il commento di `colloCentroLocal`, più sopra).
-          if (WC.pointOrb && colloCentroLocal) {
+          // Task D5 — LA SFERA NON STA PIÙ QUI. Nike l'ha spostata nella
+          // PANCIA, fra il logo e il cilindro del bacino, e l'ha legata al
+          // GESTIONALE: «ora la sfera è associata al gestionale, l'animazione
+          // per sabe la troverò più avanti». La zona del collo resta viva —
+          // si apre, l'etichetta «Agente Vocale / SABE» esce e il link a
+          // sabe.html funziona — ma dentro, per ora, non c'è nessuna nuvola.
+          // Restano di questo blocco le due cose che NON dipendono dalla
+          // sfera disegnata: l'area di presa (se no la gola è un bersaglio da
+          // tre millesimi di schermo) e la sfumatura di quel che le sta
+          // attorno. Il raggio serve solo come UNITÀ DI MISURA di quelle due.
+          // La sfera vera si costruisce più sotto, nel blocco della pancia.
+          if (colloCentroLocal) {
             var orbRadius = headRadius * SFERA_CONFIG.raggio;
-            var orb = WC.pointOrb.create({ count: SFERA_CONFIG.count, radius: orbRadius });
-            // Task D3 — il foro della nuvola, che è fermo sulla linea di vista
-            // e su una sfera di 88 px la attraversa come una fascia scura.
-            // Il default resta quello di SABE: si scrive solo qui.
-            orb.uniforms.uBore.value = SFERA_CONFIG.foro;
-            orb.points.castShadow = false;      // è luce, non materia
-            orb.points.receiveShadow = false;
-            orb.points.position.copy(colloCentroLocal);
-            // renderOrder 4: ULTIMA di tutta la coda trasparente, dopo il
-            // petto (3). È la correzione di Nike — «la sfera non la riesco a
-            // vedere completamente perché risulta coperta dal busto e dal
-            // collo». Misurato a renderOrder 2: dei 1558 px della nuvola, 999
-            // (il 64%) finivano sotto il PETTO, che si disegna dopo e li
-            // ripassa con alpha 1; il visore invece non ne copriva nessuno.
-            // Disegnandola per ultima la nuvola si SOMMA sopra la lamiera
-            // invece di esserne cancellata — è la stessa regola che le fibre
-            // usano dentro la manica del braccio (renderOrder 2 contro lo 0
-            // del guscio). E non sporca niente attorno: la sua maschera sta
-            // tutta DENTRO la sagoma del collo (0 px fuori, misurato), quindi
-            // quello che si accende è la gola e nient'altro.
-            //
-            // Quello che si vede DAVVERO è però più largo della maschera
-            // alpha: la corona di punti più deboli sta sotto la soglia di 8/255
-            // con cui si misura, e sul carbonio scuro del petto si vede lo
-            // stesso. Nel fotogramma vero l'alone scende una trentina di pixel
-            // sotto il colletto. È il prezzo di vedere la sfera INTERA: metà
-            // della nuvola sta dentro il volume del torso (il petto arriva a
-            // y 213, il centro della sfera è a 205), quindi o la si taglia o
-            // la si lascia brillare sopra la lamiera. Nike ha chiesto di
-            // vederla tutta.
-            orb.points.renderOrder = 4;
-            orb.points.visible = false;         // a riposo non si disegna affatto
-            headGroup.add(orb.points);
-            window.__robot.orb = orb;
-            orbWorldRadius = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
+            var orbRaggioMondo = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
             // L'AREA DI PRESA della zona (Nike: «si fa fatica a farla
             // comparire»). Una sfera invisibile attorno alla nuvola: non si
             // disegna e non entra in nessuna maschera, ma il raycast la
@@ -1207,8 +1177,8 @@ WC.register('robot', function(ctx){
             // una seconda volta e sperare che coincidano. Le mesh a questo
             // punto sono già sotto headGroup, ma il riparentamento preserva il
             // mondo: i bbox in mondo sono ancora quelli della posa Spline.
-            var cSfera = orb.points.getWorldPosition(new THREE.Vector3());
-            var rSel = orbWorldRadius * (1 + SFERA_CONFIG.margineSfumatura);
+            var cSfera = presa.getWorldPosition(new THREE.Vector3());
+            var rSel = orbRaggioMondo * (1 + SFERA_CONFIG.margineSfumatura);
             // Distanza punto→bbox: zero se il centro ci sta dentro. È la
             // «sagoma che interseca la sfera» del brief, presa sul bbox in
             // mondo e non sui triangoli — dieci volte più veloce e, con
@@ -1303,11 +1273,36 @@ WC.register('robot', function(ctx){
           window.__robot.parts.bellyInside = bellyInside;
           if (window.__debugParts) console.log('[robot] interni pancia:', bellyInside.map(function (m) { return m.name; }));
 
-          // Task C2: qui c'era la sfera di SABE, dietro la «A» del petto. È
-          // salita nella testa (Task C2) e poi scesa nel COLLO (Task D1, vedi
-          // più sopra nel blocco di headGroup). Con lei decade la regola «il logo sparisce
-          // quando compare la sfera»: la «A» resta piena, a riposo e a pancia
-          // aperta, perché non ha più niente da lasciar vedere dietro di sé.
+          // ----------------------------------- Task D5: LA SFERA TORNA QUI
+          // Nike: «la sfera di sabe va messa nella pancia, tra il logo e quel
+          // cilindro (però voglio che il cilindro non si veda); ora la sfera è
+          // associata al gestionale». Quindi: la nuvola si accende col reveal
+          // della PANCIA (non più con quello del collo, vedi tick()), e il
+          // cilindro del bacino — i tre pezzi centrali sotto il petto — non si
+          // disegna più.
+          //
+          // DOVE, esattamente: niente numeri a mano. In Y il centro è il punto
+          // medio fra il BORDO BASSO DEL LOGO (`logo.anchor.y −
+          // worldWidth/2`) e la CIMA DEL CILINDRO; in X e Z il centro del
+          // bbox del petto, che è l'asse del corpo. Il raggio è quello che ci
+          // sta in mezzo (0,86 della semi-altezza libera: il resto è l'aria
+          // che tiene la nuvola staccata dal logo e dal bacino). Se il GLB
+          // cambia, tutto si sposta da sé.
+          //
+          // QUAL È «QUEL CILINDRO»: si trova per geometria, non per nome. Fra
+          // le mesh centrate sull'asse del corpo (|Δx| < 28) e interamente
+          // sotto il logo, si prende il gruppo più ALTO — quelle la cui cima
+          // sta entro 12 unità dalla più alta di tutte. Sul GLB attuale sono
+          // tre: `Rectangle_6` (la colonna) e i due `Cylinder_4_*` che le
+          // stanno a fianco, tutte con la cima a y 105. Il pezzo successivo è
+          // 44 unità più in basso (il bacino, che resta): il salto è netto,
+          // quindi la soglia non è una taratura fine.
+          //
+          // Task C2: qui c'era la sfera di SABE, dietro la «A» del petto; era
+          // salita nella testa (Task C2), poi nel COLLO (Task D1) e adesso è
+          // tornata in pancia, ma come ANIMA/gestionale. Il logo resta pieno:
+          // la nuvola gli sta SOTTO, non dietro, quindi non ha niente da
+          // lasciar vedere attraverso la «A».
           //
           // Task C3 — al suo posto il PUNTO D'INNESTO di ciò che Nike
           // sceglierà di mettere nella pancia. Oggi BELLY_CONFIG.contenuto è
@@ -1315,6 +1310,53 @@ WC.register('robot', function(ctx){
           // c'è nulla. Domani basta la fabbrica in BELLY_CONFIG (in cima al
           // file) e tutto il resto — ombre spente, ordine di disegno, accendi
           // e spegni col reveal, smaltimento — è già scritto qui.
+          // ---- il cilindro del bacino sparisce, e la sfera prende il suo posto
+          var yLogoGiu = null, cilindro = [], sferaPancia = null;
+          if (spline.logo) {
+            yLogoGiu = spline.logo.anchor.y - spline.logo.worldWidth / 2;
+            var cCand = [];
+            model.traverse(function (m) {
+              if (!m.isMesh || m.userData.splineIndex === undefined || m === chest) return;
+              var b = new THREE.Box3().setFromObject(m);
+              var c = b.getCenter(new THREE.Vector3());
+              if (Math.abs(c.x - chestBox.getCenter(new THREE.Vector3()).x) > 28) return;
+              if (b.max.y > yLogoGiu) return;
+              cCand.push({ m: m, top: b.max.y });
+            });
+            if (cCand.length) {
+              var topMax = cCand.reduce(function (a, o) { return Math.max(a, o.top); }, -Infinity);
+              cilindro = cCand.filter(function (o) { return o.top > topMax - 12; }).map(function (o) { return o.m; });
+              cilindro.forEach(function (m) { m.visible = false; m.castShadow = false; m.receiveShadow = false; });
+              renderer.shadowMap.needsUpdate = true;
+              window.__robot.parts.cilindroNascosto = cilindro;
+              if (window.__debugParts) console.log('[robot] cilindro nascosto:', cilindro.map(function (m) { return m.name + '#' + m.userData.splineIndex; }));
+              var chestC = chestBox.getCenter(new THREE.Vector3());
+              var scalaMod = Math.abs(model.getWorldScale(new THREE.Vector3()).x) || 1;
+              var rMondo = Math.max(1e-3, (yLogoGiu - topMax) / 2 * 0.86);
+              sferaPancia = { centro: new THREE.Vector3(chestC.x, (yLogoGiu + topMax) / 2, chestC.z),
+                raggio: rMondo, locale: rMondo / scalaMod, scala: scalaMod };
+              window.__robot.pancia = sferaPancia;
+            }
+          }
+          if (WC.pointOrb && sferaPancia) {
+            var orbP = WC.pointOrb.create({ count: SFERA_CONFIG.count, radius: sferaPancia.locale });
+            orbP.uniforms.uBore.value = SFERA_CONFIG.foro;
+            orbP.points.castShadow = false;     // è luce, non materia
+            orbP.points.receiveShadow = false;
+            model.updateMatrixWorld(true);
+            orbP.points.position.copy(model.worldToLocal(sferaPancia.centro.clone()));
+            // renderOrder 4: ULTIMA di tutta la coda trasparente, dopo il
+            // petto (3). È la correzione che Nike aveva chiesto quando la
+            // sfera stava nel collo — «non la riesco a vedere completamente
+            // perché risulta coperta dal busto» — e vale identica qui: metà
+            // della nuvola sta dentro il volume del torso, quindi disegnata
+            // prima del petto se ne perderebbe la maggior parte.
+            orbP.points.renderOrder = 4;
+            orbP.points.visible = false;        // a riposo non si disegna affatto
+            model.add(orbP.points);
+            window.__robot.orb = orbP;
+            orbWorldRadius = sferaPancia.raggio;
+          }
           if (BELLY_CONFIG.contenuto) {
             var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
             var chestLocal = chestBox.clone().applyMatrix4(invModel);
@@ -1397,7 +1439,22 @@ WC.register('robot', function(ctx){
           // nascesse dal nulla. A 0,06 dall'alto (y ≈ 331 a schermo) esce
           // dalla spalla e va via sul vuoto: è la prima altezza che libera il
           // braccio con un margine che regge anche a 1280×720.
-          ancoraPancia = bordoEsterno(new THREE.Box3().setFromObject(window.__robot.parts.chest), 1, 0.06);
+          //
+          // Task D5 — «la linea del gestionale la devi mettere più in basso»
+          // (Nike), perché adesso il gestionale È la sfera in pancia e una
+          // linea che esce dalla spalla indicava il petto vuoto. L'altezza non
+          // è più 0,06 a mano: è quella del CENTRO DELLA SFERA, letta dal suo
+          // oggetto e riportata in frazione del bbox del torso contata
+          // dall'alto. Se la sfera si sposta, l'etichetta la segue.
+          // Il prezzo, misurato: a quell'altezza la linea passa sopra il
+          // braccio per un tratto. Non sparisce dietro — l'overlay sta sopra
+          // il canvas (z-index 2) — e con le linee accorciate del Task D5 il
+          // tratto sul braccio è la metà di quello che sarebbe stato prima.
+          var boxPancia = new THREE.Box3().setFromObject(window.__robot.parts.chest);
+          var altPancia = Math.max(1e-6, boxPancia.max.y - boxPancia.min.y);
+          var fraPancia = window.__robot.pancia
+            ? (boxPancia.max.y - window.__robot.pancia.centro.y) / altPancia : 0.06;
+          ancoraPancia = bordoEsterno(boxPancia, 1, fraPancia);
         }
         if (window.__robot.headGroup && parts.head.length) {
           var hg = window.__robot.headGroup;
@@ -1871,10 +1928,11 @@ WC.register('robot', function(ctx){
           // soglia il cervello non viene proprio disegnato (decisione 5).
           robot.brain.points.visible = hoverHead > 0.01;
         }
-        // Task D1: la sfera si accende col COLLO (era la zona bassa della
-        // testa, Task C2; prima ancora la pancia, Task A2) — update scrive il
-        // reveal in uAppear e riporta la camera in coordinate locali. La POSA
-        // — giro lento e oscillazione — è quella della pagina di SABE
+        // Task D5: la sfera si accende con la PANCIA — è l'anima, cioè il
+        // gestionale (era il collo, Task D1; prima la zona bassa della testa,
+        // Task C2; prima ancora la pancia, Task A2). update scrive il reveal
+        // in uAppear e riporta la camera in coordinate locali. La POSA — giro
+        // lento e oscillazione — è quella della pagina di SABE
         // (SFERA_CONFIG.spin/tilt). Sotto la soglia non si disegna.
         if (robot && robot.orb) {
           orbTime += dt;
@@ -1884,8 +1942,8 @@ WC.register('robot', function(ctx){
           // posa del fotogramma prima.
           robot.orb.points.rotation.y = orbTime * SFERA_CONFIG.spin;
           robot.orb.points.rotation.x = Math.sin(orbTime * 0.1) * SFERA_CONFIG.tilt;
-          robot.orb.update(dt, hoverCollo, cam);
-          robot.orb.points.visible = hoverCollo > 0.01;
+          robot.orb.update(dt, hoverBelly, cam);
+          robot.orb.points.visible = hoverBelly > 0.01;
         }
         // Task C3 — il contenuto della pancia, quando ci sarà: si accende col
         // reveal del torso come il cervello col suo. Oggi non c'è (vedi
