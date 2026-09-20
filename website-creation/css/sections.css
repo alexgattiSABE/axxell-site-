@@ -494,11 +494,17 @@ body.wc-locked{overflow:hidden;}
 .wc-anat-zona:focus-within>.wc-anat-svg polyline{stroke-dashoffset:0;}
 .wc-anat-zona.-on>.wc-anat,.wc-anat:focus{pointer-events:auto;}
 .wc-anat:focus-visible{outline:1px solid var(--white);}
-/* Montaggio fermo (reduced-motion): l'etichetta c'è e si raggiunge col tab,
-   ma niente si disegna e niente sfuma. */
+/* Montaggio fermo (reduced-motion): le etichette sono SEMPRE VISIBILI, non
+   solo raggiungibili col tab. Qui il robot non c'è: la sezione è un rettangolo
+   nero con scritto «Modello 3D disattivato», e tre link invisibili lascerebbero
+   chi guarda con un mouse davanti al nulla. Visibili, invece, sono l'unica cosa
+   che quella sezione ha da dire — e restano ferme: niente si disegna, niente
+   sfuma, niente si accende al passaggio. */
 .wc-anat-layer.-statico .wc-anat,.wc-anat-layer.-statico .wc-anat-svg,
 .wc-anat-layer.-statico .wc-anat-svg polyline{transition:none;}
 .wc-anat-layer.-statico .wc-anat-svg polyline{stroke-dashoffset:0;}
+.wc-anat-layer.-statico .wc-anat-svg{opacity:1;}
+.wc-anat-layer.-statico .wc-anat{opacity:1;pointer-events:auto;}
 @media (prefers-reduced-motion:reduce){
   .wc-anat,.wc-anat-svg,.wc-anat-svg polyline{transition:none;}
   .wc-anat-svg polyline{stroke-dashoffset:0;}

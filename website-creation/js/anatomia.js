@@ -53,12 +53,36 @@ WC.anatomia = (function () {
   // grande su una linea corta e un gomito minuscolo su una lunga.
   var LINEA = { orizzontaleObiettivo: 0.27, orizzontaleMinimo: 0.12, obliquoGradi: 38,
     staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.42 };
-  // Senza scena 3D (reduced-motion: robot.js non monta niente) le etichette
-  // stanno in punti fissi del riquadro — frazioni prese dove cadono le zone
-  // vere a 1440×900, così il montaggio fermo assomiglia a quello vivo.
-  // (misurati leggendo window.__robot.anatomia.anchors a 1440×900 e divisi per
-  // il riquadro: testa 783,6/262,4 · pancia 837,9/340,6 · braccio 384,7/548,9)
-  var FISSI = { testa: [0.544, 0.292], pancia: [0.582, 0.378], braccioSx: [0.267, 0.610] };
+  // ---- AGGANCI SENZA SCENA ----
+  // Con reduced-motion robot.js non monta niente: non c'è camera, non c'è GLB,
+  // e gli agganci se li deve dare l'overlay. Non sono però una tabella di
+  // pixel tarata su una misura sola — sono la FORMULA della proiezione vera,
+  // scritta per esteso.
+  //
+  // La camera Spline non si muove mai e ha il campo VERTICALE fisso
+  // (robot.js: fov e zoom da WC.robotSplineData, `fit()` tocca solo l'aspect).
+  // Per una camera così la proiezione di un punto fermo del mondo vale
+  //   x_ndc = k / aspect,   y_ndc = costante
+  // e il passaggio a pixel è x = W/2 · (1 + x_ndc), y = H/2 · (1 − y_ndc).
+  // Sostituendo aspect = W/H, la larghezza si semplifica:
+  //   x = W/2 + (k/2)·H        y = H/2 − (y_ndc/2)·H
+  // cioè: SEMPRE al centro in orizzontale, e lo scostamento — in tutte e due
+  // le direzioni — proporzionale alla sola ALTEZZA del riquadro. I due numeri
+  // per zona qui sotto sono quegli scostamenti per unità di altezza, ricavati
+  // dagli agganci veri letti a 1440×900. Non è un'approssimazione: rifatto il
+  // conto a 1280×720 contro gli agganci veri della scena montata, lo scarto è
+  // sotto il decimo di pixel su tutte e tre le zone.
+  // (Con delle frazioni della LARGHEZZA — che è la cosa ovvia da scrivere e
+  // sbagliata — a 1280×720 il braccio finiva 30 px più a sinistra e spingeva
+  // «website creation» contro il bordo.)
+  // L'unica cosa che questa formula non riproduce è il `setViewOffset` che
+  // `fit()` applica sui riquadri bassi per non far uscire la testa dalla nav:
+  // qui non c'è nessuna testa da tenere dentro.
+  var FISSI = {
+    testa:     [ 0.07064, -0.20841 ],
+    pancia:    [ 0.13103, -0.12151 ],
+    braccioSx: [-0.37251,  0.10988 ]
+  };
   // Quanto si allarga il rettangolo dell'etichetta per decidere «il puntatore
   // è sull'etichetta». La linea SVG è pointer-events:none, quindi il corridoio
   // fra modello ed etichetta non lo copre nessuno: questo lo allarga un po'.
@@ -377,10 +401,12 @@ WC.anatomia = (function () {
       }
     };
 
+    // Centro del riquadro più lo scostamento, che scala con la sola altezza:
+    // vedi FISSI in testa al file per il perché non è la larghezza.
     function ancoreFisse() {
       Object.keys(FISSI).forEach(function (id) {
         if (!el[id]) return;
-        ancore[id] = { x: FISSI[id][0] * host.clientWidth, y: FISSI[id][1] * host.clientHeight };
+        ancore[id] = { x: lar / 2 + FISSI[id][0] * alt, y: alt / 2 + FISSI[id][1] * alt };
       });
     }
     // Il riquadro ha cambiato misura: si rileggono gli agganci fissi (quelli
