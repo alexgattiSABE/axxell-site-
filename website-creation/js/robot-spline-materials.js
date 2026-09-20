@@ -208,8 +208,21 @@ WC.robotSplineMaterials = (function () {
     // opaco, e la shadow map non conosce l'alpha — le mesh del gruppo smettono
     // di proiettarla a metà reveal (r > 0.5) e la riprendono tornando sotto,
     // dove il pezzo che le copre è ancora per metà opaco.
+    // Task D3 — chi SCRIVE DEPTH, quando una mesh sta in due gruppi. Il pezzo
+    // sotto il mento sfuma col cervello (uOpacity) E si apre col collo
+    // (uArmReveal): se ogni gruppo scrivesse `depthWrite` per conto suo,
+    // quello a riposo la rimetterebbe a `true` sopra a quello acceso — e una
+    // lamiera trasparente che scrive depth cancella tutto ciò che le sta
+    // dietro (è il difetto che il Task D1b aveva già misurato sul petto: il
+    // 31% della nuvola respinta dal test di profondità). La domanda giusta è
+    // una sola, e guarda TUTTE le uniform: si scrive depth solo quando il
+    // pezzo è opaco davvero.
+    function scriveDepth(m) {
+      return m.uniforms.uOpacity.value >= 1
+        && (!m.uniforms.uArmReveal || m.uniforms.uArmReveal.value === 0);
+    }
     function fadeInside(g, r) {
-      g.materials.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = r === 0; });
+      g.materials.forEach(function (m) { m.uniforms.uOpacity.value = 1 - r; m.depthWrite = scriveDepth(m); });
       g.castMeshes.forEach(function (e) { e.mesh.castShadow = e.cast && r <= 0.5; });
     }
     var api = {
@@ -386,6 +399,39 @@ WC.robotSplineMaterials = (function () {
         });
         return g;
       },
+      // Task D3 — la stessa apertura, ma su una mesh che un materiale suo ce
+      // l'ha GIÀ. Nike: «la sfera va bene ma voglio che rendi invisibili anche
+      // le zone subito circostanti ad essa». La zona subito circostante è il
+      // pezzo sotto il mento (indice Spline 5): sta dentro il volume del
+      // visore, quindi `makeInside` gli ha già dato la sua istanza che sfuma
+      // col cervello, e clonarne una seconda vorrebbe dire scegliere quale dei
+      // due reveal buttare via. Qui invece si AGGIUNGE lo strato
+      // dell'apertura al materiale che c'è: due uniform, un define, e la mesh
+      // risponde a tutti e due i gruppi. Le zone sono esclusive (Task D1d: una
+      // per volta, le altre a zero esatto), quindi i due strati non si
+      // sovrappongono mai davvero.
+      ancheApribile: function (meshes, gruppo) {
+        var g = apribili[gruppo];
+        if (!g) throw new Error('[robot] ancheApribile: gruppo sconosciuto "' + gruppo + '"');
+        meshes.forEach(function (mesh) {
+          var m = mesh.material;
+          if (!m || !m.uniforms || !m.uniforms.uOpacity) throw new Error('[robot] ancheApribile: mesh "' + mesh.name + '" senza materiale del robot');
+          if (m.uniforms.uArmReveal) throw new Error('[robot] ancheApribile: mesh "' + mesh.name + '" già apribile');
+          m.uniforms.uArmReveal = { value: 0 };
+          m.uniforms.uArmMinAlpha = { value: ARM_CONFIG.minAlpha };
+          m.uniforms.uArmRimPow = { value: ARM_CONFIG.rimPow };
+          m.defines = Object.assign({}, m.defines);
+          m.defines.ARM_REVEAL = '';
+          // Questo materiale è nato trasparente (makeInside) e trasparente
+          // deve restare: `setApertura` spegne `transparent` quando il SUO
+          // gruppo è chiuso, e su una mesh a doppio ruolo vorrebbe dire
+          // rendere opaco un pezzo che il cervello sta sfumando.
+          m.userData.sempreTrasparente = true;
+          m.needsUpdate = true;
+          g.push(m);
+        });
+        return g;
+      },
       // r = apertura del gruppo (0..1: per le braccia è il `surge` del lato,
       // già smorzato in robot.js — una manopola sola per apertura, intensità e
       // velocità della fibra; per il collo è il suo hover). Stessi agganci
@@ -405,8 +451,8 @@ WC.robotSplineMaterials = (function () {
           // coda (opaca o trasparente) e lo stato di blending si rileggono dal
           // materiale a ogni fotogramma, e `transparent` non entra nella
           // chiave di cache del programma — nessuna ricompilazione.
-          m.transparent = r > 0;
-          m.depthWrite = r === 0;
+          if (!m.userData.sempreTrasparente) m.transparent = r > 0;
+          m.depthWrite = scriveDepth(m);
         });
       },
       // Interni di una zona (le mesh Parts dentro il volume del visore o del

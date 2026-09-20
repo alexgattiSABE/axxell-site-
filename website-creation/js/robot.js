@@ -195,6 +195,21 @@ WC.register('robot', function(ctx){
   //    vincono sulla distanza; il collisore vince solo dove davanti non c'è
   //    nient'altro, cioè nella fessura del collo, nei vuoti fra le lamelle e
   //    nel buio subito attorno alla gola.
+  //  - margineSfumatura (Task D3): di quanto si ALLARGA la sfera quando serve
+  //    a decidere che cosa sfuma. Nike: «la sfera va bene ma voglio che rendi
+  //    invisibili anche le zone subito circostanti ad essa». La regola è
+  //    geometrica: sfuma ogni mesh il cui bbox in mondo tocca una sfera di
+  //    raggio (raggio della nuvola) × (1 + margineSfumatura) attorno al suo
+  //    centro. **Misurato: su questo GLB il margine non decide niente.** Le
+  //    mesh restano le stesse da margine 0 fino a margine 1,0 — le 16 del
+  //    collo, che sfumavano già, più tre sole: il petto (che il brief tiene
+  //    fuori per non confondere la zona «collo» con la zona «anima»), il
+  //    visore (che per richiesta esplicita del Task D1 NON si apre per la
+  //    sfera) e il pezzo sotto il mento, indice Spline 5. Dopo, il salto: la
+  //    mesh successiva è una piastra del braccio a 2,27 raggi, cioè fuori
+  //    anche con margine 1,0. Resta 0,35 perché sta comodamente dentro quel
+  //    salto, non perché sia una taratura fine: è un valore che può muoversi
+  //    del triplo senza cambiare una sola mesh.
   //  - count / pointSizeK / fovRef / spin / tilt: invariati dalla pancia e
   //    dalla bocca — sono la grana e la posa della pagina di SABE. pointSize =
   //    0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom),
@@ -206,7 +221,7 @@ WC.register('robot', function(ctx){
   // il visore — e il confine col collo non è più una quota dentro una mesh ma
   // il passaggio da una mesh all'altra: due insiemi disgiunti non hanno un
   // confine da far tremare.
-  var SFERA_CONFIG = { raggio: 0.25, presa: 2.5,
+  var SFERA_CONFIG = { raggio: 0.25, presa: 2.5, margineSfumatura: 0.35,
     count: 26000, pointSizeK: 0.03, fovRef: 22.5, spin: 0.21, tilt: 0.46 };
   // Task A2/C3 — la pancia: «anima», cioè il gestionale. Della sfera non resta
   // niente (Task C2: è salita nella testa) e dentro, per ora, non c'è NULLA —
@@ -1163,6 +1178,72 @@ WC.register('robot', function(ctx){
             headGroup.add(presa);
             window.__robot.parts.colliderCollo = presa;
             window.__robot.parts.colloPresa = window.__robot.parts.collo.concat([presa]);
+
+            // -------------------------------- Task D3: LA SFUMATURA ATTORNO
+            // Nike: «la sfera va bene ma voglio che rendi invisibili anche le
+            // zone subito circostanti ad essa». La selezione del collo
+            // (riquadro mento→logo) prende i pezzi del COLLO; quello che sta
+            // appiccicato alla sfera e non è collo restava opaco.
+            //
+            // La regola è geometrica e si scrive qui, e non su nel blocco del
+            // riquadro, per un motivo solo: qui il centro e il raggio della
+            // sfera esistono DAVVERO — sono quelli della nuvola appena
+            // costruita, letti dal suo oggetto — invece di essere ricalcolati
+            // una seconda volta e sperare che coincidano. Le mesh a questo
+            // punto sono già sotto headGroup, ma il riparentamento preserva il
+            // mondo: i bbox in mondo sono ancora quelli della posa Spline.
+            var cSfera = orb.points.getWorldPosition(new THREE.Vector3());
+            var rSel = orbWorldRadius * (1 + SFERA_CONFIG.margineSfumatura);
+            // Distanza punto→bbox: zero se il centro ci sta dentro. È la
+            // «sagoma che interseca la sfera» del brief, presa sul bbox in
+            // mondo e non sui triangoli — dieci volte più veloce e, con
+            // mesh grandi come queste, più prudente (il bbox è più grosso
+            // della mesh, quindi al più prende una mesh in più, mai una in
+            // meno).
+            var distBox = function (bb, c) {
+              return new THREE.Vector3(
+                Math.max(bb.min.x, Math.min(c.x, bb.max.x)),
+                Math.max(bb.min.y, Math.min(c.y, bb.max.y)),
+                Math.max(bb.min.z, Math.min(c.z, bb.max.z))).distanceTo(c);
+            };
+            // CHI RESTA FUORI, e perché — per identità, mai per raggio:
+            //  - il PETTO: aprirlo vorrebbe dire aprire tutto il torso, cioè
+            //    rendere la zona «collo» identica alla zona «anima» (è la
+            //    deviazione 3 del Task D1b, e resta valida). Il suo bbox
+            //    contiene il centro della sfera, quindi qualunque margine lo
+            //    pescherebbe: va escluso a mano o non si esclude mai.
+            //  - il VISORE: il Task D1 chiede esplicitamente che col cursore
+            //    sul collo il visore NON si apra e gli occhi restino accesi.
+            //    Il suo bbox arriva al mento, a 0,99 raggi dal centro: entra
+            //    anche con margine ZERO.
+            //  - le mesh del collo: ci sono già.
+            var fuoriPerIdentita = [window.__robot.parts.chest, window.__robot.parts.visor];
+            var giaCollo = window.__robot.parts.collo;
+            var attorno = [];
+            model.traverse(function (m) {
+              if (!m.isMesh || m.userData.splineIndex === undefined) return;
+              if (giaCollo.indexOf(m) >= 0 || fuoriPerIdentita.indexOf(m) >= 0) return;
+              if (distBox(new THREE.Box3().setFromObject(m), cSfera) <= rSel) attorno.push(m);
+            });
+            // Le mesh che stanno DENTRO il visore hanno già un'istanza loro
+            // (makeInside, che le fa sfumare col cervello): a quelle si
+            // AGGIUNGE lo strato dell'apertura invece di clonarne una seconda
+            // — vedi `ancheApribile`. Le altre seguono la strada normale.
+            var giaInside = window.__robot.parts.inside || [];
+            var doppie = attorno.filter(function (m) { return giaInside.indexOf(m) >= 0; });
+            var nuove = attorno.filter(function (m) { return giaInside.indexOf(m) < 0; });
+            if (doppie.length) sm.ancheApribile(doppie, 'collo');
+            if (nuove.length) sm.makeApribile(nuove, 'collo');
+            if (attorno.length) sm.setCamera(cam);   // le nuove istanze vogliono la luce
+            // `parts.collo` NON cambia, ed è voluto: quella lista è l'IDENTITÀ
+            // della zona — con lei si interroga il raggio, si misura la sagoma
+            // del collo e si aggancia l'etichetta. Qui si sta decidendo solo
+            // che cosa SFUMA. Tenere le due cose separate vuol dire che il
+            // pezzo sotto il mento continua a rispondere al cervello quando ci
+            // passi sopra (sta dentro il visore: è lì che deve mandarti) e
+            // sfuma lo stesso quando ad accendersi è il collo.
+            window.__robot.parts.colloSfumate = giaCollo.concat(attorno);
+            if (window.__debugParts) console.log('[robot] attorno alla sfera:', attorno.map(function (m) { return m.name + '#' + m.userData.splineIndex; }));
           }
         }
 

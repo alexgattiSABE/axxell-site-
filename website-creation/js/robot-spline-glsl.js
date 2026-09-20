@@ -354,9 +354,16 @@ WC.robotSplineGLSL = {
     // MAT_PARTS` obbligava makeArm a dare a tutte le mesh un materiale Parts:
     // a riposo le due scocche cambiavano aspetto (meanDiff 2,94, i bordi dei
     // pannelli che spuntavano dove prima c'era carbonio liscio).
+    //
+    // Task D3 — si parte da `outA` e non da 1.0, e non è un dettaglio di
+    // stile: il pezzo sotto il mento sta in DUE gruppi (sfuma con il cervello,
+    // che abbassa uOpacity, e si apre con il collo, che alza uArmReveal), e
+    // partire da 1.0 buttava via l'alpha dell'altro gruppo ogni volta che
+    // questo era a riposo. Per tutte le altre istanze non cambia niente:
+    // uOpacity lì vale 1, e mix(1.0, …) e mix(outA, …) sono lo stesso numero.
     '#ifdef ARM_REVEAL',
     '  float armRim = pow(1.0 - abs(dot(normalize(n), normalize(vViewPosition))), uArmRimPow);',
-    '  outA = mix(1.0, max(uArmMinAlpha, armRim), uArmReveal);',
+    '  outA = mix(outA, max(uArmMinAlpha, armRim), uArmReveal);',
     '#endif',
 
     '  gl_FragColor = vec4(c, outA);',
