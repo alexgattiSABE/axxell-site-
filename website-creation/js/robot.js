@@ -33,6 +33,30 @@ WC.register('robot', function(ctx){
   // sezione, quindi lo stesso gesto girava la testa di 0.5/2.2 per unità:
   // stesso gesto, stessa rotazione di prima.
   var CONFIG = { yawGain: 0.2273, pitchGain: 0.35, yawMax: 0.5, pitchMax: 0.3, minHeadTopPx: 80 };
+  // Task A2 — l'anima nella pancia: la sfera di SABE (js/pointorb.js) dietro la
+  // «A» del petto. Tutti i numeri della sfera stanno qui, si ritoccano a
+  // schermo. Le frazioni sono del BOUNDING BOX DEL TORSO (la mesh `Body`
+  // indice 40, già nota come parts.chest), così reggono a qualunque scala.
+  //  - back: quanto la sfera arretra dal centro della «A» (che sta sulla
+  //    FACCIA del petto), in frazioni della profondità del torso. Serve perché
+  //    la sfera stia DENTRO il corpo e si veda attraverso il logo.
+  //  - radius: frazione della larghezza del torso, ed è la manopola da girare
+  //    se il centro legge male. La sfera ha un foro sull'asse della camera —
+  //    c'è anche in SABE, è il suo aspetto ad anello — e il foro scala col
+  //    raggio: ALLARGARLA non lo riempie, semmai va STRETTA finché la corona
+  //    di punti non arriva dietro la «A». A 0.42 il foro è largo quanto la
+  //    «A», che così esce bianca su fondo scuro, netta (09-pancia-reveal.png):
+  //    per questo resta.
+  //  - count: gli stessi punti del tier desktop di SABE (axxell-3d.js, ≤1440),
+  //    così la densità di punti SULLA SFERA — cioè la grana — è la sua.
+  //  - pointSizeK / fovRef: la formula di pointorb.js,
+  //    pointSize = 0.03 · altezza canvas · raggio mondo · tan(22.5°)/(tan(fov/2)/zoom).
+  //    Si ricalcola a ogni fit(): uSize e uPR sono fissati alla costruzione.
+  //  - spin/tilt: la posa della pagina di SABE (giro lento e oscillazione).
+  //  - insideShrink: quanto si stringe il bbox del torso per decidere cosa gli
+  //    sta DENTRO (vedi più sotto).
+  var BELLY_CONFIG = { back: 0.18, radius: 0.42, count: 26000, pointSizeK: 0.03, fovRef: 22.5,
+    spin: 0.21, tilt: 0.46, insideShrink: 0.85 };
   var D = WC.robotSplineData;
   var section = document.getElementById('cap05');
   var card    = document.getElementById('wcRobotCard');
@@ -213,6 +237,21 @@ WC.register('robot', function(ctx){
     cam.position.fromArray(D.camera.position);
     cam.quaternion.fromArray(D.camera.quaternion);
     var headTopWorld = null;
+    // Raggio della sfera della pancia in unità MONDO: serve alla dimensione dei
+    // punti (tuneOrb), che si ricalcola a ogni fit(). 0 = sfera non ancora
+    // costruita.
+    var orbWorldRadius = 0;
+    // `uSize` e `uPR` della sfera sono fissati alla costruzione (pointorb.js)
+    // ma dipendono dall'altezza in CSS della canvas e dal pixel ratio: qui si
+    // rifanno, come già si fa con uSize del cervello.
+    function tuneOrb() {
+      var orb = window.__robot && window.__robot.orb;
+      var h = stage.clientHeight;
+      if (!orb || !orbWorldRadius || !h) return;
+      var fovScale = Math.tan(THREE.MathUtils.degToRad(BELLY_CONFIG.fovRef)) / (Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / cam.zoom);
+      orb.uniforms.uSize.value = BELLY_CONFIG.pointSizeK * h * orbWorldRadius * fovScale;
+      orb.uniforms.uPR.value = renderer.getPixelRatio();
+    }
 
     // Gli occhi a LED del visore sono un video (Task 5): scorre solo mentre la
     // sezione è davvero in vista. Noto PRIMA di gltf.load, così il materiale
@@ -252,6 +291,7 @@ WC.register('robot', function(ctx){
       // e così l'ombra non può restare indietro per un motivo che qui non
       // abbiamo previsto.
       renderer.shadowMap.needsUpdate = true;
+      tuneOrb();
     }
     stage.appendChild(renderer.domElement);
 
@@ -361,18 +401,23 @@ WC.register('robot', function(ctx){
           // Mesh Parts DENTRO il volume del visore (il Cylinder, y 208–261,
           // dentro il visore y 222–304): al reveal sfumano col vetro, così non
           // coprono il cervello. Quelle del collo, col centro sotto il visore,
-          // restano opache. Il cervello resta a renderOrder 0: cervello →
-          // interni → visore.
+          // restano opache.
+          //
+          // ORDINE DI DISEGNO, esplicito e distinto per tutta la coda
+          // trasparente (Task A2): sfera della pancia 0 → interni (testa e
+          // pancia) 1 → visore 2 → petto 3. Il petto ora è trasparente (porta
+          // il reveal della pancia): senza un renderOrder più ALTO della sfera
+          // finirebbe per coprirla.
           var vb = new THREE.Box3().setFromObject(asg.visor);
           var inside = parts.head.filter(function (m) {
             if (m === asg.visor || m.userData.splineMaterial !== 'Parts') return false;
             return vb.containsPoint(new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()));
           });
-          sm.makeInside(inside, asg.visor);
+          sm.makeInside(inside, asg.visor, 'head');
           asg.visor.renderOrder = 2;
           // Task 7: il logo «A» bianco lucido, stampato SOLO sulla mesh del
           // petto (istanza del materiale Body col define LOGO).
-          if (asg.chest) sm.makeChest(asg.chest);
+          if (asg.chest) { sm.makeChest(asg.chest); asg.chest.renderOrder = 3; }
           sm.setCamera(cam);   // dopo makeInside/makeChest: anche i cloni ricevono la luce
           window.__robot.parts.inside = inside;
           if (window.__debugParts) console.log('[robot] interni testa:', inside.map(function (m) { return m.name; }));
@@ -567,6 +612,80 @@ WC.register('robot', function(ctx){
             });
           }
         }
+
+        // Task A2 — l'anima nella pancia. Stesso meccanismo del cervello dentro
+        // la testa, una zona più in basso: il torso diventa quasi trasparente e
+        // dietro la «A» — che resta piena — si vede la sfera di SABE
+        // (WC.pointOrb, js/pointorb.js). Due pezzi:
+        //   1. quali mesh sfumano DENTRO il torso, come `inside` per la testa;
+        //   2. la sfera, ancorata al centro del LOGO e spinta indietro.
+        // Parentata a `model` e NON a headGroup: il torso non gira col collo.
+        var spline = window.__robot.spline;
+        var chest = window.__robot.parts.chest;
+        if (spline && chest) {
+          model.updateMatrixWorld(true);
+          var chestBox = new THREE.Box3().setFromObject(chest);
+          var chestSize = chestBox.getSize(new THREE.Vector3());
+          // Cosa sta DENTRO il torso. Non basta il centro dentro il bbox pieno:
+          // prenderebbe spalle, anello del collo e bacino, che stanno FUORI dal
+          // corpo. Si stringe il bbox a 0.85 e si chiede la contenenza INTERA,
+          // limitando alle mesh 'Parts' (Head è il solo visore, Body è la
+          // scocca). Sul GLB attuale non ne passa nessuna: il torso è una
+          // scocca chiusa e vuota — vedi il report del Task A2. La regola resta
+          // perché un GLB con dei pezzi dentro li sfumerebbe da sé.
+          var shrunk = new THREE.Box3().setFromCenterAndSize(
+            chestBox.getCenter(new THREE.Vector3()),
+            chestSize.clone().multiplyScalar(BELLY_CONFIG.insideShrink));
+          var bellyInside = [];
+          model.traverse(function (m) {
+            if (!m.isMesh || m === chest || m.userData.splineMaterial !== 'Parts') return;
+            if (shrunk.containsBox(new THREE.Box3().setFromObject(m))) bellyInside.push(m);
+          });
+          // `capo` a null: il TORSO CONTINUA A PROIETTARE OMBRA anche a pancia
+          // aperta, al contrario del visore. Misurato sullo stesso fotogramma a
+          // riposo, una volta con chest.castShadow e una senza: la sua ombra
+          // non cade quasi per niente sulle gambe (0,12% dei pixel cambia di
+          // più di 8/255) ma copre quasi tutto il BRACCIO di destra (5,5% dei
+          // pixel, punte di 224/255). Spegnerla a metà reveal accenderebbe
+          // quel braccio di colpo — il lampo che lo spec temeva, solo su un
+          // altro pezzo. Gli interni della pancia, se un giorno ce ne saranno,
+          // seguono invece il reveal come quelli della testa.
+          spline.makeInside(bellyInside, null, 'belly');
+          window.__robot.parts.bellyInside = bellyInside;
+          if (window.__debugParts) console.log('[robot] interni pancia:', bellyInside.map(function (m) { return m.name; }));
+
+          if (WC.pointOrb && spline.logo) {
+            // Tutto in coordinate LOCALI di `model` (come il cervello dentro
+            // headGroup): `model` può portare una scala propria dal GLB, e
+            // points.scale va nelle unità del suo genitore.
+            var invModel = new THREE.Matrix4().copy(model.matrixWorld).invert();
+            var chestLocal = chestBox.clone().applyMatrix4(invModel);
+            var chestSizeLocal = chestLocal.getSize(new THREE.Vector3());
+            var orbRadius = chestSizeLocal.x * BELLY_CONFIG.radius;
+            // Il punto d'aggancio è il centro della «A», non il centro del
+            // bbox del torso: a 1440×900 quel centro sta ~68 px più in basso, e
+            // la richiesta era «esattamente dietro la A». La «A» sta sulla
+            // faccia del petto, quindi la sfera arretra dentro il corpo lungo
+            // la Z locale del modello, che nelle coordinate della scena Spline
+            // è l'asse della profondità (la camera guarda lungo +Z).
+            var orbPos = spline.logo.anchor.clone().applyMatrix4(invModel);
+            orbPos.z -= chestSizeLocal.z * BELLY_CONFIG.back;
+
+            var orb = WC.pointOrb.create({ count: BELLY_CONFIG.count, radius: orbRadius });
+            orb.points.castShadow = false;      // è luce, non materia
+            orb.points.receiveShadow = false;
+            orb.points.position.copy(orbPos);
+            orb.points.renderOrder = 0;         // prima di interni (1), visore (2), petto (3)
+            orb.points.visible = false;         // a riposo non si disegna affatto
+            model.add(orb.points);
+            window.__robot.orb = orb;
+            orbWorldRadius = orbRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
+          }
+          // I cloni trasparenti degli interni della pancia nascono DOPO il
+          // setCamera di qui sopra: senza questo secondo giro resterebbero con
+          // uLightPos a zero, cioè illuminati da un punto che non c'è.
+          spline.setCamera(cam);
+        }
         fit();
 
         // Verifica visiva dello split (Task 2, dietro flag): tinteggia
@@ -611,6 +730,9 @@ WC.register('robot', function(ctx){
       var raycaster = new THREE.Raycaster();
       var lensNdc = new THREE.Vector2();
       var hoverHead = 0;
+      // Task A2: il gemello per la pancia (raycast sul SOLO torso) e
+      // l'orologio della posa della sfera.
+      var hoverBelly = 0, orbTime = 0;
       // Task 6: surge delle fibre per braccio (0..1, smorzato) — stesso
       // Raycaster riusato (Task 7: stesso raggio del reveal testa sotto,
       // niente secondo setFromCamera — il puntatore è lo stesso NDC per i
@@ -637,7 +759,7 @@ WC.register('robot', function(ctx){
       // decadimento smorzato passa sotto la soglia in qualche fotogramma in
       // più e poi si ferma comunque).
       var SHADOW_EPS = 0.0005;
-      var shadowYaw = NaN, shadowPitch = NaN, shadowCast = null;
+      var shadowYaw = NaN, shadowPitch = NaN, shadowCast = null, shadowCastBelly = null;
       (function tick(){
         raf = requestAnimationFrame(tick);
         var robot = window.__robot;
@@ -694,21 +816,39 @@ WC.register('robot', function(ctx){
         // testa: visore trasparente, occhi a LED spenti, cervello in vista).
         // Nessun hit (cursore fuori dalla testa, o fuori dallo stage) →
         // target 0: il visore torna quello Spline e gli occhi si riaccendono.
+        // Task A2: stesso raggio, anche sul SOLO torso, per il reveal della
+        // pancia. UNA ZONA PER VOLTA, e vince la più VICINA alla camera — non
+        // «la testa sempre»: all'altezza del collo il raggio può colpire sia un
+        // pezzo della testa sia il petto, e va aperto quello che sta davanti.
+        // intersectObjects/intersectObject tornano già ordinati per distanza.
         if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
-          var hoverTarget = 0;
-          if (pointer.active && raycaster.intersectObjects(robot.parts.head, false).length) {
-            hoverTarget = 1;
+          var dHead = Infinity, dBelly = Infinity;
+          if (pointer.active) {
+            var hitHead = raycaster.intersectObjects(robot.parts.head, false);
+            if (hitHead.length) dHead = hitHead[0].distance;
+            if (robot.parts.chest) {
+              var hitBelly = raycaster.intersectObject(robot.parts.chest, false);
+              if (hitBelly.length) dBelly = hitBelly[0].distance;
+            }
           }
-          hoverHead += (hoverTarget - hoverHead) * 0.18;
+          hoverHead += (((dHead < Infinity && dHead <= dBelly) ? 1 : 0) - hoverHead) * 0.18;
+          hoverBelly += (((dBelly < dHead) ? 1 : 0) - hoverBelly) * 0.18;
           robot.spline.setReveal(hoverHead);
-          // Secondo motivo: il reveal ha attraversato la soglia in cui visore
-          // e interni smettono (o riprendono) a proiettare ombra. Stessa
-          // condizione di setReveal in robot-spline-materials.js — lo snap
-          // agli estremi che fa lì (sotto 0.01 → 0, sopra 0.995 → 1) non tocca
-          // il confronto con 0.5. Senza questo, l'ombra del visore resterebbe
-          // stampata a terra a testa trasparente.
-          var castNow = hoverHead <= 0.5;
-          if (castNow !== shadowCast) { shadowCast = castNow; renderer.shadowMap.needsUpdate = true; }
+          robot.spline.setBellyReveal(hoverBelly);
+          // Secondo motivo: un reveal ha attraversato la soglia in cui i pezzi
+          // che la zona copre smettono (o riprendono) a proiettare ombra.
+          // Stessa condizione di fadeInside in robot-spline-materials.js — lo
+          // snap agli estremi che fa lì (sotto 0.01 → 0, sopra 0.995 → 1) non
+          // tocca il confronto con 0.5. Senza questo, l'ombra del visore
+          // resterebbe stampata a terra a testa trasparente. Le due zone hanno
+          // una bandierina ciascuna: passando dalla testa alla pancia possono
+          // stare ENTRAMBE sopra 0.5 per qualche fotogramma, e una sola
+          // bandierina si perderebbe il secondo cambio.
+          var castNow = hoverHead <= 0.5, castBelly = hoverBelly <= 0.5;
+          if (castNow !== shadowCast || castBelly !== shadowCastBelly) {
+            shadowCast = castNow; shadowCastBelly = castBelly;
+            renderer.shadowMap.needsUpdate = true;
+          }
         }
         // RITOCCO 2: il brain si accende con lo STESSO segnale del reveal a
         // tutta testa (non più la lente locale, non legato a faceAmount).
@@ -719,6 +859,23 @@ WC.register('robot', function(ctx){
           // Lo smorzamento esponenziale non arriva mai a 0 esatto: sotto la
           // soglia il cervello non viene proprio disegnato (decisione 5).
           robot.brain.points.visible = hoverHead > 0.01;
+        }
+        // Task A2: la sfera nella pancia si accende con il reveal della pancia,
+        // esattamente come il cervello con quello della testa (update scrive il
+        // reveal in uAppear e riporta la camera in coordinate locali). La POSA
+        // — giro lento e oscillazione — la decide chi monta la sfera: qui è
+        // quella della pagina di SABE (BELLY_CONFIG.spin/tilt). Sotto la soglia
+        // la sfera non viene proprio disegnata.
+        if (robot && robot.orb) {
+          orbTime += dt;
+          // La posa PRIMA di update(): update legge la matrice mondo della
+          // sfera per portarci dentro la camera (uCamLocal, da cui lo shader
+          // ricava il foro sull'asse della camera). Al contrario userebbe la
+          // posa del fotogramma prima.
+          robot.orb.points.rotation.y = orbTime * BELLY_CONFIG.spin;
+          robot.orb.points.rotation.x = Math.sin(orbTime * 0.1) * BELLY_CONFIG.tilt;
+          robot.orb.update(dt, hoverBelly, cam);
+          robot.orb.points.visible = hoverBelly > 0.01;
         }
         // Task 6: raycast del cursore sulle mesh-braccio, un lato alla
         // volta — a differenza del reveal testa (una sola zona, la testa)
@@ -779,6 +936,7 @@ WC.register('robot', function(ctx){
       if (robot) {
         disposeObject3D(robot.model);
         if (robot.brain && robot.brain.points) disposeObject3D(robot.brain.points);
+        if (robot.orb && robot.orb.points) disposeObject3D(robot.orb.points);
         if (robot.fibers && robot.fibers.object) disposeObject3D(robot.fibers.object);
       }
       // Materiali Spline: le texture nelle uniform (disposeObject3D non le
