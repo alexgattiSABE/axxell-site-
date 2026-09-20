@@ -132,6 +132,17 @@ WC.pointBrain = (function () {
   var FRAG = [
     'precision highp float;',
     'uniform vec3 uCool; uniform vec3 uWarm; uniform vec3 uEdgeColor; uniform vec3 uCenterColor;',
+    // Task D1c — DOVE comincia e dove finisce il gradiente verticale, in
+    // unità della geometria (x = quota del freddo pieno, y = quota del caldo
+    // pieno). Era scritto a numeri fissi, −0,7 e 0,9: le posizioni però sono
+    // già moltiplicate per `radius` (sampleSurface/sampleCloud), quindi quei
+    // due numeri valgono solo per un cervello di raggio 1. Su quello del robot
+    // (raggio ~30, forma alta 47) diventavano una rampa alta 1,6 unità in
+    // mezzo alla testa: sopra tutto verde, sotto tutto azzurro, e in mezzo lo
+    // STACCO NETTO che Nike ha visto. Il default resta (−0,7, 0,9), cioè il
+    // cervello di Vesper/ATLAS non cambia di un pixel; chi ha un raggio
+    // diverso ci scrive le SUE quote.
+    'uniform vec2 uGradRange;',
     'uniform float uCenterFalloff; uniform vec3 uSynapse; uniform float iAlpha; uniform float uGlow;',
     'uniform float uDepthDarkness; uniform vec3 uDeepColor; uniform float uOcclusionStrength;',
     'uniform vec3 uHighlightColor; uniform float uHighlightStrength; uniform float uFocusFadeStrength;',
@@ -149,7 +160,7 @@ WC.pointBrain = (function () {
     // Regge tutta la forma (la vecchia tinta al 35% su base color-bordo si
     // leggeva piatta); sfuma verso l'interno scuro, e il bordo esterno è
     // rialzato col colore di silhouette.
-    '  float vt = clamp(smoothstep(-0.7, 0.9, vWorldPos.y) + vSeed * 0.12, 0.0, 1.0);',
+    '  float vt = clamp(smoothstep(uGradRange.x, uGradRange.y, vWorldPos.y) + vSeed * 0.12, 0.0, 1.0);',
     '  vec3 grad = mix(uCool, uWarm, vt);',
     '  vec3 base = mix(grad, uCenterColor, t);',
     '  base = mix(base, uEdgeColor, (1.0 - t) * 0.18);',
@@ -278,6 +289,7 @@ WC.pointBrain = (function () {
       iTime:              { value: 0 },
       iAlpha:             { value: 0 },
       iResolutionY:       { value: 720 },
+      uGradRange:         { value: new THREE.Vector2(-0.7, 0.9) },
       uCool:              { value: cool },
       uWarm:              { value: col.clone() },
       uEdgeColor:         { value: col.clone() },
@@ -364,6 +376,7 @@ WC.pointBrain = (function () {
       iTime:              { value: 0 },
       iAlpha:             { value: 0 },
       iResolutionY:       { value: 720 },
+      uGradRange:         { value: new THREE.Vector2(-0.7, 0.9) },
       uCool:              { value: hexToLinear('#00d4ff') },
       uWarm:              { value: hexToLinear('#00e8a2') },
       uEdgeColor:         { value: hexToLinear('#0077b3') },
@@ -443,6 +456,10 @@ WC.pointBrain = (function () {
     }
 
     var uniforms = opts.uniforms || defaultUniforms(opts.color);
+    // Task D1c — chi passa le proprie uniform (Vesper) può non avere
+    // `uGradRange`: senza la chiave three non carica niente e in GL resta
+    // (0,0), cioè un gradino netto a y = 0. Il default è quello di sempre.
+    if (!uniforms.uGradRange) uniforms.uGradRange = { value: new THREE.Vector2(-0.7, 0.9) };
     var material = createMaterial(uniforms);
     var points = new THREE.Points(geometry, material);
     points.frustumCulled = false;

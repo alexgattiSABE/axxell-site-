@@ -135,7 +135,20 @@ WC.register('robot', function(ctx){
   //    sovrappongono e il cervello diventa una macchia piena, senza più
   //    emisferi né solchi (provato: vedi il report C2). È la stessa regola
   //    che tuneOrb applica alla sfera, dove uSize è proporzionale al raggio.
-  var CERVELLO_CONFIG = { raggio: 0.46, alzata: 0.26, raggioTarato: 0.66 };
+  //  - sfumatura: dove comincia e dove finisce il gradiente verticale del
+  //    cervello (verde in alto, azzurro in basso), in frazioni del RAGGIO del
+  //    cervello, simmetrico attorno al suo centro. Nike: «sfuma il cervello
+  //    perché lo stacco dal verde all'azzurro è troppo evidente» — e non era
+  //    una questione di gusto ma un bug di scala: le quote nello shader
+  //    (−0,7 … 0,9) sono in unità della geometria, che è già moltiplicata per
+  //    il raggio, quindi su un cervello di raggio ~30 la rampa era alta 1,6
+  //    unità dentro una forma alta 47 e i due colori si toccavano su una riga.
+  //    Il valore qui sotto è misurato a schermo (vedi il report D1c e
+  //    `12-cervello-sfumato.png`): la forma va da −0,87 a +0,72 raggi, e una
+  //    rampa più stretta della forma tiene le due tinte PIENE alle estremità —
+  //    se no il verde di ATLAS non si vede quasi più — lasciando la
+  //    transizione lunga abbastanza da non leggersi come un confine.
+  var CERVELLO_CONFIG = { raggio: 0.46, alzata: 0.26, raggioTarato: 0.66, sfumatura: 0.55 };
   // Task D1 — la sfera di SABE scende nel COLLO (Nike: «la sfera di sabe va
   // fatta nella zona collo, tra il mento e il logo»). Era nella pancia (Task
   // A2), poi all'altezza della bocca dentro il visore (Task C2); adesso sta
@@ -1008,6 +1021,21 @@ WC.register('robot', function(ctx){
               brain.points.receiveShadow = false;
               brain.points.position.copy(brainPos);
               brain.uniforms.uSize.value = brainUSize;
+              // Task D1c (Nike: «sfuma il cervello perché lo stacco dal verde
+              // all'azzurro è troppo evidente»). Il gradiente verticale dello
+              // shader va da uGradRange.x a uGradRange.y in unità della
+              // GEOMETRIA, e le posizioni sono già moltiplicate per il raggio:
+              // il default (−0,7 … 0,9) vale per un cervello di raggio 1
+              // (Vesper, ATLAS) e lì copre tutta la forma; su questo, che di
+              // raggio ne ha ~30, era una rampa alta 1,6 unità in mezzo a una
+              // forma alta 47 — il taglio netto che Nike ha visto. Qui la
+              // rampa si scrive sulle quote VERE di questo cervello, in
+              // frazione della sua mezza altezza (CERVELLO_CONFIG.sfumatura).
+              // I due colori NON si toccano: sono la palette di ATLAS.
+              if (brain.uniforms.uGradRange) {
+                var gy = brainRadius * CERVELLO_CONFIG.sfumatura;
+                brain.uniforms.uGradRange.value.set(-gy, gy);
+              }
               headGroup.add(brain.points);
               window.__robot.brain = brain;
             }
