@@ -2112,6 +2112,17 @@ WC.register('robot', function(ctx){
           }
           if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
           if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
+          // Task D13 — la SAGOMA a schermo, non un aggancio: `x` e' l'asse del
+          // corpo, `y` la sua mezza larghezza. Serve alla spezzata del tocco
+          // (anatomia.js, telefono) per sapere dove passare senza attraversare
+          // il robot. Sta nella stessa mappa degli agganci perche' e' la stessa
+          // proiezione, fatta nello stesso fotogramma: leggerla altrove
+          // vorrebbe dire rifarla e sperare che coincida. La chiave non e' l'id
+          // di nessuna zona, quindi chi cicla sulle zone non la vede.
+          if (quadro && quadro.sinistra && quadro.destra) {
+            var pSx = aSchermo(quadro.sinistra), pDx = aSchermo(quadro.destra);
+            anc.__corpo = { x: (pSx.x + pDx.x) / 2, y: Math.abs(pDx.x - pSx.x) / 2 };
+          }
           // `hitId` accanto ad `activeId`: la zona colpita GREZZA, senza
           // grazia e senza il tenere-in-vita dell'etichetta. La usano il clic
           // (vedi onUpStage) e il cursore a mano, che devono parlare della

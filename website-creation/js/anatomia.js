@@ -462,20 +462,47 @@ WC.anatomia = (function () {
       var r = forzataRiga.getBoundingClientRect(), rh = host.getBoundingClientRect();
       var x0 = r.left - rh.left + r.width / 2, y0 = r.bottom - rh.top + 6;
       var a = ancore[forzata];
-      // Il percorso passa da FUORI, non attraverso il robot. Una diagonale
-      // corta dalla voce fino alla corsia lungo il bordo dello schermo, la
-      // corsia in verticale fino alla quota del pezzo, e l'ultimo tratto
-      // orizzontale che entra nel corpo — come le linee del pc, che nel corpo
-      // entrano sempre di lato. Andando dritti dalla voce all'aggancio la
-      // linea attraversava la faccia (provato: dalla voce «gestionale» tagliava
-      // il visore in diagonale).
-      var lato = (a.x >= lar / 2) ? 1 : -1;
-      var corsia = lato > 0 ? (lar - LINEA.margineBordo * 0.6) : (LINEA.margineBordo * 0.6);
-      var y1 = y0 + 22;
-      var pts = n2(x0) + ',' + n2(y0) + ' ' + n2(corsia) + ',' + n2(y1) + ' ' +
-                n2(corsia) + ',' + n2(a.y) + ' ' + n2(a.x) + ',' + n2(a.y);
-      trattoLinea.setAttribute('points', pts);
-      var lung = Math.hypot(corsia - x0, y1 - y0) + Math.abs(a.y - y1) + Math.abs(a.x - corsia);
+      // ---- IL PERCORSO (Task D13, disegnato da Nike) ----
+      // Solo angoli retti, mai una diagonale, e mai attraverso il robot:
+      //   giu' dalla voce  →  (se serve) di lato fino a una corsia libera  →
+      //   giu' fino alla quota del pezzo  →  dentro, in orizzontale.
+      // L'ultimo tratto entra DAL LATO DELLA VOCE: una voce a sinistra entra da
+      // sinistra. L'aggancio che robot.js proietta sta sempre sul fianco
+      // destro (e' quello che serve alle etichette del pc); quando la voce sta
+      // dall'altra parte lo si specchia attorno all'asse del corpo, che arriva
+      // nella stessa mappa (`__corpo`).
+      var corpo = ancore.__corpo || { x: lar / 2, y: lar * 0.25 };
+      // `corpo.y` e' la mezza larghezza con le BRACCIA; la colonna centrale —
+      // testa, collo, torso — e' piu' stretta, ed e' quella che la linea non
+      // deve attraversare. Fra il torso e il braccio c'e' un vuoto, e la
+      // corsia ci passa dentro: e' quello che Nike ha disegnato.
+      var colonna = corpo.y * 0.42;
+      var scarto = a.x - corpo.x;
+      var laterale = Math.abs(scarto) > corpo.y * 0.55;   // il braccio: si raggiunge solo dal suo lato
+      var lato = laterale ? (scarto < 0 ? -1 : 1) : ((x0 < corpo.x) ? -1 : 1);
+      // Dove la linea ENTRA. Le zone centrali hanno un aggancio solo, sul
+      // fianco destro (serve alle etichette del pc): quando si entra da
+      // sinistra lo si specchia attorno all'asse. Poi si spinge di 14 px
+      // DENTRO, se no la linea si ferma a sfiorare il bordo e sembra staccata.
+      // 26 px misurati: sotto, la linea si ferma a sfiorare il bordo del pezzo
+      // e sembra staccata; sopra, entra troppo e sembra che lo trafigga.
+      var DENTRO = 26;
+      var fineX = (laterale ? a.x : (corpo.x + lato * Math.abs(scarto))) - lato * DENTRO;
+      // La corsia verticale: quella della voce, se la voce non sta sopra la
+      // colonna centrale; se no la prima libera appena fuori dalla colonna,
+      // dalla parte giusta. Per il braccio, appena fuori dal braccio.
+      var corsia = laterale ? (a.x + lato * 30)
+        : ((Math.abs(x0 - corpo.x) > colonna) ? x0 : (corpo.x + lato * (colonna + 26)));
+      corsia = Math.max(10, Math.min(lar - 10, corsia));
+      var y1 = y0 + 26;                            // il primo tratto verticale, corto
+      var pts = [[x0, y0]];
+      if (Math.abs(corsia - x0) > 3) { pts.push([x0, y1]); pts.push([corsia, y1]); }
+      pts.push([corsia, a.y]);
+      pts.push([fineX, a.y]);
+      var lung = 0;
+      for (var k = 1; k < pts.length; k++) lung += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+      trattoLinea.setAttribute('points', pts.map(function (p) { return n2(p[0]) + ',' + n2(p[1]); }).join(' '));
+
       trattoLinea.style.strokeDasharray = n2(lung);
       trattoLinea.style.setProperty('--corda', n2(lung));
       tratto.setAttribute('viewBox', '0 0 ' + lar + ' ' + alt);
