@@ -478,7 +478,11 @@ WC.register('robot', function(ctx){
       // gia' un clic, e una zona colpita per sbaglio porterebbe via dalla
       // pagina senza che si sia potuto leggere niente. Il tocco continua ad
       // APRIRE la zona (il torso, la testa, il braccio): quello resta.
-      if (!WC.anatomia.stretto() && anat.cliccabile(st.activeId)) anat.vai(st.activeId);
+      // Task D12 — con un'eccezione: il pezzo che la scaletta ha appena
+      // aperto. Li' il tocco e' una risposta a quello che si sta guardando,
+      // non un tocco al buio, e salta l'attesa dell'animazione.
+      if (WC.anatomia.stretto()) { if (anat.subito) anat.subito(st.activeId); return; }
+      if (anat.cliccabile(st.activeId)) anat.vai(st.activeId);
     }
     function onCancel() { giu = null; }
     stage.addEventListener('pointerdown', onDown);
@@ -1938,7 +1942,12 @@ WC.register('robot', function(ctx){
         // ognuno per conto suo leggendo le distanze, e nel passaggio da una
         // zona all'altra restavano accesi in due — il cervello e la sfera
         // insieme, che è proprio lo screenshot di Nike.
-        var zonaViva = puntata || vicina;
+        // Task D12 — sul telefono la zona la decide il TOCCO sulla scaletta:
+        // `forzata` vale piu' del puntatore, che li' non esiste, e apre il
+        // pezzo con le stesse transizioni di sempre.
+        var forzata = (anat && anat.forzata) ? anat.forzata() : null;
+        var zonaViva = forzata || puntata || vicina;
+        if (forzata) { zonaAttiva = forzata; zonaUltima = forzata; zonaScadenza = now + GRAZIA; }
 
         if (robot && robot.spline && robot.parts && robot.parts.head && robot.parts.head.length) {
           // Task D1d — i tre segnali del corpo escono tutti da `zonaViva`:

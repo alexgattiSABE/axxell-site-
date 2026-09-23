@@ -513,6 +513,22 @@ body.wc-locked{overflow:hidden;}
    Chi si vede lo decide SOLO questa media query: il JS costruisce sempre
    tutti e due, e girare il telefono non rimonta niente. */
 .wc-anat-scaletta{display:none;}
+/* Task D12 — la spezzata che parte dalla voce toccata e arriva al pezzo del
+   corpo. Esiste solo sul telefono (sul pc la linea ce l'ha gia' ogni
+   etichetta) e si disegna progressivamente, come quelle: stessa corda, stesso
+   tempo. */
+.wc-anat-tratto{display:none;position:absolute;inset:0;z-index:2;
+  width:100%;height:100%;overflow:visible;pointer-events:none;color:var(--white);
+  opacity:0;transition:opacity .16s linear;}
+.wc-anat-tratto polyline{fill:none;stroke:currentColor;stroke-width:1;
+  stroke-dashoffset:var(--corda,3000);transition:stroke-dashoffset .5s ease-out;}
+.wc-anat-tratto.-on{opacity:1;}
+.wc-anat-tratto.-on polyline{stroke-dashoffset:0;}
+@media (max-width:760px){.wc-anat-tratto{display:block;}}
+@media (prefers-reduced-motion:reduce){
+  .wc-anat-tratto,.wc-anat-tratto polyline{transition:none;}
+  .wc-anat-tratto polyline{stroke-dashoffset:0;}
+}
 @media (max-width:760px){
   .wc-anat-zona{display:none;}
   /* Task D11 — la scaletta e' una RIGA sopra il robot, non piu' una colonna
@@ -535,6 +551,12 @@ body.wc-locked{overflow:hidden;}
        la da' il padding orizzontale (piu' il `gap` del contenitore). */
     padding:.25rem .1rem;outline-offset:5px;}
   .wc-anat-riga:focus-visible{outline:1px solid var(--white);}
+  /* Task D12 — la voce toccata resta piena, le altre si ritirano: mentre la
+     linea corre verso il corpo si deve capire QUALE delle quattro si sta
+     guardando. */
+  .wc-anat-riga{transition:opacity .2s linear;}
+  .wc-anat-scaletta.-scelta .wc-anat-riga{opacity:.42;}
+  .wc-anat-scaletta .wc-anat-riga.-attiva{opacity:1;}
   /* Task D11 — le gambe sfumano nel nero invece di essere tranciate dal bordo.
      Con le braccia dentro il riquadro (vedi robot.js) il robot ci sta in
      larghezza ma non in altezza, quindi qualcosa esce di sotto: tagliato di

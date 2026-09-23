@@ -317,6 +317,24 @@ WC.anatomia = (function () {
     // browser.
     host.appendChild(scaletta);
 
+    // ---------------------------------------- Task D12: IL TRATTO DEL TOCCO
+    // Sul telefono la scaletta e' un elenco di nomi e basta: non dice DOVE
+    // stanno le cose. Al tocco parte una linea spezzata dalla voce fino al
+    // punto del corpo, e quel pezzo di robot si apre — il cervello nella
+    // testa, la sfera in pancia, la corrente nel braccio. Nel frattempo la
+    // pagina di destinazione si sta gia' caricando (vedi `vaiDopo`), cosi'
+    // l'attesa non e' tempo perso: e' il tempo in cui si vede la cosa.
+    var tratto = document.createElementNS(SVGNS, 'svg');
+    tratto.setAttribute('class', 'wc-anat-tratto');
+    tratto.setAttribute('aria-hidden', 'true');
+    tratto.setAttribute('focusable', 'false');
+    var trattoLinea = document.createElementNS(SVGNS, 'polyline');
+    tratto.appendChild(trattoLinea);
+    host.appendChild(tratto);
+    var forzata = null;        // la zona che il tocco tiene accesa
+    var forzataRiga = null;    // la voce toccata (da cui parte la linea)
+    var timerVai = null, timerSpegni = null;
+
     var ancore = {};          // id → {x, y} in px del riquadro
     var attivo = null;        // ultima zona passata da update()
     var ultimo = null;        // l'ultima che è stata accesa, e quando si è spenta
@@ -432,6 +450,35 @@ WC.anatomia = (function () {
         e.a.style.top = n2(g.ty) + 'px';
         e.box = { x: g.tx, y: g.ty, w: e.m.w, h: e.m.hTot };
       });
+      disegnaTratto();
+    }
+
+    // La spezzata del tocco: giu' dalla voce, poi in diagonale fino al punto
+    // del corpo. Si ridisegna a ogni fotogramma insieme al resto — l'aggancio
+    // e' quello vero, proiettato da robot.js, quindi la linea resta attaccata
+    // al pezzo anche mentre il torso respira.
+    function disegnaTratto() {
+      if (!forzata || !forzataRiga || !ancore[forzata]) { trattoLinea.setAttribute('points', ''); return; }
+      var r = forzataRiga.getBoundingClientRect(), rh = host.getBoundingClientRect();
+      var x0 = r.left - rh.left + r.width / 2, y0 = r.bottom - rh.top + 6;
+      var a = ancore[forzata];
+      // Il percorso passa da FUORI, non attraverso il robot. Una diagonale
+      // corta dalla voce fino alla corsia lungo il bordo dello schermo, la
+      // corsia in verticale fino alla quota del pezzo, e l'ultimo tratto
+      // orizzontale che entra nel corpo — come le linee del pc, che nel corpo
+      // entrano sempre di lato. Andando dritti dalla voce all'aggancio la
+      // linea attraversava la faccia (provato: dalla voce «gestionale» tagliava
+      // il visore in diagonale).
+      var lato = (a.x >= lar / 2) ? 1 : -1;
+      var corsia = lato > 0 ? (lar - LINEA.margineBordo * 0.6) : (LINEA.margineBordo * 0.6);
+      var y1 = y0 + 22;
+      var pts = n2(x0) + ',' + n2(y0) + ' ' + n2(corsia) + ',' + n2(y1) + ' ' +
+                n2(corsia) + ',' + n2(a.y) + ' ' + n2(a.x) + ',' + n2(a.y);
+      trattoLinea.setAttribute('points', pts);
+      var lung = Math.hypot(corsia - x0, y1 - y0) + Math.abs(a.y - y1) + Math.abs(a.x - corsia);
+      trattoLinea.style.strokeDasharray = n2(lung);
+      trattoLinea.style.setProperty('--corda', n2(lung));
+      tratto.setAttribute('viewBox', '0 0 ' + lar + ' ' + alt);
     }
 
     // ------------------------------------------------------- puntatore e fuoco
@@ -474,13 +521,85 @@ WC.anatomia = (function () {
       var a = ev.target.closest ? ev.target.closest('.wc-anat, .wc-anat-riga') : null;
       if (!a) return;
       if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button > 0) return;  // «apri in una scheda nuova»: non è roba nostra
-      var z = perId(a.getAttribute('data-zona'));
-      if (!z || z.href.indexOf('CORRENTE') !== 0) return;
+      var id = a.getAttribute('data-zona');
+      var z = perId(id);
+      if (!z) return;
+      // Task D12 — sul telefono la voce della scaletta non porta via subito:
+      // prima fa vedere DOVE sta la cosa. Il secondo tocco sulla stessa voce
+      // salta l'attesa. Su desktop niente di tutto questo: il link e' un link.
+      if (stretto() && a.classList.contains('wc-anat-riga')) {
+        ev.preventDefault();
+        if (forzata === id) { vaiDavvero(z); return; }
+        tocca(id, a);
+        return;
+      }
+      if (z.href.indexOf('CORRENTE') !== 0) return;
       ev.preventDefault();
       scorriA(z.href.slice(z.href.indexOf('#') + 1));
     }
     layer.addEventListener('click', onClick);
     scaletta.addEventListener('click', onClick);   // Task D8: una strada sola per tutti i clic
+
+    // ------------------------------------------- Task D12: il tocco e il viaggio
+    // Nike, sulle due strade possibili: «se possibile il caricamento parte ma
+    // nel mentre viene mostrato il cervello, oppure il caricamento parte solo
+    // toccando il cervello. Se possibile meglio la prima».
+    // La prima, e senza barare: al tocco parte SUBITO un `<link rel=prefetch>`
+    // — il browser scarica la pagina mentre la linea corre e il pezzo si apre
+    // — e la navigazione vera scatta a fine animazione, quando la pagina e'
+    // gia' in memoria. Chi non vuole aspettare tocca una seconda volta (o
+    // tocca il pezzo del robot che si e' aperto) e va subito.
+    var DURATA = 1150;      // quanto dura lo spettacolo prima di cambiare pagina
+    var RESTA = 3200;       // quanto resta acceso un pezzo che non porta da nessuna parte
+    function prefetch(url) {
+      if (!url) return;
+      var l = document.createElement('link');
+      // `prefetch` e non `preload`: il secondo vuole un `as` giusto o il
+      // browser lo scarta e avvisa in console; il primo e' esattamente «questa
+      // pagina mi servira' fra poco».
+      l.rel = 'prefetch';
+      l.href = url;
+      document.head.appendChild(l);
+    }
+    function pulisciTimer() {
+      if (timerVai) { clearTimeout(timerVai); timerVai = null; }
+      if (timerSpegni) { clearTimeout(timerSpegni); timerSpegni = null; }
+    }
+    function spegniTocco() {
+      pulisciTimer();
+      forzata = null; forzataRiga = null;
+      tratto.classList.remove('-on');
+      scaletta.classList.remove('-scelta');
+      Array.prototype.forEach.call(scaletta.children, function (c) { c.classList.remove('-attiva'); });
+      trattoLinea.setAttribute('points', '');
+    }
+    // Il tocco su una voce: accende la zona, tira la linea, scarica la pagina.
+    function tocca(id, riga) {
+      var z = perId(id);
+      if (!z) return;
+      pulisciTimer();
+      forzata = id; forzataRiga = riga;
+      Array.prototype.forEach.call(scaletta.children, function (c) {
+        c.classList.toggle('-attiva', c === riga);
+      });
+      tratto.classList.add('-on');
+      scaletta.classList.add('-scelta');
+      accendi(id);
+      rifai(true);
+      if (conDestinazione(z)) {
+        var url = hrefVero(z);
+        prefetch(url);
+        timerVai = setTimeout(function () { vaiDavvero(z); }, DURATA);
+      } else {
+        // La pancia non ha ancora una pagina: si vede la sfera e basta.
+        timerSpegni = setTimeout(spegniTocco, RESTA);
+      }
+    }
+    function vaiDavvero(z) {
+      pulisciTimer();
+      if (z.href.indexOf('CORRENTE') === 0) { spegniTocco(); scorriA(z.href.slice(z.href.indexOf('#') + 1)); return; }
+      location.href = hrefVero(z);
+    }
 
     function accendi(id) {
       if (attivo && attivo !== id) { ultimo = attivo; spentoA = ora(); }
@@ -533,6 +652,19 @@ WC.anatomia = (function () {
       // comunque — ma la condizione è esplicita, perché «non succede niente
       // per caso» non è una garanzia.
       vai: function (id) { var e = el[id]; if (e && conDestinazione(e.z)) e.a.click(); },
+      // Task D12 — la zona che il tocco sulla scaletta tiene accesa. robot.js
+      // la legge come se fosse quella sotto il cursore: apre lo stesso pezzo,
+      // con le stesse transizioni.
+      forzata: function () { return forzata; },
+      // Il tocco sul pezzo del robot che si e' appena aperto salta l'attesa.
+      // Vale solo per la zona in corso: toccare un'altra parte non naviga.
+      subito: function (id) {
+        if (!forzata || id !== forzata) return false;
+        var z = perId(id);
+        if (!conDestinazione(z)) return false;
+        vaiDavvero(z);
+        return true;
+      },
       attiva: function (id) { var z = perId(id); return !!(z && z.attiva); },
       // Task C3 — «questa zona si accende» e «questa zona porta da qualche
       // parte» sono due domande diverse: la pancia risponde sì alla prima e no
@@ -540,6 +672,8 @@ WC.anatomia = (function () {
       cliccabile: function (id) { return conDestinazione(perId(id)); },
       layer: layer,
       dispose: function () {
+        pulisciTimer();
+        if (tratto.parentNode) tratto.parentNode.removeChild(tratto);
         host.removeEventListener('pointermove', onMove);
         host.removeEventListener('pointerleave', onLeave);
         layer.removeEventListener('focusin', onFocusIn);
