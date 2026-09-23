@@ -286,8 +286,14 @@ WC.anatomia = (function () {
     // non deve rimontare niente: non c'e' nessuno stato da tenere in sincrono,
     // e quel che il JS scrive — linee, posizioni — su schermo stretto
     // semplicemente non si vede.
-    var scaletta = document.createElement('nav');
+    // Un `div` con `role="navigation"`, non un `<nav>`: in base.css il
+    // selettore di elemento `nav` e' la BARRA del sito (position:fixed,
+    // top:0, altezza --nav-h) e vincerebbe sul posizionamento di questa —
+    // beccato dal vivo, la scaletta finiva incollata in cima allo schermo.
+    // Per chi usa uno screen reader il ruolo e' lo stesso.
+    var scaletta = document.createElement('div');
     scaletta.className = 'wc-anat-scaletta';
+    scaletta.setAttribute('role', 'navigation');
     scaletta.setAttribute('aria-label', 'I prodotti Axxell');
     zones.forEach(function (z) {
       if (!z.attiva) return;

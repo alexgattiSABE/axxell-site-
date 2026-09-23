@@ -123,16 +123,25 @@ WC.register('robot', function(ctx){
   // l'inquadratura verticale resta quella su desktop e si ALLARGA da sola
   // quando il riquadro e' troppo stretto perche' il robot ci stia: vedi fit().
   //
-  // Task D8 — `margineLatStretto` e `margineBasso`: quando la regola scatta
-  // (cioe' su un telefono) non basta far entrare le braccia, serve anche un
-  // posto dove mettere la SCALETTA. Alla scala minima che fa entrare le
-  // braccia il robot e' alto quasi quanto lo schermo e non resta una fascia
-  // libera: con 0,12 di margine per lato il robot rimpicciolisce quel tanto
-  // che basta a liberare ~190 px in cima, e li' va la scaletta. Il robot
-  // allora si appoggia al BASSO (`margineBasso`, in frazione dell'altezza),
-  // cosi' la fascia libera e' tutta in alto, dove serve.
+  // Task D9 — `sbordoStretto`: quanto del robot puo' restare FUORI dal
+  // riquadro per lato, in frazione della sua larghezza, quando il riquadro e'
+  // stretto. Nike, dopo aver visto il robot intero sul telefono: «il robot
+  // voglio che si veda come su pc, quindi adattalo al telefono».
+  //
+  // Le due cose non stanno insieme per geometria, e il numero lo dice: le
+  // braccia sono larghe 0,48 dell'ALTEZZA del robot. Sul pc (1440x900) si
+  // vede il busto — dalla testa alle cosce, `taglio` — e le braccia occupano
+  // 0,53 della larghezza: ci stanno comode. Su un telefono (390x844) lo
+  // stesso busto vorrebbe braccia larghe 716 px dentro un riquadro di 390: o
+  // si rimpicciolisce il robot (ed e' il robot intero, piccolo, che Nike ha
+  // appena bocciato) o si lascia uscire qualcosa.
+  //
+  // Si lascia uscire, e si sceglie COSA: 0,12 per lato taglia le MANI e non
+  // di piu' — il busto resta alto il 68% dello schermo e l'inquadratura si
+  // legge come quella del pc. Alzarlo taglia gli avambracci, abbassarlo
+  // rimpicciolisce il busto.
   var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154,
-    margineLat: 0.05, margineLatStretto: 0.14, margineBasso: 0.03 };
+    margineLat: 0.05, sbordoStretto: 0.45 };
   // Task C2 — il cervello a punti dentro la calotta. Nike: «cervello più
   // piccolo». Frazioni del RAGGIO e dell'ALTEZZA della testa (bbox delle 18
   // mesh della testa in coordinate di headGroup, collo compreso).
@@ -659,40 +668,27 @@ WC.register('robot', function(ctx){
         // riquadro largo non scatta mai (misurato a 1440x900: servirebbero
         // 0,74 della larghezza e il robot ne occupa 0,53), quindi il desktop
         // resta identico al pixel; su un telefono scatta e basta.
-        var stretta = false;
+        // Task D9 — quanto il robot puo' sbordare. Con l'inquadratura del pc
+        // (verticale: testa in alto, taglio alle cosce) su un riquadro stretto
+        // le braccia escono di molto. Qui si mette un TETTO a quanto escono:
+        // se lo superano, la scala scende quel tanto che basta a rientrare nel
+        // tetto — non a rientrare nel riquadro, che vorrebbe dire il robot
+        // intero e piccolo.
         if (quadro.sinistra && quadro.destra) {
           var larghezzaRobot = Math.abs(aSchermo(quadro.destra).x - aSchermo(quadro.sinistra).x) * ingrandimento;
-          if (larghezzaRobot > w * (1 - 2 * INQUADRATURA.margineLat)) {
-            // Scatta: si passa al margine largo (fa spazio alla scaletta) e il
-            // robot si appoggia al basso.
-            stretta = true;
-            ingrandimento *= w * (1 - 2 * INQUADRATURA.margineLatStretto) / larghezzaRobot;
-          }
-        }
-        // E se, entrate le braccia, il robot non ci sta piu' in ALTEZZA, si
-        // scende ancora. Succede sul tablet in verticale (768x1024: le braccia
-        // entrano a 0,743 di ingrandimento, ma a quella scala il robot e' alto
-        // 1037 px su 1024 e la testa usciva dal bordo di sopra). La fascia da
-        // lasciare in cima non e' sempre la stessa: dove comanda la SCALETTA
-        // ci vuole il posto per la scaletta, dove no basta l'aria.
-        if (stretta && quadro.piedi && headTopWorld) {
-          var margineAlto = (WC.anatomia && WC.anatomia.stretto()) ? 0.26 : 0.06;
-          var altezzaPx = Math.abs(aSchermo(quadro.piedi).y - aSchermo(headTopWorld).y) * ingrandimento;
-          var dispH = h * (1 - margineAlto - INQUADRATURA.margineBasso);
-          if (altezzaPx > dispH) ingrandimento *= dispH / altezzaPx;
+          var tetto = w * (1 + 2 * INQUADRATURA.sbordoStretto);
+          if (larghezzaRobot > tetto) ingrandimento *= tetto / larghezzaRobot;
         }
         var offX = ingrandimento * aSchermo(quadro.centro).x - w / 2;
-        // In alto quando comanda l'inquadratura verticale; ai PIEDI quando
-        // comanda la larghezza: li' la fascia libera deve stare in cima.
-        var offY = (stretta && quadro.piedi)
-          ? ingrandimento * aSchermo(quadro.piedi).y - (h - INQUADRATURA.margineBasso * h)
-          : ingrandimento * ya;
+        // Sempre ancorata in ALTO, come sul pc: la testa appena sotto il bordo
+        // e il taglio dove capita in basso.
+        var offY = ingrandimento * ya;
         // La regola della nav sopravvive al ritaglio, e col ritaglio è ancora
         // più facile da applicare: l'immagine si abbassa dei pixel che
         // mancano (l'offset è già in pixel del riquadro finale). Con
         // INQUADRATURA.aria attuale non scatta né a 900 né a 720 px di
         // altezza — resta una guardia, non una taratura.
-        if (headTopWorld && !stretta) {
+        if (headTopWorld) {
           var need = CONFIG.minHeadTopPx - (ingrandimento * aSchermo(headTopWorld).y - offY);
           if (need > 0) offY -= need;
         }
