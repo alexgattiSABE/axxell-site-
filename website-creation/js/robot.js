@@ -123,35 +123,25 @@ WC.register('robot', function(ctx){
   // l'inquadratura verticale resta quella su desktop e si ALLARGA da sola
   // quando il riquadro e' troppo stretto perche' il robot ci stia: vedi fit().
   //
-  // Task D9 — `sbordoStretto`: quanto del robot puo' restare FUORI dal
-  // riquadro per lato, in frazione della sua larghezza, quando il riquadro e'
-  // stretto. Nike, dopo aver visto il robot intero sul telefono: «il robot
-  // voglio che si veda come su pc, quindi adattalo al telefono».
+  // Task D11 — sul riquadro stretto il robot NON si rimpicciolisce per far
+  // stare le etichette: si abbassa. Nike, guardandolo sul telefono: «metti le
+  // scritte una di fianco all'altra sopra al robot e abbassa il lato
+  // superiore, mantenendo la larghezza».
   //
-  // Le due cose non stanno insieme per geometria, e il numero lo dice: le
-  // braccia sono larghe 0,48 dell'ALTEZZA del robot. Sul pc (1440x900) si
-  // vede il busto — dalla testa alle cosce, `taglio` — e le braccia occupano
-  // 0,53 della larghezza: ci stanno comode. Su un telefono (390x844) lo
-  // stesso busto vorrebbe braccia larghe 716 px dentro un riquadro di 390: o
-  // si rimpicciolisce il robot (ed e' il robot intero, piccolo, che Nike ha
-  // appena bocciato) o si lascia uscire qualcosa.
-  //
-  // Si lascia uscire, e si sceglie COSA: 0,12 per lato taglia le MANI e non
-  // di piu' — il busto resta alto il 68% dello schermo e l'inquadratura si
-  // legge come quella del pc. Alzarlo taglia gli avambracci, abbassarlo
-  // rimpicciolisce il busto.
-  //
-  // Task D10 — `bandaScaletta`: la fascia in cima, in frazione dell'altezza,
-  // che sul riquadro stretto NON e' del robot ma della scaletta (Nike: «in
-  // alto a destra, gestisci lo spazio»). Non e' un margine estetico: il busto
-  // non si incastra sotto la scaletta per caso, ci si INQUADRA dentro — la
-  // regola verticale del pc (testa in alto, taglio alle cosce) si applica
-  // all'altezza che resta sotto la fascia, non a tutto il riquadro. Cosi' la
-  // scaletta non copre mai la testa a nessuna misura di telefono, e il robot
-  // non va cercato dove capita: 0,30 copre la barra del sito (--nav-h) piu'
-  // le quattro voci con la loro aria.
+  // Quindi due tetti, e vince il piu' basso:
+  //  - `margineLat`: le braccia stanno DENTRO il riquadro, con questa aria per
+  //    lato. E' la larghezza a comandare, e da sola decide quanto e' grande il
+  //    robot su un telefono (le braccia sono larghe 0,48 della sua altezza).
+  //  - `bandaScaletta`: la fascia in cima, in frazione dell'altezza, che non e'
+  //    del robot ma della scaletta. Il busto si inquadra in quel che resta
+  //    sotto. 0,19 copre la barra del sito (--nav-h, 0,10 su un telefono
+  //    tipico) piu' la riga delle quattro voci affiancate, con la sua aria.
+  // Sotto la fascia il robot e' quello del pc — testa in alto, taglio in basso
+  // dove capita: quello che esce dal bordo di sotto sono le gambe, non le
+  // braccia. Su desktop nessuno dei due tetti scatta e l'inquadratura resta
+  // quella di sempre (a 1440x900 le braccia occupano 0,53 della larghezza).
   var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154,
-    margineLat: 0.05, sbordoStretto: 0.45, bandaScaletta: 0.30 };
+    margineLat: 0.05, bandaScaletta: 0.19 };
   // Task C2 — il cervello a punti dentro la calotta. Nike: «cervello più
   // piccolo». Frazioni del RAGGIO e dell'ALTEZZA della testa (bbox delle 18
   // mesh della testa in coordinate di headGroup, collo compreso).
@@ -682,16 +672,14 @@ WC.register('robot', function(ctx){
         // riquadro largo non scatta mai (misurato a 1440x900: servirebbero
         // 0,74 della larghezza e il robot ne occupa 0,53), quindi il desktop
         // resta identico al pixel; su un telefono scatta e basta.
-        // Task D9 — quanto il robot puo' sbordare. Con l'inquadratura del pc
-        // (verticale: testa in alto, taglio alle cosce) su un riquadro stretto
-        // le braccia escono di molto. Qui si mette un TETTO a quanto escono:
-        // se lo superano, la scala scende quel tanto che basta a rientrare nel
-        // tetto — non a rientrare nel riquadro, che vorrebbe dire il robot
-        // intero e piccolo.
+        // Task D11 — le BRACCIA DENTRO IL RIQUADRO. E' il secondo tetto, e su
+        // un telefono e' quello che comanda: se il robot non ci sta in
+        // larghezza, la scala scende finche' ci sta. Quel che esce, allora,
+        // esce dal bordo di SOTTO — le gambe — e non dai fianchi.
         if (quadro.sinistra && quadro.destra) {
           var larghezzaRobot = Math.abs(aSchermo(quadro.destra).x - aSchermo(quadro.sinistra).x) * ingrandimento;
-          var tetto = w * (1 + 2 * INQUADRATURA.sbordoStretto);
-          if (larghezzaRobot > tetto) ingrandimento *= tetto / larghezzaRobot;
+          var disponibile = w * (1 - 2 * INQUADRATURA.margineLat);
+          if (larghezzaRobot > disponibile) ingrandimento *= disponibile / larghezzaRobot;
         }
         var offX = ingrandimento * aSchermo(quadro.centro).x - w / 2;
         // Ancorata in ALTO come sul pc — ma «alto» e' il fondo della fascia

@@ -515,26 +515,40 @@ body.wc-locked{overflow:hidden;}
 .wc-anat-scaletta{display:none;}
 @media (max-width:760px){
   .wc-anat-zona{display:none;}
-  /* Task D10 — la scaletta sta IN ALTO A DESTRA, e lo spazio glielo fa il
-     robot: l'inquadratura si stringe nell'altezza che resta sotto la fascia
-     (`bandaScaletta` in robot.js), invece di lasciare che le voci cadano sul
-     visore. Le due cose sono legate da quel numero: se qui la scaletta cresce
-     (una quinta voce, un corpo piu' grande), li' la fascia va alzata.
-     L'ombra dietro il testo non e' decorazione: la scaletta sta sopra una
-     scena 3D che cambia col respiro e col tocco, quindi il contrasto sotto le
-     lettere non e' garantito da nessun fotogramma in particolare. */
-  .wc-anat-scaletta{position:absolute;z-index:3;display:flex;flex-direction:column;
-    gap:.62rem;top:calc(var(--nav-h) + .7rem);right:1.05rem;
-    align-items:flex-end;text-align:right;pointer-events:auto;
+  /* Task D11 — la scaletta e' una RIGA sopra il robot, non piu' una colonna
+     di fianco. Nike: «mettile una di fianco all'altra sopra al robot». In
+     colonna si mangiava un terzo dello schermo in altezza e costringeva a
+     rimpicciolire il robot; in riga ne occupa una fascia bassa, e il robot
+     sotto resta grande quanto la LARGHEZZA gli permette.
+     `flex-wrap` non e' un ripiego: sotto i ~340 px le quattro voci non ci
+     stanno su una riga sola e vanno a capo due e due, che e' meglio di quattro
+     voci schiacciate o tagliate.
+     La fascia che il robot le lascia e' `bandaScaletta` in robot.js: se qui la
+     riga cresce (una quinta voce, un corpo piu' grande), li' va alzata. */
+  .wc-anat-scaletta{position:absolute;z-index:3;display:flex;flex-direction:row;
+    flex-wrap:wrap;justify-content:center;align-items:flex-start;
+    gap:.2rem 1.15rem;top:calc(var(--nav-h) + .55rem);left:1rem;right:1rem;
+    text-align:center;pointer-events:auto;
     text-shadow:0 0 14px rgba(6,6,9,.95),0 0 4px rgba(6,6,9,.9);}
   .wc-anat-riga{display:block;text-decoration:none;color:var(--white);
-    /* Bersaglio da dito: la riga e' alta 44 px scarsi gia' per conto suo
-       (nome + descrizione), e il padding le da' l'aria per non prendere
-       quella di fianco. */
-    padding:.15rem 0;outline-offset:6px;}
+    /* Bersaglio da dito: in riga le voci si toccano di fianco, quindi l'aria
+       la da' il padding orizzontale (piu' il `gap` del contenitore). */
+    padding:.25rem .1rem;outline-offset:5px;}
   .wc-anat-riga:focus-visible{outline:1px solid var(--white);}
-  .wc-anat-scaletta .wc-anat-nome{font-size:.95rem;letter-spacing:.05em;line-height:1.2;}
-  .wc-anat-scaletta .wc-anat-descrizione{font-size:.78rem;font-weight:400;color:var(--muted);line-height:1.2;}
+  /* Task D11 — le gambe sfumano nel nero invece di essere tranciate dal bordo.
+     Con le braccia dentro il riquadro (vedi robot.js) il robot ci sta in
+     larghezza ma non in altezza, quindi qualcosa esce di sotto: tagliato di
+     netto sembra un errore, sfumato sembra un ritratto. La fascia parte sotto
+     il ginocchio e il colore e' quello dello sfondo, quindi non c'e' nessun
+     bordo da vedere. */
+  .wc-robot-card::after{content:'';position:absolute;left:0;right:0;bottom:0;
+    height:26%;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,rgba(6,6,9,0) 0%,rgba(6,6,9,.75) 45%,var(--bg) 100%);}
+  /* In riga il corpo scende: quattro voci affiancate a 390 px di larghezza
+     stanno in 300 px scarsi solo a queste misure, e «GESTIONALE» e «website
+     creation» sono le due che decidono. */
+  .wc-anat-scaletta .wc-anat-nome{font-size:.8rem;letter-spacing:.04em;line-height:1.25;}
+  .wc-anat-scaletta .wc-anat-descrizione{font-size:.66rem;font-weight:400;color:var(--muted);line-height:1.25;}
 }
 
 /* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
