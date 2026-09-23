@@ -113,7 +113,26 @@ WC.register('robot', function(ctx){
   // altezza del riquadro. Più su non si va: oltre m ≈ 1,2 il bordo del
   // braccio si avvicina troppo al bordo sinistro e «website creation» non ha
   // più la corsa minima (0,12 W) da quel lato — misurato, vedi il report C1.
-  var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154 };
+  // Task D8 — `margineLat`: quanta aria deve restare, per lato, FRA il robot e
+  // il bordo del riquadro, in frazione della larghezza. Non e' un gusto: e' la
+  // regola che impedisce al telefono di tagliare le braccia. L'inquadratura
+  // (`aria`/`taglio`) e' verticale — decide quanto robot si vede dall'alto in
+  // basso — e su un riquadro largo 390 px quel taglio verticale, a parita' di
+  // scala, lascia fuori le braccia da tutt'e due i lati (Nike: «il robot
+  // bisogna distanziarlo perche' e' troppo tagliato»). Con questa riga
+  // l'inquadratura verticale resta quella su desktop e si ALLARGA da sola
+  // quando il riquadro e' troppo stretto perche' il robot ci stia: vedi fit().
+  //
+  // Task D8 — `margineLatStretto` e `margineBasso`: quando la regola scatta
+  // (cioe' su un telefono) non basta far entrare le braccia, serve anche un
+  // posto dove mettere la SCALETTA. Alla scala minima che fa entrare le
+  // braccia il robot e' alto quasi quanto lo schermo e non resta una fascia
+  // libera: con 0,12 di margine per lato il robot rimpicciolisce quel tanto
+  // che basta a liberare ~190 px in cima, e li' va la scaletta. Il robot
+  // allora si appoggia al BASSO (`margineBasso`, in frazione dell'altezza),
+  // cosi' la fascia libera e' tutta in alto, dove serve.
+  var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154,
+    margineLat: 0.05, margineLatStretto: 0.14, margineBasso: 0.03 };
   // Task C2 — il cervello a punti dentro la calotta. Nike: «cervello più
   // piccolo». Frazioni del RAGGIO e dell'ALTEZZA della testa (bbox delle 18
   // mesh della testa in coordinate di headGroup, collo compreso).
@@ -445,7 +464,12 @@ WC.register('robot', function(ctx){
       // Task C3: `cliccabile` e non `attiva`. La pancia è una zona attiva (si
       // apre, l'etichetta esce) ma non ha ancora una pagina dove andare: il
       // clic non deve fare niente, come non lo fa sull'etichetta.
-      if (anat.cliccabile(st.activeId)) anat.vai(st.activeId);
+      // Task D8 — sul riquadro stretto la navigazione la fa la SCALETTA, non
+      // il corpo. Su un telefono il puntatore non esiste: il primo tocco e'
+      // gia' un clic, e una zona colpita per sbaglio porterebbe via dalla
+      // pagina senza che si sia potuto leggere niente. Il tocco continua ad
+      // APRIRE la zona (il torso, la testa, il braccio): quello resta.
+      if (!WC.anatomia.stretto() && anat.cliccabile(st.activeId)) anat.vai(st.activeId);
     }
     function onCancel() { giu = null; }
     stage.addEventListener('pointerdown', onDown);
@@ -625,14 +649,50 @@ WC.register('robot', function(ctx){
       if (quadro) {
         var ya = aSchermo(quadro.alto).y, yb = aSchermo(quadro.basso).y;
         ingrandimento = h / Math.max(1, yb - ya);
+        // Task D8 — IL ROBOT NON ESCE DAI FIANCHI. L'ingrandimento qui sopra
+        // nasce da una regola verticale sola, e su un riquadro stretto (un
+        // telefono: 390 px di larghezza contro 844 di altezza) quella regola
+        // taglia le braccia. Qui si misura quanto e' LARGO il robot a schermo
+        // con quell'ingrandimento e, se non ci sta, l'ingrandimento scende
+        // finche' ci sta — lasciando `margineLat` di aria per lato.
+        // Non c'e' nessuna soglia «telefono»: e' una disuguaglianza. Su un
+        // riquadro largo non scatta mai (misurato a 1440x900: servirebbero
+        // 0,74 della larghezza e il robot ne occupa 0,53), quindi il desktop
+        // resta identico al pixel; su un telefono scatta e basta.
+        var stretta = false;
+        if (quadro.sinistra && quadro.destra) {
+          var larghezzaRobot = Math.abs(aSchermo(quadro.destra).x - aSchermo(quadro.sinistra).x) * ingrandimento;
+          if (larghezzaRobot > w * (1 - 2 * INQUADRATURA.margineLat)) {
+            // Scatta: si passa al margine largo (fa spazio alla scaletta) e il
+            // robot si appoggia al basso.
+            stretta = true;
+            ingrandimento *= w * (1 - 2 * INQUADRATURA.margineLatStretto) / larghezzaRobot;
+          }
+        }
+        // E se, entrate le braccia, il robot non ci sta piu' in ALTEZZA, si
+        // scende ancora. Succede sul tablet in verticale (768x1024: le braccia
+        // entrano a 0,743 di ingrandimento, ma a quella scala il robot e' alto
+        // 1037 px su 1024 e la testa usciva dal bordo di sopra). La fascia da
+        // lasciare in cima non e' sempre la stessa: dove comanda la SCALETTA
+        // ci vuole il posto per la scaletta, dove no basta l'aria.
+        if (stretta && quadro.piedi && headTopWorld) {
+          var margineAlto = (WC.anatomia && WC.anatomia.stretto()) ? 0.26 : 0.06;
+          var altezzaPx = Math.abs(aSchermo(quadro.piedi).y - aSchermo(headTopWorld).y) * ingrandimento;
+          var dispH = h * (1 - margineAlto - INQUADRATURA.margineBasso);
+          if (altezzaPx > dispH) ingrandimento *= dispH / altezzaPx;
+        }
         var offX = ingrandimento * aSchermo(quadro.centro).x - w / 2;
-        var offY = ingrandimento * ya;
+        // In alto quando comanda l'inquadratura verticale; ai PIEDI quando
+        // comanda la larghezza: li' la fascia libera deve stare in cima.
+        var offY = (stretta && quadro.piedi)
+          ? ingrandimento * aSchermo(quadro.piedi).y - (h - INQUADRATURA.margineBasso * h)
+          : ingrandimento * ya;
         // La regola della nav sopravvive al ritaglio, e col ritaglio è ancora
         // più facile da applicare: l'immagine si abbassa dei pixel che
         // mancano (l'offset è già in pixel del riquadro finale). Con
         // INQUADRATURA.aria attuale non scatta né a 900 né a 720 px di
         // altezza — resta una guardia, non una taratura.
-        if (headTopWorld) {
+        if (headTopWorld && !stretta) {
           var need = CONFIG.minHeadTopPx - (ingrandimento * aSchermo(headTopWorld).y - offY);
           if (need > 0) offY -= need;
         }
@@ -754,7 +814,13 @@ WC.register('robot', function(ctx){
       quadro = {
         alto:   new THREE.Vector3(cBox.x, box.max.y + INQUADRATURA.aria * altezzaRobot, cBox.z),
         basso:  new THREE.Vector3(cBox.x, box.max.y - INQUADRATURA.taglio * altezzaRobot, cBox.z),
-        centro: new THREE.Vector3(cBox.x - INQUADRATURA.scartoX * altezzaRobot, cBox.y, cBox.z)
+        centro: new THREE.Vector3(cBox.x - INQUADRATURA.scartoX * altezzaRobot, cBox.y, cBox.z),
+        // Task D8 — i due fianchi del robot, alla quota delle BRACCIA (la
+        // parte piu' larga, e quella che si vedeva tagliata). Servono a fit()
+        // per sapere quanto spazio orizzontale chiede il modello.
+        sinistra: new THREE.Vector3(box.min.x, cBox.y, cBox.z),
+        destra:   new THREE.Vector3(box.max.x, cBox.y, cBox.z),
+        piedi:    new THREE.Vector3(cBox.x, box.min.y, cBox.z)
       };
       if (hint) hint.remove();
 

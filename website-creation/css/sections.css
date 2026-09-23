@@ -501,6 +501,33 @@ body.wc-locked{overflow:hidden;}
 .wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.18rem;font-weight:500;
   letter-spacing:.01em;line-height:1.35;}
 .wc-anat.-sinistra{text-align:right;}
+/* ---- Task D8: LA SCALETTA (telefono) ----
+   Sotto i 760 px le etichette con la linea non ci stanno — a 390 px di
+   larghezza «GESTIONALE» da solo ne misura 145 — e soprattutto non si
+   accendono: escono col passaggio del mouse, che su un touch non esiste. La
+   sezione, sul telefono, restava muta: un busto e nessun nome di prodotto.
+   Al loro posto una scaletta in alto a destra, sempre accesa. La stessa
+   gerarchia dell'etichetta (nome sopra, descrizione sotto) e le stesse classi,
+   cosi' i due modi di mostrare le stesse quattro cose non possono divergere
+   nel carattere o nel peso.
+   Chi si vede lo decide SOLO questa media query: il JS costruisce sempre
+   tutti e due, e girare il telefono non rimonta niente. */
+.wc-anat-scaletta{display:none;}
+@media (max-width:760px){
+  .wc-anat-zona{display:none;}
+  .wc-anat-scaletta{position:absolute;z-index:3;display:flex;flex-direction:column;
+    gap:.62rem;top:calc(var(--nav-h) + .8rem);right:1.05rem;
+    align-items:flex-end;text-align:right;pointer-events:auto;}
+  .wc-anat-riga{display:block;text-decoration:none;color:var(--white);
+    /* Bersaglio da dito: la riga e' alta 44 px scarsi gia' per conto suo
+       (nome + descrizione), e il padding le da' l'aria per non prendere
+       quella di fianco. */
+    padding:.15rem 0;outline-offset:6px;}
+  .wc-anat-riga:focus-visible{outline:1px solid var(--white);}
+  .wc-anat-scaletta .wc-anat-nome{font-size:.95rem;letter-spacing:.05em;line-height:1.2;}
+  .wc-anat-scaletta .wc-anat-descrizione{font-size:.78rem;font-weight:400;color:var(--muted);line-height:1.2;}
+}
+
 /* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
    secondo caso è quello che tiene in piedi il montaggio fermo, dove non c'è
    nessun JS ad accendere niente. */

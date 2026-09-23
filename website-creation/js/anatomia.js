@@ -159,6 +159,16 @@ WC.anatomia = (function () {
 
   var SVGNS = 'http://www.w3.org/2000/svg';
 
+  // Task D8 — LA SOGLIA DEL TELEFONO, in un posto solo. Sotto questa larghezza
+  // le etichette con la linea non ci stanno (a 390 px «GESTIONALE» da solo ne
+  // misura 145) e al loro posto comanda la SCALETTA in alto a destra. Chi deve
+  // saperlo lo chiede qui: il CSS ha la stessa misura scritta nella sua media
+  // query, robot.js la usa per non navigare al tocco sul corpo.
+  var STRETTO = 760;
+  function stretto() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: ' + STRETTO + 'px)').matches);
+  }
+
   function perId(id) {
     for (var i = 0; i < ZONE.length; i++) if (ZONE[i].id === id) return ZONE[i];
     return null;
@@ -261,6 +271,45 @@ WC.anatomia = (function () {
         box: null, m: { w: 0, hVoce: 0, hTot: 0, riga: 0 }, scritto: '' };
     });
     host.appendChild(layer);
+
+    // ------------------------------------------------------ Task D8: LA SCALETTA
+    // Sul telefono le etichette con la linea non ci stanno, e soprattutto non
+    // si accendono: escono col passaggio del mouse, che su un touch non
+    // esiste — la sezione resterebbe muta, senza un solo nome di prodotto.
+    // Al loro posto una scaletta in alto a destra, SEMPRE accesa: gli stessi
+    // quattro nomi, la stessa gerarchia (nome sopra, descrizione sotto), gli
+    // stessi indirizzi.
+    //
+    // Si costruisce SEMPRE, su ogni misura, e a decidere quale delle due
+    // rappresentazioni si vede e' il CSS (una media query sola, la stessa
+    // misura di STRETTO). Cosi' girare il telefono o trascinare la finestra
+    // non deve rimontare niente: non c'e' nessuno stato da tenere in sincrono,
+    // e quel che il JS scrive — linee, posizioni — su schermo stretto
+    // semplicemente non si vede.
+    var scaletta = document.createElement('nav');
+    scaletta.className = 'wc-anat-scaletta';
+    scaletta.setAttribute('aria-label', 'I prodotti Axxell');
+    zones.forEach(function (z) {
+      if (!z.attiva) return;
+      var link = conDestinazione(z);
+      var riga = document.createElement(link ? 'a' : 'span');
+      riga.className = 'wc-anat-riga';
+      riga.setAttribute('data-zona', z.id);
+      if (link) riga.href = hrefVero(z);
+      var n = document.createElement('span');
+      n.className = 'wc-anat-nome';
+      n.textContent = z.nome;
+      var d = document.createElement('span');
+      d.className = 'wc-anat-descrizione';
+      d.textContent = z.descrizione;
+      riga.appendChild(n);
+      riga.appendChild(d);
+      scaletta.appendChild(riga);
+    });
+    // Il clic sulla scaletta segue la stessa strada del clic sull'etichetta:
+    // «CORRENTE#...» resta in pagina e scorre (Lenis), il resto lo fa il
+    // browser.
+    host.appendChild(scaletta);
 
     var ancore = {};          // id → {x, y} in px del riquadro
     var attivo = null;        // ultima zona passata da update()
@@ -414,7 +463,9 @@ WC.anatomia = (function () {
     // produzione cleanUrls risponde con un 308 verso /atlas: va bene); per
     // l'Atelier si resta in pagina e si scorre.
     function onClick(ev) {
-      var a = ev.target.closest ? ev.target.closest('.wc-anat') : null;
+      // Task D8 — `.wc-anat-riga` e' la voce della scaletta: stesso trattamento
+      // dell'etichetta, cosi' «CORRENTE#cap01» scorre invece di saltare.
+      var a = ev.target.closest ? ev.target.closest('.wc-anat, .wc-anat-riga') : null;
       if (!a) return;
       if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button > 0) return;  // «apri in una scheda nuova»: non è roba nostra
       var z = perId(a.getAttribute('data-zona'));
@@ -423,6 +474,7 @@ WC.anatomia = (function () {
       scorriA(z.href.slice(z.href.indexOf('#') + 1));
     }
     layer.addEventListener('click', onClick);
+    scaletta.addEventListener('click', onClick);   // Task D8: una strada sola per tutti i clic
 
     function accendi(id) {
       if (attivo && attivo !== id) { ultimo = attivo; spentoA = ora(); }
@@ -489,6 +541,8 @@ WC.anatomia = (function () {
         layer.removeEventListener('click', onClick);
         if (ro) ro.disconnect(); else window.removeEventListener('resize', suResize);
         if (stage) stage.classList.remove('-zona');
+        scaletta.removeEventListener('click', onClick);
+        if (scaletta.parentNode) scaletta.parentNode.removeChild(scaletta);
         if (layer.parentNode) layer.parentNode.removeChild(layer);
       }
     };
@@ -522,5 +576,5 @@ WC.anatomia = (function () {
     return api;
   }
 
-  return { mount: mount, ZONE: ZONE, LINEA: LINEA };
+  return { mount: mount, ZONE: ZONE, LINEA: LINEA, stretto: stretto, STRETTO: STRETTO };
 })();
