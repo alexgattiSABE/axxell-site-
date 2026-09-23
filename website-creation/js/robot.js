@@ -587,7 +587,7 @@ WC.register('robot', function(ctx){
     // Raggio della sfera (Task D1: nel COLLO, fra il mento e il logo) in
     // unità MONDO: serve alla dimensione dei punti (tuneOrb), che si ricalcola
     // a ogni fit(). 0 = sfera non ancora costruita.
-    var orbWorldRadius = 0;
+    var orbWorldRadius = 0, brainWorldRadius = 0;
     // Task C1 — i tre punti MONDO che definiscono il ritaglio (li riempie il
     // callback di gltf.load, quando il bbox del modello è noto) e
     // l'ingrandimento che ne esce. `ingrandimento` è 1 finché non c'è un
@@ -722,6 +722,18 @@ WC.register('robot', function(ctx){
     }
     // Task A3: da punto MONDO a pixel del riquadro (lo stesso rettangolo su cui
     // sta l'overlay delle etichette). Un solo Vector3 riusato: gira nel loop.
+    // Task D14 — il cerchio che una nuvola occupa A SCHERMO: centro in pixel
+    // e raggio in pixel, ricavati proiettando il centro e un punto spostato di
+    // un raggio lungo l'asse X della CAMERA (cioe' perpendicolare alla vista:
+    // e' il raggio che si vede, non quello accorciato dalla prospettiva).
+    var vCen = new THREE.Vector3(), vLat = new THREE.Vector3();
+    function cerchioSchermo(obj, raggioMondo) {
+      obj.getWorldPosition(vCen);
+      var pc = aSchermo(vCen);
+      vLat.setFromMatrixColumn(cam.matrixWorld, 0).multiplyScalar(raggioMondo).add(vCen);
+      var pl = aSchermo(vLat);
+      return { x: pc.x, y: pc.y, r: Math.abs(pl.x - pc.x) };
+    }
     var vProj = new THREE.Vector3();
     function aSchermo(p) {
       vProj.copy(p).project(cam);
@@ -1148,6 +1160,11 @@ WC.register('robot', function(ctx){
               }
               headGroup.add(brain.points);
               window.__robot.brain = brain;
+              // Task D14 — il raggio in unita' MONDO. `brainRadius` e' in
+              // unita' di headGroup, e serve invece un numero confrontabile con
+              // la scena per sapere quanto e' grande a schermo (la spezzata del
+              // tocco deve fermarsi PRIMA di toccarlo).
+              brainWorldRadius = brainRadius * Math.abs(model.getWorldScale(new THREE.Vector3()).x);
             }
 
             // ref1 (correzione utente): il cervello del robot campiona LA
@@ -2122,6 +2139,19 @@ WC.register('robot', function(ctx){
           if (quadro && quadro.sinistra && quadro.destra) {
             var pSx = aSchermo(quadro.sinistra), pDx = aSchermo(quadro.destra);
             anc.__corpo = { x: (pSx.x + pDx.x) / 2, y: Math.abs(pDx.x - pSx.x) / 2 };
+          }
+          // Task D14 — DOVE STANNO LE ANIMAZIONI, a schermo: centro e raggio
+          // in pixel del cervello e della sfera. Nike: «non far toccare alle
+          // linee le varie animazioni dei prodotti». La linea si ferma fuori
+          // da questi cerchi (anatomia.js), e li chiede qui invece di
+          // indovinarli: il raggio a schermo dipende dalla distanza dalla
+          // camera e dall'inquadratura ritagliata, che cambiano.
+          anc.__anim = {};
+          if (robot.brain && robot.brain.points && brainWorldRadius) {
+            anc.__anim.testa = cerchioSchermo(robot.brain.points, brainWorldRadius);
+          }
+          if (robot.orb && robot.orb.points && orbWorldRadius) {
+            anc.__anim.pancia = cerchioSchermo(robot.orb.points, orbWorldRadius);
           }
           // `hitId` accanto ad `activeId`: la zona colpita GREZZA, senza
           // grazia e senza il tenere-in-vita dell'etichetta. La usano il clic

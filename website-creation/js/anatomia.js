@@ -334,6 +334,17 @@ WC.anatomia = (function () {
     var forzata = null;        // la zona che il tocco tiene accesa
     var forzataRiga = null;    // la voce toccata (da cui parte la linea)
     var timerVai = null, timerSpegni = null;
+    // Task D14 — il disegno progressivo lo fa il JS, non una transizione CSS.
+    // In CSS la corda (`--corda`) e' il punto di partenza dello
+    // `stroke-dashoffset`, e qui la corda CAMBIA a ogni fotogramma: l'aggancio
+    // si muove col respiro e con la testa che punta. Cambiare il valore di
+    // partenza mentre la transizione corre la fa saltare alla fine — ed e'
+    // esattamente quello che si vedeva: la linea dell'atelier (aggancio fermo,
+    // corda costante) si disegnava, le altre comparivano gia' fatte. Con la
+    // frazione calcolata sul tempo il disegno dura sempre `DISEGNO`, che la
+    // corda cambi o no.
+    var DISEGNO = 520;
+    var trattoDa = 0;
 
     var ancore = {};          // id → {x, y} in px del riquadro
     var attivo = null;        // ultima zona passata da update()
@@ -484,10 +495,27 @@ WC.anatomia = (function () {
       // fianco destro (serve alle etichette del pc): quando si entra da
       // sinistra lo si specchia attorno all'asse. Poi si spinge di 14 px
       // DENTRO, se no la linea si ferma a sfiorare il bordo e sembra staccata.
-      // 26 px misurati: sotto, la linea si ferma a sfiorare il bordo del pezzo
-      // e sembra staccata; sopra, entra troppo e sembra che lo trafigga.
-      var DENTRO = 26;
-      var fineX = (laterale ? a.x : (corpo.x + lato * Math.abs(scarto))) - lato * DENTRO;
+      // Quanto entra nel pezzo. Nelle zone centrali entra un po' (26 px: se si
+      // ferma sul bordo sembra staccata); sul braccio si ferma FUORI, perche'
+      // dentro ci sono le fibre.
+      // Task D14 — e in nessun caso tocca l'animazione del prodotto (Nike).
+      // Il cerchio che il cervello o la sfera occupano a schermo arriva da
+      // robot.js: se il tratto orizzontale passa alla sua altezza, si ferma
+      // dove lo sfiora, piu' `ARIA`.
+      var DENTRO = 26, FUORI = 12, ARIA = 12;
+      var fineX = laterale ? (a.x + lato * FUORI)
+        : (corpo.x + lato * Math.abs(scarto) - lato * DENTRO);
+      var cerchio = (ancore.__anim || {})[forzata];
+      if (cerchio) {
+        var dy = Math.abs(a.y - cerchio.y), R = cerchio.r + ARIA;
+        if (dy < R) {
+          // Il tratto passa alla quota della nuvola: si ferma sulla sua
+          // circonferenza allargata, dalla parte da cui arriva.
+          var dx = Math.sqrt(R * R - dy * dy);
+          var limite = cerchio.x + lato * dx;
+          fineX = (lato < 0) ? Math.min(fineX, limite) : Math.max(fineX, limite);
+        }
+      }
       // La corsia verticale: quella della voce, se la voce non sta sopra la
       // colonna centrale; se no la prima libera appena fuori dalla colonna,
       // dalla parte giusta. Per il braccio, appena fuori dal braccio.
@@ -503,8 +531,10 @@ WC.anatomia = (function () {
       for (var k = 1; k < pts.length; k++) lung += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
       trattoLinea.setAttribute('points', pts.map(function (p) { return n2(p[0]) + ',' + n2(p[1]); }).join(' '));
 
+      var frazione = ridotto() ? 1
+        : Math.max(0, Math.min(1, (ora() - trattoDa) / DISEGNO));
       trattoLinea.style.strokeDasharray = n2(lung);
-      trattoLinea.style.setProperty('--corda', n2(lung));
+      trattoLinea.style.strokeDashoffset = n2(lung * (1 - frazione));
       tratto.setAttribute('viewBox', '0 0 ' + lar + ' ' + alt);
     }
 
@@ -605,7 +635,7 @@ WC.anatomia = (function () {
       var z = perId(id);
       if (!z) return;
       pulisciTimer();
-      forzata = id; forzataRiga = riga;
+      forzata = id; forzataRiga = riga; trattoDa = ora();
       Array.prototype.forEach.call(scaletta.children, function (c) {
         c.classList.toggle('-attiva', c === riga);
       });
