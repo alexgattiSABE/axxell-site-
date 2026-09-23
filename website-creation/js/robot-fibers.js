@@ -163,7 +163,12 @@ WC.robotFibers = (function () {
     // --- nuvola di punti ----------------------------------------------------
     // Quanti punti per braccio, divisi fra il tratto spalla→polso e le dita in
     // proporzione alla lunghezza (così la densità è la stessa dappertutto).
-    punti: 1400,
+    // Task D6 (Nike: «aggiungi piu' flusso nelle braccia»): da 1400 a 2000.
+    // I punti sono il FASCIO: piu' punti = corrente piu' piena, non piu'
+    // veloce. La densita' resta uguale dappertutto (la ripartizione fra
+    // braccio e dita e' proporzionale alla lunghezza), e il conto per braccio
+    // resta lontano dall'ordine di grandezza della sfera (26000).
+    punti: 2000,
     // Grana della nuvola. Nello shader `gl_PointSize = uSize · uPR /
     // distanza`, la stessa formula della sfera di SABE (pointorb.js), e
     // `uSize` la rifà robot.js a ogni fit() come
@@ -199,7 +204,11 @@ WC.robotFibers = (function () {
     // dito è largo 7 px. Qui i punti stanno praticamente in fila sul filo.
     sparpaglioDito: 0.12,
     // --- flusso -------------------------------------------------------------
-    pulses: 2.0,          // impulsi per braccio (Task B2: due)
+    // Task D6 — da 2 a 3 impulsi per braccio (Task B2 ne aveva due). E' la
+    // meta' di «piu' flusso»: con tre creste in viaggio contemporaneamente il
+    // braccio non ha mai un tratto lungo spento, e la corrente si legge come
+    // un flusso continuo invece che come due lampi che passano.
+    pulses: 3.0,          // impulsi per braccio
     // Task D2b (Nike: «il flusso più veloce deve essere»): da 0,28 a 0,62
     // periodi al secondo a braccio appena acceso — poco più del doppio. Con
     // `speedSurge` a braccio pieno fa 1,55 periodi al secondo: l'impulso
@@ -212,7 +221,10 @@ WC.robotFibers = (function () {
     rise: 0.07,           // fronte dell'impulso, in frazione del periodo (ripido)
     tailK: 4.5,           // quanto in fretta si spegne la coda (più basso = più lunga)
     pulseGain: 1.35,      // intensità della cresta
-    baseline: 0.30,       // filo di base continuo, SOLO a braccio aperto
+    // Task D6 — il filo di base da 0,30 a 0,40: e' quello che si vede FRA una
+    // cresta e l'altra, cioe' la differenza fra «un filo che ogni tanto
+    // lampeggia» e «una corrente che scorre sempre».
+    baseline: 0.40,       // filo di base continuo, SOLO a braccio aperto
     // Azzurro del sito; la cresta dell'impulso schiarisce verso il bianco.
     colorCold: '#3fb9ff',
     colorHot: '#eaf8ff'

@@ -480,46 +480,16 @@ body.wc-locked{overflow:hidden;}
 .wc-anat{position:absolute;left:0;top:0;display:block;white-space:nowrap;
   text-decoration:none;color:inherit;pointer-events:none;opacity:0;
   transition:opacity .18s linear;outline-offset:6px;}
-/* Task D5 — «tutte le scritte devono essere piu' grandi» (Nike). La voce da
-   .95rem a 1.35rem, la riga del prodotto da .86rem a 1.05rem: lo stesso
-   rapporto di prima (la riga piccola resta appena sotto la voce), una scala
-   sopra. Con le linee accorciate (anatomia.js) il testo e' la cosa che si
-   legge da lontano, non piu' il filo. */
-.wc-anat-voce{display:block;font-family:var(--font);font-size:1.35rem;font-weight:500;
-  letter-spacing:.01em;line-height:1.25;}
-/* Task C4 — «i prodotti indicati nell'anatomia devono essere più evidenti»
-   (Nike), e alla domanda di cosa intendesse: «nome del prodotto più grande —
-   la riga piccola (ATLAS, SABE, ATELIER, GESTIONALE) va portata alla scala
-   del titolo, in bianco pieno». Era .7rem, grigia (var(--muted)) e con .16em
-   di spaziatura: una didascalia. Adesso è .86rem — appena sotto la scala
-   della voce, che è .95rem — bianca piena e di peso 400 contro il 500 della
-   voce. Resta in MAIUSCOLO, e resta in mono: provate tutte e due le varianti
-   che il brief chiedeva di confrontare (screenshot 11-etichette.png) e
-   guardate fianco a fianco, la versione col testo come l'ha scritto Nike
-   («anima / gestionale», nello stesso carattere della voce) perde la cosa che
-   serviva: il nome del prodotto smette di leggersi come un NOME e diventa la
-   seconda parola di una frase, indistinguibile dalla riga sopra. In maiuscolo
-   e in mono «GESTIONALE» è un marchio, e si legge benissimo a tutte e due le
-   misure di prova.
-   La spaziatura scende da .16em a .06em: a .86rem con .16em «GESTIONALE»
-   diventa largo 99 px e la corsa della sua linea scende a 360, cioè ESATTAMENTE
-   il minimo che il controllo chiede alle etichette lunghe (0,25 della
-   larghezza), senza un pixel di margine. A .06em sono 91 px e la corsa resta
-   372, com'era prima di questo task. */
-.wc-anat-sotto{display:block;font-family:var(--mono);font-size:1.05rem;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--white);font-weight:400;line-height:1.35;}
-/* Task D5 — la frase che corre SULLA linea orizzontale, centrata sul tratto
-   dritto e appoggiata sopra il filo (il JS scrive left/top). E' una
-   didascalia, non un nome: piu' piccola della voce e in minuscolo, cosi' non
-   litiga con il prodotto. pointer-events:none — il rettangolo che decide
-   «sono sull'etichetta» resta quello del link. */
-.wc-anat-frase{position:absolute;left:0;top:0;display:block;white-space:nowrap;
-  font-family:var(--font);font-size:.95rem;font-weight:400;letter-spacing:.02em;
-  line-height:1.2;color:var(--white);opacity:0;pointer-events:none;
-  transition:opacity .18s linear;}
-.wc-anat-zona.-on>.wc-anat-frase,.wc-anat-zona:focus-within>.wc-anat-frase{opacity:.92;}
-.wc-anat-layer.-statico .wc-anat-frase{opacity:.92;transition:none;}
-@media (prefers-reduced-motion:reduce){.wc-anat-frase{transition:none;}}
+/* Task D5/D6 — «tutte le scritte devono essere piu' grandi» (Nike), e i due
+   righi si scambiano di posto «e di conseguenza anche le dimensioni»: adesso
+   il NOME del prodotto sta sopra il filo ed e' il rigo grande (1,35rem, mono,
+   maiuscolo: un nome si legge come un marchio), la DESCRIZIONE sta sotto ed e'
+   il rigo piccolo (1,05rem, nel carattere del testo). Prima era l'opposto.
+   Le misure non cambiano — cambia quale dei due righi le porta. */
+.wc-anat-nome{display:block;font-family:var(--mono);font-size:1.35rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--white);font-weight:400;line-height:1.25;}
+.wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.05rem;font-weight:500;
+  letter-spacing:.01em;line-height:1.35;}
 .wc-anat.-sinistra{text-align:right;}
 /* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
    secondo caso è quello che tiene in piedi il montaggio fermo, dove non c'è

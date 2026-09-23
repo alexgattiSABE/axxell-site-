@@ -53,16 +53,23 @@ WC.anatomia = (function () {
   // Il giorno in cui la pagina c'è, si scrive l'indirizzo QUI e basta: zona
   // cliccabile, etichetta linkabile e tastiera tornano da sole (provato con
   // un indirizzo finto, vedi il report C3).
-  // `linea` (Task D5) — la frase che corre SULLA linea orizzontale, sopra il
-  // filo, centrata sul tratto dritto. Non e' un terzo rigo dell'etichetta: sta
-  // in mezzo alla linea, dove prima c'era solo il filo vuoto, e dice a che
-  // cosa serve il prodotto. Vuota = niente frase (testa e pancia, per ora).
+  // Task D6 — le frasi che correvano SULLA linea orizzontale («il tuo agente
+  // telefonico», «il tuo nuovo sito») sono state tolte: Nike, «togli tutte le
+  // scritte sopra le linee orizzontali». La linea torna a essere un filo e
+  // basta, e quel che resta e' il nome del prodotto col suo sottotitolo.
+  //
+  // Task D6 — e i due righi si SCAMBIANO: `nome` (il prodotto: ATLAS, SABE,
+  // GESTIONALE, ATELIER) sta SOPRA il filo ed e' il rigo grande; `descrizione`
+  // (cervello, agente vocale, anima, website creation) sta sotto ed e' il
+  // piccolo. Prima era il contrario. Le due colonne qui sono nominate per
+  // QUELLO CHE SONO, non per dove finiscono: se un giorno si riscambiano,
+  // cambia l'ordine nel DOM e non il significato dei campi.
   var ZONE = [
-    { id: 'testa',     lato: 'destra',   testo: 'cervello',         sotto: 'Atlas',      href: '../atlas.html',  attiva: true, linea: '' },
-    { id: 'collo',     lato: 'destra',   testo: 'Agente Vocale',    sotto: 'SABE',       href: '../sabe.html',   attiva: true, linea: 'il tuo agente telefonico' },
-    { id: 'pancia',    lato: 'destra',   testo: 'anima',            sotto: 'gestionale', href: '',               attiva: true, linea: '' },
-    { id: 'braccioSx', lato: 'sinistra', testo: 'website creation', sotto: 'atelier',    href: 'CORRENTE#cap01', attiva: true, linea: 'il tuo nuovo sito' },
-    { id: 'braccioDx', lato: 'destra',   testo: '',                 sotto: '',           href: '',               attiva: false, linea: '' }
+    { id: 'testa',     lato: 'destra',   nome: 'Atlas',      descrizione: 'cervello',         href: '../atlas.html',  attiva: true },
+    { id: 'collo',     lato: 'destra',   nome: 'SABE',       descrizione: 'Agente Vocale',    href: '../sabe.html',   attiva: true },
+    { id: 'pancia',    lato: 'destra',   nome: 'gestionale', descrizione: 'anima',            href: '',               attiva: true },
+    { id: 'braccioSx', lato: 'sinistra', nome: 'atelier',    descrizione: 'website creation', href: 'CORRENTE#cap01', attiva: true },
+    { id: 'braccioDx', lato: 'destra',   nome: '',           descrizione: '',                 href: '',               attiva: false }
   ];
   // Misure in frazione della LARGHEZZA del riquadro (così valgono a ogni
   // dimensione), tranne `margineBordo` (px) e `staccoTesto` (altezze di riga).
@@ -85,12 +92,10 @@ WC.anatomia = (function () {
   // salgono di 53, non un angolo appena accennato.
   // Task D5 — le linee si ACCORCIANO (Nike: «le linee orizzontali vanno
   // accorciate») e il testo cresce (vedi sections.css). Obiettivo da 0,27 a
-  // 0,16 della larghezza, minimo da 0,12 a 0,085: a 1440 sono 230 px di tratto
-  // dritto, che restano piu' che sufficienti per la frase che ci corre sopra
-  // («il tuo agente telefonico», la piu' lunga, misura 158 px). Il minimo
-  // serve solo da paracadute sui riquadri stretti.
+  // 0,16 della larghezza, minimo da 0,12 a 0,085. Il minimo serve solo da
+  // paracadute sui riquadri stretti.
   var LINEA = { orizzontaleObiettivo: 0.16, orizzontaleMinimo: 0.085, obliquoGradi: 38,
-    staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.22, staccoFrase: 9 };
+    staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.22 };
   // ---- AGGANCI SENZA SCENA ----
   // Con reduced-motion robot.js non monta niente: non c'è camera, non c'è GLB,
   // e gli agganci se li deve dare l'overlay. Non sono però una tabella di
@@ -234,37 +239,26 @@ WC.anatomia = (function () {
       a.setAttribute('data-zona', z.id);
       if (link) {
         a.href = hrefVero(z);
-        a.setAttribute('aria-label', z.testo + ' — ' + z.sotto);
+        a.setAttribute('aria-label', z.nome + ' — ' + z.descrizione);
       }
-      var voce = document.createElement('span');
-      voce.className = 'wc-anat-voce';
-      voce.textContent = z.testo;
-      var sotto = document.createElement('span');
-      sotto.className = 'wc-anat-sotto';
-      sotto.textContent = z.sotto;
-      a.appendChild(voce);
-      a.appendChild(sotto);
-
-      // Task D5 — la frase sulla linea. Fuori dal link (non e' il nome del
-      // prodotto, e non deve entrare nell'aria-label ne' allargare il
-      // rettangolo con cui si decide «il puntatore e' sull'etichetta») e
-      // aria-hidden: chi usa uno screen reader sente gia' «Agente Vocale —
-      // SABE», e «il tuo agente telefonico» letto da solo, staccato, sarebbe
-      // solo rumore.
-      var frase = null;
-      if (z.linea) {
-        frase = document.createElement('span');
-        frase.className = 'wc-anat-frase';
-        frase.setAttribute('aria-hidden', 'true');
-        frase.textContent = z.linea;
-        wrap.appendChild(frase);
-      }
+      // Task D6 — l'ordine nel DOM E' la posizione rispetto al filo: il primo
+      // figlio sta SOPRA la linea, il secondo sotto (la geometria misura
+      // l'altezza del primo e ci fa passare il filo). Quindi il NOME del
+      // prodotto per primo.
+      var nome = document.createElement('span');
+      nome.className = 'wc-anat-nome';
+      nome.textContent = z.nome;
+      var descr = document.createElement('span');
+      descr.className = 'wc-anat-descrizione';
+      descr.textContent = z.descrizione;
+      a.appendChild(nome);
+      a.appendChild(descr);
 
       wrap.appendChild(svg);
       wrap.appendChild(a);
       layer.appendChild(wrap);
-      el[z.id] = { z: z, wrap: wrap, svg: svg, linea: linea, a: a, voce: voce, frase: frase,
-        box: null, m: { w: 0, hVoce: 0, hTot: 0, riga: 0, wFrase: 0, hFrase: 0 }, scritto: '' };
+      el[z.id] = { z: z, wrap: wrap, svg: svg, linea: linea, a: a, sopraEl: nome,
+        box: null, m: { w: 0, hVoce: 0, hTot: 0, riga: 0 }, scritto: '' };
     });
     host.appendChild(layer);
 
@@ -298,11 +292,11 @@ WC.anatomia = (function () {
       Object.keys(el).forEach(function (id) {
         var e = el[id];
         e.m.w = e.a.offsetWidth;
-        e.m.hVoce = e.voce.offsetHeight;
+        // `hVoce` = l'altezza del rigo che sta SOPRA il filo, qualunque sia
+        // (Task D6: adesso e' il nome del prodotto).
+        e.m.hVoce = e.sopraEl.offsetHeight;
         e.m.hTot = e.a.offsetHeight;
         e.m.riga = e.m.hVoce || 18;
-        e.m.wFrase = e.frase ? e.frase.offsetWidth : 0;
-        e.m.hFrase = e.frase ? e.frase.offsetHeight : 0;
       });
       rifai(true);
     }
@@ -381,15 +375,6 @@ WC.anatomia = (function () {
         e.linea.style.setProperty('--corda', n2(lung));
         e.a.style.left = n2(g.tx) + 'px';
         e.a.style.top = n2(g.ty) + 'px';
-        // La frase sta CENTRATA sul tratto dritto e appoggiata SOPRA il filo.
-        // Se il tratto e' piu' corto della frase (riquadri stretti, dove scatta
-        // il minimo) la frase si allinea comunque al centro: sborda di qualche
-        // pixel sul gomito, che e' meno peggio che tagliarla.
-        if (e.frase) {
-          var mezzo = (g.gx + g.fx) / 2;
-          e.frase.style.left = n2(Math.max(0, Math.min(lar - e.m.wFrase, mezzo - e.m.wFrase / 2))) + 'px';
-          e.frase.style.top = n2(g.gy - LINEA.staccoFrase - e.m.hFrase) + 'px';
-        }
         e.box = { x: g.tx, y: g.ty, w: e.m.w, h: e.m.hTot };
       });
     }
