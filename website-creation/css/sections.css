@@ -486,9 +486,19 @@ body.wc-locked{overflow:hidden;}
    maiuscolo: un nome si legge come un marchio), la DESCRIZIONE sta sotto ed e'
    il rigo piccolo (1,05rem, nel carattere del testo). Prima era l'opposto.
    Le misure non cambiano — cambia quale dei due righi le porta. */
+/* Task D7 — il rigo di sopra in GRASSETTO (Nike) e quello di sotto un po' piu'
+   grande (1,05 -> 1,18rem).
+   DM Mono, pero', un grassetto non ce l'ha: la famiglia arriva a 500 e in
+   pagina si caricano solo 400 e 500 (index.html). Chiedere 700 non darebbe un
+   peso vero ma il finto-grassetto del browser, che a 1,35rem su fondo nero
+   impasta le aste. Quindi: il peso VERO piu' alto che il carattere ha (500)
+   piu' un contorno di mezzo pixel del colore del testo, che ingrassa le aste
+   senza sbavarle. Su bianco pieno sopra il nero e' la stessa cosa che fa un
+   grassetto, e resta nitido. */
 .wc-anat-nome{display:block;font-family:var(--mono);font-size:1.35rem;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--white);font-weight:400;line-height:1.25;}
-.wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.05rem;font-weight:500;
+  text-transform:uppercase;color:var(--white);font-weight:500;line-height:1.25;
+  -webkit-text-stroke:.5px currentColor;}
+.wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.18rem;font-weight:500;
   letter-spacing:.01em;line-height:1.35;}
 .wc-anat.-sinistra{text-align:right;}
 /* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
