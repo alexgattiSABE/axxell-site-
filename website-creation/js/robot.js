@@ -140,8 +140,18 @@ WC.register('robot', function(ctx){
   // di piu' — il busto resta alto il 68% dello schermo e l'inquadratura si
   // legge come quella del pc. Alzarlo taglia gli avambracci, abbassarlo
   // rimpicciolisce il busto.
+  //
+  // Task D10 — `bandaScaletta`: la fascia in cima, in frazione dell'altezza,
+  // che sul riquadro stretto NON e' del robot ma della scaletta (Nike: «in
+  // alto a destra, gestisci lo spazio»). Non e' un margine estetico: il busto
+  // non si incastra sotto la scaletta per caso, ci si INQUADRA dentro — la
+  // regola verticale del pc (testa in alto, taglio alle cosce) si applica
+  // all'altezza che resta sotto la fascia, non a tutto il riquadro. Cosi' la
+  // scaletta non copre mai la testa a nessuna misura di telefono, e il robot
+  // non va cercato dove capita: 0,30 copre la barra del sito (--nav-h) piu'
+  // le quattro voci con la loro aria.
   var INQUADRATURA = { aria: 0.075, taglio: 0.566, scartoX: 0.0154,
-    margineLat: 0.05, sbordoStretto: 0.45 };
+    margineLat: 0.05, sbordoStretto: 0.45, bandaScaletta: 0.30 };
   // Task C2 — il cervello a punti dentro la calotta. Nike: «cervello più
   // piccolo». Frazioni del RAGGIO e dell'ALTEZZA della testa (bbox delle 18
   // mesh della testa in coordinate di headGroup, collo compreso).
@@ -657,7 +667,11 @@ WC.register('robot', function(ctx){
       // «vale solo per la prima misura».
       if (quadro) {
         var ya = aSchermo(quadro.alto).y, yb = aSchermo(quadro.basso).y;
-        ingrandimento = h / Math.max(1, yb - ya);
+        // Task D10 — l'altezza in cui il robot si inquadra. Su desktop e'
+        // tutto il riquadro; sul telefono e' quel che resta SOTTO la fascia
+        // della scaletta.
+        var banda = (WC.anatomia && WC.anatomia.stretto()) ? INQUADRATURA.bandaScaletta * h : 0;
+        ingrandimento = (h - banda) / Math.max(1, yb - ya);
         // Task D8 — IL ROBOT NON ESCE DAI FIANCHI. L'ingrandimento qui sopra
         // nasce da una regola verticale sola, e su un riquadro stretto (un
         // telefono: 390 px di larghezza contro 844 di altezza) quella regola
@@ -680,9 +694,9 @@ WC.register('robot', function(ctx){
           if (larghezzaRobot > tetto) ingrandimento *= tetto / larghezzaRobot;
         }
         var offX = ingrandimento * aSchermo(quadro.centro).x - w / 2;
-        // Sempre ancorata in ALTO, come sul pc: la testa appena sotto il bordo
-        // e il taglio dove capita in basso.
-        var offY = ingrandimento * ya;
+        // Ancorata in ALTO come sul pc — ma «alto» e' il fondo della fascia
+        // della scaletta quando la fascia c'e'.
+        var offY = ingrandimento * ya - banda;
         // La regola della nav sopravvive al ritaglio, e col ritaglio è ancora
         // più facile da applicare: l'immagine si abbassa dei pixel che
         // mancano (l'offset è già in pixel del riquadro finale). Con

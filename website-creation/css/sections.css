@@ -515,15 +515,16 @@ body.wc-locked{overflow:hidden;}
 .wc-anat-scaletta{display:none;}
 @media (max-width:760px){
   .wc-anat-zona{display:none;}
-  /* Task D9 — la scaletta scende IN BASSO a destra. Con l'inquadratura del pc
-     (busto grande, Task D9 in robot.js) in alto a destra non c'e' piu' spazio
-     libero: le prime due voci finivano sul visore. In basso a destra il
-     riquadro e' scuro e vuoto, ed e' anche dove arriva il pollice.
+  /* Task D10 — la scaletta sta IN ALTO A DESTRA, e lo spazio glielo fa il
+     robot: l'inquadratura si stringe nell'altezza che resta sotto la fascia
+     (`bandaScaletta` in robot.js), invece di lasciare che le voci cadano sul
+     visore. Le due cose sono legate da quel numero: se qui la scaletta cresce
+     (una quinta voce, un corpo piu' grande), li' la fascia va alzata.
      L'ombra dietro il testo non e' decorazione: la scaletta sta sopra una
      scena 3D che cambia col respiro e col tocco, quindi il contrasto sotto le
      lettere non e' garantito da nessun fotogramma in particolare. */
   .wc-anat-scaletta{position:absolute;z-index:3;display:flex;flex-direction:column;
-    gap:.62rem;bottom:1.6rem;right:1.05rem;
+    gap:.62rem;top:calc(var(--nav-h) + .7rem);right:1.05rem;
     align-items:flex-end;text-align:right;pointer-events:auto;
     text-shadow:0 0 14px rgba(6,6,9,.95),0 0 4px rgba(6,6,9,.9);}
   .wc-anat-riga{display:block;text-decoration:none;color:var(--white);
