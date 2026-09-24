@@ -1237,13 +1237,10 @@
         idxG.fillText('->', 34, y);
         idxG.globalAlpha = 1;
       }
-      var pal = w.dna && typeof w.dna[0] !== 'number' ? w.dna : null;
-      if (pal){
-        var larga = idxG.measureText(nome).width;
-        var gr = idxG.createLinearGradient(140, 0, 140 + larga, 0);
-        pal.forEach(function(c, k){ gr.addColorStop(k/(pal.length - 1), idxTinta(c, a, chiaro)); });
-        idxG.fillStyle = gr;
-      } else idxG.fillStyle = idxTinta(w.col, a, chiaro);
+      /* UN colore per parola (Nike, 2026-09-24): anche le card col DNA a
+         tavolozza (Nebulosa, Genesi) scrivono il nome nel loro `col` pieno,
+         niente sfumatura dentro al testo. */
+      idxG.fillStyle = idxTinta(w.col, a, chiaro);
       idxG.fillText(nome, 140, y);
     });
     idxTex.needsUpdate = true;
