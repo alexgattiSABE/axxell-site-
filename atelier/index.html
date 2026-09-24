@@ -11,6 +11,9 @@
      404, e resterebbe lo scheletro. Con la base gli indirizzi relativi
      partono sempre da `/atelier/`, a qualunque profondita' si entri. -->
 <base href="/atelier/">
+<!-- Chi torna da un mondo arriva con ?da=: lo si legge SUBITO, perche' piu'
+     avanti la pagina ripulisce l'indirizzo e il sipario non lo vedrebbe piu'. -->
+<script>try{window.__ATELIER_DA=new URLSearchParams(location.search).get('da')||'';}catch(e){window.__ATELIER_DA='';}</script>
 <title>Atelier | Axxell</title>
 <meta name="description" content="Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.">
 <meta name="robots" content="index, follow">
@@ -2060,7 +2063,7 @@
       aggiornaFocus(back);
       var h = document.getElementById('hero');
       h.classList.add('-off'); h.style.display = 'none';
-      if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
+      if (window.history && history.replaceState) history.replaceState({}, '', ROOT + (LINGUA === 'en' ? '?lang=en' : ''));
     }
   }
 
@@ -2221,7 +2224,7 @@
       var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
       var tipo = nav ? nav.type : (performance.navigation && performance.navigation.type === 0 ? 'navigate' : 'altro');
       if (tipo !== 'navigate') return false;
-      if (new URLSearchParams(location.search).get('da')) return false;
+      if (window.__ATELIER_DA) return false;
       if (!document.referrer) return false;
       var r = new URL(document.referrer);
       if (r.origin !== location.origin) return false;
@@ -2230,7 +2233,7 @@
     } catch(e){ return false; }
   }
 
-  document.querySelectorAll('#nav a[href="/atelier"]').forEach(function(l){
+  document.querySelectorAll('#nav a[data-sito="/atelier"]').forEach(function(l){
     l.addEventListener('click', function(){ try { sessionStorage.setItem('atelier-velo', '1'); } catch(e){} });
   });
   if (ridotto || !cv || !mark || !daClicAtelier()){ apri(); return; }
