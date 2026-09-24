@@ -50,7 +50,7 @@ async function checkOverlap(p, label){
                                       ex: window.__capitoli.extra ? window.__capitoli.extra() : {} }));
   const vis = s.c.filter(c => c.reveal > 0.05);
   const obst = [{ n: 'caption', q: rectQuad(s.cap) }, { n: 'nav', q: rectQuad(s.nav) }];
-  // i link fissi della pagina (round 3): #torna in basso a sinistra, il portale del preventivo a destra
+  // i link fissi della pagina (round 3): #torna in basso a sinistra, #preventivo a destra (in basso a destra su telefono)
   const fissi = Object.entries(s.ex).filter(([, r]) => r && r.w > 1).map(([n, r]) => ({ n, q: rectQuad(r) }));
   obst.push(...fissi);
   for (let a = 0; a < fissi.length; a++) for (let c = a + 1; c < fissi.length; c++)
