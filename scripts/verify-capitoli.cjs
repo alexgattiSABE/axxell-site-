@@ -121,6 +121,30 @@ async function helixPixels(p, file){
       await p.setViewportSize(mobile ? { width: 1440, height: 900 } : { width: 390, height: 844 });
       await p.waitForTimeout(800); await settle(p, 0); await checkOverlap(p, 'after resize');
       await p.screenshot({ path: OUT + '/overlap-after-resize.png' });
+    } else if (check === 'index'){
+      await settle(p, 3);
+      const t = await p.evaluate(() => ({
+        names: window.EFFETTI.map(e => e.nome),
+        fname: document.getElementById('fName').textContent,
+        hint: document.getElementById('hint').textContent,
+        hintPx: parseFloat(getComputedStyle(document.getElementById('hint')).fontSize),
+        hintA: getComputedStyle(document.getElementById('hint')).color,
+        subA: getComputedStyle(document.getElementById('fSub')).color
+      }));
+      const want = ['Vapore','Gravità','Anatomia','Nebulosa','Contatto','Genesi','Rivela'];
+      if (JSON.stringify(t.names) !== JSON.stringify(want)) fail('titles: ' + t.names.join(','));
+      if (t.fname !== 'Nebulosa') fail('caption title: ' + t.fname);
+      if (t.hintPx < 11) fail('hint font ' + t.hintPx);
+      const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); const v = m[1].split(',').map(Number); return v.length > 3 ? v[3] : 1; };
+      if (alpha(t.hintA) < 0.72 || alpha(t.subA) < 0.72) fail('caption alpha ' + t.hintA + ' / ' + t.subA);
+      // la riga 5 dell'elenco porta davanti la card 5
+      const q = await p.evaluate(() => window.__capitoli.index().quad);
+      const pt = await p.evaluate(() => window.__capitoli.indexRowPt(5, 0.25));
+      await p.mouse.click(pt[0], pt[1]);
+      await p.waitForTimeout(1600);
+      if (await p.evaluate(() => window.__capitoli.front()) !== 5) fail('index row click did not bring card 5');
+      await p.screenshot({ path: OUT + '/index.png' });
+      await checkOverlap(p, 'index');
     } else {
       console.log('SKIP ' + check + ' (not implemented yet)');
     }

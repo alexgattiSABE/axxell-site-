@@ -32,13 +32,20 @@
      grappoli. `poster` è il fotogramma congelato dentro al vetro finché
      l'effetto non si sveglia. */
   var EFFETTI = [
-    { id:'altitude', nome:'La piega',     tipo:'Fluidi',              cluster:0, modulo:'altitude', render:'webgl',   poster:'assets/effetti/altitude.webp',  col:[0.36,0.80,1.00] },
-    { id:'sneaker',  nome:'La scarpa',    tipo:'Immagini animate',    cluster:1, modulo:'sneaker',  render:'webgl',   poster:'assets/effetti/sneaker.webp',   col:[0.60,0.85,1.00] },
-    { id:'orologio', nome:'Il vetro',     tipo:'Immagini animate',    cluster:1, modulo:'orologio', render:'webgl',   poster:'assets/effetti/orologio.webp',  col:[0.60,0.85,1.00] },
-    { id:'vesper',   nome:'Il modello',   tipo:'Modelli interattivi', cluster:2, modulo:'vesper',   render:'webgl',   poster:'assets/effetti/vesper.webp',    col:[0.23,0.85,1.00] },
-    { id:'saucer',   nome:'Il disco',     tipo:'Modelli interattivi', cluster:2, modulo:'saucer',   render:'webgl',   poster:'assets/effetti/saucer.webp',    col:[0.23,0.85,1.00] },
-    { id:'warp',     nome:'Il testo',     tipo:'Testo',               cluster:3, modulo:'warp',     render:'dom',     poster:'assets/effetti/warp.webp',      col:[0.85,0.70,1.00] },
-    { id:'lithos',   nome:'Prima e dopo', tipo:'Prima / dopo',        cluster:4, modulo:'lithos',   render:'canvas2d',poster:'assets/effetti/lithos.webp',    col:[0.98,0.78,0.52] }
+    { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[0.36,0.80,1.00],
+      lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' } },
+    { id:'sneaker',  nome:'Gravità',  tipo:'Immagini animate', cluster:1, modulo:'sneaker',  render:'dom',   poster:'assets/effetti/sneaker.webp',  col:[0.60,0.85,1.00],
+      lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' } },
+    { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.60,0.85,1.00], chiaro:true,
+      lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' } },
+    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.23,0.85,1.00],
+      lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' } },
+    { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.23,0.85,1.00], scramble:true,
+      lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' } },
+    { id:'warp',     nome:'Genesi',   tipo:'Testo', cluster:3, modulo:'warp', render:'dom', poster:'assets/effetti/warp.webp', col:[0.85,0.70,1.00],
+      lp:{ kicker:'Testo', h:["Tutto comincia","da un'elica."], sub:'Particelle che si ricompongono in forme sempre nuove.', cta:'Osserva' } },
+    { id:'lithos',   nome:'Rivela',   tipo:'Prima / dopo', cluster:4, modulo:'lithos', render:'canvas2d', poster:'assets/effetti/lithos.webp', col:[0.98,0.78,0.52],
+      lp:{ kicker:'Prima / dopo', h:['La luce racconta','il prima e il dopo.'], sub:"Passa sopra l'immagine e scopri com'era.", cta:'Illumina' } }
   ];
 
   /* ── I 5 CLUSTER ───────────────────────────────────────────────────────────
