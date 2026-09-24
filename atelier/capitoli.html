@@ -1228,7 +1228,6 @@
     WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
       var davanti = !!(hot && hot.idx === i), sopra = (i === idxSopra);
-      var a = (davanti || sopra) ? 1 : 0.80, chiaro = (davanti || sopra) ? 0 : 0.25;
       var nome = w.nome.toUpperCase();
       idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
       if (davanti || sopra){
@@ -1237,10 +1236,12 @@
         idxG.fillText('->', 34, y);
         idxG.globalAlpha = 1;
       }
-      /* UN colore per parola (Nike, 2026-09-24): anche le card col DNA a
-         tavolozza (Nebulosa, Genesi) scrivono il nome nel loro `col` pieno,
-         niente sfumatura dentro al testo. */
-      idxG.fillStyle = idxTinta(w.col, a, chiaro);
+      /* IL COLORE SOLO A CHI E' SCELTO (Nike, 2026-09-24): la parola prende
+         il colore della sua card solo quando la card e' davanti o la parola e'
+         sotto al puntatore; le altre restano di un bianco neutro, leggibile.
+         UN colore per parola: anche Nebulosa e Genesi usano il loro `col`
+         pieno, niente sfumatura dentro al testo. */
+      idxG.fillStyle = (davanti || sopra) ? idxTinta(w.col, 1, 0) : 'rgba(223,228,238,0.78)';
       idxG.fillText(nome, 140, y);
     });
     idxTex.needsUpdate = true;
@@ -1315,6 +1316,7 @@
   var toccato = false;                // qualcuno l'ha preso in mano?
   var lastInput = -1e9;
   var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+  var premuto = false;                // premuto ma non ancora mosso: non e' input
 
   /* IL PONTE VERSO L'ELICA (Task 4). dna.js, montato in modalità standalone
      su #helixStage, cerca questa funzione PRIMA di leggere Lenis/scrollY (è
@@ -1459,7 +1461,15 @@
       return;
     }
     ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
-    dragging = true; dragId = e.pointerId;
+    /* UN TOCCO NON E' UN GESTO (round 3, Nike: «quando tocco fuori dalla card
+       si refresha l'animazione», anche col mouse su pc). Qui prima si
+       accendeva subito `dragging`: il gate `_settled` del frame cadeva per un
+       istante, il controller congelava l'effetto e al rilascio (con
+       `lastInput` rinfrescato) lo risvegliava — sul telefono i moduli si
+       rimontano da capo al risveglio, quindi ripartiva dall'inizio. Ora la
+       pressione resta solo PREMUTA (`premuto`): diventa trascino, e conta
+       come input, solo quando supera i 6px nel `pointermove` qui sotto. */
+    premuto = true; dragId = e.pointerId;
     dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
   });
   window.addEventListener('pointermove', function(e){
@@ -1474,11 +1484,14 @@
       if (WC.motionOk) spingi(-ay*0.0060);
       return;
     }
-    if (!dragging || e.pointerId !== dragId || !WC.motionOk) return;
+    if (!(dragging || premuto) || e.pointerId !== dragId || !WC.motionOk) return;
     var dx = e.clientX - dragX, dy = e.clientY - dragY;
     dragX = e.clientX; dragY = e.clientY;
     dragMoved += Math.abs(dx) + Math.abs(dy);
-    if (!dragAxis && dragMoved > 6) dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+    if (!dragAxis && dragMoved > 6){
+      dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+      premuto = false; dragging = true;      // adesso si' che e' un trascino
+    }
     if (!dragAxis) return;
     /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
        DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
@@ -1490,6 +1503,7 @@
   }, {passive:true});
   function fineTrascino(e){
     if (attesa && (!e || e.pointerId === attesa.id)) attesa = null;
+    premuto = false;                  // una pressione senza moto non lascia traccia
     if (dragging){ dragging = false; lastInput = performance.now(); }
   }
   window.addEventListener('pointerup', fineTrascino);
