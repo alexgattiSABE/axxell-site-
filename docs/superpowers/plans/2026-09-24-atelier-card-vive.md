@@ -22,6 +22,7 @@
 - Titles and copy are the exact Italian strings in spec section C.
 - Code comments are in Italian, matching the file's existing voice. Commit messages are in English.
 - Never push. Never merge to `main`.
+- Every task that edits a `js/*.js` file bumps that file's `?v=` query in `capitoli.html` to `?v=20260924a`, so browsers do not serve a stale cached module.
 
 ## Review Focus
 
@@ -30,6 +31,7 @@
 3. **Clicking and dragging on the live preview:** the deck does not spin, the URL never changes, and the effect keeps running. Tested in Task 4 (`interact`).
 4. **Reduced motion:** no effect wakes, the copy is visible on the poster, and the arrows and dots still change card. Tested in Task 5 (`copy --reduce`).
 5. **Coming back to a card:** each module resumes (sneaker video plays again, the vesper driver resumes, the warp driver never replays the tunnel). Tested in Task 12 (`alive` twice per card, with another card in between).
+6. **Touch swipe on the preview (real finger, `pointerType:'touch'`), and Safari smoothness:** the harness only emulates a mouse in Chromium. `touch-action`, the swipe path and the per-frame clip-path cost in Safari are checked by hand and reported in Task 12, never claimed as automated.
 
 ---
 
@@ -77,7 +79,8 @@ function pass(){ if (!process.exitCode) console.log('PASS ' + check + (mobile ? 
 
 async function open(){
   const b = await chromium.launch({ executablePath: EXE, args: ['--use-gl=angle', '--ignore-gpu-blocklist'] });
-  const p = await b.newPage({ viewport: VP, reducedMotion: reduce ? 'reduce' : 'no-preference', hasTouch: mobile, isMobile: mobile });
+  const p = await b.newPage({ viewport: VP, reducedMotion: reduce ? 'reduce' : 'no-preference', hasTouch: mobile, isMobile: mobile,
+                              deviceScaleFactor: check === 'poster' ? 2 : 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
   p.on('console', m => { if (m.type() === 'error' && !/404|ReadPixels/.test(m.text())) errs.push(m.text()); });
@@ -108,26 +111,44 @@ async function checkOverlap(p, label){
   const s = await p.evaluate(() => ({ c: window.__capitoli.cards(), i: window.__capitoli.index(),
                                       cap: window.__capitoli.caption(), nav: window.__capitoli.nav() }));
   const vis = s.c.filter(c => c.reveal > 0.05);
-  const obst = [{ n: 'index', q: s.i.quad }, { n: 'caption', q: rectQuad(s.cap) }, { n: 'nav', q: rectQuad(s.nav) }];
+  const obst = [{ n: 'caption', q: rectQuad(s.cap) }, { n: 'nav', q: rectQuad(s.nav) }];
+  if (s.i.opacity > 0.1) obst.push({ n: 'index', q: s.i.quad });
   for (let a = 0; a < vis.length; a++){
     for (let b = a + 1; b < vis.length; b++)
       if (overlaps(vis[a].quad, vis[b].quad)) fail(`${label}: card ${vis[a].id} overlaps card ${vis[b].id}`);
     for (const o of obst) if (overlaps(vis[a].quad, o.q)) fail(`${label}: card ${vis[a].id} overlaps ${o.n}`);
   }
-  if (overlaps(s.i.quad, rectQuad(s.cap))) fail(`${label}: index overlaps caption`);
+  if (s.i.opacity > 0.1 && overlaps(s.i.quad, rectQuad(s.cap))) fail(`${label}: index overlaps caption`);
 }
 
-// Pixel ciano/luminosi dell'elica nella colonna centrale, fuori dalle card.
+function inQuad(q, x, y){                       // punto dentro un quad convesso
+  let s = 0;
+  for (let i = 0; i < 4; i++){
+    const [x1, y1] = q[i], [x2, y2] = q[(i + 1) % 4];
+    const c = (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+    if (c !== 0){ if (s === 0) s = Math.sign(c); else if (Math.sign(c) !== s) return false; }
+  }
+  return true;
+}
+// Pixel ciano dell'elica nella colonna centrale: `out` = fuori da ogni card
+// visibile (l'elica c'e'), `inFront` = dentro la card davanti (deve essere ~0:
+// il buco taglia davvero). Le card si leggono PRIMA della cattura.
 async function helixPixels(p, file){
+  const cards = await p.evaluate(() => window.__capitoli.cards());
+  const front = await p.evaluate(() => window.__capitoli.front());
   const buf = await p.screenshot({ path: OUT + '/' + file });
   const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  const vis = cards.filter(c => c.reveal > 0.05).map(c => c.quad);
+  const fq = cards[front].quad;
   const x0 = Math.round(info.width * 0.40), x1 = Math.round(info.width * 0.60);
-  let n = 0;
+  let out = 0, inFront = 0;
   for (let y = 0; y < info.height; y += 2) for (let x = x0; x < x1; x += 2){
     const o = (y * info.width + x) * info.channels, r = data[o], g = data[o + 1], bl = data[o + 2];
-    if (bl > 150 && g > 120 && r < 120) n++;      // il ciano dei punti del DNA
+    if (!(bl > 150 && g > 120 && r < 120)) continue;   // il ciano dei punti del DNA
+    if (inQuad(fq, x, y)) inFront++;
+    else if (!vis.some(q => inQuad(q, x, y))) out++;
   }
-  return n;
+  return { out, inFront };
 }
 
 (async () => {
@@ -135,14 +156,16 @@ async function helixPixels(p, file){
   try {
     if (check === 'helix'){
       await settle(p, 0);
-      const rest = await helixPixels(p, 'helix-rest.png');
+      const r0 = await helixPixels(p, 'helix-rest.png'), rest = r0.out;
+      // la card davanti copre davvero l'elica (il buco taglia): quasi zero punti dentro
+      if (r0.inFront > 25) fail('helix drawn over the front card: ' + r0.inFront + ' px');
       // raffica di rotellina: tre card, catture durante il moto
       let min = Infinity;
+      await p.mouse.move(VP.width * 0.9, VP.height * 0.5);
       for (let k = 0; k < 6; k++){
-        await p.mouse.move(VP.width * 0.9, VP.height * 0.5);
         await p.mouse.wheel(0, 600);
         await p.waitForTimeout(90);
-        min = Math.min(min, await helixPixels(p, `helix-move-${k}.png`));
+        min = Math.min(min, (await helixPixels(p, `helix-move-${k}.png`)).out);
       }
       const cp = await p.evaluate(() => getComputedStyle(document.getElementById('helixStage')).clipPath);
       if (!/^path\(/.test(cp) && cp !== 'none') fail('clip-path is not a path(): ' + cp);
@@ -204,7 +227,7 @@ async function helixPixels(p, file){
         return { idx: w.idx, id: w.id, u: w.u, reveal: w.uni.uReveal.value, quad: sondaQuad(w.mesh, CW/2, CH/2) };
       });
     },
-    index: function(){ return { quad: sondaQuad(idxMesh, 1.20, 0.72) }; },
+    index: function(){ return { quad: sondaQuad(idxMesh, 1.20, 0.72), opacity: idxMat.opacity }; },
     caption: function(){ return sondaRect([document.getElementById('focus'), document.getElementById('hint')]); },
     nav: function(){ return sondaRect([document.getElementById('nav')]); },
     goTo: function(i){ portaDavanti(i); },
@@ -242,17 +265,19 @@ JS: in `bucoElica`, keep `BUCO_PTS`, the front-of-axis rule, the reveal rule and
       var asseZ = -((window.__HELIX_TUNE && window.__HELIX_TUNE.R) || 4.5);
       /* Durante l'ingresso (`body.-entra`) l'asse scivola di 42px: il buco va
          spostato di quanto e' spostato lui, se no resta sfasato sulla card. */
-      var dy = HELIX_EL.getBoundingClientRect().top;
+      var dy = document.body.classList.contains('-entra') ? HELIX_EL.getBoundingClientRect().top : 0;
       camera.updateMatrixWorld();
       WORLDS.forEach(function(w){
         if (!w.mesh || w.uni.uReveal.value < 0.3) return;
         if (w.mesh.position.z <= asseZ) return;
         w.mesh.updateWorldMatrix(true, false);
         var d = '';
-        /* SENSO ANTIORARIO: il rettangolo dello schermo gira in senso orario,
-           e con la regola `nonzero` due sagome che si toccano restano bucate
-           tutte e due — con `evenodd` si annullerebbero dove si sovrappongono. */
-        for (var i = BUCO_PTS.length - 1; i >= 0; i--){
+        /* SENSO OPPOSTO AL RETTANGOLO: BUCO_PTS, proiettato sullo schermo (y in
+           giu'), gira al contrario del rettangolo `M0 0 H W V H H0 Z`, quindi
+           con `nonzero` dentro la sagoma il conto fa zero e l'elica si taglia.
+           Due sagome sovrapposte li' ridipingerebbero (−1): non succede perche'
+           le card non si toccano piu' (vedi deckScale). */
+        for (var i = 0; i < BUCO_PTS.length; i++){
           bucoV.set(BUCO_PTS[i][0], BUCO_PTS[i][1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
           d += (d ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
                Math.round((1-(bucoV.y*0.5+0.5))*H - dy);
@@ -274,7 +299,9 @@ JS: in `bucoElica`, keep `BUCO_PTS`, the front-of-axis rule, the reveal rule and
   }
 ```
 
-`BUCO_PTS` runs counter-clockwise in local space (y up), and the flip to screen y-down makes it clockwise on screen. That is why the loop walks it backwards: the screen rectangle `M0 0 H W V H H0 Z` is clockwise on screen, so the cards must be counter-clockwise on screen. Verify it in step 5: a hole that is not cut means the winding is wrong.
+Winding (checked by the plan review with the shoelace formula): `BUCO_PTS` walked FORWARD already has the opposite signed area to the screen rectangle `M0 0 H W V H H0 Z` once projected to y-down pixels, so the forward loop cuts the hole. Walking it backwards would give winding 2 and no hole. The `helix` check asserts `inFront ≈ 0`, which catches a wrong winding.
+Overlapping holes would repaint (winding −1). That cannot happen after Task 2, which guarantees cards never overlap, but it can happen during Task 1 while neighbours still overlap. Judge Task 1's visuals on the front card only.
+Read `HELIX_EL.getBoundingClientRect().top` only while `document.body.classList.contains('-entra')` (else `dy = 0`), so it does not force a layout every frame.
 
 - [ ] **Step 5: Run `helix` on both viewports**
 
@@ -396,26 +423,28 @@ Add an `index` branch to the harness:
       if (alpha(t.hintA) < 0.72 || alpha(t.subA) < 0.72) fail('caption alpha ' + t.hintA + ' / ' + t.subA);
       // la riga 5 dell'elenco porta davanti la card 5
       const q = await p.evaluate(() => window.__capitoli.index().quad);
-      const rowY = await p.evaluate(() => window.__capitoli.indexRowY(5));
-      await p.mouse.click(q[0][0] + (q[1][0] - q[0][0]) * 0.25, rowY);
+      const pt = await p.evaluate(() => window.__capitoli.indexRowPt(5, 0.25));
+      await p.mouse.click(pt[0], pt[1]);
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 5) fail('index row click did not bring card 5');
       await p.screenshot({ path: OUT + '/index.png' });
       await checkOverlap(p, 'index');
 ```
 
-Also add `indexRowY(k)` to the debug API. It projects the row centre `(IROW0 + k*IROWH)/IH` onto the index plane and returns the screen y:
+Also add `indexRowPt(k, fx)` to the debug API. It projects the point at fraction `fx` of the width on row `k` of the index plane (the same local x that gets clicked, because the plane is rotated) and returns `[x, y]` in CSS px:
 
 ```js
-    indexRowY: function(k){
+    indexRowPt: function(k, fx){
       var v = 0.72 - 1.44 * ((IROW0 + k * IROWH) / IH);   // da uv a coordinate locali del piano
-      idxMesh.updateWorldMatrix(true, false);
-      sondaV.set(0, v, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
-      return (1 - (sondaV.y * 0.5 + 0.5)) * renderer.domElement.clientHeight;
+      var x = -1.20 + 2.40 * fx;
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      sondaV.set(x, v, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var el = renderer.domElement;
+      return [(sondaV.x * 0.5 + 0.5) * el.clientWidth, (1 - (sondaV.y * 0.5 + 0.5)) * el.clientHeight];
     },
 ```
 
-(Update 1.44/0.72 together with the plane size in step 3.)
+(Step 3 changes the plane to 2.90×2.00: update `1.20/2.40` to `1.45/2.90` and `0.72/1.44` to `1.00/2.00` here and in `index()`.)
 
 - [ ] **Step 2: Run it and see it fail**
 
@@ -449,7 +478,7 @@ The headline is split into two lines. That is how the spec's "two fixed lines" r
 - `var IW = 1100, IH = 760, IROW0 = 190, IROWH = 70;`
 - The title is `'ESPLORA IL MONDO'` at `'500 40px "DM Mono"'`, at y=80. Rows use `'400 36px "DM Mono"'`. `idxG.letterSpacing = '4px'`.
 - The rows loop over `WORLDS` (not `CLUSTERS`), drawing `w.nome.toUpperCase()`. A row is lit when `(hot && hot.idx === i) || i === idxSopra`, using `w.col`. Unlit rows use `rgba(223,228,238,0.78)`, and the title uses `rgba(240,240,246,0.92)`.
-- The plane becomes `new THREE.PlaneGeometry(2.90, 2.00)` (the same aspect as 1100×760). Update the debug `index()` half-size to `1.45, 1.00` and `indexRowY` to `1.00 - 2.00 * (...)`.
+- The plane becomes `new THREE.PlaneGeometry(2.90, 2.00)` (the same aspect as 1100×760). Update the debug `index()` half-size to `1.45, 1.00` and `indexRowPt` to `x = -1.45 + 2.90*fx`, `v = 1.00 - 2.00 * (...)`.
 - `pickRiga`: `k < WORLDS.length`, and it returns `k` (a card index). Delete `primoDelCluster`. In the click handler, `if (r >= 0) portaDavanti(r);`.
 - Update the long comment above the index: it now lists the 7 cards by name ("ESPLORA IL MONDO"), because Nike asked for it on 2026-09-24. Rewrite the sentence about the five types.
 
@@ -460,7 +489,7 @@ Captions (CSS):
 ```css
   #hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:6;
     font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-    color:rgba(223,228,238,.78);transition:opacity .4s ease;text-align:center;white-space:nowrap}
+    color:rgba(223,228,238,.84);transition:opacity .4s ease;text-align:center;white-space:nowrap}
   #focus .counter i{color:rgba(190,214,246,.72);font-style:normal}
   #focus .counter .tot{color:rgba(190,214,246,.80)}
   #focus .fsub{... font-size:11px; ... color:rgba(223,228,238,.82)}
@@ -468,10 +497,10 @@ Captions (CSS):
   #dots button:hover{background:rgba(176,204,244,.95)}
 ```
 
-In the `@media (max-width:600px)` rule, change `#hint{font-size:9px;...}` to `#hint{font-size:11px;letter-spacing:.08em;bottom:18px;white-space:nowrap}`.
+In the `@media (max-width:600px)` rule, change `#hint{font-size:9px;...}` to `#hint{font-size:12px;letter-spacing:.06em;bottom:18px;white-space:nowrap}`. The hint's inline opacity is `spokeIn*0.9`: change that factor to `1` in `frame()`, so the effective alpha is .84 (above the .72 floor).
 Remove the chromatic glows in the same rules: `.counter .num` `text-shadow:0 0 16px rgba(58,216,255,.4)` and `#dots button.-now` `box-shadow:0 0 12px rgba(58,216,255,.55)` both go (global constraint). Keep `.fname`'s dark `text-shadow` (it is a neutral legibility shadow, not a glow).
 
-Hint text: at ~line 331, `scorri per cambiare mondo · usa l'anteprima`. In the `if (mobile)` block, use `scorri fuori dalla card · tocca l'anteprima`.
+Hint text: at ~line 331, `scorri per cambiare mondo · usa l'anteprima`. In the `if (mobile)` block, use `scorri fuori · tocca l'anteprima` (it fits one line at 390px and 12px).
 
 - [ ] **Step 4: Run the checks**
 
@@ -576,7 +605,8 @@ Expected: `FAIL interact: navigated to .../atelier/capitoli/lithos`.
 
 7. `keydown`: delete the `Enter` branch. Delete the Escape listener.
 8. Delete `prefetch`, `prefetched`, `enter`, `leave`, `popstate`, `wBack`/`wTalk`/`wNext`, `ROOT`, `worldFromPath`, `CAME_FROM` and its block at the end, `initial` and its block, the `#world` HTML and CSS, `playOn` calls, and `zoom`/`zoomT`. For `zoom`, replace `(1-zoom)` with `1` and remove the `if (openW){...}` camera block. Remove every `openW` reference: guards become unconditional. `grep -n "openW\|zoom\|prefetch\|enter(\|leave(\|CAME_FROM\|worldFromPath\|playOn\|#world\|wKick" atelier/capitoli.html` must return nothing, except the unrelated `entra(`.
-   - Keep `playOn`/the `video` element only if something still uses them. The subagent report says `playOn` needs `w.video`, and no record has one, so delete both `playOn` and the hidden `video`/`vtex` together with the `['pointerdown','keydown','touchstart']` play hook.
+   - Delete `playOn`, the hidden `video` element, `vtex`, `videoOn` (declared ~line 1073), the `['pointerdown','keydown','touchstart']` play hook, AND the line `if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = ...` in `frame()` (~line 1939). Leaving it makes `frame()` throw every frame. Do NOT touch the shader uniform `tVideo`: it carries each card's poster texture.
+   - Acceptance: `grep -nE "\bvideo\.|videoOn|vtex|playOn" atelier/capitoli.html` returns nothing.
 9. Hover block in `frame()`: keep `overCard`/`pickRiga` for highlighting, but the cursor is `pointer` only for a side card or an index row: `document.body.style.cursor = ((overCard && overCard !== hot) || r >= 0) ? 'pointer' : '';`.
 10. Parallax freeze: in the parallax `pointermove` listener, `if (inPreview(e)) return;` before updating `tmx/tmy`. `ptr` must still update for picking, so set `ptr` first and then return.
 11. Update the `#hint` comment if it mentions "clicca quello davanti".
@@ -623,6 +653,10 @@ git commit -m "feat(atelier): cards no longer open detail pages; the live previe
         if (parseFloat(r.op) < 0.9) fail(`card ${i}: copy not visible (opacity ${r.op})`);
         if (r.text.replace(/\s/g, '') !== want.replace(/\s/g, '')) fail(`card ${i}: headline "${r.text}" != "${want}"`);
         const pad = (r.card.maxx - r.card.minx) * 0.05;
+        // la copy resta nella meta' sinistra (o nella fascia bassa su telefono): il centro e' dell'effetto
+        const narrow = (r.card.maxx - r.card.minx) < 420;
+        if (!narrow) for (const k of r.kids) if (k.r > r.card.minx + (r.card.maxx - r.card.minx) * 0.52) fail(`card ${i}: copy reaches the centre`);
+        if (narrow) for (const k of r.kids) if (k.t < r.card.miny + (r.card.maxy - r.card.miny) * 0.45) fail(`card ${i}: mobile copy above the bottom band`);
         for (const k of r.kids){
           if (k.l < r.card.minx + pad || k.r > r.card.maxx - pad || k.t < r.card.miny + pad || k.b > r.card.maxy - pad)
             fail(`card ${i}: copy touches the card edge`);
@@ -669,17 +703,23 @@ CSS (the headline face is `'Space Grotesk'`, already loaded for `.fname`; kicker
     background:linear-gradient(90deg,rgba(4,5,10,.72) 0%,rgba(4,5,10,.46) 34%,rgba(4,5,10,0) 52%)}
   #lp.-on{opacity:1}
   #lp > *{max-width:40%;margin:0}
+  /* Il titolo va a capo DENTRO la colonna (40% della card): due righe
+     logiche, ognuna libera di spezzarsi. Niente nowrap — a 1440 la riga piu'
+     lunga uscirebbe dalla sfumatura fino al centro dell'effetto. */
   #lp .lp-k{font:500 max(11px,.72em)/1.2 'DM Mono',ui-monospace,monospace;font-style:normal;
     letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
-  #lp .lp-h{font:600 1.9em/1.08 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
-  #lp .lp-l{display:block;white-space:nowrap}
+  #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
+  #lp .lp-l{display:block}
   #lp .lp-s{font:400 max(12px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
   #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
     letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
     border:1px solid var(--lpc);color:#f0f0f6}
   #lp.-chiaro{color:#10131a;
     background:linear-gradient(90deg,rgba(255,255,255,.0) 0%,rgba(255,255,255,0) 100%)}
-  #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)} #lp.-chiaro .lp-b{color:#10131a}
+  #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)}
+  /* Su bianco il colore della card (azzurro chiaro) non si legge (~1.6:1):
+     kicker e bottone passano a un blu profondo della stessa famiglia. */
+  #lp.-chiaro{--lpc:#1d4a6b} #lp.-chiaro .lp-b{color:#10131a}
   /* Card stretta (telefono): una fascia in basso, solo titolo e bottone. */
   #lp.-stretta{justify-content:flex-end;padding:0 6% 6% 6%;gap:.7em;
     background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
@@ -705,7 +745,8 @@ JS, near the other DOM refs after `aggiornaFocus`:
     lpL[0].textContent = w.lp.h[0]; lpL[1].textContent = w.lp.h[1] || '';
     lpS.textContent = w.lp.sub; lpB.textContent = w.lp.cta;
     lpEl.classList.toggle('-chiaro', !!w.chiaro);
-    lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
+    if (w.chiaro) lpEl.style.removeProperty('--lpc');
+    else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
     if (lpTw){ lpTw.kill(); lpTw = null; }
   }
   /* «Contatto»: il titolo si decifra a ogni arrivo, riga per riga — due righe
@@ -713,7 +754,15 @@ JS, near the other DOM refs after `aggiornaFocus`:
      parametri di js/headings.js. */
   function lpDecifra(){
     if (!lpDi || !lpDi.scramble || !WC.motionOk || !window.ScrambleTextPlugin) return;
-    lpTw = gsap.to(lpL, { duration: 1.3, ease: 'none', stagger: 0.22,
+    /* Un tween lasciato a meta' (la card e' scivolata via e tornata) avrebbe
+       lasciato lettere a caso: '{original}' le prenderebbe per buone. Si
+       ferma e si rimette il testo vero PRIMA di ripartire; l'altezza resta
+       bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
+    if (lpTw){ lpTw.kill(); lpTw = null; }
+    lpL[0].textContent = lpDi.lp.h[0]; lpL[1].textContent = lpDi.lp.h[1] || '';
+    var hEl = lpEl.querySelector('.lp-h');
+    hEl.style.minHeight = hEl.offsetHeight + 'px';
+    lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
       scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
   }
   var lpFermo = false;
@@ -781,13 +830,28 @@ git commit -m "feat(atelier): landing-page copy on the front card, scramble head
         const clip = { x, y, width: w, height: h };
         const awake = await p.evaluate(() => window.__capitoli.awake());
         const a = await p.screenshot({ clip, path: OUT + `/alive-${i}-a.png` });
-        await p.waitForTimeout(2000);
+        await p.waitForTimeout(Number(process.env.ALIVE_WAIT || 2000));
         const b2 = await p.screenshot({ clip, path: OUT + `/alive-${i}-b.png` });
-        const A = await sharp(a).raw().toBuffer(), B = await sharp(b2).raw().toBuffer();
-        let d = 0; for (let k = 0; k < A.length; k += 4) if (Math.abs(A[k] - B[k]) + Math.abs(A[k+1] - B[k+1]) + Math.abs(A[k+2] - B[k+2]) > 30) d++;
-        const frac = d / (A.length / 4);
+        const { data: A, info } = await sharp(a).raw().toBuffer({ resolveWithObject: true });
+        const B = await sharp(b2).raw().toBuffer();
+        const ch = info.channels;                       // i PNG di Playwright arrivano a 3 canali
+        let d = 0; for (let k = 0; k < A.length; k += ch) if (Math.abs(A[k] - B[k]) + Math.abs(A[k+1] - B[k+1]) + Math.abs(A[k+2] - B[k+2]) > 30) d++;
+        const frac = d / (A.length / ch);
         if (!awake) fail(`card ${i}: no effect awake`);
         if (frac < 0.02) fail(`card ${i}: not moving on its own (changed ${(frac*100).toFixed(2)}%)`);
+      }
+    } else if (check === 'ritorno'){
+      // Review Focus 5: nella STESSA pagina si torna su card gia' svegliate
+      for (const i of [1, 3, 1, 5, 3, 5]){
+        await settle(p, i); await p.waitForTimeout(1200);
+        if (await p.evaluate(() => window.__capitoli.awake()) !== (await p.evaluate(i => window.EFFETTI[i].modulo, i)))
+          fail(`card ${i}: not awake on return`);
+        const probe = await p.evaluate(() => window.__warpProbe ? window.__warpProbe() : null);
+        if (i === 5 && probe && probe.morph < 0.99) fail('warp replayed the tunnel on return');
+        const t0 = await p.evaluate(() => { const v = document.querySelector('#stage-live video'); return v ? v.currentTime : null; });
+        await p.waitForTimeout(800);
+        const t1 = await p.evaluate(() => { const v = document.querySelector('#stage-live video'); return v ? v.currentTime : null; });
+        if (i === 1 && !(t1 > t0)) fail('sneaker video not playing on return');
       }
 ```
 
@@ -906,11 +970,21 @@ In the module, the external branch sets a flag before returning its handle: `pie
         } catch(e){ fondo = '#ffffff'; }
       }
       ctx2d.fillStyle = fondo; ctx2d.fillRect(0, 0, W, H);
-      var half = W >= H ? W * 0.5 : W;            // ritratto: tutta la larghezza
-      var s2 = Math.min(half / im.naturalWidth, H * 0.94 / im.naturalHeight);
-      var w2 = im.naturalWidth * s2, h2 = im.naturalHeight * s2;
-      var x2 = W >= H ? W * 0.5 + (half - w2) / 2 : (W - w2) / 2;
-      ctx2d.drawImage(im, x2, (H - h2) / 2, w2, h2);
+      /* Stretta = la stessa soglia di #lp.-stretta, in pixel CSS (W/H qui sono
+         pixel del canvas, moltiplicati per il dpr): la copy va in una fascia
+         in basso, quindi l'orologio sale e si rimpicciolisce sopra di lei. */
+      var stretta = (canvas.clientWidth || W) < 420;
+      var s2, w2, h2, x2, y2;
+      if (stretta){
+        s2 = Math.min(W * 0.9 / im.naturalWidth, H * 0.62 / im.naturalHeight);
+        w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
+        x2 = (W - w2) / 2; y2 = H * 0.04;
+      } else {
+        s2 = Math.min(W * 0.5 / im.naturalWidth, H * 0.94 / im.naturalHeight);
+        w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
+        x2 = W * 0.5 + (W * 0.5 - w2) / 2; y2 = (H - h2) / 2;
+      }
+      ctx2d.drawImage(im, x2, y2, w2, h2);
       shown = want;
       return;
     }
@@ -918,7 +992,7 @@ In the module, the external branch sets a flag before returning its handle: `pie
 
 Place it after `if (!im) return;` and before `clearRect`, so the legacy path below stays byte-for-byte the same. Set `pieno = true;` as the first line inside `if (external){`.
 
-On portrait (a card narrower than 420px), the copy is a bottom band. With a centred watch the band overlaps the watch's bottom: scale the watch to `H * 0.62` and align it to the top in that case. Adjust `s2`/y when `W < 420`: `s2 = Math.min(W*0.9/im.naturalWidth, H*0.62/im.naturalHeight)`, `y = H*0.04`.
+The narrow test uses CSS px (`canvas.clientWidth`), not canvas pixels: on a real phone the dpr is 2 or more, so `W < 420` never triggers. Check that the orologio canvas variable is called `canvas` in `mountOrologio` (`grep -n "canvas" atelier/js/orologio.js | head`); use its real name.
 
 - [ ] **Step 4: Run the checks**
 
@@ -949,7 +1023,7 @@ Expected: `FAIL alive: card 3: not moving on its own` (the orb barely changes in
 
 - [ ] **Step 2: Implement**
 
-Intro: change `stepIntro` to use `var introMs = INTRO_MS;` (declared next to `INTRO_MS`) and `clamp01((performance.now() - introStart) / introMs)`. In the external branch, set `introMs = 900;` before returning, and add `INTRO_DOLLY` scaling only if the intro reads the dolly from a variable. Check with `grep -n INTRO_DOLLY js/vesper.js`. If it is a const used in the frame, add `var introDolly = INTRO_DOLLY;`, use it there, and set `introDolly = 3;` in the external branch.
+Intro: change `stepIntro` to use `var introMs = INTRO_MS;` (declared next to `INTRO_MS`) and `clamp01((performance.now() - introStart) / introMs)`. In the external branch, set `introMs = 500;` and `INTRO_DOLLY = 3;` before returning. `INTRO_DOLLY` is a plain `var` (vesper.js:166), read at :255 for the initial camera and at :1124 in the frame. Line 255 has already run at mount time, so after changing it in the external branch also re-place the camera. Read :250-260 and repeat that one camera assignment right after `INTRO_DOLLY = 3;`.
 
 Brain gate: declare `var brainPronto = false;` near `brainGeo`. At line ~981, right after `brainGeo = buildBrainGeometry(...)`, set `brainPronto = true;`.
 
@@ -964,8 +1038,11 @@ External driver, inside `if (external){` before `return`:
      * del cervello sarebbe vuota. */
     var driver = { v: 0 };
     var extTl = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
+    /* Il tetto si decide solo quando il giro e' sulla sfera (v≈0): cambiarlo
+       a meta' farebbe saltare la scena da galassia a cervello di colpo. */
+    var tetto = 2.4;
     extTl.to(driver, { v: 1, duration: 9, ease: 'sine.inOut', onUpdate: function(){
-      var tetto = brainPronto ? 3.6 : 2.4;
+      if (driver.v < 0.02) tetto = brainPronto ? 3.6 : 2.4;
       progressTarget = driver.v * tetto;
     }}, 0);
 ```
@@ -1079,8 +1156,20 @@ git commit -m "fix(atelier): Genesi skips the tunnel flight and loops helix-to-f
 
 - [ ] **Step 1: Check the current behaviour**
 
-Run: `node scripts/verify-capitoli.cjs alive 0`
-Expected: it may pass on the video alone, because the starry video moves. Tighten the check for this card: add `ALIVE_FLUID=1`, which makes the harness hide the `<video>` before the two shots: `await p.evaluate(() => document.querySelectorAll('#stage-live video').forEach(v => v.style.visibility = 'hidden'))`. Then the diff measures only the fluid. Expected: `FAIL alive: card 0: not moving on its own`.
+The starry video is composited inside the fluid's WebGL canvas, so a pixel diff cannot tell the fluid apart from the video. Test the phantom directly instead. Add a `vapore` branch to the harness:
+
+```js
+    } else if (check === 'vapore'){
+      await settle(p, 0); await p.waitForTimeout(3500);   // mouse fermo > 1,5 s
+      const a = await p.evaluate(() => window.__altProbe ? window.__altProbe() : null);
+      await p.waitForTimeout(1500);
+      const b = await p.evaluate(() => window.__altProbe ? window.__altProbe() : null);
+      if (!a) fail('no altitude probe');
+      else if (!(b.fantasma > a.fantasma)) fail('phantom pointer is not stirring: ' + a.fantasma + ' -> ' + b.fantasma);
+```
+
+Run: `node scripts/verify-capitoli.cjs vapore`
+Expected: `FAIL vapore: no altitude probe`.
 
 - [ ] **Step 2: Implement**
 
@@ -1100,12 +1189,12 @@ Add a phantom step, called once per frame at the start of the update where `poin
     }
 ```
 
-In the external branch, set `fantasma = WC.motionOk !== false;` before returning. Legacy never sets it.
+Count the phantom's moves: `var passiFantasma = 0;`, and `passiFantasma++` inside the `if`. In the external branch, set `fantasma = WC.motionOk !== false;` and `window.__altProbe = function(){ return { fantasma: passiFantasma }; };` before returning, and delete `window.__altProbe` in the external `dispose`. Legacy never sets either.
 
 - [ ] **Step 3: Run the checks**
 
-Run: `ALIVE_FLUID=1 node scripts/verify-capitoli.cjs alive 0 && node scripts/verify-capitoli.cjs interact`
-Expected: two `PASS`. Open `alive-0-b.png`: coloured smoke trails without any mouse input.
+Run: `node scripts/verify-capitoli.cjs vapore && node scripts/verify-capitoli.cjs alive 0 && node scripts/verify-capitoli.cjs interact`
+Expected: three `PASS`. Open `alive-0-b.png`: coloured smoke trails without any mouse input.
 
 - [ ] **Step 4: Commit**
 
@@ -1181,12 +1270,12 @@ Run from the repo root: `node scripts/verify-capitoli.cjs poster`. Then open eac
 - [ ] **Step 2: Full run, both viewports**
 
 ```bash
-for c in helix overlap index interact copy alive format tunnel; do
+for c in helix overlap index interact copy alive format tunnel vapore; do
   node scripts/verify-capitoli.cjs $c || echo "^^ $c desktop"
   node scripts/verify-capitoli.cjs $c --mobile || echo "^^ $c mobile"
 done
 node scripts/verify-capitoli.cjs copy --reduce
-node scripts/verify-capitoli.cjs alive 1 && node scripts/verify-capitoli.cjs alive 3   # ritorno: sveglia due volte con un'altra card in mezzo
+node scripts/verify-capitoli.cjs ritorno
 ```
 
 Expected: every line `PASS`. Paste the output into the task report.
@@ -1194,6 +1283,10 @@ Expected: every line `PASS`. Paste the output into the task report.
 - [ ] **Step 3: Legacy page guard**
 
 Run a quick capture of `http://localhost:8803/atelier/capitoli-legacy.html` scrolled to `#capWarp`, `#capVesper` and `#capOrologio` (use `page.evaluate(() => document.getElementById('capWarp').scrollIntoView())` then screenshot). Expected: the same look as before this branch. Compare with the same captures taken from commit `f869d0a` using `git worktree add /tmp/capitoli-base f869d0a`, served on port 8804, then `git worktree remove /tmp/capitoli-base`. The tunnel is present in legacy warp, the orologio has white columns, and there is no console error.
+
+- [ ] **Step 3b: Manual checks that the harness cannot do**
+
+Tell the controller (and through it Nike) that two checks need a real browser: a finger swipe on the preview on a phone (it must move the effect, not the deck), and scrolling smoothness in Safari with the helix cut. Do not claim either as verified.
 
 - [ ] **Step 4: Update HANDOFF.md**
 
