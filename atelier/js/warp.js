@@ -194,7 +194,11 @@ function mountWarp(ctx, cfg){
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true,
                                            powerPreference: 'high-performance' });
-  renderer.setClearColor(0x000000, 0);
+  // Legacy resta trasparente (si vede il fondo violetto di `.wc-warp-pin::before`);
+  // esterno vuole un fondo OPACO — niente sezione dietro che dia quel viola — e
+  // prende lo stesso colore di base di quel gradiente (`css/sections.css:106-111`,
+  // stop più scuro `#05040E`), così il capitolo non stacca di tono dal deck.
+  renderer.setClearColor(0x05040e, external ? 1 : 0);
   var scene  = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
   camera.position.set(0, 0, CONFIG.camZ);
@@ -655,32 +659,35 @@ function mountWarp(ctx, cfg){
   resize();
 
   /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
-   * Nessuna sezione, nessuno ScrollTrigger da leggere: qui il progresso lo fa
-   * un tween GSAP proprio, stesso schema di `mountOrologio` (Task 6) — un
-   * oggetto di appoggio (`driver`) invece dello `state.t` dell'orologio,
-   * perché qui il progresso alimenta `scrollTarget`, non una scena a stati.
+   * «Genesi» — NIENTE TUNNEL (2026-09-24, richiesta di Nike). Le scie del
+   * volo sono le STESSE particelle che poi diventano l'elica e le forme:
+   * spegnerle spegnerebbe tutto. Si parte invece da dove il riordino e'
+   * finito (`phaseMorphOut`: sono gia' elica) e si va avanti e indietro fino
+   * alla fine, in 12 s invece di 26 — «velocizza». Allo start la corsa
+   * salta li' senza smorzamento, se no il primo fotogramma rifarebbe il volo.
    * Il tween resta creato ma in pausa finché il controller non chiama
    * `start()`, e VIVE fra un fuoco e l'altro: `stop()` lo mette in pausa (non
-   * lo distrugge), quindi il volo riprende da dove si era fermato invece di
-   * ripartire dal tubo ogni volta. `repeat:-1` senza `yoyo`: al giro il
-   * progresso torna di scatto a 0 (stesso compromesso, non ritarato con cura
-   * estetica, del tween di `orologio` — vedi il concern gemello nel report
-   * del Task 6). */
+   * lo distrugge). */
   if (external){
-    var driver = { v: 0 };
-    var extTl = gsap.timeline({ repeat: -1, paused: true });
+    var lo = CONFIG.phaseMorphOut;
+    var driver = { v: lo };
+    var extTl = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
     extTl.to(driver, {
-      v: 1, duration: 26, ease: 'none',
+      v: 1, duration: 12, ease: 'sine.inOut',
       onUpdate: function(){ scrollTarget = driver.v; }
     }, 0);
+    var primoGiro = true;
     var onResizeE = function(){ resize(); };
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     var wantRun = false;
     window.addEventListener('resize', onResizeE);
     document.addEventListener('visibilitychange', onVisE);
     if (ctx.desktop) window.addEventListener('pointermove', onMove, { passive: true });
+    // Sonda di sola lettura per la verifica automatica (harness `tunnel`):
+    // nessun codice della scena la legge, esiste solo per il check esterno.
+    window.__warpProbe = function(){ return { morph: uMorph.value, scroll: scroll }; };
     return {
-      start: function(){ wantRun = true; resize(); extTl.play(); start(); },
+      start: function(){ wantRun = true; if (primoGiro){ scroll = scrollTarget = lo; primoGiro = false; } resize(); extTl.play(); start(); },
       stop:  function(){ wantRun = false; extTl.pause(); stop(); },
       resize: resize,
       dispose: function(){
@@ -689,6 +696,7 @@ function mountWarp(ctx, cfg){
         window.removeEventListener('resize', onResizeE);
         document.removeEventListener('visibilitychange', onVisE);
         window.removeEventListener('pointermove', onMove);
+        delete window.__warpProbe;
         disposeAll();
       }
     };
