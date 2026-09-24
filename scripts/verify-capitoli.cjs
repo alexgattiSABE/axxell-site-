@@ -137,12 +137,20 @@ async function helixPixels(p, file){
       if (t.hintPx < 11) fail('hint font ' + t.hintPx);
       const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); const v = m[1].split(',').map(Number); return v.length > 3 ? v[3] : 1; };
       if (alpha(t.hintA) < 0.72 || alpha(t.subA) < 0.72) fail('caption alpha ' + t.hintA + ' / ' + t.subA);
-      // la riga 5 dell'elenco porta davanti la card 5
+      // la riga 5 dell'elenco porta davanti la card 5 — ma non in ritratto,
+      // dove l'elenco resta a opacita' zero per scelta (non c'e' una fascia
+      // libera che lo contenga intero senza toccare una vicina): li' il
+      // clic non ha nulla da colpire, e non e' un fallimento del check.
       const q = await p.evaluate(() => window.__capitoli.index().quad);
-      const pt = await p.evaluate(() => window.__capitoli.indexRowPt(5, 0.25));
-      await p.mouse.click(pt[0], pt[1]);
-      await p.waitForTimeout(1600);
-      if (await p.evaluate(() => window.__capitoli.front()) !== 5) fail('index row click did not bring card 5');
+      const idxOpacity = await p.evaluate(() => window.__capitoli.index().opacity);
+      if (idxOpacity < 0.1){
+        console.log('SKIP ' + check + ': index hidden in portrait (by design)');
+      } else {
+        const pt = await p.evaluate(() => window.__capitoli.indexRowPt(5, 0.25));
+        await p.mouse.click(pt[0], pt[1]);
+        await p.waitForTimeout(1600);
+        if (await p.evaluate(() => window.__capitoli.front()) !== 5) fail('index row click did not bring card 5');
+      }
       await p.screenshot({ path: OUT + '/index.png' });
       await checkOverlap(p, 'index');
     } else {

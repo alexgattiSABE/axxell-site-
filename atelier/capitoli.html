@@ -1004,7 +1004,16 @@
      basso restano uno per effetto: ora dicono la stessa cosa dell'elenco,
      solo in forma di fermo invece che di riga.
      ══════════════════════════════════════════════════════════════════ */
-  var IW = 1100, IH = 760, IROW0 = 190, IROWH = 70;
+  /* 2026-09-24 (fix round 1): Nike voleva la scaletta "più grande" — a
+     parita' di posizione/scala della lastra, il testo di una riga cresce
+     solo aumentando quanto SPAZIO del canvas occupa: fonte riga 36→58px,
+     passo riga 70→80 (piu' largo, non piu' stretto, perche' 58px in 70px di
+     passo restava leggibile ma compresso) e titolo 40→46px. Misurato con
+     `window.__capitoli.rowHeight(k, FS)`: 8.66px a schermo (1440×900) sulla
+     versione base (e066c88, fonte 25px/passo 44), 9.06px con questa lastra
+     prima del fix (fonte 36px — solo +5%, non e' "più grande"), 14.6px dopo
+     (fonte 58px) — ×1.69 sulla base, sopra la soglia ×1.5 richiesta. */
+  var IW = 1100, IH = 760, IROW0 = 190, IROWH = 80;
   var idxCv = document.createElement('canvas');
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
@@ -1029,18 +1038,18 @@
     idxG.clearRect(0,0,IW,IH);
     try { idxG.letterSpacing = '4px'; } catch(e){}
     idxG.textBaseline = 'middle';
-    idxG.font = '500 40px "DM Mono", ui-monospace, monospace';
+    idxG.font = '500 46px "DM Mono", ui-monospace, monospace';
     idxG.fillStyle = 'rgba(240,240,246,0.92)';
     idxG.fillText('ESPLORA IL MONDO', 34, 80);
     WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
       var acceso = (hot && hot.idx === i) || (i === idxSopra);
-      idxG.font = '400 36px "DM Mono", ui-monospace, monospace';
+      idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
       idxG.fillStyle = acceso
         ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
         : 'rgba(223,228,238,0.78)';
       idxG.fillText('->', 34, y);
-      idxG.fillText(w.nome.toUpperCase(), 94, y);
+      idxG.fillText(w.nome.toUpperCase(), 140, y);
     });
     idxTex.needsUpdate = true;
   }
@@ -2070,7 +2079,24 @@
         return { idx: w.idx, id: w.id, u: w.u, reveal: w.uni.uReveal.value, quad: sondaQuad(w.mesh, CW/2, CH/2) };
       });
     },
-    index: function(){ return { quad: sondaQuad(idxMesh, 1.45, 1.00), opacity: idxMat.opacity }; },
+    index: function(){ return { quad: sondaQuad(idxMesh, idxMesh.geometry.parameters.width/2, idxMesh.geometry.parameters.height/2), opacity: idxMat.opacity }; },
+    /* Altezza a schermo (px CSS) del testo di una riga: proietta il bordo
+       superiore e inferiore del glifo (centro riga ± FS/2 in px di canvas)
+       con la stessa proiezione di `indexRowPt`, e ne misura la distanza sullo
+       schermo — usato per verificare "quanto e' grande" l'elenco, non solo
+       "dove sta". */
+    rowHeight: function(k, FS){
+      var w2 = idxMesh.geometry.parameters.width/2, h2 = idxMesh.geometry.parameters.height/2;
+      var rowY = IROW0 + k*IROWH;
+      var vTop = h2 - (2*h2)*((rowY - FS/2)/IH);
+      var vBot = h2 - (2*h2)*((rowY + FS/2)/IH);
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      var el = renderer.domElement;
+      var a = new THREE.Vector3(0, vTop, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var b = new THREE.Vector3(0, vBot, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var ay = (1 - (a.y*0.5+0.5))*el.clientHeight, by = (1 - (b.y*0.5+0.5))*el.clientHeight;
+      return Math.abs(by - ay);
+    },
     indexRowPt: function(k, fx){
       var v = 1.00 - 2.00 * ((IROW0 + k * IROWH) / IH);   // da uv a coordinate locali del piano
       var x = -1.45 + 2.90 * fx;
