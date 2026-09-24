@@ -67,13 +67,22 @@ function inQuad(q, x, y){                       // punto dentro un quad convesso
   }
   return true;
 }
-// Pixel ciano dell'elica nella colonna centrale: `out` = fuori da ogni card
+// Pixel accesi dell'elica nella colonna centrale: `out` = fuori da ogni card
 // visibile (l'elica c'e'), `inFront` = dentro la card davanti (deve essere ~0:
 // il buco taglia davvero). Le card si leggono PRIMA della cattura.
+// Dal 2026-09-24 l'elica prende il colore della card davanti (arancio, ciano,
+// bianco, viola...): non si filtra piu' il ciano ma i pixel CHIARI, e per non
+// contare le lettere bianche della didascalia e della nav, durante la cattura
+// le scritte DOM sopra all'elica si nascondono.
 async function helixPixels(p, file){
   const cards = await p.evaluate(() => window.__capitoli.cards());
   const front = await p.evaluate(() => window.__capitoli.front());
+  const testi = on => p.evaluate(on => {
+    document.querySelectorAll('#focus, #hint, #nav').forEach(e => { e.style.visibility = on ? 'hidden' : ''; });
+  }, on);
+  await testi(true);
   const buf = await p.screenshot({ path: OUT + '/' + file });
+  await testi(false);
   const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
   const vis = cards.filter(c => c.reveal > 0.05).map(c => c.quad);
   const fq = cards[front].quad;
@@ -81,7 +90,7 @@ async function helixPixels(p, file){
   let out = 0, inFront = 0;
   for (let y = 0; y < info.height; y += 2) for (let x = x0; x < x1; x += 2){
     const o = (y * info.width + x) * info.channels, r = data[o], g = data[o + 1], bl = data[o + 2];
-    if (!(bl > 150 && g > 120 && r < 120)) continue;   // il ciano dei punti del DNA
+    if (Math.max(r, g, bl) < 150) continue;            // un punto acceso del DNA, di qualunque colore
     if (inQuad(fq, x, y)) inFront++;
     else if (!vis.some(q => inQuad(q, x, y))) out++;
   }
@@ -188,6 +197,13 @@ async function helixPixels(p, file){
       await p.mouse.click((side[0][0] + side[2][0]) / 2, (side[0][1] + side[2][1]) / 2);
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
+    } else if (check === 'colori'){
+      // la pagina prende il colore della card davanti: una cattura per card
+      if (!(await p.evaluate(() => !!(window.WC && WC.helix && WC.helix.setTint)))) fail('WC.helix.setTint missing');
+      for (let i = 0; i < 7; i++){
+        await settle(p, i); await p.waitForTimeout(1200);          // la dissolvenza dura 0.8 s
+        await p.screenshot({ path: OUT + `/colori-${i}${mobile ? '-m' : ''}.png` });
+      }
     } else if (check === 'swipe'){
       // Su telefono lo strisciare in verticale gira il mazzo come la rotellina,
       // ANCHE sopra l'anteprima viva; in orizzontale sull'anteprima il gesto e'
@@ -203,28 +219,37 @@ async function helixPixels(p, file){
         };
         const centro = async i => { const q = (await p.evaluate(() => window.__capitoli.cards()))[i].quad;
                                     return [(q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2]; };
-        await settle(p, 0); await p.waitForTimeout(900);
-        const viva = await p.evaluate(() => document.getElementById('stage-live').classList.contains('-viva'));
-        if (!viva) fail('preview on card 0 is not live, the swipe-over-preview case is not exercised');
-        // 1) verticale sopra l'anteprima viva: cambia card, la pagina non scorre
-        let [cx, cy] = await centro(0);
-        const y0 = await p.evaluate(() => window.scrollY);
-        await tocca(cx, cy + 60, cx, cy - 60); await p.waitForTimeout(1800);
-        if (await p.evaluate(() => window.__capitoli.front()) === 0) fail('vertical swipe over the preview did not change card');
-        if (await p.evaluate(() => window.scrollY) !== y0) fail('vertical swipe scrolled the page');
+        // L'anteprima riceve i tocchi (li conta un ascoltatore su #stage-live):
+        // il tocco e il trascino di lato arrivano all'effetto.
+        await p.evaluate(() => { window.__tocchi = 0;
+          document.getElementById('stage-live').addEventListener('pointermove', e => { if (e.pointerType === 'touch') window.__tocchi++; }, true); });
+        // Vapore, e le card che seguono il dito: Contatto e Rivela
+        for (const i of [0, 4, 6]){
+          await settle(p, i); await p.waitForTimeout(900);
+          const viva = await p.evaluate(() => document.getElementById('stage-live').classList.contains('-viva'));
+          if (!viva) fail(`card ${i}: preview not live, the swipe-over-preview case is not exercised`);
+          // 1) verticale sopra l'anteprima viva: cambia card, la pagina non scorre
+          let [cx, cy] = await centro(i);
+          const y0 = await p.evaluate(() => window.scrollY);
+          await tocca(cx, cy + 60, cx, cy - 60); await p.waitForTimeout(1800);
+          if (await p.evaluate(() => window.__capitoli.front()) === i) fail(`card ${i}: vertical swipe over the preview did not change card`);
+          if (await p.evaluate(() => window.scrollY) !== y0) fail(`card ${i}: vertical swipe scrolled the page`);
+          // 3) orizzontale sopra l'anteprima: il mazzo resta fermo, l'effetto riceve il dito
+          await settle(p, i); await p.waitForTimeout(900);
+          [cx, cy] = await centro(i);
+          const s0 = await p.evaluate(() => window.__capitoli.spin()), t0 = await p.evaluate(() => window.__tocchi);
+          await tocca(cx - 80, cy, cx + 80, cy + 10); await p.waitForTimeout(700);
+          const s1 = await p.evaluate(() => window.__capitoli.spin()), t1 = await p.evaluate(() => window.__tocchi);
+          if (Math.abs(s1 - s0) > 0.01) fail(`card ${i}: horizontal drag on the preview spun the deck ${s0} -> ${s1}`);
+          if (!(t1 > t0)) fail(`card ${i}: horizontal drag never reached the preview`);
+          if (!(await p.evaluate(() => window.__capitoli.awake()))) fail(`card ${i}: effect fell asleep during the horizontal drag`);
+        }
         // 2) verticale sopra la card davanti, fuori dall'anteprima: in alto,
         //    fra la nav e la card (~190px: piu' di mezza card, se no lo scatto
         //    riporta indietro)
         await settle(p, 0);
         await tocca(VP.width * 0.5, VP.height * 0.34, VP.width * 0.5, VP.height * 0.12); await p.waitForTimeout(1800);
         if (await p.evaluate(() => window.__capitoli.front()) === 0) fail('vertical swipe outside the cards did not change card');
-        // 3) orizzontale sopra l'anteprima: il mazzo resta fermo
-        await settle(p, 0); await p.waitForTimeout(900);
-        [cx, cy] = await centro(0);
-        const s0 = await p.evaluate(() => window.__capitoli.spin());
-        await tocca(cx - 80, cy, cx + 80, cy + 10); await p.waitForTimeout(700);
-        const s1 = await p.evaluate(() => window.__capitoli.spin());
-        if (Math.abs(s1 - s0) > 0.01) fail(`horizontal drag on the preview spun the deck ${s0} -> ${s1}`);
         // 4) il ☰ apre il menu e non tocca il mazzo; uno striscio sul menu nemmeno
         const s2 = await p.evaluate(() => window.__capitoli.spin());
         const bb = await p.evaluate(() => { const r = document.getElementById('navBurger').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
