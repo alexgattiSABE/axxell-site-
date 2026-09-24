@@ -148,13 +148,27 @@ function mountOrologio(ctx, cfg){
       ctx2d.fillStyle = fondo; ctx2d.fillRect(0, 0, W, H);
       /* Stretta = la stessa soglia di #lp.-stretta, in pixel CSS (W/H qui sono
          pixel del canvas, moltiplicati per il dpr): la copy va in una fascia
-         in basso, quindi l'orologio sale e si rimpicciolisce sopra di lei. */
+         in basso.
+         2026-09-24 («l'orologio e' troppo piccolo», Nike dal telefono): prima
+         qui l'orologio si stringeva al 62% dell'altezza per stare SOPRA la
+         fascia, e su una card da 212 px restava un francobollo. Ora prende
+         tutta l'altezza come sul desktop, e la fascia della copy gli passa
+         sopra, sul bianco in basso: il fondo e' lo stesso bianco del
+         fotogramma, quindi la scritta resta leggibile. Su una card larga
+         l'orologio sta nella parte destra (la copy e' a sinistra); su una
+         card alta e stretta tocca prima i lati, e allora si centra in alto,
+         lasciando il bianco sotto alla fascia. */
       var stretta = (canvas.clientWidth || W) < 420;
       var s2, w2, h2, x2, y2;
       if (stretta){
-        s2 = Math.min(W * 0.9 / im.naturalWidth, H * 0.62 / im.naturalHeight);
+        s2 = Math.min(W * 0.94 / im.naturalWidth, H * 0.97 / im.naturalHeight);
         w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
-        x2 = (W - w2) / 2; y2 = H * 0.04;
+        if (w2 >= W * 0.93){ x2 = (W - w2) / 2; y2 = H * 0.015; }
+        else {
+          // Centro al 66% della larghezza, senza uscire dal bordo destro.
+          x2 = Math.min(W * 0.66 - w2 / 2, W - w2 - W * 0.02);
+          y2 = (H - h2) / 2;
+        }
       } else {
         s2 = Math.min(W * 0.5 / im.naturalWidth, H * 0.94 / im.naturalHeight);
         w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
