@@ -235,11 +235,12 @@ function mountVesper(ctx, cfg){
   // originali: i punti dell'orb arrivano volando dalla camera, e a quel passo
   // attraversavano l'inquadratura troppo in fretta per leggersi come un raduno.
   var INTRO_MS = 2900;
+  var introMs = INTRO_MS;   // l'esterno lo stringe (Task 8): il giro è automatico, non c'è motivo di far aspettare
   var introStart = 0, introRunning = false, intro = 0;
   function startIntro(){ if (introRunning) return; introRunning = true; introStart = performance.now(); }
   function stepIntro(){
     if (!introRunning) return;
-    var t = clamp01((performance.now() - introStart) / INTRO_MS);
+    var t = clamp01((performance.now() - introStart) / introMs);
     intro = 1 - Math.pow(1 - t, 3);   // easeOutCubic, come la molla sorgente
   }
 
@@ -894,6 +895,10 @@ function mountVesper(ctx, cfg){
   brainGroup.visible = false;
   scene.add(brainGroup);
   var brainGeo = null, brainPoints = null;
+  // «Nebulosa» (Task 8): il giro automatico non deve puntare al cervello finché
+  // la sua mesh non è davvero arrivata dalla rete — altrimenti il terzo atto
+  // sarebbe vuoto.
+  var brainPronto = false;
   var brainParallax = { ry: 0, rx: 0 };
 
   /* Decodifica del contenitore cotto: 'VBRN' + versione + conteggi, poi le
@@ -979,6 +984,7 @@ function mountVesper(ctx, cfg){
   }).then(function(buf){
     if (brainAborted) return;
     brainGeo = buildBrainGeometry(decodeBrainMesh(buf), tier.brainCount, BRAIN.radius);
+    brainPronto = true;
     brainPoints = new THREE.Points(brainGeo, brainMaterial);
     brainPoints.frustumCulled = false;
     brainGroup.add(brainPoints);
@@ -1290,12 +1296,33 @@ function mountVesper(ctx, cfg){
 
   /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller.
-   * `progressTarget` non si tocca — resta 0, quindi la scena resta per sempre
-   * sull'orb (vedi il commento in testa al file). `startIntro()` fa arrivare
-   * i punti al primo `start()`; l'istanza vive fra un fuoco e l'altro come
-   * `saucer` — `stop()` ferma solo il rAF, non ricarica né il cervello né la
-   * galassia. */
+   * `progressTarget` è guidato da un tween proprio (vedi sotto), non più fermo
+   * a 0. `startIntro()` fa arrivare i punti al primo `start()`; l'istanza vive
+   * fra un fuoco e l'altro come `saucer` — `stop()` ferma solo il rAF, non
+   * ricarica né il cervello né la galassia. */
   if (external){
+    introMs = 500;      // il raduno deve chiudersi in fretta: qui gira già da solo
+    INTRO_DOLLY = 3;    // arretramento più corto — l'intro qui è solo un accenno
+    // Riga :255 ha già letto il vecchio INTRO_DOLLY per la camera iniziale:
+    // va ripetuto lo stesso posizionamento con il valore appena cambiato.
+    camera.position.set(0, 0, tier.orbCamZ + INTRO_DOLLY);
+
+    /* «Nebulosa» — IL GIRO DA SOLO (2026-09-24, richiesta di Nike: «non si
+     * vede l'animazione, falla in automatico»). In legacy il clock 0..4 lo
+     * dava lo scroll del pin; qui un tween proprio lo porta sfera → galassia
+     * → cervello e ritorno (yoyo, niente salto). Finche' il cervello non e'
+     * arrivato dalla rete il giro si ferma alla galassia (2.4), se no la fase
+     * del cervello sarebbe vuota. */
+    var driver = { v: 0 };
+    var extTl = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
+    /* Il tetto si decide solo quando il giro e' sulla sfera (v≈0): cambiarlo
+       a meta' farebbe saltare la scena da galassia a cervello di colpo. */
+    var tetto = 2.4;
+    extTl.to(driver, { v: 1, duration: 9, ease: 'sine.inOut', onUpdate: function(){
+      if (driver.v < 0.02) tetto = brainPronto ? 3.6 : 2.4;
+      progressTarget = driver.v * tetto;
+    }}, 0);
+
     var wantRun = false;
     var onResizeE = function(){ resize(); };
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
@@ -1303,6 +1330,7 @@ function mountVesper(ctx, cfg){
     document.addEventListener('visibilitychange', onVisE);
     cleanups.push(function(){
       stop();
+      extTl.kill();
       brainAborted = true;
       window.removeEventListener('resize', onResizeE);
       document.removeEventListener('visibilitychange', onVisE);
@@ -1316,8 +1344,8 @@ function mountVesper(ctx, cfg){
       renderer.dispose();
     });
     return {
-      start: function(){ wantRun = true; startIntro(); resize(); start(); },
-      stop:  function(){ wantRun = false; stop(); },
+      start: function(){ wantRun = true; startIntro(); resize(); start(); extTl.play(); },
+      stop:  function(){ wantRun = false; extTl.pause(); stop(); },
       resize: resize,
       dispose: function(){ cleanups.forEach(function(f){ f(); }); }
     };
