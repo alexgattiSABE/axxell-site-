@@ -55,17 +55,9 @@
      opaco: dietro non ci sarebbe niente da vedere), quindi nessuna lastra del
      mazzo può coprirla — i punti passavano DENTRO al quadro della card, sopra
      al poster e sopra l'effetto. Qui si fora la maschera dell'elica
-     con la SAGOMA vera delle lastre che stanno davanti all'asse: una maschera
-     SVG ricostruita dal frame loop (`bucoElica()`), a qualunque inclinazione. */
-  #helixStage.-buco{
-    -webkit-mask-image:var(--buco);
-            mask-image:var(--buco);
-    -webkit-mask-repeat:no-repeat;
-            mask-repeat:no-repeat;
-    -webkit-mask-position:0 0;
-            mask-position:0 0;
-    -webkit-mask-size:100% 100%;
-            mask-size:100% 100%}
+     con la SAGOMA vera delle lastre che stanno davanti all'asse: un
+     clip-path path() scritto a ogni fotogramma. */
+  #helixStage.-buco{-webkit-clip-path:var(--buco);clip-path:var(--buco)}
   body.-entra #helixStage{opacity:0;transform:translateY(42px)}
 
   /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
@@ -1690,44 +1682,44 @@
   var bucoV = new THREE.Vector3(), bucoKey = null;
   function bucoElica(spegni){
     if (!HELIX_EL) return;
+    var el = renderer.domElement;
+    var W = el.clientWidth || window.innerWidth, H = el.clientHeight || window.innerHeight;
     var paths = [];
     if (!spegni){
-      var el = renderer.domElement;
-      var W = el.clientWidth || window.innerWidth, H = el.clientHeight || window.innerHeight;
       var asseZ = -((window.__HELIX_TUNE && window.__HELIX_TUNE.R) || 4.5);
+      /* Durante l'ingresso (`body.-entra`) l'asse scivola di 42px: il buco va
+         spostato di quanto e' spostato lui, se no resta sfasato sulla card. */
+      var dy = document.body.classList.contains('-entra') ? HELIX_EL.getBoundingClientRect().top : 0;
       camera.updateMatrixWorld();
       WORLDS.forEach(function(w){
         if (!w.mesh || w.uni.uReveal.value < 0.3) return;
         if (w.mesh.position.z <= asseZ) return;
         w.mesh.updateWorldMatrix(true, false);
         var d = '';
-        BUCO_PTS.forEach(function(p, i){
-          bucoV.set(p[0], p[1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
-          d += (i ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
-               Math.round((1-(bucoV.y*0.5+0.5))*H);
-        });
+        /* SENSO OPPOSTO AL RETTANGOLO: BUCO_PTS, proiettato sullo schermo (y in
+           giu'), gira al contrario del rettangolo `M0 0 H W V H H0 Z`, quindi
+           con `nonzero` dentro la sagoma il conto fa zero e l'elica si taglia.
+           Due sagome sovrapposte li' ridipingerebbero (−1): non succede perche'
+           le card non si toccano piu' (vedi deckScale). */
+        for (var i = 0; i < BUCO_PTS.length; i++){
+          bucoV.set(BUCO_PTS[i][0], BUCO_PTS[i][1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
+          d += (d ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
+               Math.round((1-(bucoV.y*0.5+0.5))*H - dy);
+        }
         paths.push(d + 'Z');
       });
-      var key = W + 'x' + H + paths.join('');
-      if (key === bucoKey) return;
-      bucoKey = key;
-      if (paths.length){
-        /* Maschera SVG con dentro un'altra maschera: il bianco tiene l'elica,
-           le sagome nere la tolgono. Con un tracciato solo in evenodd due
-           lastre sovrapposte si annullerebbero a vicenda. */
-        var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + W + "' height='" + H +
-          "' viewBox='0 0 " + W + " " + H + "'><mask id='m'><rect width='100%' height='100%' fill='#fff'/>" +
-          "<path fill='#000' d='" + paths.join('') + "'/></mask>" +
-          "<rect width='100%' height='100%' fill='#fff' mask='url(#m)'/></svg>";
-        HELIX_EL.style.setProperty('--buco', 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")');
-        HELIX_EL.classList.add('-buco');
-        return;
-      }
     }
-    if (bucoKey === '') return;
-    bucoKey = '';
-    HELIX_EL.classList.remove('-buco');
-    HELIX_EL.style.removeProperty('--buco');
+    var key = paths.length ? W + 'x' + H + paths.join('') : '';
+    if (key === bucoKey) return;
+    bucoKey = key;
+    if (!key){
+      HELIX_EL.classList.remove('-buco');
+      HELIX_EL.style.removeProperty('--buco');
+      return;
+    }
+    HELIX_EL.style.setProperty('--buco',
+      'path(nonzero, "M0 0H' + W + 'V' + H + 'H0Z' + paths.join('') + '")');
+    HELIX_EL.classList.add('-buco');
   }
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
@@ -2018,6 +2010,45 @@
     var w0 = WORLDS.filter(function(x){ return x.id === initial; })[0];
     if (w0) setTimeout(function(){ enter(w0, false); }, 600);
   }
+
+  /* LA SONDA DELLA VERIFICA (scripts/verify-capitoli.cjs). Solo letture e due
+     comandi (portare davanti una card, fermare il mazzo a meta' giro): niente
+     che la pagina usi da se'. */
+  var sondaV = new THREE.Vector3();
+  function sondaQuad(mesh, w2, h2){
+    var el = renderer.domElement, W = el.clientWidth, H = el.clientHeight;
+    mesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+    return [[-w2, h2], [w2, h2], [w2, -h2], [-w2, -h2]].map(function(p){
+      sondaV.set(p[0], p[1], 0).applyMatrix4(mesh.matrixWorld).project(camera);
+      return [(sondaV.x * 0.5 + 0.5) * W, (1 - (sondaV.y * 0.5 + 0.5)) * H];
+    });
+  }
+  function sondaRect(els){
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    els.forEach(function(e){
+      if (!e) return;
+      var r = e.getBoundingClientRect();
+      if (r.width < 1 || getComputedStyle(e).opacity === '0') return;
+      x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top);
+      x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+    });
+    return x0 === Infinity ? { x: -10, y: -10, w: 1, h: 1 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  window.__capitoli = {
+    cards: function(){
+      return WORLDS.map(function(w){
+        return { idx: w.idx, id: w.id, u: w.u, reveal: w.uni.uReveal.value, quad: sondaQuad(w.mesh, CW/2, CH/2) };
+      });
+    },
+    index: function(){ return { quad: sondaQuad(idxMesh, 1.20, 0.72), opacity: idxMat.opacity }; },
+    caption: function(){ return sondaRect([document.getElementById('focus'), document.getElementById('hint')]); },
+    nav: function(){ return sondaRect([document.getElementById('nav')]); },
+    goTo: function(i){ portaDavanti(i); },
+    setSpin: function(v){ spin = spinT = v; lastInput = performance.now() + 1e7; dragging = false; },
+    spin: function(){ return spin; },
+    front: function(){ return frontIdx(); },
+    awake: function(){ return deckCtl ? deckCtl.awake() : null; }
+  };
 
 })();
 </script>
