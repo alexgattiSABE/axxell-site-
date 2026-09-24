@@ -84,3 +84,39 @@ WC.register('sneaker', function(ctx){
     section.classList.remove('-live');
   };
 });
+
+/* ── MONTAGGIO ESTERNO (capitoli.html, «Gravità») ──────────────────────────
+ * Nella pagina degli effetti la sezione non c'è e nessuno ScrollTrigger la
+ * guarda: senza questo handle la card restava per sempre sul poster. Stesso
+ * schema degli altri (vedi js/lithos.js): l'host si crea una volta, a ogni
+ * `start()` torna in coda ai figli del contenitore, `stop()` mette solo in
+ * pausa. `muted`/`playsInline` PRIMA della sorgente, se no Safari rifiuta
+ * l'autoplay; webm per primo perché Chromium headless non decodifica H.264. */
+WC.effects = WC.effects || {};
+WC.effects.sneaker = (function(){
+  var host = null, vid = null;
+  function play(){ var p = vid.play(); if (p && p.catch) p.catch(function(){}); }
+  return {
+    start: function(container){
+      if (!host){
+        host = document.createElement('div');
+        host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;background:#05060a;';
+        vid = document.createElement('video');
+        vid.muted = true; vid.loop = true; vid.playsInline = true;
+        vid.setAttribute('muted', ''); vid.setAttribute('playsinline', '');
+        vid.preload = 'auto'; vid.poster = 'assets/sneaker-poster.webp';
+        vid.setAttribute('aria-hidden', 'true');
+        vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+        var s1 = document.createElement('source'); s1.type = 'video/webm'; s1.src = 'assets/sneaker.webm';
+        var s2 = document.createElement('source'); s2.type = 'video/mp4';  s2.src = 'assets/sneaker.mp4';
+        vid.appendChild(s1); vid.appendChild(s2);
+        host.appendChild(vid);
+      }
+      container.appendChild(host);
+      if (!WC.motionOk) return;
+      play();
+    },
+    stop:   function(){ if (vid && !vid.paused) vid.pause(); },
+    resize: function(){}
+  };
+})();
