@@ -125,7 +125,7 @@
     background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
   #lp.-stretta > *{max-width:100%}
   #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
-  #lp.-stretta .lp-h{font-size:1.25em}
+  #lp.-stretta .lp-h{font-size:max(18px,1.25em)}
   #lp.-stretta .lp-l{white-space:normal}
   #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
   /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
@@ -335,7 +335,7 @@
      a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
      `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
 <div id="stage-live" hidden></div>
-<div id="lp" aria-live="polite">
+<div id="lp" aria-hidden="true">
   <i class="lp-k"></i>
   <h2 class="lp-h"><span class="lp-l"></span><span class="lp-l"></span></h2>
   <p class="lp-s"></p>
@@ -1365,7 +1365,9 @@
     lpEl.classList.toggle('-forte', !!w.scrimForte);
     if (w.chiaro) lpEl.style.removeProperty('--lpc');
     else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
-    if (lpTw){ lpTw.kill(); lpTw = null; }
+    /* Un tween ucciso non arriva all'onComplete: l'altezza bloccata va tolta
+       qui, se no la card nuova eredita quella del titolo di Contatto. */
+    if (lpTw){ lpTw.kill(); lpTw = null; lpEl.querySelector('.lp-h').style.minHeight = ''; }
   }
   /* «Contatto»: il titolo si decifra a ogni arrivo, riga per riga — due righe
      fisse, cosi' i caratteri a caso non rimandano a capo il testo. Stessi
@@ -1376,9 +1378,9 @@
        lasciato lettere a caso: '{original}' le prenderebbe per buone. Si
        ferma e si rimette il testo vero PRIMA di ripartire; l'altezza resta
        bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
-    if (lpTw){ lpTw.kill(); lpTw = null; }
-    lpL[0].textContent = lpDi.lp.h[0]; lpL[1].textContent = lpDi.lp.h[1] || '';
     var hEl = lpEl.querySelector('.lp-h');
+    if (lpTw){ lpTw.kill(); lpTw = null; hEl.style.minHeight = ''; }
+    lpL[0].textContent = lpDi.lp.h[0]; lpL[1].textContent = lpDi.lp.h[1] || '';
     hEl.style.minHeight = hEl.offsetHeight + 'px';
     lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
       scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
