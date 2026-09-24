@@ -105,7 +105,7 @@
     letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
   #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
   #lp .lp-l{display:block}
-  #lp .lp-s{font:400 max(12px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
+  #lp .lp-s{font:400 max(11px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
   #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
     letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
     border:1px solid var(--lpc);color:#f0f0f6}
@@ -125,7 +125,7 @@
     background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
   #lp.-stretta > *{max-width:100%}
   #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
-  #lp.-stretta .lp-h{font-size:max(18px,1.25em)}
+  #lp.-stretta .lp-h{font-size:max(15px,1.25em)}
   #lp.-stretta .lp-l{white-space:normal}
   #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
   /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
@@ -1404,7 +1404,11 @@
         lpEl.style.left = r.x + 'px'; lpEl.style.top = r.y + 'px';
         lpEl.style.width = r.w + 'px'; lpEl.style.height = r.h + 'px';
         lpEl.style.setProperty('--raggio', Math.round(r.w * 0.035) + 'px');
-        lpEl.style.setProperty('--lpfs', Math.max(12, Math.min(22, r.w / 44)).toFixed(1) + 'px');
+        /* Un quarto piu' piccola (Nike, round 2: «le scritte dentro le card
+           falle piu' piccole»): la base scende a 3/4 e con lei, in `em`,
+           titolo, sottotitolo, kicker e bottone. I minimi da 11px del testo
+           che serve (kicker, bottone, sottotitolo) restano nel CSS. */
+        lpEl.style.setProperty('--lpfs', (Math.max(12, Math.min(22, r.w / 44)) * 0.75).toFixed(1) + 'px');
         lpEl.classList.toggle('-stretta', r.w < 420);
       }
     }
