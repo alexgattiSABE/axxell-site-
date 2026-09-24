@@ -1602,9 +1602,11 @@
      spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
      davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
   window.addEventListener('pointermove', function(e){
-    tmx = (e.clientX/window.innerWidth)*2-1;
-    tmy = (e.clientY/window.innerHeight)*2-1;
-    ptr.set(tmx, -tmy);
+    var x = (e.clientX/window.innerWidth)*2-1, y = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(x, -y);
+    /* col dito niente oscillazione: sul telefono la da' solo l'inclinazione */
+    if (e.pointerType === 'touch') return;
+    tmx = x; tmy = y;
   }, {passive:true});
 
   /* INCLINANDO IL TELEFONO LA SCENA OSCILLA (richiesta utente).
