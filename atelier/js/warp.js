@@ -191,6 +191,11 @@ function mountWarp(ctx, cfg){
   var nStreak = mobile ? 1600 : CONFIG.streaks;
   var nStar   = mobile ? 420 : CONFIG.stars;
   var nDust   = mobile ? 180 : CONFIG.dust;
+  /* Nella card del telefono (2026-09-24, «migliora la qualita' grafica»): il
+   * tetto 1.4 e' della sezione a tutto schermo. La card e' ~340×212 px CSS, a
+   * dpr 2 fa 0,29 megapixel — meno della meta' della sezione legacy — e le
+   * scie sottili smettono di sfarfallare fra un pixel e l'altro. */
+  if (external && wide <= 1024) maxDpr = 2;
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true,
                                            powerPreference: 'high-performance' });
@@ -683,6 +688,22 @@ function mountWarp(ctx, cfg){
     window.addEventListener('resize', onResizeE);
     document.addEventListener('visibilitychange', onVisE);
     if (ctx.desktop) window.addEventListener('pointermove', onMove, { passive: true });
+    /* Il dito (telefono/tablet): la stessa inclinazione del mouse, ma letta sul
+     * riquadro della card — in coordinate di finestra il dito, chiuso in un
+     * terzo dello schermo, non inclinava quasi niente. Alzato, torna dritto. */
+    var onDito = function(e){
+      if (e.pointerType === 'mouse') return;
+      var r = rectEl.getBoundingClientRect();
+      tmx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2));
+      tmy = Math.max(-1, Math.min(1, -((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2));
+    };
+    var viaDito = function(e){ if (e.pointerType !== 'mouse'){ tmx = 0; tmy = 0; } };
+    if (!ctx.desktop){
+      rectEl.addEventListener('pointerdown', onDito, { passive: true });
+      rectEl.addEventListener('pointermove', onDito, { passive: true });
+      rectEl.addEventListener('pointerup', viaDito, { passive: true });
+      rectEl.addEventListener('pointercancel', viaDito, { passive: true });
+    }
     // Sonda di sola lettura per la verifica automatica (harness `tunnel`):
     // nessun codice della scena la legge, esiste solo per il check esterno.
     window.__warpProbe = function(){ return { morph: uMorph.value, scroll: scroll }; };
@@ -696,6 +717,10 @@ function mountWarp(ctx, cfg){
         window.removeEventListener('resize', onResizeE);
         document.removeEventListener('visibilitychange', onVisE);
         window.removeEventListener('pointermove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
+        rectEl.removeEventListener('pointerup', viaDito);
+        rectEl.removeEventListener('pointercancel', viaDito);
         delete window.__warpProbe;
         disposeAll();
       }
@@ -754,13 +779,42 @@ WC.effects = WC.effects || {};
  * a OGNI `start()`, anche quando `inst` esiste già, sposta l'host in coda ai
  * figli di `#stage-live` — l'ultimo effetto risvegliato dipinge sempre sopra i
  * fermi-immagine congelati degli altri. */
+/* ── SUL TELEFONO (2026-09-24, «su tel alcune animazioni sono nere») ────────
+ * Vedi la nota gemella in js/altitude.js. In breve: sul telefono il contesto
+ * WebGL si rilascia allo stop e si rimonta al risveglio (dopo un giro del
+ * mazzo erano sei contesti vivi insieme, e iOS sotto pressione ne butta uno:
+ * la tela resta nera per sempre); e se il contesto si perde lo stesso, al
+ * prossimo `start()` — o subito, se e' a fuoco — si rimonta da capo. */
+var WARP_TEL = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 900;
 WC.effects.warp = (function(){
-  var inst = null, host = null;
+  var inst = null, host = null, perso = false, vivo = false;
+  function libera(){
+    if (inst && inst.dispose){ try { inst.dispose(); } catch(e){} }
+    if (host){
+      // renderer.dispose() libera le risorse ma NON il contesto: lo si chiede
+      // alla tela, che restituisce quello gia' aperto.
+      try {
+        var gl = host.getContext('webgl2') || host.getContext('webgl');
+        var ext = gl && !gl.isContextLost() && gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      } catch(e){}
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    inst = host = null; perso = false;
+  }
   return {
     start: function(container){
+      vivo = true;
+      if (inst && perso) libera();
       if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('canvas');
       host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      var mia = host;
+      host.addEventListener('webglcontextlost', function(){
+        if (host !== mia) return;           // una tela gia' liberata: non conta
+        perso = true;
+        setTimeout(function(){ if (vivo && perso && host && host.parentNode){ var c = host.parentNode; libera(); WC.effects.warp.start(c); } }, 0);
+      });
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountWarp(ctx, { section: null, pin: null, canvas: host,
@@ -768,7 +822,12 @@ WC.effects.warp = (function(){
       if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
       inst.start();
     },
-    stop:   function(){ if (inst) inst.stop(); },
+    stop: function(){
+      vivo = false;
+      if (!inst) return;
+      inst.stop();
+      if (WARP_TEL) libera();
+    },
     resize: function(){ if (inst) inst.resize(); }
   };
 })();
