@@ -54,6 +54,11 @@ function mountLithos(ctx, cfg){
 
   var tx = 0, ty = 0, sx = 0, sy = 0, has = false;
   var raf = 0, running = false, last = performance.now();
+  // `ibrido`: solo montaggio esterno (Task 11). Il faro parte da solo sulla
+  // Lissajous e SUBITO cede al puntatore appena questo si muove; se poi il
+  // mouse tace per 1.5s il faro riprende a muoversi da solo. `lastMove` a
+  // -Infinity: senza un vero movimento il ramo automatico resta attivo.
+  var ibrido = false, lastMove = -1e9;
 
   function place(x, y){
     // Le due custom property sono l'unica cosa che cambia: il resto — la
@@ -67,7 +72,7 @@ function mountLithos(ctx, cfg){
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-    if (auto) {
+    if (auto || (ibrido && now - lastMove > 1500)) {
       var r = rectEl.getBoundingClientRect();
       var t = now / 1000;
       // Periodi non commensurabili: la figura non si richiude, quindi il
@@ -89,13 +94,14 @@ function mountLithos(ctx, cfg){
   function stop(){ if (!running) return; running = false; cancelAnimationFrame(raf); }
 
   var onMove = function(e){
-    if (auto) return;
+    if (auto && !ibrido) return;
     var r = rectEl.getBoundingClientRect();
     tx = e.clientX - r.left;
     ty = e.clientY - r.top;
     if (!has) {                 // primo movimento: niente scivolata dall'angolo
       sx = tx; sy = ty; has = true;
     }
+    lastMove = performance.now();
   };
 
   // Il faro parte dal centro, se no la prima cosa che si vede è la seconda
@@ -115,6 +121,8 @@ function mountLithos(ctx, cfg){
    * puntatore solo quando è a fuoco" del brief — non sempre come in legacy
    * (lì la sezione esiste comunque solo mentre è nel viewport). */
   if (external){
+    ibrido = true;               // Task 11: qui il faro parte da solo e il
+                                  // mouse prende il comando appena si muove.
     reveal.style.setProperty('--lr', R + 'px');
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
@@ -122,12 +130,12 @@ function mountLithos(ctx, cfg){
     return {
       start: function(){
         wantRun = true;
-        if (!auto) rectEl.addEventListener('mousemove', onMove);
+        rectEl.addEventListener('mousemove', onMove);
         start();
       },
       stop: function(){
         wantRun = false;
-        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('mousemove', onMove);
         stop();
       },
       // Nessuna misura in cache da ricalcolare: la rect si legge live a ogni
@@ -137,7 +145,7 @@ function mountLithos(ctx, cfg){
       dispose: function(){
         stop();
         document.removeEventListener('visibilitychange', onVisE);
-        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('mousemove', onMove);
       }
     };
   }
