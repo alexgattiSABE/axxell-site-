@@ -652,31 +652,6 @@ figcaption.quote > svg { position: absolute; right: 1.875rem; top: 1.875rem; hei
 }
 </style>
 <style>
-  /* --- prima e dopo, la pittura --- */
-  #pittura{padding:clamp(56px,8vw,120px) clamp(18px,4vw,64px);background:#fff}
-  .pit{position:relative;width:100%;max-width:1240px;margin:0 auto;aspect-ratio:16/9;
-    overflow:hidden;background:#0b0c10;touch-action:none}
-  @media (hover:hover) and (pointer:fine){ .pit{cursor:none} }
-  .pit-prima,.pit-out{position:absolute;inset:0;width:100%;height:100%;display:block}
-  .pit-prima{object-fit:cover}
-  .pit-out{z-index:1}
-  .pit::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
-    background:linear-gradient(180deg,rgba(8,9,13,.74) 0%,rgba(8,9,13,.22) 34%,
-      rgba(8,9,13,0) 58%,rgba(8,9,13,.32) 100%)}
-  .pit-copy{position:absolute;z-index:3;left:clamp(18px,3vw,44px);top:clamp(16px,3vw,38px);
-    max-width:42ch;pointer-events:none;color:#f6f5f2}
-  .pit-k{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.68;margin:0}
-  .pit-h{font-size:clamp(21px,2.8vw,38px);line-height:1.08;margin:.55rem 0 .5rem;font-weight:400}
-  .pit-p{font-size:13.5px;line-height:1.6;opacity:.74;max-width:38ch;margin:0}
-  .pit-brush{position:absolute;z-index:4;border-radius:50%;pointer-events:none;
-    border:1px solid rgba(255,255,255,.5);transform:translate(-50%,-50%);
-    opacity:0;transition:opacity .25s ease}
-  .pit.-hot .pit-brush{opacity:1}
-  .pit-quanto{position:absolute;z-index:3;right:clamp(16px,3vw,38px);bottom:clamp(14px,3vw,32px);
-    margin:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(246,245,242,.62);
-    pointer-events:none;font-variant-numeric:tabular-nums}
-  .pit-quanto b{color:#f6f5f2;font-weight:400}
-  @media (prefers-reduced-motion:reduce){ .pit-brush{display:none} }
 </style>
 </head>
 <body>
@@ -931,29 +906,6 @@ figcaption.quote > svg { position: absolute; right: 1.875rem; top: 1.875rem; hei
   </section>
 
   <!-- ================================================================== -->
-<!-- ══════════════════════════════════════════════════════════════════════
-     PRIMA E DOPO — LA PITTURA.
-     Il mondo si chiama così: mancava la cosa che il nome promette.
-     Non è il faro di `lithos`, che scopre e poi rimette com'era. Qui la
-     maschera si può solo AGGIUNGERE — ogni passata somma alfa, nessuna ne
-     toglie — quindi è chi guarda a rifare la casa, e resta rifatta.
-     Sotto, in DOM, il PRIMA; sopra, una tela col DOPO ritagliato dalla
-     maschera. Due operazioni per fotogramma, e solo quando qualcosa cambia.
-     ══════════════════════════════════════════════════════════════════════ -->
-  <section id="pittura" aria-label="Prima e dopo: dipingi l'intervento">
-    <div class="pit" id="pit">
-      <img class="pit-prima" id="pit-prima" alt="La casa prima dell'intervento: rivestimento scolorito, tetto consumato, vialetto crepato." />
-      <canvas class="pit-out" id="pit-out" aria-hidden="true"></canvas>
-      <div class="pit-copy">
-        <p class="pit-k">Prima e dopo</p>
-        <h2 class="pit-h">Passaci sopra,<br />e la casa cambia.</h2>
-        <p class="pit-p">Quello che scopri resta scoperto — come un intervento vero, non si torna indietro.</p>
-      </div>
-      <div class="pit-brush" id="pit-brush" aria-hidden="true"></div>
-      <p class="pit-quanto">rifatto <b id="pit-quanto">0%</b></p>
-    </div>
-  </section>
-
   <section id="contact" aria-labelledby="contact-heading">
     <div class="parallax center" data-parallax="center">
       <div class="layer">
@@ -2312,15 +2264,6 @@ void main() {
     .card h3{font-size:1.5rem;line-height:1.2}
     .card .desc{font-size:15px;line-height:1.4}
 
-    /* prima e dopo: testo sopra la foto, foto piu' alta per dipingere col dito */
-    #pittura{padding:3rem 1.25rem}
-    .pit{aspect-ratio:4/3;border-radius:var(--radius-card)}
-    .pit::after{background:linear-gradient(180deg,rgba(8,9,13,0) 60%,rgba(8,9,13,.32) 100%)}
-    #pittura > .pit-copy{position:static;max-width:none;color:var(--foreground);margin:0 0 1rem}
-    #pittura > .pit-copy .pit-k{color:var(--foreground-muted);opacity:1}
-    #pittura > .pit-copy .pit-h{font-size:1.5rem;line-height:1.15;margin:.5rem 0 .5rem}
-    #pittura > .pit-copy .pit-p{font-size:15px;line-height:1.45;opacity:1;color:var(--foreground-muted);max-width:none}
-
     /* contatti: spazio in fondo cosi' il bottone non resta sotto la pillola */
     #contact{padding:4.5rem 1.25rem 7rem}
     #contact h2{margin-top:1rem;font-size:2rem;line-height:1.08}
@@ -2345,18 +2288,9 @@ void main() {
   }
 </style>
 <script>
-/* Telefono: il testo di "prima e dopo" esce dalla foto (resta tutta dipingibile),
-   e la pillola "Torna alla mappa" si nasconde scorrendo in giu', torna scorrendo in su. */
+/* Telefono: la pillola "Torna alla mappa" si nasconde scorrendo in giu', torna scorrendo in su. */
 (function(){
   var mq=window.matchMedia('(max-width: 767.98px)');
-  var pit=document.getElementById('pit'), copy=pit&&pit.querySelector('.pit-copy');
-  function sposta(){
-    if(!pit||!copy) return;
-    if(mq.matches){ if(copy.parentNode!==pit.parentNode) pit.parentNode.insertBefore(copy,pit); }
-    else if(copy.parentNode!==pit){ pit.insertBefore(copy,pit.querySelector('.pit-brush')); }
-  }
-  sposta();
-  if(mq.addEventListener) mq.addEventListener('change',sposta);
 
   var torna=document.getElementById('torna'), lastY=window.scrollY, ticking=false;
   function aggiorna(){
@@ -2368,89 +2302,6 @@ void main() {
     if(Math.abs(d)>6) lastY=y;
   }
   window.addEventListener('scroll',function(){ if(!ticking){ ticking=true; requestAnimationFrame(aggiorna); } },{passive:true});
-})();
-</script>
-<script>
-/* La pittura del "dopo" — vedi il commento sulla sezione #pittura. */
-(function(){
-  var root=document.getElementById('pit'); if(!root) return;
-  var imgP=document.getElementById('pit-prima'), out=document.getElementById('pit-out');
-  var brush=document.getElementById('pit-brush'), quanto=document.getElementById('pit-quanto');
-  var ctx=out.getContext('2d');
-  var mask=document.createElement('canvas'), mctx=mask.getContext('2d');
-  var P={r:0.13,s:0.45,f:0.30};                 /* taratura del banco lab/pittura.html */
-  var dopo=new Image(), pronto=false, sporco=true, dpr=1, lx=null, ly=null;
-  imgP.src='assets/casa-prima.webp';
-  dopo.onload=function(){pronto=true;sporco=true;};
-  dopo.src='assets/casa-dopo.webp';
-
-  function misura(){
-    var r=root.getBoundingClientRect();
-    dpr=Math.min(window.devicePixelRatio||1,2);
-    var nw=Math.max(1,Math.round(r.width*dpr)), nh=Math.max(1,Math.round(r.height*dpr));
-    if(nw===out.width&&nh===out.height) return;
-    var v=null;
-    if(mask.width&&mask.height){ v=document.createElement('canvas'); v.width=mask.width; v.height=mask.height;
-      v.getContext('2d').drawImage(mask,0,0); }
-    out.width=nw; out.height=nh; mask.width=nw; mask.height=nh;
-    if(v) mctx.drawImage(v,0,0,v.width,v.height,0,0,nw,nh);   /* il dipinto sopravvive al resize */
-    sporco=true;
-  }
-  function cover(iw,ih,cw,ch){ var k=Math.max(cw/iw,ch/ih); return [(cw-iw*k)/2,(ch-ih*k)/2,iw*k,ih*k]; }
-  function timbra(x,y){
-    var R=P.r*Math.min(mask.width,mask.height);
-    var g=mctx.createRadialGradient(x,y,0,x,y,R);
-    g.addColorStop(0,'rgba(255,255,255,'+P.f+')');
-    g.addColorStop(P.s,'rgba(255,255,255,'+(P.f*0.55)+')');
-    g.addColorStop(1,'rgba(255,255,255,0)');
-    mctx.globalCompositeOperation='lighter';    /* solo additivo: irreversibile */
-    mctx.fillStyle=g; mctx.beginPath(); mctx.arc(x,y,R,0,6.2832); mctx.fill();
-    sporco=true;
-  }
-  function traccia(x,y){
-    if(lx===null){ timbra(x,y); lx=x; ly=y; return; }
-    var dx=x-lx, dy=y-ly, d=Math.hypot(dx,dy);
-    var passo=Math.max(2,P.r*Math.min(mask.width,mask.height)*0.25);
-    var n=Math.min(64,Math.ceil(d/passo));
-    for(var i=1;i<=n;i++) timbra(lx+dx*i/n, ly+dy*i/n);
-    lx=x; ly=y;
-  }
-  root.addEventListener('pointermove',function(e){
-    var r=root.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top;
-    traccia(px*dpr,py*dpr);
-    brush.style.left=px+'px'; brush.style.top=py+'px';
-    var lato=P.r*Math.min(root.clientWidth,root.clientHeight)*2;
-    brush.style.width=lato+'px'; brush.style.height=lato+'px';
-  },{passive:true});
-  root.addEventListener('pointerenter',function(){root.classList.add('-hot');});
-  root.addEventListener('pointerleave',function(){root.classList.remove('-hot'); lx=null;});
-
-  function disegna(){
-    requestAnimationFrame(disegna);
-    if(!sporco||!pronto) return;
-    sporco=false;
-    ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over';
-    ctx.clearRect(0,0,out.width,out.height);
-    var c=cover(dopo.naturalWidth,dopo.naturalHeight,out.width,out.height);
-    ctx.drawImage(dopo,c[0],c[1],c[2],c[3]);
-    ctx.globalCompositeOperation='destination-in';
-    ctx.drawImage(mask,0,0);
-    ctx.globalCompositeOperation='source-over';
-  }
-  requestAnimationFrame(disegna);
-
-  var mini=document.createElement('canvas'); mini.width=64; mini.height=36;
-  var mnc=mini.getContext('2d',{willReadFrequently:true}), pieno=0;
-  setInterval(function(){
-    if(!mask.width) return;
-    mnc.clearRect(0,0,64,36); mnc.drawImage(mask,0,0,64,36);
-    var d=mnc.getImageData(0,0,64,36).data, s=0;
-    for(var i=3;i<d.length;i+=4) s+=d[i];
-    var v=Math.round(s/(64*36*255)*100);
-    if(v>pieno){ pieno=v; quanto.textContent=Math.min(100,pieno)+'%'; }
-  },400);
-
-  window.addEventListener('resize',misura); misura();
 })();
 </script>
 </body>
