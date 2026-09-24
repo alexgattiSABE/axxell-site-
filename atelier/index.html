@@ -38,22 +38,56 @@
   /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
      superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
      script proiettando il punto in basso di ogni portale. */
-  /* Nav propria e minima: il foglio del sito e' scritto per pagine che
-     scorrono, e questa non scorre. Stessi colori, stesse misure. */
+  /* IL MENU E' QUELLO DEL SITO (richiesta utente): stesso logo, stesse
+     voci, stesse misure e stesso comportamento su telefono di index.html
+     alla radice. Qui e' riscritto su `#nav` perche' il foglio del sito non
+     e' caricato: questa pagina non scorre e non ne ha bisogno. */
   #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
-    background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
-    transition:opacity .4s ease}
+    display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+    font-family:'Space Grotesk',sans-serif;transition:opacity .4s ease}
+  #nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-30px;z-index:-1;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(6,6,9,.97) 0%,rgba(6,6,9,.94) 52%,rgba(6,6,9,.62) 78%,rgba(6,6,9,0) 100%);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%)}
   #nav.-hide{opacity:0;pointer-events:none}
-  .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
-  .nv-links{display:flex;list-style:none;gap:.3rem}
-  .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
-    letter-spacing:.1em;padding:.9rem .5rem;display:inline-block}
-  .nv-links a:hover,.nv-links a.active{color:#3ad8ff}
-  .nv-cta{border:1px solid rgba(240,240,246,.22);margin-left:.4rem}
-  #nav a:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
-  @media (max-width:600px){ .nv-links a{font-size:9.5px;padding:.9rem .28rem} }
+  .nav-logo-img{display:flex;align-items:center;text-decoration:none}
+  .nav-logo-img img{height:42px;width:auto;display:block}
+  .nav-links{display:flex;list-style:none;gap:.2rem;margin:0;padding:0}
+  .nav-links a{color:rgba(240,240,246,.72);text-decoration:none;font-size:.88rem;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;padding:.5rem 1.1rem;border-radius:4px;
+    transition:color .2s,background .2s;display:inline-block}
+  .nav-links a:hover,.nav-links a.active{color:#f0f0f6;background:rgba(255,255,255,.05)}
+  @keyframes atelierShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  #n-wc,.mobile-dropdown a.-atelier{
+    background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+    background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){#n-wc,.mobile-dropdown a.-atelier{animation:none;background-position:0% 50%}}
+  .nav-right{display:flex;align-items:center}
+  .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;border:1px solid #00d4ff;color:#00d4ff;
+    font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:center;transition:all .2s}
+  .nav-cta:hover{background:#00d4ff;color:#060609}
+  #nav a:focus-visible,#nav button:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}
+  .mobile-menu-wrap{display:none;position:relative;order:2}
+  .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
+    color:#fff;border-radius:10px;font-size:1.2rem;cursor:pointer}
+  .mobile-dropdown{position:absolute;top:52px;right:0;width:180px;background:#060609;
+    border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.5rem;display:none;
+    flex-direction:column;gap:.3rem;z-index:9999;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  .mobile-dropdown.-on{display:flex}
+  .mobile-dropdown a{color:#fff;text-decoration:none;padding:.8rem 1rem;border-radius:10px;font-size:.85rem;white-space:nowrap}
+  .mobile-dropdown a:hover{background:rgba(255,255,255,.06)}
+  @media (max-width:960px){
+    #nav{padding:0 1rem}
+    #nav::before{bottom:-26px}
+    .nav-links,.nav-cta{display:none}
+    .mobile-menu-wrap{display:flex}
+    .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+  }
+  @media (max-width:480px){ #nav{height:60px} }
 
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
   #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
@@ -83,7 +117,7 @@
     text-shadow:0 2px 20px rgba(4,5,10,.95);
     transition:letter-spacing .35s cubic-bezier(.22,1,.36,1),color .3s ease}
   .lb span{font-family:'DM Mono',ui-monospace,monospace;
-    font-size:9.5px;letter-spacing:.24em;margin-right:-.24em;margin-top:10px;
+    font-size:11px;letter-spacing:.2em;margin-right:-.2em;margin-top:10px;
     color:rgba(223,228,238,.54);text-transform:uppercase;
     text-shadow:0 1px 14px rgba(4,5,10,.95);transition:color .3s ease}
   .lb.-hot b{color:var(--hot,#3ad8ff);letter-spacing:.46em;margin-right:-.46em}
@@ -95,11 +129,11 @@
   .lb.-void b{font-size:15px;color:rgba(240,240,246,.50)}
   .lb.-void span{color:rgba(223,228,238,.34)}
   .lb.-void.-hot b{color:#3ad8ff}
-  @media (max-width:760px){ .lb.-void b{font-size:10.5px} }
+  @media (max-width:760px){ .lb.-void b{font-size:11px} }
 
   #hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
-    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
-    color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
+    font-size:12px;letter-spacing:.06em;
+    color:rgba(223,228,238,.5);transition:opacity .4s ease;text-align:center}
 
   /* LA FOCUS CAPTION — le scritte come in Mirror Hall.
      Non piu' un'etichetta appesa a ogni card (nella rotonda sono nove e si
@@ -112,8 +146,7 @@
   #focus.-on{opacity:1}
   #focus .counter{display:flex;align-items:baseline;gap:7px;
     font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.16em}
-  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px;
-    text-shadow:0 0 16px rgba(58,216,255,.4)}
+  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px}
   #focus .counter i{color:rgba(190,214,246,.34);font-style:normal}
   #focus .counter .tot{color:rgba(190,214,246,.5)}
   #focus .fname{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
@@ -126,8 +159,8 @@
     from{opacity:0;transform:translateY(9px);filter:blur(5px)}
     to{opacity:1;transform:none;filter:blur(0)}}
   #focus .fname.-swap{animation:focusSwap .5s cubic-bezier(.22,.61,.36,1) both}
-  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;
-    letter-spacing:.26em;margin-right:-.26em;margin-top:-2px;text-transform:uppercase;
+  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;
+    letter-spacing:.2em;margin-right:-.2em;margin-top:-2px;text-transform:uppercase;
     color:rgba(223,228,238,.55)}
   /* I FERMI, a capsula come in Mirror Hall: un punto per mondo che quando e'
      davanti sboccia in una capsula del colore del mondo. */
@@ -136,12 +169,11 @@
     background:rgba(176,204,244,.26);cursor:pointer;pointer-events:auto;
     transition:width .5s cubic-bezier(.22,.61,.36,1),background .5s ease,box-shadow .5s ease}
   #dots button:hover{background:rgba(176,204,244,.52)}
-  #dots button.-now{width:22px;background:var(--now,#3ad8ff);
-    box-shadow:0 0 12px rgba(58,216,255,.55)}
+  #dots button.-now{width:22px;background:var(--now,#3ad8ff)}
   #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
   @media (max-width:600px){
     #focus{bottom:44px} #dots button.-now{width:18px}
-    #hint{font-size:9px;letter-spacing:.1em;bottom:20px;white-space:nowrap}
+    #hint{font-size:11px;letter-spacing:.03em;bottom:20px;white-space:nowrap;max-width:94vw}
   }
 
   /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
@@ -167,14 +199,14 @@
   #world .veil{position:absolute;inset:0;
     background:linear-gradient(180deg,rgba(4,5,10,.82) 0%,rgba(4,5,10,.25) 42%,rgba(4,5,10,.88) 100%)}
   #world .copy{position:absolute;left:clamp(1.4rem,5vw,4rem);bottom:clamp(2rem,8vh,5rem);max-width:36ch}
-  #world .copy i{font-style:normal;font-size:10.5px;letter-spacing:.2em;
+  #world .copy i{font-style:normal;font-size:11px;letter-spacing:.2em;
     text-transform:uppercase;color:var(--hot,#3ad8ff)}
   #world .copy h2{font-size:clamp(1.8rem,4.4vw,3.1rem);font-weight:400;line-height:1.05;
     letter-spacing:.02em;margin:.5rem 0 .6rem;text-transform:uppercase}
   #world .copy p{font-size:12.5px;color:rgba(223,228,238,.6);letter-spacing:.04em;line-height:1.7}
   #world .exits{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
   #world button{background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.26);
-    padding:9px 16px;font:inherit;font-size:10.5px;letter-spacing:.14em;
+    padding:9px 16px;font:inherit;font-size:11px;letter-spacing:.14em;
     text-transform:uppercase;cursor:pointer}
   #world button:hover{border-color:var(--hot,#3ad8ff);color:var(--hot,#3ad8ff)}
   #world button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
@@ -183,7 +215,6 @@
     align-items:center;justify-content:center;gap:1.4rem;text-align:center;
     padding:2rem;transition:opacity .5s ease;pointer-events:none}
   #hero.-off{opacity:0}
-  #hero .k{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:#3ad8ff}
   #hero h1{font-size:clamp(1.9rem,4.6vw,3.4rem);font-weight:400;line-height:1.16;
     letter-spacing:.01em;text-transform:uppercase;
     text-shadow:0 2px 30px rgba(4,5,10,.95)}
@@ -196,7 +227,7 @@
 
   #err{position:fixed;inset:0;display:none;place-items:center;padding:32px;text-align:center;
     color:#ff6b6b;font-size:13px;line-height:1.7;z-index:20}
-  @media (max-width:760px){ .lb b{font-size:11px} .lb span{font-size:9.5px} }
+  @media (max-width:760px){ .lb b{font-size:11px} .lb span{font-size:11px} }
 </style>
 
 
@@ -258,14 +289,41 @@
 
 
 <nav id="nav">
-  <a href="/" class="nv-logo">AXXELL</a>
-  <ul class="nv-links">
-    <li><a href="/">Home</a></li>
-    <li><a href="/atelier" class="active">Atelier</a></li>
-    <li><a href="/atelier/capitoli">Capitoli</a></li>
-    <li><a href="/atelier/parliamone" class="nv-cta">Parliamone</a></li>
+  <div class="mobile-menu-wrap">
+    <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown">☰</button>
+    <div class="mobile-dropdown" id="mobileDropdown">
+      <a href="/sabe">SABE</a>
+      <a href="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier">Atelier</a>
+      <a href="/#servizi">Servizi</a>
+      <a href="/#visione">Visione</a>
+    </div>
+  </div>
+  <a href="/" class="nav-logo-img"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <ul class="nav-links">
+    <li><a href="/sabe">Sabe</a></li>
+    <li><a href="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" aria-current="page">Atelier</a></li>
+    <li><a href="/#servizi">Servizi</a></li>
+    <li><a href="/#visione">Visione</a></li>
   </ul>
+  <div class="nav-right">
+    <a href="/#preventivo" class="nav-cta">Preventivo gratuito</a>
+  </div>
 </nav>
+<script>
+(function(){
+  var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
+  b.addEventListener('click', function(e){
+    e.stopPropagation();
+    var on = m.classList.toggle('-on');
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+  /* il clic sulla scena non deve arrivare alla giostra mentre si usa il menu */
+  m.addEventListener('click', function(e){ e.stopPropagation(); });
+  document.addEventListener('click', function(){ m.classList.remove('-on'); b.setAttribute('aria-expanded','false'); });
+})();
+</script>
 
 <div id="stage"><canvas id="c"></canvas></div>
 <!-- LE STELLE CADENTI — solo cielo, mai acqua. Una tela sottile sopra allo
@@ -276,7 +334,6 @@
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
 <div id="hero">
-  <p class="k">// atelier</p>
   <h1>Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.</h1>
   <button id="go">Entra →</button>
 </div>
@@ -287,7 +344,7 @@
   <div class="fsub" id="fSub">retail, e-commerce</div>
   <div id="dots" aria-label="I mondi"></div>
 </div>
-<p id="hint" style="opacity:0">scorri per cambiare mondo — clicca quello davanti</p>
+<p id="hint" style="opacity:0">Scorri per cambiare mondo, clicca quello davanti per entrare</p>
 
 <div id="world" aria-hidden="true">
   <div class="veil"></div>
@@ -1356,7 +1413,7 @@
   });
 
   if (mobile){
-    document.getElementById('hint').textContent = 'trascina per cambiare mondo — tocca per entrare';
+    document.getElementById('hint').textContent = 'Trascina per cambiare mondo, tocca per entrare';
   }
 
   /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
