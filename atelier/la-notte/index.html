@@ -518,6 +518,11 @@ html.lenis,html.lenis body{height:auto}
                   Qui il video non e' decorativo — il solutore di fluido lo legge
                   come texture, quindi se non decodifica non c'e' la scena. Niente
                   `crossorigin`: adesso il file e' nostro, stessa origine. -->
+             <!-- Telefono in verticale: la stessa ripresa ritagliata al centro
+                  (1080x1434, stessa altezza, quindi stessa nitidezza). Con
+                  object-fit:cover su uno schermo stretto i lati non si vedono
+                  comunque: scaricarli costava ~0,5 MB e secondi di attesa. -->
+             <source src="assets/starry-night-portrait.mp4" type="video/mp4" media="(max-aspect-ratio: 2/3)" />
              <source src="assets/starry-night.mp4" type="video/mp4" />
              <source src="assets/starry-night.webm" type="video/webm" />
              </video>
@@ -1974,9 +1979,14 @@ var RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 /** Counting to 90 happens on trust; the last ten wait for the `load` event. */
 var HOLD_AT = 90;
 /** Floor on how long the overlay stays up — without it a warm cache reads as a glitch. */
-var MIN_VISIBLE_MS = 1300;
+var MIN_VISIBLE_MS = 700;
+/* Era 1300: sul telefono la pagina era pronta in ~0,7s ma il sipario restava
+   giu' altri 2s. 700ms bastano a non farlo sembrare un lampo a cache calda. */
 var COUNT_CONFIG = { tension: 18, friction: 26, mass: 1.4 };
-var FINISH_CONFIG = { tension: 130, friction: 26 };
+/* precision 0.5: il contatore mostra numeri interi, quindi a 99.5 legge gia'
+   «100». Senza, la molla strisciava ~300ms sugli ultimi centesimi invisibili
+   prima di aprire il sipario. */
+var FINISH_CONFIG = { tension: 130, friction: 26, precision: 0.5 };
 /** The reveal wants to feel like an aperture opening, not a curtain snapping. */
 var REVEAL_CONFIG = { tension: 90, friction: 32, mass: 1, precision: 0.5 };
 /** Mask radius at full reveal, in % of the overlay — past the far corners. */

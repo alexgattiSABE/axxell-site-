@@ -352,7 +352,7 @@ export function initPlanet(canvas) {
   ]
   const cloudMeshes = []
   function addClouds() {
-    const tex = new THREE.TextureLoader().load('assets/planet-clouds.png')
+    const tex = new THREE.TextureLoader().load('assets/planet-clouds.webp')
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
     tex.repeat.set(5, 5)
     for (const layer of CLOUD_LAYERS) {
@@ -399,13 +399,22 @@ export function initPlanet(canvas) {
 
   const draco = new DRACOLoader()
   draco.setDecoderPath('/atelier/vendor/three-150/draco/')
+  draco.preload()   // il decoder si scarica subito, in parallelo ai GLB
+  draco.setWorkerLimit(1)   // un solo worker: il secondo GLB riusa quello gia' pronto invece di riavviarne uno
   const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco)
 
+  // Velocita' (telefono): i due GLB partono INSIEME, non uno dopo l'altro —
+  // prima il secondo aspettava che il primo fosse scaricato e decodificato.
+  // La pagina li ha gia' chiesti in <head> (preload), qui li si ritira.
+  // Il risultato e' identico: si monta solo quando ci sono tutti e due.
   function loadPlanet() {
-    gltfLoader.load('assets/planet-lights.glb', (lights) => {
+    Promise.all([
+      gltfLoader.loadAsync('assets/planet-lights.glb'),
+      gltfLoader.loadAsync('assets/planet.glb'),
+    ]).then(([lights, gltf]) => {
       const lmesh = firstMesh(lights.scene)
       const nightTex = lmesh && lmesh.material && lmesh.material.map ? lmesh.material.map : null
-      gltfLoader.load('assets/planet.glb', (gltf) => {
+      {
         const mesh = firstMesh(gltf.scene)
         if (!mesh) return
         mesh.geometry.computeBoundingSphere()
@@ -424,8 +433,8 @@ export function initPlanet(canvas) {
         addAtmosphereGlow(CONFIG.planetRadius)
         cloudGroup.visible = true
         entryActive = true; entryT = 0
-      })
-    })
+      }
+    }).catch((e) => console.warn('planet load failed', e))
   }
   loadPlanet()
 

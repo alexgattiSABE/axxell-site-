@@ -46,6 +46,10 @@
   that is another template — here: the fixed 0.2245em word gap, the 14/5rem wordmark travel, the
   84×56 heat grid, the 0.127 height ratio and the two-turn chase).
 -->
+<!-- VELOCITA': la foto d'apertura parte subito, senza aspettare lo script
+     che la assegna (stesso indirizzo e stesso crossorigin, quindi lo script
+     la ritrova gia' scaricata). -->
+<link rel="preload" as="image" href="assets/hero.webp" fetchpriority="high" crossorigin="anonymous">
 <script type="importmap">
 {
   "imports": {
@@ -67,13 +71,13 @@
    do this and renders visibly heavier.  (decisions-log D-025)
    ========================================================================== */
 @font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 100; font-display: swap;
-  src: url("assets/GoogleSansFlex_24pt-Thin.ttf") format("truetype"); }
+  src: url("assets/GoogleSansFlex_24pt-Thin.woff2") format("woff2"), url("assets/GoogleSansFlex_24pt-Thin.ttf") format("truetype"); }
 @font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 300; font-display: swap;
-  src: url("assets/GoogleSansFlex_24pt-Light.ttf") format("truetype"); }
+  src: url("assets/GoogleSansFlex_24pt-Light.woff2") format("woff2"), url("assets/GoogleSansFlex_24pt-Light.ttf") format("truetype"); }
 @font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 400; font-display: swap;
-  src: url("assets/GoogleSansFlex_24pt-Regular.ttf") format("truetype"); }
+  src: url("assets/GoogleSansFlex_24pt-Regular.woff2") format("woff2"), url("assets/GoogleSansFlex_24pt-Regular.ttf") format("truetype"); }
 @font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 500; font-display: swap;
-  src: url("assets/GoogleSansFlex_24pt-Medium.ttf") format("truetype"); }
+  src: url("assets/GoogleSansFlex_24pt-Medium.woff2") format("woff2"), url("assets/GoogleSansFlex_24pt-Medium.ttf") format("truetype"); }
 @font-face { font-family: "Google Sans Flex Display"; font-style: normal; font-weight: 1 1000; font-display: swap;
   src: url("assets/GoogleSansFlex-Variable-latin.woff2") format("woff2"); }
 
@@ -1559,6 +1563,9 @@ document.querySelectorAll("[data-arrow]").forEach((tile) => { tile.innerHTML = A
 /* Images */
 document.querySelectorAll("[data-asset]").forEach((img) => {
   img.addEventListener("error", () => showAssetBanner(asset(img.dataset.asset)));
+  // Solo la foto d'apertura e' urgente: le altre sono sotto la piega e, se
+  // scaricate subito, rubano banda alla prima sul telefono.
+  if (!img.closest("#hero")) img.loading = "lazy";
   img.src = asset(img.dataset.asset);
 });
 
@@ -1598,13 +1605,26 @@ document.getElementById("contact-form").addEventListener("submit", (e) => e.prev
      sezione — resterebbe un rettangolo vuoto. Il browser prende la prima che
      sa decodificare. */
   video.addEventListener("error", () => showAssetBanner(asset("about-video.mp4")));
+  /* VELOCITA': sui telefoni basta la versione a 720px (il riquadro e'
+     largo ~350px), meno della meta' del peso. E il video non parte piu'
+     insieme alla foto d'apertura: aspetta che la pagina abbia caricato, o
+     prima se la sezione si avvicina. */
   {
+    const small = window.matchMedia("(max-width: 600px)").matches;
     const mp4 = document.createElement("source");
-    mp4.src = asset("about-video.mp4"); mp4.type = "video/mp4";
+    mp4.src = ASSETS + (small ? "about-video-720.mp4" : "about-video.mp4"); mp4.type = "video/mp4";
     const webm = document.createElement("source");
-    webm.src = ASSETS + "about-video.webm"; webm.type = "video/webm";
-    video.append(mp4, webm);
-    video.load();
+    webm.src = ASSETS + (small ? "about-video-720.webm" : "about-video.webm"); webm.type = "video/webm";
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      video.append(mp4, webm);
+      video.load();
+    };
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    onceInView(host, start, { rootMargin: "600px 0px" });
   }
 
   let duration = 0, ready = false;
