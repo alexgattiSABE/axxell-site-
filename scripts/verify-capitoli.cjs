@@ -197,6 +197,42 @@ async function helixPixels(p, file){
       await p.mouse.click((side[0][0] + side[2][0]) / 2, (side[0][1] + side[2][1]) / 2);
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
+    } else if (check === 'tapfuori'){
+      // Round 3 (Nike: «quando tocco fuori dalla card si refresha l'animazione»,
+      // su telefono e su pc): un tocco/clic su un punto vuoto, fuori dalla card
+      // davanti, non deve congelare l'effetto nemmeno per un fotogramma.
+      await settle(p, 3); await p.waitForTimeout(1200);
+      const mod = await p.evaluate(() => window.__capitoli.awake());
+      if (mod !== 'vesper') fail('card 3 not awake before the tap: ' + mod);
+      // un punto vuoto: fuori da ogni card visibile, dalla nav, dalla didascalia e dall'elenco
+      const pt = await p.evaluate(mobile => {
+        const c = window.__capitoli, cards = c.cards().filter(k => k.reveal > 0.02);
+        const box = [c.caption(), c.nav()];
+        const ix = c.index(); if (ix.opacity > 0.05) cards.push({ quad: ix.quad });
+        const inQ = (q, x, y) => { let s = 0; for (let i = 0; i < 4; i++){ const [x1, y1] = q[i], [x2, y2] = q[(i + 1) % 4];
+          const k = (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1); if (k){ if (!s) s = Math.sign(k); else if (Math.sign(k) !== s) return false; } } return true; };
+        const libero = (x, y) => !cards.some(k => inQ(k.quad, x, y)) &&
+          !box.some(r => x >= r.x - 12 && x <= r.x + r.w + 12 && y >= r.y - 12 && y <= r.y + r.h + 12) &&
+          !document.elementFromPoint(x, y).closest('#nav,#dots,#lp,#stage-live,button,a');
+        const f = c.cards()[c.front()].quad, cy = (f[0][1] + f[2][1]) / 2;
+        const W = innerWidth, H = innerHeight;
+        const prove = mobile ? [[W * 0.5, (f[2][1] + H * 0.8) / 2], [W * 0.5, H * 0.58], [W * 0.15, H * 0.6], [W * 0.85, H * 0.18]]
+                             : [[Math.min(...f.map(v => v[0])) / 2, cy], [(Math.max(...f.map(v => v[0])) + W) / 2, cy], [W * 0.1, H * 0.5], [W * 0.9, H * 0.5]];
+        for (const [x, y] of prove) if (libero(x, y)) return [Math.round(x), Math.round(y)];
+        return null;
+      }, mobile);
+      if (!pt) fail('no empty point found outside the front card');
+      else {
+        const campioni = [];
+        const campiona = async n => { for (let k = 0; k < n; k++){ campioni.push(await p.evaluate(() => window.__capitoli.awake())); await p.waitForTimeout(50); } };
+        const tap = mobile ? p.touchscreen.tap(pt[0], pt[1]) : p.mouse.click(pt[0], pt[1]);
+        await Promise.all([tap, campiona(20)]);
+        const s0 = await p.evaluate(() => window.__capitoli.spin());
+        if (campioni.some(v => v !== mod)) fail(`effect froze after a tap at ${pt}: ` + campioni.map(v => v || 'null').join(','));
+        if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('the tap changed card');
+        await p.screenshot({ path: OUT + `/tapfuori${mobile ? '-m' : ''}.png` });
+        console.log('tapfuori: tap at', pt.join(','), 'samples', campioni.length, 'spin', s0.toFixed(3));
+      }
     } else if (check === 'colori'){
       // la pagina prende il colore della card davanti: una cattura per card
       if (!(await p.evaluate(() => !!(window.WC && WC.helix && WC.helix.setTint)))) fail('WC.helix.setTint missing');
