@@ -188,6 +188,45 @@ async function helixPixels(p, file){
       await p.mouse.click((side[0][0] + side[2][0]) / 2, (side[0][1] + side[2][1]) / 2);
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
+    } else if (check === 'swipe'){
+      // Su telefono lo strisciare in verticale gira il mazzo come la rotellina,
+      // ANCHE sopra l'anteprima viva; in orizzontale sull'anteprima il gesto e'
+      // dell'effetto. Tocchi veri via CDP: diventano Pointer Events 'touch'.
+      if (!mobile){ console.log('SKIP swipe: phone only (run with --mobile)'); }
+      else {
+        const cdp = await p.context().newCDPSession(p);
+        const tocca = async (x0, y0, x1, y1) => {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0 }] });
+          for (let k = 1; k <= 12; k++)
+            await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + (x1 - x0) * k / 12, y: y0 + (y1 - y0) * k / 12 }] });
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        };
+        const centro = async i => { const q = (await p.evaluate(() => window.__capitoli.cards()))[i].quad;
+                                    return [(q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2]; };
+        await settle(p, 0); await p.waitForTimeout(900);
+        const viva = await p.evaluate(() => document.getElementById('stage-live').classList.contains('-viva'));
+        if (!viva) fail('preview on card 0 is not live, the swipe-over-preview case is not exercised');
+        // 1) verticale sopra l'anteprima viva: cambia card, la pagina non scorre
+        let [cx, cy] = await centro(0);
+        const y0 = await p.evaluate(() => window.scrollY);
+        await tocca(cx, cy + 60, cx, cy - 60); await p.waitForTimeout(1800);
+        if (await p.evaluate(() => window.__capitoli.front()) === 0) fail('vertical swipe over the preview did not change card');
+        if (await p.evaluate(() => window.scrollY) !== y0) fail('vertical swipe scrolled the page');
+        // 2) verticale sopra la card davanti, fuori dall'anteprima: in alto,
+        //    fra la nav e la card (~190px: piu' di mezza card, se no lo scatto
+        //    riporta indietro)
+        await settle(p, 0);
+        await tocca(VP.width * 0.5, VP.height * 0.34, VP.width * 0.5, VP.height * 0.12); await p.waitForTimeout(1800);
+        if (await p.evaluate(() => window.__capitoli.front()) === 0) fail('vertical swipe outside the cards did not change card');
+        // 3) orizzontale sopra l'anteprima: il mazzo resta fermo
+        await settle(p, 0); await p.waitForTimeout(900);
+        [cx, cy] = await centro(0);
+        const s0 = await p.evaluate(() => window.__capitoli.spin());
+        await tocca(cx - 80, cy, cx + 80, cy + 10); await p.waitForTimeout(700);
+        const s1 = await p.evaluate(() => window.__capitoli.spin());
+        if (Math.abs(s1 - s0) > 0.01) fail(`horizontal drag on the preview spun the deck ${s0} -> ${s1}`);
+        await p.screenshot({ path: OUT + '/swipe-m.png' });
+      }
     } else if (check === 'copy'){
       for (const i of [0, 2, 3, 4]){
         await settle(p, i); await p.waitForTimeout(1600);   // lo scramble dura ~1.3s

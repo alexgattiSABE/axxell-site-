@@ -31,6 +31,11 @@
        l'asse centrale (Task 2) ha bisogno del contrario: una pagina che
        scorre DAVVERO, perché è lo scroll a far salire e girare l'elica. */
     overscroll-behavior-y:none}
+  /* Col dito il gesto verticale e' del mazzo (vedi «SU TELEFONO SI SCORRE PER
+     GIRARE» nello script): la pagina non deve scorrere ne' rimbalzare sotto,
+     se no il browser si prende il gesto e il trascino viene annullato. La
+     rotellina non passa di qui: su desktop non cambia niente. */
+  html,body{touch-action:none}
   canvas{display:block;width:100%;height:100%}
   #stage{position:fixed;inset:0}
 
@@ -1283,13 +1288,43 @@
      REDUCED-MOTION: come la rotellina, è un gesto continuo — disattivo con
      `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
      spinga, trascinare non muove nulla). */
+  /* SU TELEFONO SI SCORRE PER GIRARE (Nike, round 2: «su tel voglio anche
+     poter scrollare per far girare le card»). Il dito che striscia in
+     VERTICALE fa quello che fa la rotellina, ovunque — anche sopra
+     l'anteprima viva. Sull'anteprima pero' il gesto nasce dell'effetto: un
+     tocco, o un trascinamento soprattutto orizzontale, restano suoi. Quindi
+     un tocco che parte li' resta IN ATTESA (`attesa`) e non e' ancora un
+     trascino — `dragging` acceso anche solo per un istante addormenterebbe
+     l'effetto (vedi `_settled` nel frame) mentre lo si sta usando. Diventa
+     trascino del mazzo solo quando, superati i 6px, si capisce che va in su
+     o in giu'; se va di lato, lo si lascia all'effetto. Col mouse non cambia
+     niente: sopra l'anteprima il trascino resta dell'effetto, come prima.
+     La nav (menu a tendina compreso) non gira mai il mazzo. Perche' la
+     pagina non scorra sotto al dito, `touch-action:none` su html/body. */
+  var attesa = null;                  // { id, x, y } tocco nato sull'anteprima
+  function inNav(e){ return !!(e && e.target && e.target.closest && e.target.closest('#nav')); }
   window.addEventListener('pointerdown', function(e){
-    if (e.button || inPreview(e)) return;
+    if (e.button || inNav(e)) return;
+    if (inPreview(e)){
+      if (e.pointerType === 'touch') attesa = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
     ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
     dragging = true; dragId = e.pointerId;
     dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
   });
   window.addEventListener('pointermove', function(e){
+    if (attesa && e.pointerId === attesa.id){
+      var ax = e.clientX - attesa.x, ay = e.clientY - attesa.y;
+      if (Math.abs(ax) + Math.abs(ay) <= 6) return;
+      attesa = null;
+      if (Math.abs(ay) <= Math.abs(ax)) return;          // di lato: e' dell'effetto
+      dragging = true; dragId = e.pointerId; dragAxis = 2;
+      dragMoved = Math.abs(ax) + Math.abs(ay);
+      dragX = e.clientX; dragY = e.clientY;
+      if (WC.motionOk) spingi(-ay*0.0060);
+      return;
+    }
     if (!dragging || e.pointerId !== dragId || !WC.motionOk) return;
     var dx = e.clientX - dragX, dy = e.clientY - dragY;
     dragX = e.clientX; dragY = e.clientY;
@@ -1304,7 +1339,10 @@
        patto della rotellina: dito in su = come scorrere in giu' = avanti. */
     spingi(dragAxis === 1 ? -dx*0.0060 : -dy*0.0060);
   }, {passive:true});
-  function fineTrascino(){ if (dragging){ dragging = false; lastInput = performance.now(); } }
+  function fineTrascino(e){
+    if (attesa && (!e || e.pointerId === attesa.id)) attesa = null;
+    if (dragging){ dragging = false; lastInput = performance.now(); }
+  }
   window.addEventListener('pointerup', fineTrascino);
   window.addEventListener('pointercancel', fineTrascino);
 
@@ -1336,7 +1374,7 @@
   });
 
   if (mobile){
-    document.getElementById('hint').textContent = "scorri fuori · tocca l'anteprima";
+    document.getElementById('hint').textContent = "scorri per girare · tocca l'anteprima";
   }
 
   /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
