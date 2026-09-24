@@ -149,21 +149,64 @@
   /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
      superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
      script proiettando il punto in basso di ogni portale. */
-  /* Nav propria e minima: il foglio del sito e' scritto per pagine che
-     scorrono, e questa non scorre. Stessi colori, stesse misure. */
+  /* IL MENU E' QUELLO DEL SITO (richiesta utente): stesso logo, stesse
+     voci, stesse misure e stesso comportamento su telefono di index.html
+     alla radice. Qui e' riscritto su `#nav` perche' il foglio del sito non
+     e' caricato: questa pagina non scorre e non ne ha bisogno. */
   #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
-    background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
-    transition:opacity .4s ease}
-  .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
-  .nv-links{display:flex;list-style:none;gap:.3rem}
-  .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
-    letter-spacing:.1em;padding:.9rem .5rem;display:inline-block}
-  .nv-links a:hover,.nv-links a.active{color:#3ad8ff}
-  .nv-cta{border:1px solid rgba(240,240,246,.22);margin-left:.4rem}
-  #nav a:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
-  @media (max-width:600px){ .nv-links a{font-size:9.5px;padding:.9rem .28rem} }
+    display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+    font-family:'Space Grotesk',sans-serif;transition:opacity .4s ease}
+  #nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-30px;z-index:-1;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(6,6,9,.97) 0%,rgba(6,6,9,.94) 52%,rgba(6,6,9,.62) 78%,rgba(6,6,9,0) 100%);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%)}
+  #nav.-hide{opacity:0;pointer-events:none}
+  .nav-logo-img{display:flex;align-items:center;text-decoration:none}
+  .nav-logo-img img{height:42px;width:auto;display:block}
+  .nav-links{display:flex;list-style:none;gap:.2rem;margin:0;padding:0}
+  .nav-links a{color:rgba(240,240,246,.72);text-decoration:none;font-size:.88rem;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;padding:.5rem 1.1rem;border-radius:4px;
+    transition:color .2s,background .2s;display:inline-block}
+  .nav-links a:hover,.nav-links a.active{color:#f0f0f6;background:rgba(255,255,255,.05)}
+  @keyframes atelierShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  #n-wc,.mobile-dropdown a.-atelier{
+    background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+    background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){#n-wc,.mobile-dropdown a.-atelier{animation:none;background-position:0% 50%}}
+  .nav-right{display:flex;align-items:center}
+  .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;border:1px solid #00d4ff;color:#00d4ff;
+    font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:center;transition:all .2s}
+  .nav-cta:hover{background:#00d4ff;color:#060609}
+  .lang-sw{display:flex;align-items:center;gap:.15rem;margin-left:1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.12)}
+  .lang-sw button{background:none;border:none;cursor:pointer;color:rgba(240,240,246,.72);font-family:inherit;
+    font-size:.78rem;font-weight:600;letter-spacing:.06em;padding:.25rem .3rem;border-radius:3px;transition:color .2s}
+  .lang-sw button:hover{color:#fff}
+  .lang-sw button.on{color:#00d4ff}
+  .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem}
+  #nav a:focus-visible,#nav button:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}
+  .mobile-menu-wrap{display:none;position:relative;order:2}
+  .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
+    color:#fff;border-radius:10px;font-size:1.2rem;cursor:pointer}
+  .mobile-dropdown{position:absolute;top:52px;right:0;width:180px;background:#060609;
+    border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.5rem;display:none;
+    flex-direction:column;gap:.3rem;z-index:9999;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  .mobile-dropdown.-on{display:flex}
+  .mobile-dropdown a{color:#fff;text-decoration:none;padding:.8rem 1rem;border-radius:10px;font-size:.85rem;white-space:nowrap}
+  .mobile-dropdown a:hover{background:rgba(255,255,255,.06)}
+  @media (max-width:960px){
+    #nav{padding:0 1rem}
+    #nav::before{bottom:-26px}
+    .nav-links,.nav-cta{display:none}
+    .mobile-menu-wrap{display:flex}
+    .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .nav-right{order:0;margin:0}
+    .lang-sw{margin:0;padding:0;border-left:none}
+  }
+  @media (max-width:480px){ #nav{height:60px} }
 
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
   #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
@@ -321,14 +364,96 @@
 
 
 <nav id="nav">
-  <a href="/" class="nv-logo">AXXELL</a>
-  <ul class="nv-links">
-    <li><a href="/">Home</a></li>
-    <li><a href="/atelier" class="active">Atelier</a></li>
-    <li><a href="/atelier/capitoli">Capitoli</a></li>
-    <li><a href="/atelier/parliamone" class="nv-cta">Parliamone</a></li>
+  <div class="mobile-menu-wrap">
+    <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown">☰</button>
+    <div class="mobile-dropdown" id="mobileDropdown">
+      <a href="/sabe" data-sito="/sabe">SABE</a>
+      <a href="/atlas" data-sito="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier" data-sito="/atelier">Atelier</a>
+      <a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a>
+      <a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a>
+    </div>
+  </div>
+  <a href="/" class="nav-logo-img" data-sito="/"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <ul class="nav-links">
+    <li><a href="/sabe" data-sito="/sabe">Sabe</a></li>
+    <li><a href="/atlas" data-sito="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" class="active" aria-current="page" data-sito="/atelier">Atelier</a></li>
+    <li><a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a></li>
+    <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
   </ul>
+  <div class="nav-right">
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <div class="lang-sw">
+      <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
+    </div>
+  </div>
 </nav>
+<script>
+(function(){
+  var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
+  b.addEventListener('click', function(e){
+    e.stopPropagation();
+    var on = m.classList.toggle('-on');
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+  /* il clic sulla scena non deve arrivare alla giostra mentre si usa il menu */
+  m.addEventListener('click', function(e){ e.stopPropagation(); });
+  /* nemmeno IT/EN: senza, il clic sulla lingua faceva anche «Entra» */
+  document.querySelector('#nav .lang-sw').addEventListener('click', function(e){
+    e.stopPropagation(); m.classList.remove('-on'); b.setAttribute('aria-expanded','false');
+  });
+  document.addEventListener('click', function(){ m.classList.remove('-on'); b.setAttribute('aria-expanded','false'); });
+})();
+</script>
+<script>
+/* ITALIANO / INGLESE — la versione ridotta di quella dell'atelier (la home).
+   Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non la dice
+   vale quella della pagina da cui si arriva, poi quella del browser. Qui si
+   traduce SOLO il menu: le voci con `data-t`, l'etichetta del ☰, e i link
+   verso il sito (`#nav [data-sito]`) che si portano dietro ?lang=en. */
+(function(){
+  var TESTI = {
+    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu' },
+    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu' }
+  };
+  function linguaIniziale(){
+    try {
+      var p = new URL(location.href).searchParams.get('lang');
+      if (p === 'en' || p === 'it') return p;
+      if (document.referrer){
+        var r = new URL(document.referrer);
+        var rl = r.origin === location.origin ? r.searchParams.get('lang') : null;
+        if (rl === 'en' || rl === 'it') return rl;
+      }
+    } catch(e){}
+    return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+  }
+  function atelierLingua(l){
+    if (l !== 'it' && l !== 'en') return false;
+    var T = TESTI[l];
+    document.documentElement.lang = l;
+    document.querySelectorAll('#nav [data-t]').forEach(function(el){
+      var v = T[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v;
+    });
+    var burger = document.getElementById('navBurger'); if (burger) burger.setAttribute('aria-label', T.menu);
+    document.querySelectorAll('#nav [data-sito]').forEach(function(a){
+      var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
+      if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
+      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+    });
+    ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
+    try {
+      var u = new URL(location.href);
+      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      history.replaceState(history.state, '', u);
+    } catch(e){}
+    return false;
+  }
+  window.atelierLingua = atelierLingua;
+  atelierLingua(linguaIniziale());
+})();
+</script>
 
 <div id="stage"><canvas id="c"></canvas></div>
 
@@ -1513,6 +1638,8 @@
   }, {passive:true});
 
   window.addEventListener('click', function(e){
+    /* Un clic sul menu (il suo fondo compreso) non e' un clic sulla scena. */
+    if (inNav(e)) return;
     if (stage === 'hero'){ entra(); return; }
     if (stage === 'arrivo'){ skip(); return; }
     /* Il clic dentro l'anteprima viva e' dell'effetto: il mazzo non lo vede. */

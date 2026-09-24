@@ -225,6 +225,14 @@ async function helixPixels(p, file){
         await tocca(cx - 80, cy, cx + 80, cy + 10); await p.waitForTimeout(700);
         const s1 = await p.evaluate(() => window.__capitoli.spin());
         if (Math.abs(s1 - s0) > 0.01) fail(`horizontal drag on the preview spun the deck ${s0} -> ${s1}`);
+        // 4) il ☰ apre il menu e non tocca il mazzo; uno striscio sul menu nemmeno
+        const s2 = await p.evaluate(() => window.__capitoli.spin());
+        const bb = await p.evaluate(() => { const r = document.getElementById('navBurger').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+        await p.touchscreen.tap(bb[0], bb[1]); await p.waitForTimeout(400);
+        if (!(await p.evaluate(() => document.getElementById('mobileDropdown').classList.contains('-on')))) fail('burger did not open the menu');
+        const dd = await p.evaluate(() => { const r = document.getElementById('mobileDropdown').getBoundingClientRect(); return [r.left + r.width / 2, r.top + 10, r.bottom - 10]; });
+        await tocca(dd[0], dd[2], dd[0], dd[1]); await p.waitForTimeout(700);
+        if (Math.abs((await p.evaluate(() => window.__capitoli.spin())) - s2) > 0.01) fail('burger or menu swipe spun the deck');
         await p.screenshot({ path: OUT + '/swipe-m.png' });
       }
     } else if (check === 'copy'){
