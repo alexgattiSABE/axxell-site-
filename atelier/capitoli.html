@@ -135,8 +135,13 @@
   #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
   /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
      bianco dell'orologio, sotto un testo scuro. La fascia diventa bianca: sul
-     bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo. */
-  #lp.-chiaro.-stretta{background:linear-gradient(0deg,rgba(255,255,255,.86) 0%,rgba(255,255,255,.55) 40%,rgba(255,255,255,0) 62%)}
+     bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo.
+     Round 3 (Nike: «su tel alcune animazioni non si vedono completamente»): a
+     tutta larghezza il velo bianco sbiancava la meta' bassa dell'orologio, che
+     su telefono sta a destra (js/orologio.js) e sotto la scritta non passa mai.
+     Ora il velo resta nella fascia bassa e SOLO sotto la colonna del testo, e
+     si spegne prima di arrivare al metallo. */
+  #lp.-chiaro.-stretta{background:linear-gradient(90deg,rgba(255,255,255,.86) 0%,rgba(255,255,255,.6) 30%,rgba(255,255,255,0) 44%) left bottom/100% 62% no-repeat}
 
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
      (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
@@ -526,7 +531,7 @@
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
      PRIMA dell'inline: il controller lo cerca in WC.effects. -->
-<script src="js/saucer.js?v=20260924b"></script>
+<script src="js/saucer.js?v=20260924d"></script>
 <!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
      dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
      js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
@@ -547,7 +552,7 @@
      registrare i due handle esterni su WC.effects, che il controller sveglia
      dentro #stage-live. Caricati PRIMA dell'inline. -->
 <script src="js/lithos.js?v=20260924b"></script>
-<script src="js/warp.js?v=20260924b"></script>
+<script src="js/warp.js?v=20260924d"></script>
 <!-- «Gravità»: lo sneaker, l'handle esterno WC.effects.sneaker che il
      controller sveglia dentro #stage-live (il video del prodotto sospeso). -->
 <script src="js/sneaker.js?v=20260924b"></script>

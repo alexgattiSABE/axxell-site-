@@ -998,6 +998,22 @@ function mountSaucer(ctx, cfg){
     renderer.setPixelRatio(dpr);
     renderer.setSize(rect.w, rect.h, false);
     camera.aspect = rect.w / rect.h;
+    /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
+     * vedono completamente»). Sul telefono la copy (#lp.-stretta in
+     * capitoli.html) occupa la meta' bassa della card a tutta larghezza, e il
+     * rapito, al centro del raggio, finiva proprio sotto «Uno solo è stato
+     * scelto.»; in cima il disco toccava il bordo. Si sposta l'INQUADRATURA,
+     * non la scena: il centro della camera va al 68% della larghezza (la
+     * scritta finisce prima del 56%) e la camera apre un filo (zoom 0.9) per
+     * staccare il disco dal bordo. Solo esterno e solo sotto i 420 px (la
+     * soglia di `#lp.-stretta`): il desktop e il legacy restano com'erano. */
+    if (external && rect.w < 420){
+      camera.zoom = 0.9;
+      camera.setViewOffset(rect.w, rect.h, (0.5 - 0.68) * rect.w, 0, rect.w, rect.h);
+    } else {
+      camera.zoom = 1;
+      if (camera.view) camera.clearViewOffset();
+    }
     camera.updateProjectionMatrix();
 
     var pw = Math.max(1, Math.round(rect.w * dpr)), ph = Math.max(1, Math.round(rect.h * dpr));

@@ -580,6 +580,15 @@ function mountWarp(ctx, cfg){
     renderer.setPixelRatio(dpr);
     renderer.setSize(rect.w, rect.h, false);
     camera.aspect = rect.w / rect.h;
+    /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
+     * vedono completamente»). Sul telefono la copy (#lp.-stretta in
+     * capitoli.html) occupa la meta' bassa sinistra della card: l'elica le
+     * stava a filo e l'anello della forma dopo le passava sopra. Si sposta
+     * l'INQUADRATURA, non la scena: il centro della camera al 66% della
+     * larghezza e al 42% dell'altezza. Solo esterno, solo sotto i 420 px (la
+     * soglia di `#lp.-stretta`): desktop e legacy restano com'erano. */
+    if (external && rect.w < 420) camera.setViewOffset(rect.w, rect.h, (0.5 - 0.66) * rect.w, (0.5 - 0.42) * rect.h, rect.w, rect.h);
+    else if (camera.view) camera.clearViewOffset();
     camera.updateProjectionMatrix();
     uRes.value.set(rect.w * dpr, rect.h * dpr);
     // La parete si allarga sui viewport larghi, se no gli angoli restano vuoti.

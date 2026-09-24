@@ -229,6 +229,7 @@ function mountVesper(ctx, cfg){
 
   var progressTarget = 0, progress = 0;   // dove dice lo scroll / dove sta la scena
   var ciclo = null;                       // solo esterno: il passo del giro automatico
+  var stretta = false;                    // solo esterno: card stretta, inquadratura spostata
   var outro = 0;                          // 0 finché la scena possiede l'inquadratura
 
   // INTRO — `lib/scene/intro.ts`. Nella sorgente è una molla 0→1 fatta partire
@@ -1162,6 +1163,9 @@ function mountVesper(ctx, cfg){
     var lineRevealed = clamp01((intro - 0.35) / 0.65);
     var lineGone = clamp01((progress - 0.08) / 0.2);
     var lineAlpha = lineRevealed * (1 - lineGone);
+    // La riga ha la maschera al centro della tela: con l'inquadratura spostata
+    // (card stretta, solo esterno) non cadrebbe piu' attorno alla sfera.
+    if (external && stretta) lineAlpha = 0;
     lineUniforms.uAlpha.value = lineAlpha;
     heroLine.visible = lineAlpha > 0.002;
 
@@ -1384,8 +1388,21 @@ function mountVesper(ctx, cfg){
     /* La galassia e' l'unico strato col `gl_PointSize` in pixel di device, non
      * scalato per il dpr: alzando il dpr i suoi punti si rimpiccioliscono a
      * schermo. Si compensa, cosi' cambia la nitidezza e non la taglia. */
+    /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
+     * vedono completamente»). Sul telefono la copy (#lp.-stretta in
+     * capitoli.html) e' una fascia che occupa la meta' bassa della card, a
+     * tutta larghezza: la sfera, la galassia e il cervello, centrati, ci
+     * finivano sotto — «Da una sfera, una galassia» scritto sopra la galassia.
+     * Si sposta l'INQUADRATURA, non la scena: `setViewOffset` fa cadere il
+     * centro della camera al 56% della larghezza e al 32% dell'altezza, nella
+     * fascia libera in alto. Le proiezioni del puntatore (olio, vuoto, sinapsi)
+     * passano dalla stessa camera, quindi seguono. Stessa soglia di
+     * `#lp.-stretta` (420 px); la card larga del desktop resta com'era. */
     var resizeE = function(){
       resize();
+      stretta = size.w < 420;
+      if (stretta) camera.setViewOffset(size.w, size.h, (0.5 - 0.56) * size.w, (0.5 - 0.32) * size.h, size.w, size.h);
+      else if (camera.view) camera.clearViewOffset();
       galUniforms.uSize.value = GALAXY.pointSize * Math.max(1, dpr / Math.min(window.devicePixelRatio || 1, dprScaglione));
     };
     var onDito = function(e){ if (e.pointerType !== 'mouse') onMove(e); };
