@@ -672,7 +672,12 @@ function mountAltitude(ctx, cfg){
     dye.swap();
   }
 
-  function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, 1.5)); }
+  /* Il tetto 1.5 e' della sezione a tutto schermo. Nella card del telefono
+   * (esterno, ~340×212 px CSS) a 2 la tela resta sotto i 0,3 megapixel, e il
+   * costo che sale e' solo la passata finale: il solutore gira su SIM/DYE, che
+   * non dipendono dal dpr. A 1.5 su uno schermo a 3× il cielo usciva impastato. */
+  var tettoDpr = (external && mobile) ? 2 : 1.5;
+  function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, tettoDpr)); }
 
   function resizeCanvas(){
     var w = scaleByPixelRatio(canvas.clientWidth);
@@ -889,6 +894,14 @@ function mountAltitude(ctx, cfg){
     // non si vede. Serve solo a non far comparire un rettangolo nero nel caso
     // la texture arrivi in ritardo.
     fade = Math.min(1, fade + dt * 1.6);
+    /* Solo nella card: la tela e' opaca (alpha 1 anche a `fade` 0), quindi
+     * finche' il video non ha dato un fotogramma copriva di NERO il <video> e
+     * il suo poster. Su iPhone succede sempre per un attimo, e per sempre col
+     * Risparmio energetico, che blocca l'autoplay anche dei video muti: la
+     * card restava nera. Qui la tela si mostra solo quando la texture c'e'. */
+    if (external && canvas.style.visibility !== (videoReady ? '' : 'hidden'))
+      canvas.style.visibility = videoReady ? '' : 'hidden';
+    if (external && !videoReady) fade = 0;
 
     uploadVideo();
     driveVortex(now);
@@ -1008,10 +1021,37 @@ WC.register('altitude', function(ctx){
 });
 
 WC.effects = WC.effects || {};
+/* ── SUL TELEFONO (2026-09-24, «su tel alcune animazioni sono nere») ────────
+ * Tre cose che su desktop non si vedono:
+ *  1. Il CONTESTO SI RILASCIA allo stop. Ogni modulo teneva il suo WebGL vivo
+ *     anche congelato: dopo un giro del mazzo erano sei contesti insieme (lo
+ *     stage, l'elica e quattro effetti), e su iPhone la memoria della GPU e'
+ *     quella del telefono — iOS ne butta uno, e una tela col contesto perso
+ *     resta nera per sempre. Sul telefono si smonta tutto allo stop e si
+ *     rimonta al risveglio: la regola «un solo effetto vivo» diventa vera.
+ *  2. Se il contesto si perde lo stesso (app in background, pressione di
+ *     memoria), al prossimo `start()` si rimonta da capo invece di ridipingere
+ *     una tela morta.
+ *  3. L'autoplay che iOS nega (Risparmio energetico) si riprova al primo
+ *     tocco: dentro un gesto `play()` e' sempre permesso. */
+var ALT_TEL = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 900;
 WC.effects.altitude = (function(){
-  var inst = null, host = null;
+  var inst = null, host = null, vid = null, canv = null, perso = false, vivo = false;
+  function suGesto(){ if (vid && vivo && vid.paused){ var p = vid.play(); if (p && p.catch) p.catch(function(){}); } }
+  function libera(){
+    if (inst && inst.dispose){ try { inst.dispose(); } catch(e){} }
+    if (host){
+      host.removeEventListener('touchend', suGesto);
+      host.removeEventListener('click', suGesto);
+      if (vid){ vid.pause(); vid.removeAttribute('src'); while (vid.firstChild) vid.removeChild(vid.firstChild); vid.load(); }
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    inst = host = vid = canv = null; perso = false;
+  }
   return {
     start: function(container){
+      vivo = true;
+      if (inst && perso) libera();
       // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
       // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
       // fa dipingere sopra i canvas congelati degli altri (vedi la nota
@@ -1022,8 +1062,12 @@ WC.effects.altitude = (function(){
       if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('div');
       host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;';
-      var vid = document.createElement('video');
+      vid = document.createElement('video');
       vid.muted = true; vid.loop = true; vid.playsInline = true; vid.preload = 'none';
+      vid.setAttribute('muted', ''); vid.setAttribute('playsinline', '');
+      // Il poster: finche' il video non parte (o se iOS non lo fa partire) si
+      // vede il cielo fermo, non un rettangolo vuoto.
+      vid.poster = 'assets/starry-poster.webp';
       vid.setAttribute('aria-hidden', 'true');
       vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
       // Stesso ordine del markup legacy: mp4 prima (i browser veri lo prendono,
@@ -1033,16 +1077,32 @@ WC.effects.altitude = (function(){
       var s2 = document.createElement('source');
       s2.type = 'video/webm'; s2.setAttribute('data-src', 'assets/starry.webm');
       vid.appendChild(s1); vid.appendChild(s2);
-      var canv = document.createElement('canvas');
+      canv = document.createElement('canvas');
       canv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+      var mia = canv;
+      canv.addEventListener('webglcontextlost', function(){
+        // Solo la tela in servizio: quella appena liberata (dispose chiama
+        // loseContext) manda anche lei l'evento, un giro dopo.
+        if (canv !== mia) return;
+        perso = true;
+        // Perso mentre e' a fuoco: si rimonta subito, non al prossimo giro.
+        setTimeout(function(){ if (vivo && perso && host && host.parentNode){ var c = host.parentNode; libera(); WC.effects.altitude.start(c); } }, 0);
+      });
       host.appendChild(vid); host.appendChild(canv);
+      host.addEventListener('touchend', suGesto, { passive: true });
+      host.addEventListener('click', suGesto);
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountAltitude(ctx, { canvas: canv, video: vid, section: null, external: true });
-      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = vid = canv = null; return; }
       inst.start();
     },
-    stop:   function(){ if (inst) inst.stop(); },
+    stop: function(){
+      vivo = false;
+      if (!inst) return;
+      inst.stop();
+      if (ALT_TEL) libera();
+    },
     resize: function(){ if (inst) inst.resize(); }
   };
 })();
