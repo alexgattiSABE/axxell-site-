@@ -30,7 +30,9 @@
      `col` è il colore del CLUSTER a cui l'effetto appartiene — le card di uno
      stesso tipo condividono la tinta, così il percorso dell'elica si legge a
      grappoli. `poster` è il fotogramma congelato dentro al vetro finché
-     l'effetto non si sveglia. */
+     l'effetto non si sveglia. `scrimForte` (facoltativo) scurisce di piu' la
+     sfumatura sotto la copy: serve dove l'effetto accende il centro-sinistra
+     (la galassia di Nebulosa), e la scritta altrimenti non terrebbe il 4.5:1. */
   var EFFETTI = [
     { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[0.36,0.80,1.00],
       lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' } },
@@ -38,7 +40,7 @@
       lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' } },
     { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.60,0.85,1.00], chiaro:true,
       lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' } },
-    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.23,0.85,1.00],
+    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.23,0.85,1.00], scrimForte:true,
       lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' } },
     { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.23,0.85,1.00], scramble:true,
       lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' } },

@@ -112,6 +112,11 @@
   #lp.-chiaro{color:#10131a;
     background:linear-gradient(90deg,rgba(255,255,255,.0) 0%,rgba(255,255,255,0) 100%)}
   #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)}
+  /* Sfumatura forte (record `scrimForte`, oggi Nebulosa): la galassia accende
+     proprio il centro-sinistra, e sulla sfumatura normale «un'idea.» e il
+     sottotitolo ci finivano sopra. Qui sotto la colonna del testo (fino al 46%)
+     il nero resta ad almeno .80, e si spegne del tutto entro il 60%. */
+  #lp.-forte{background:linear-gradient(90deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.82) 46%,rgba(4,5,10,0) 60%)}
   /* Su bianco il colore della card (azzurro chiaro) non si legge (~1.6:1):
      kicker e bottone passano a un blu profondo della stessa famiglia. */
   #lp.-chiaro{--lpc:#1d4a6b} #lp.-chiaro .lp-b{color:#10131a}
@@ -122,6 +127,7 @@
   #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
   #lp.-stretta .lp-h{font-size:1.25em}
   #lp.-stretta .lp-l{white-space:normal}
+  #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
   /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
      bianco dell'orologio, sotto un testo scuro. La fascia diventa bianca: sul
      bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo. */
@@ -1356,6 +1362,7 @@
     lpL[0].textContent = w.lp.h[0]; lpL[1].textContent = w.lp.h[1] || '';
     lpS.textContent = w.lp.sub; lpB.textContent = w.lp.cta;
     lpEl.classList.toggle('-chiaro', !!w.chiaro);
+    lpEl.classList.toggle('-forte', !!w.scrimForte);
     if (w.chiaro) lpEl.style.removeProperty('--lpc');
     else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
     if (lpTw){ lpTw.kill(); lpTw = null; }

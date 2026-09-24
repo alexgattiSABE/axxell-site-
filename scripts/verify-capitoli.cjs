@@ -189,7 +189,7 @@ async function helixPixels(p, file){
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
     } else if (check === 'copy'){
-      for (const i of [0, 2, 4]){
+      for (const i of [0, 2, 3, 4]){
         await settle(p, i); await p.waitForTimeout(1600);   // lo scramble dura ~1.3s
         const r = await p.evaluate(i => {
           const lp = document.getElementById('lp'), q = window.__capitoli.cards()[i].quad;
