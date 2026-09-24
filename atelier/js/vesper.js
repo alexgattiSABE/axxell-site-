@@ -228,6 +228,7 @@ function mountVesper(ctx, cfg){
   }
 
   var progressTarget = 0, progress = 0;   // dove dice lo scroll / dove sta la scena
+  var ciclo = null;                       // solo esterno: il passo del giro automatico
   var outro = 0;                          // 0 finché la scena possiede l'inquadratura
 
   // INTRO — `lib/scene/intro.ts`. Nella sorgente è una molla 0→1 fatta partire
@@ -1106,6 +1107,7 @@ function mountVesper(ctx, cfg){
     // L'orologio avanza SEMPRE, anche nei frame che il gate non disegna: se
     // avanzasse solo al disegno, sugli scaglioni bassi la scena si muoverebbe a
     // scatti proporzionali al frame skip invece che al tempo.
+    if (ciclo) ciclo(now);   // solo esterno: il giro automatico (vedi `passoCiclo`)
     stepIntro();
     var d = progressTarget - progress;
     if (Math.abs(d) < 0.00005) progress = progressTarget;
@@ -1307,21 +1309,62 @@ function mountVesper(ctx, cfg){
     // va ripetuto lo stesso posizionamento con il valore appena cambiato.
     camera.position.set(0, 0, tier.orbCamZ + INTRO_DOLLY);
 
-    /* «Nebulosa» — IL GIRO DA SOLO (2026-09-24, richiesta di Nike: «non si
-     * vede l'animazione, falla in automatico»). In legacy il clock 0..4 lo
-     * dava lo scroll del pin; qui un tween proprio lo porta sfera → galassia
-     * → cervello e ritorno (yoyo, niente salto). Finche' il cervello non e'
-     * arrivato dalla rete il giro si ferma alla galassia (2.4), se no la fase
-     * del cervello sarebbe vuota. */
-    var driver = { v: 0 };
-    var extTl = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
-    /* Il tetto si decide solo quando il giro e' sulla sfera (v≈0): cambiarlo
-       a meta' farebbe saltare la scena da galassia a cervello di colpo. */
-    var tetto = 2.4;
-    extTl.to(driver, { v: 1, duration: 9, ease: 'sine.inOut', onUpdate: function(){
-      if (driver.v < 0.02) tetto = brainPronto ? 3.6 : 2.4;
-      progressTarget = driver.v * tetto;
-    }}, 0);
+    /* «Nebulosa» — IL GIRO DA SOLO, SEMPRE IN AVANTI (round 3, Nike: «se
+     * interagisco con nebulosa l'animazione rallenta e a volte torna indietro
+     * invece deve sempre andare avanti»). Prima era un tween GSAP in yoyo:
+     * sfera → galassia → cervello e poi lo stesso percorso AL CONTRARIO, con un
+     * `sine.inOut` che frenava fino a fermarsi a ogni capo — la frenata si
+     * leggeva come «rallenta», il ritorno come «torna indietro». Ora e' un
+     * ciclo che va solo avanti, con un orologio proprio (`giro`, in secondi)
+     * che avanza nel `frame()` col tempo vero e non con GSAP:
+     *
+     *   SFERA    la sfera si raduna (l'INTRO) e resta un attimo;
+     *   CORSA    il clock 0 → tetto: la sfera si scioglie nella galassia, la
+     *            galassia esplode e dai suoi punti nasce il cervello;
+     *   CERVELLO resta, gira;
+     *   SCOPPIO  il cervello si sfalda verso la camera — lo stesso `outro`
+     *            che in legacy lo porta via quando arriva la sezione dopo;
+     *   e a scoppio finito si riparte dalla sfera che si RIFORMA con
+     *   `startIntro()` (i punti arrivano dalla camera): un nuovo inizio, non un
+     *   riavvolgimento.
+     *
+     * Niente di quello che fa il dito (olio, vuoto nella galassia, sinapsi,
+     * parallasse) tocca `giro`: l'interazione cambia l'aspetto, mai la
+     * velocita' ne' il verso del ciclo. Finche' il cervello non e' arrivato
+     * dalla rete la corsa si ferma alla galassia (2.4) e lo scoppio la sfuma. */
+    var CICLO = { sfera: 2.2, corsa: 9, cervello: 3.2, scoppio: 2.4 };
+    var tetto = 2.4, giro = 0, lastGiro = 0;
+    var durCiclo = CICLO.sfera + CICLO.corsa + CICLO.cervello + CICLO.scoppio;
+    /* Una rampa che parte e arriva morbida ma non si ferma mai a meta':
+       meta' lineare e meta' smoothstep, la velocita' resta > 0 fino in fondo. */
+    function rampa(x){ var c = clamp01(x); return 0.5 * c + 0.5 * c * c * (3 - 2 * c); }
+    function passoCiclo(now){
+      /* Il tempo vero, non il `dt` del frame (quello e' tagliato a 50 ms): se
+         il telefono scende di fotogrammi mentre lo si tocca il ciclo non deve
+         rallentare con lui. Il taglio a 250 ms serve solo dopo una pausa. */
+      var d = Math.min(0.25, Math.max(0, (now - lastGiro) / 1000)); lastGiro = now;
+      giro += d;
+      if (giro >= durCiclo){
+        // SCOPPIO finito: si riparte dalla sfera che si riforma.
+        giro -= durCiclo;
+        progress = progressTarget = 0; outro = 0;
+        introRunning = false; intro = 0; introMs = 1400; startIntro();
+      }
+      var g = giro;
+      if (g < CICLO.sfera){
+        /* Il tetto si decide solo sulla sfera: cambiarlo a corsa iniziata
+           farebbe saltare la scena da galassia a cervello di colpo. */
+        tetto = brainPronto ? 3.6 : 2.4;
+        progressTarget = 0; outro = 0; return;
+      }
+      g -= CICLO.sfera;
+      if (g < CICLO.corsa){ progressTarget = rampa(g / CICLO.corsa) * tetto; outro = 0; return; }
+      g -= CICLO.corsa;
+      progressTarget = tetto;
+      if (g < CICLO.cervello){ outro = 0; return; }
+      g -= CICLO.cervello;
+      outro = clamp01(g / CICLO.scoppio);
+    }
 
     /* SUL TELEFONO (2026-09-24, «migliora la qualita' grafica» e «alcune
      * interazioni non vanno»). Lo scaglione lo sceglie la finestra (390 px →
@@ -1360,6 +1403,9 @@ function mountVesper(ctx, cfg){
       });
     }
 
+    // Sonda di sola lettura per la verifica automatica (come `__warpProbe` in
+    // js/warp.js): nessun codice della scena la legge.
+    window.__vesperProbe = function(){ return { giro: giro, durata: durCiclo, progress: progress, outro: outro, intro: intro }; };
     var wantRun = false;
     var onResizeE = function(){ resizeE(); };
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
@@ -1367,8 +1413,8 @@ function mountVesper(ctx, cfg){
     document.addEventListener('visibilitychange', onVisE);
     cleanups.push(function(){
       stop();
-      extTl.kill();
       brainAborted = true;
+      delete window.__vesperProbe;
       window.removeEventListener('resize', onResizeE);
       document.removeEventListener('visibilitychange', onVisE);
       orbGeo.dispose(); orbMaterial.dispose();
@@ -1381,8 +1427,8 @@ function mountVesper(ctx, cfg){
       renderer.dispose();
     });
     return {
-      start: function(){ wantRun = true; startIntro(); resizeE(); start(); extTl.play(); },
-      stop:  function(){ wantRun = false; extTl.pause(); stop(); hasPointer = false; },
+      start: function(){ wantRun = true; startIntro(); resizeE(); lastGiro = performance.now(); ciclo = passoCiclo; start(); },
+      stop:  function(){ wantRun = false; stop(); hasPointer = false; },
       resize: resizeE,
       dispose: function(){ cleanups.forEach(function(f){ f(); }); }
     };
