@@ -1040,9 +1040,24 @@
      un terzo senza che il blocco scenda sulle lastre. La scala del piano e'
      la stessa di prima per pixel di tela (2.40/900), quindi l'ingrandimento
      e' tutto nelle lettere. */
-  /* Sul telefono lo schermo e' stretto: una colonna sola, come prima,
-     ma con le lettere grandi. `idxColonne` rifa' tela e piano quando il
-     formato cambia. */
+  /* SUL TELEFONO ANCHE DUE COLONNE (richiesta utente), ma con le etichette
+     CORTE: «retail», «turismo», «consulenza»… Con quelle lunghe («consulenza,
+     professionisti») due colonne in 390 px darebbero lettere da 8 px; con le
+     corte restano sui 14–15. `idxModo` rifa' tela e piano quando il formato
+     cambia. Il titolo «Che cosa cerchi?» sta al centro del blocco, sempre. */
+  var BREVE = {
+    it:{ 'il-prodotto':'retail', 'il-viaggio':'turismo', 'la-macchina':'industria', 'il-dettaglio':'artigianato',
+         'prima-e-dopo':'immobiliare', 'la-notte':'ristoranti', 'lo-studio':'consulenza',
+         'effetti-speciali':'le tecniche', 'il-tuo':'da costruire' },
+    en:{ 'il-prodotto':'retail', 'il-viaggio':'travel', 'la-macchina':'manufacturing', 'il-dettaglio':'craftsmanship',
+         'prima-e-dopo':'real estate', 'la-notte':'restaurants', 'lo-studio':'consulting',
+         'effetti-speciali':'techniques', 'il-tuo':'to be built' }
+  };
+  var IBREVE = false;
+  function idxEtichetta(w){
+    var t = IBREVE ? (BREVE[(typeof LINGUA === 'string' && LINGUA) || 'it'][w.id] || w.sett) : w.sett;
+    return t.toUpperCase();
+  }
   var IW = 1600, IH = 420, IROW0 = 138, IROWH = 58, IGAP = 64, ICOLGAP = 120;
   var IFONT_T = '500 36px "DM Mono", ui-monospace, monospace';
   var IFONT_R = '400 33px "DM Mono", ui-monospace, monospace';
@@ -1064,10 +1079,10 @@
      delle lastre, ed e' quel passaggio che il vetro legge. Messo insieme
      alle lastre, sarebbe visibile ma non rifrangibile. */
   bg.add(idxMesh);
-  function idxColonne(n){
-    if (n === ICOLS) return;
-    ICOLS = n; IPERCOL = Math.ceil(WORLDS.length / n);
-    IW = n === 2 ? 1600 : 900;
+  function idxModo(breve){
+    if (breve === IBREVE) return;
+    IBREVE = breve;
+    IW = breve ? 900 : 1600;
     IH = IROW0 + (IPERCOL - 1)*IROWH + 40;
     idxCv.width = IW; idxCv.height = IH;
     idxTex.dispose();
@@ -1083,19 +1098,21 @@
      sinistra dentro la loro colonna — e' un elenco, non un titolo — e il
      blocco intero sta in mezzo. `idxPos` dice dove sta ogni riga, e serve
      tanto al disegno quanto al clic. */
-  var idxPos = [];
+  var idxPos = [], idxTitoloX = 0;
   function idxLayout(){
     try { idxG.letterSpacing = '3px'; } catch(e){}
     idxG.font = IFONT_R;
     var colW = 0;
     for (var i = 0; i < WORLDS.length; i++){
-      var w = IGAP + idxG.measureText(WORLDS[i].sett.toUpperCase()).width;
+      var w = IGAP + idxG.measureText(idxEtichetta(WORLDS[i])).width;
       if (w > colW) colW = w;
     }
     var tot = colW*2 + ICOLGAP;
     idxG.font = IFONT_T;
     var tw = idxG.measureText(IDX_TITOLO).width;
-    var ox = Math.max(0, Math.round((IW - Math.max(tot, tw)) / 2));
+    var blocco = Math.max(tot, tw);
+    var ox = Math.max(0, Math.round((IW - blocco) / 2));
+    idxTitoloX = ox + Math.round((blocco - tw) / 2);
     idxPos = WORLDS.map(function(w, i){
       var c = i < IPERCOL ? 0 : 1, r = c ? i - IPERCOL : i;
       return { x: ox + c*(colW + ICOLGAP), y: IROW0 + r*IROWH, w: colW };
@@ -1108,7 +1125,7 @@
     var ox = idxLayout();
     idxG.font = IFONT_T;
     idxG.fillStyle = 'rgba(240,240,246,0.82)';
-    idxG.fillText(IDX_TITOLO, ox, 56);
+    idxG.fillText(IDX_TITOLO, idxTitoloX, 56);
     idxG.font = IFONT_R;
     WORLDS.forEach(function(w, i){
       var p = idxPos[i];
@@ -1117,7 +1134,7 @@
         ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
         : 'rgba(223,228,238,0.64)';
       idxG.fillText('->', p.x, p.y);
-      idxG.fillText(w.sett.toUpperCase(), p.x + IGAP, p.y);
+      idxG.fillText(idxEtichetta(w), p.x + IGAP, p.y);
     });
     idxTex.needsUpdate = true;
   }
@@ -1819,9 +1836,9 @@
        verso il centro cosi' la camera-al-perno lo legge di faccia invece che
        di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
        IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
-    idxColonne(camera.aspect < 1 ? 1 : 2);
+    idxModo(camera.aspect < 1);
     if (camera.aspect < 1){
-      idxMesh.position.set(0, 2.00, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.62);
+      idxMesh.position.set(0, 2.02, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.74);
     } else {
       /* L'ELENCO VA IN ALTO AL CENTRO (richiesta utente). Stava a sinistra,
          girato di 0.52 rad verso il centro perché la camera-al-perno lo
