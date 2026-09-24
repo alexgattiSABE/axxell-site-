@@ -321,33 +321,46 @@
   #torna:hover{border-color:var(--pag,#dfe4ee);color:var(--pag,#dfe4ee)}
   #torna:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
   @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
-  /* IL PREVENTIVO (Nike: «su pc fai una cosa semplice […] deve portare al
-     modulo per fare il preventivo per i siti web»). Un bottone e basta, come
-     il «Preventivo gratuito» della nav: filo da 1 px nel colore della card
-     davanti (`--pag`, lo stesso di `--hot`), fondo scuro, e al passaggio si
-     riempie del colore. Porta al modulo dei siti (/atelier/parliamone), non
-     alla home: niente `data-sito`, la lingua non lo riscrive. Desktop: sul
-     bordo destro, a meta' altezza. Telefono: in basso a destra, specchio della
-     freccia di #torna (vedi sotto). */
+  /* IL TUO MONDO — il preventivo (Nike: «chiamalo il tuo mondo e anziché
+     l'azzurro lo voglio bianco con effetto riflettente dinamico automatico»).
+     Un bottone semplice che porta al modulo dei siti (/atelier/parliamone):
+     filo e scritta bianchi su fondo scuro, e un riflesso che ci scorre sopra da
+     solo ogni pochi secondi, come la luce su un metallo lucido. Il riflesso e'
+     `::after`: una fascia diagonale bianca a bassa opacita', larga ~25%, che si
+     sposta con `transform` (costa poco) ed e' tagliata dagli angoli tondi
+     (`overflow:hidden`); mentre passa il filo si schiarisce appena. Niente
+     alone, niente colore. Con moto ridotto il riflesso resta fermo, tenue.
+     Niente `data-sito`: la lingua non lo riscrive verso la home. Desktop: sul
+     bordo destro, a meta' altezza. Telefono: in basso a destra (vedi sotto). */
   #preventivo{position:fixed;right:clamp(24px,2.2vw,32px);top:50%;transform:translateY(-50%);z-index:6;
-    height:40px;padding:0 1.2rem;box-sizing:border-box;border-radius:4px;
+    height:40px;padding:0 1.2rem;box-sizing:border-box;border-radius:4px;overflow:hidden;isolation:isolate;
     display:inline-flex;align-items:center;gap:.5em;
-    border:1px solid var(--pag,#dfe4ee);color:var(--pag,#dfe4ee);background:rgba(6,6,9,.55);
+    border:1px solid rgba(255,255,255,.72);color:#fff;background:rgba(6,6,9,.55);
     font:600 .8rem/1 'Space Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;
-    text-decoration:none;transition:background .2s ease,color .2s ease,border-color .5s ease}
-  #preventivo:hover{background:var(--pag,#dfe4ee);color:#060609}
-  #preventivo:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
+    text-decoration:none;transition:background .2s ease;animation:mondoFilo 5.5s ease-in-out infinite}
+  #preventivo::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:26%;z-index:-1;pointer-events:none;
+    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.30) 50%,rgba(255,255,255,0));
+    transform:translateX(-160%) skewX(-22deg);animation:mondoRiflesso 5.5s ease-in-out infinite}
+  @keyframes mondoRiflesso{0%,55%{transform:translateX(-160%) skewX(-22deg)}85%,100%{transform:translateX(560%) skewX(-22deg)}}
+  @keyframes mondoFilo{0%,58%,100%{border-color:rgba(255,255,255,.72)}70%{border-color:#fff}}
+  #preventivo:hover{background:rgba(255,255,255,.12)}
+  #preventivo:focus-visible{outline:2px solid #fff;outline-offset:3px}
   #preventivo svg{display:none}
+  @media (prefers-reduced-motion:reduce){
+    #preventivo{animation:none}
+    #preventivo::after{animation:none;transform:translateX(150%) skewX(-22deg);opacity:.5}
+  }
   /* Telefono: la stessa taglia e gli stessi margini della freccia di #torna,
-     nell'angolo opposto. «Preventivo →» per esteso non ci sta: a 40 px dal
+     nell'angolo opposto. «Il tuo mondo» per esteso non ci sta: a 40 px dal
      fondo toccherebbe il settore della didascalia («MODELLI INTERATTIVI»
      arriva a x≈284 su 390), e piu' in basso il suggerimento. Resta un'icona
-     da 44×44 (un foglio con le righe), col nome per chi legge lo schermo. */
+     da 44×44 (un piccolo globo), col nome per chi legge lo schermo. */
   @media (max-width:760px){
     #preventivo{top:auto;transform:none;right:clamp(14px,2.5vw,28px);bottom:40px;
       width:44px;height:44px;padding:0;justify-content:center;border-radius:999px}
     #preventivo .pv-t{display:none}
     #preventivo svg{display:block}
+    #preventivo::after{width:40%}
   }
 
   /* SUL TELEFONO SOLO LA FRECCIA (Nike: «su tel il torna alla mappa è
@@ -449,9 +462,8 @@
     </div>
   </div>
 </nav>
-<!-- Il preventivo dei siti (vedi #preventivo nel CSS): prima dello script
-     della lingua, che ne traduce l'etichetta come per la nav. -->
-<a id="preventivo" href="/atelier/parliamone" aria-label="Preventivo gratuito"><span class="pv-t"><span data-t="preventivo">Preventivo gratuito</span> &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></a>
+<!-- «Il tuo mondo», il preventivo dei siti (vedi #preventivo nel CSS). -->
+<a id="preventivo" href="/atelier/parliamone" aria-label="Il tuo mondo — preventivo"><span class="pv-t">Il tuo mondo &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></a>
 <script>
 (function(){
   var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
