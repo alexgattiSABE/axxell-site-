@@ -531,7 +531,8 @@ function mountAltitude(ctx, cfg){
   };
   // Il puntatore fantasma (solo nella card, vedi driveVortex): quanto tempo fa
   // si è mosso davvero il mouse, e se la traccia invisibile è abilitata.
-  var lastRealMove = 0, fantasma = false, passiFantasma = 0;
+  // `inScena`: il fantasma sta guidando adesso (serve a sapere quando subentra).
+  var lastRealMove = 0, fantasma = false, passiFantasma = 0, inScena = false;
 
   function correctDeltaX(delta){
     var aspect = canvas.width / canvas.height;
@@ -781,11 +782,15 @@ function mountAltitude(ctx, cfg){
      * mescolare il fumo — «Vapore» non resta mai immobile ad aspettare il mouse.
      * Appena il mouse vero si muove, il fantasma tace. */
     if (fantasma && performance.now() - lastRealMove > 1500){
+      /* Quando subentra, il fantasma parte da un punto nuovo: si dimentica il
+       * cursore vero, se no la prima mossa tirerebbe una scia di velocita'
+       * dall'ultima posizione della mano fino alla Lissajous. */
+      if (!inScena){ inScena = true; pointer.seen = false; }
       var r0 = canvas.getBoundingClientRect(), tt = performance.now() / 1000;
       movePointer(r0.left + r0.width  * (0.5 + 0.30 * Math.sin(tt * 0.61)),
                   r0.top  + r0.height * (0.5 + 0.24 * Math.sin(tt * 0.83 + 1.3)));
       passiFantasma++;
-    }
+    } else inScena = false;
 
     var w = canvas.clientWidth, h = canvas.clientHeight;
     if (w < 1 || h < 1) return;
