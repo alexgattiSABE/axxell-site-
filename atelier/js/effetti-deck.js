@@ -36,24 +36,38 @@
      ne e' allora la prima voce, e vale per tutto il resto. `poster` è il fotogramma congelato dentro al vetro finché
      l'effetto non si sveglia. `scrimForte` (facoltativo) scurisce di piu' la
      sfumatura sotto la copy: serve dove l'effetto accende il centro-sinistra
-     (la galassia di Nebulosa), e la scritta altrimenti non terrebbe il 4.5:1. */
+     (la galassia di Nebulosa), e la scritta altrimenti non terrebbe il 4.5:1.
+     `en` e' la stessa card in inglese (Nike: «traduci tutte le scritte
+     possibili»): `nome`, `tipo` e `lp` con la stessa forma di quelli italiani
+     qui accanto. Non e' una traduzione parola per parola ma una copy scritta
+     per chi legge in inglese, con lo stesso senso e lo stesso passo — il
+     titolo resta di due righe. Chi la mostra (capitoli.html, vedi `inLingua`)
+     sceglie fra le due con `window.atelierLinguaOra`; i campi italiani restano
+     quelli di sempre, cosi' chi li leggeva direttamente non cambia. */
   var EFFETTI = [
     { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[0.36,0.80,1.00],
-      lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' } },
+      lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' },
+      en:{ nome:'Vapour', tipo:'Fluids', lp:{ kicker:'Fluids', h:['The sky bends','wherever you go.'], sub:'A fluid simulation that follows your cursor, in real time.', cta:'Move the mouse' } } },
     { id:'sneaker',  nome:'Gravità',  tipo:'Immagini animate', cluster:1, modulo:'sneaker',  render:'dom',   poster:'assets/effetti/sneaker.webp',  col:[1.00,0.42,0.12],
-      lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' } },
+      lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' },
+      en:{ nome:'Gravity', tipo:'Animated images', lp:{ kicker:'Animated images', h:['Every step,','suspended.'], sub:'Your product floats and turns on its own, like a TV spot.', cta:'Watch' } } },
     { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.95,0.95,0.97], chiaro:true,
-      lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' } },
+      lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' },
+      en:{ nome:'Anatomy', tipo:'Animated images', lp:{ kicker:'Animated images', h:['Inside','every detail.'], sub:'The watch opens up piece by piece, with not a frame out of place.', cta:'Explore' } } },
     { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.62,0.45,1.00],
       dna:[[0.62,0.45,1.00],[0.35,1.00,0.70],[1.00,0.50,0.85]], scrimForte:true,
-      lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' } },
+      lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' },
+      en:{ nome:'Nebula', tipo:'Interactive models', lp:{ kicker:'Interactive models', h:['From a sphere, a galaxy.','From a galaxy, an idea.'], sub:'Twenty thousand points that change shape and answer your every move.', cta:'Come closer' } } },
     { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.35,1.00,0.45], scramble:true,
-      lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' } },
+      lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' },
+      en:{ nome:'Contact', tipo:'Interactive models', lp:{ kicker:'Interactive models', h:['Forty thousand blades of grass.','Only one was chosen.'], sub:'A 3D scene that responds to whoever is watching.', cta:'Discover' } } },
     { id:'warp',     nome:'Genesi',   tipo:'Testo', cluster:3, modulo:'warp', render:'dom', poster:'assets/effetti/warp.webp', col:[0.72,0.45,1.00],
       dna:[[0.72,0.45,1.00],[0.95,0.40,0.85],[0.40,0.55,1.00]],
-      lp:{ kicker:'Testo', h:["Tutto comincia","da un'elica."], sub:'Particelle che si ricompongono in forme sempre nuove.', cta:'Osserva' } },
+      lp:{ kicker:'Testo', h:["Tutto comincia","da un'elica."], sub:'Particelle che si ricompongono in forme sempre nuove.', cta:'Osserva' },
+      en:{ nome:'Genesis', tipo:'Text', lp:{ kicker:'Text', h:['It all begins','with a helix.'], sub:'Particles that keep reassembling into brand-new shapes.', cta:'Look closer' } } },
     { id:'lithos',   nome:'Rivela',   tipo:'Prima / dopo', cluster:4, modulo:'lithos', render:'canvas2d', poster:'assets/effetti/lithos.webp', col:[1.00,0.62,0.25],
-      lp:{ kicker:'Prima / dopo', h:['La luce racconta','il prima e il dopo.'], sub:"Passa sopra l'immagine e scopri com'era.", cta:'Illumina' } }
+      lp:{ kicker:'Prima / dopo', h:['La luce racconta','il prima e il dopo.'], sub:"Passa sopra l'immagine e scopri com'era.", cta:'Illumina' },
+      en:{ nome:'Reveal', tipo:'Before / after', lp:{ kicker:'Before / after', h:['Light tells','the before and after.'], sub:'Move over the image and see how it used to be.', cta:'Light it up' } } }
   ];
 
   /* ── I 5 CLUSTER ───────────────────────────────────────────────────────────
@@ -72,7 +86,10 @@
      `w.sett` — nei trattini in basso, nell'elenco rifratto e nella
      focus-caption. Qui il "settore" è il TIPO dell'effetto: si espone come
      alias, senza toccare il record letterale qui sopra. */
-  for (var i = 0; i < EFFETTI.length; i++) EFFETTI[i].sett = EFFETTI[i].tipo;
+  for (var i = 0; i < EFFETTI.length; i++){
+    EFFETTI[i].sett = EFFETTI[i].tipo;
+    if (EFFETTI[i].en) EFFETTI[i].en.sett = EFFETTI[i].en.tipo;   // lo stesso alias per l'inglese
+  }
 
   /* ── IL PERCORSO SULL'ELICA ────────────────────────────────────────────────
      Rimpiazza la vecchia `deckPlace` (che disponeva le lastre su un ANELLO

@@ -5,9 +5,11 @@ const sharp = require(NM + 'sharp');
 const fs = require('fs');
 const OUT = '/tmp/capitoli-verify'; fs.mkdirSync(OUT, { recursive: true });
 const EXE = '/Users/nico/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
-const URL = 'http://127.0.0.1:8812/atelier/capitoli.html';   // 8803 su 127.0.0.1 serve il sito del robot
 const argv = process.argv.slice(2);
 const check = argv[0], mobile = argv.includes('--mobile'), reduce = argv.includes('--reduce');
+// --en: la pagina in inglese (?lang=en). `lingua` la apre in inglese da se'.
+const EN = argv.includes('--en') || check === 'lingua';
+const URL = 'http://127.0.0.1:8812/atelier/capitoli.html' + (EN ? '?lang=en' : '');   // 8803 su 127.0.0.1 serve il sito del robot
 const arg = argv.filter(a => !a.startsWith('--'))[1];
 const VP = mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 };
 
@@ -318,7 +320,9 @@ async function helixPixels(p, file){
           return { op: getComputedStyle(lp).opacity, text: h.textContent, b: { l: b.left, t: b.top, r: b.right, bt: b.bottom },
                    card: { minx, maxx, miny, maxy }, kids: kids.map(k => ({ l: k.left, t: k.top, r: k.right, b: k.bottom })) };
         }, i);
-        const want = await p.evaluate(i => window.EFFETTI[i].lp.h.join(''), i);
+        // il titolo atteso e' quello della lingua della pagina (--en: la meta' `en` del record)
+        const want = await p.evaluate(i => { const e = window.EFFETTI[i];
+          return (document.documentElement.lang === 'en' && e.en ? e.en.lp : e.lp).h.join(''); }, i);
         if (parseFloat(r.op) < 0.9) fail(`card ${i}: copy not visible (opacity ${r.op})`);
         if (r.text.replace(/\s/g, '') !== want.replace(/\s/g, '')) fail(`card ${i}: headline "${r.text}" != "${want}"`);
         const pad = (r.card.maxx - r.card.minx) * 0.05;
@@ -336,6 +340,60 @@ async function helixPixels(p, file){
         }
         await p.screenshot({ path: OUT + `/copy-${i}${mobile ? '-m' : ''}${reduce ? '-r' : ''}.png` });
       }
+    } else if (check === 'lingua'){
+      // Nike: «la traduzione in inglese non traduce tutto». Aperta con ?lang=en
+      // la pagina e' inglese ovunque; un clic su IT la riporta in italiano dal
+      // vivo, un clic su EN di nuovo in inglese — senza ricaricare.
+      const leggi = async () => {
+        await settle(p, 4); await p.waitForTimeout(1600);       // Contatto: lo scramble dura ~1.3s
+        return p.evaluate(() => {
+          const e = window.EFFETTI[4], T = window.atelierTesti;
+          const mob = matchMedia('(max-width:760px)').matches || matchMedia('(pointer:coarse)').matches;
+          return { lang: document.documentElement.lang, title: document.title,
+                   fname: document.getElementById('fName').textContent, fsub: document.getElementById('fSub').textContent,
+                   hint: document.getElementById('hint').textContent,
+                   h: document.querySelector('#lp .lp-h').textContent.replace(/\s/g, ''),
+                   torna: document.getElementById('torna').getAttribute('href'),
+                   mondo: document.getElementById('preventivo').getAttribute('href'),
+                   dot: window.EFFETTI[4].dot.getAttribute('aria-label'),
+                   it: { nome: e.nome, sett: e.sett, h: e.lp.h.join('').replace(/\s/g, ''), hint: mob ? T.it.hintM : T.it.hint, title: T.it.titolo },
+                   en: { nome: e.en.nome, sett: e.en.sett, h: e.en.lp.h.join('').replace(/\s/g, ''), hint: mob ? T.en.hintM : T.en.hint, title: T.en.titolo } };
+        });
+      };
+      const inglese = (s, quando) => {
+        if (s.lang !== 'en') fail(`${quando}: html lang is ${s.lang}`);
+        if (s.fname === s.it.nome || s.fname !== s.en.nome) fail(`${quando}: caption title "${s.fname}"`);
+        if (s.fsub !== s.en.sett) fail(`${quando}: caption type "${s.fsub}"`);
+        if (s.hint === s.it.hint || s.hint !== s.en.hint) fail(`${quando}: hint "${s.hint}"`);
+        if (s.h === s.it.h || s.h !== s.en.h) fail(`${quando}: headline "${s.h}"`);
+        if (s.title !== s.en.title) fail(`${quando}: title "${s.title}"`);
+        if (!/lang=en/.test(s.torna) || !/lang=en/.test(s.mondo)) fail(`${quando}: fixed links without ?lang=en: ${s.torna} ${s.mondo}`);
+        if (!s.dot.startsWith(s.en.nome)) fail(`${quando}: dot label "${s.dot}"`);
+      };
+      const clicca = async id => {
+        const vis = await p.evaluate(id => !!document.getElementById(id).getClientRects().length, id);
+        if (vis) await p.click('#' + id); else await p.evaluate(id => document.getElementById(id).click(), id);
+      };
+      const a = await leggi(); inglese(a, 'opened with ?lang=en');
+      await p.screenshot({ path: OUT + `/lingua-en${mobile ? '-m' : ''}.png` });
+      await clicca('lang-it');
+      const b2 = await leggi();
+      if (b2.lang !== 'it') fail('after IT: html lang is ' + b2.lang);
+      if (b2.fname !== b2.it.nome) fail('after IT: caption title "' + b2.fname + '"');
+      if (b2.fsub !== b2.it.sett) fail('after IT: caption type "' + b2.fsub + '"');
+      if (b2.hint !== b2.it.hint) fail('after IT: hint "' + b2.hint + '"');
+      if (b2.h !== b2.it.h) fail('after IT: headline "' + b2.h + '"');
+      if (b2.title !== b2.it.title) fail('after IT: title "' + b2.title + '"');
+      if (/lang=en/.test(b2.torna) || /lang=en/.test(b2.mondo)) fail('after IT: fixed links still carry ?lang=en');
+      if (/lang=en/.test(p.url())) fail('after IT: URL still says ?lang=en');
+      await p.screenshot({ path: OUT + `/lingua-it${mobile ? '-m' : ''}.png` });
+      await clicca('lang-en');
+      inglese(await leggi(), 'after EN again');
+      // il suggerimento resta su una riga (su telefono: fra le due icone d'angolo)
+      const hr = await p.evaluate(() => { const h = document.getElementById('hint'); return { h: h.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(h).fontSize) * 1.6, r: h.getBoundingClientRect().right, l: h.getBoundingClientRect().left }; });
+      if (hr.h > hr.lh) fail('EN hint wraps: ' + hr.h + 'px tall');
+      if (hr.l < 0 || hr.r > VP.width) fail('EN hint leaves the screen');
+      await checkOverlap(p, 'lingua en');
     } else if (check === 'alive'){
       const ids = arg !== undefined ? [Number(arg)] : [0, 1, 2, 3, 4, 5, 6];
       for (const i of ids){

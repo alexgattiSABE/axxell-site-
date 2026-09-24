@@ -109,7 +109,9 @@
   #lp .lp-k{font:500 max(11px,.72em)/1.2 'DM Mono',ui-monospace,monospace;font-style:normal;
     letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
   #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
-  #lp .lp-l{display:block}
+  /* `balance`: quando una riga va a capo le due meta' escono pari, invece di
+     lasciare sola l'ultima parola («galaxy.», «idea.» in inglese). */
+  #lp .lp-l{display:block;text-wrap:balance}
   #lp .lp-s{font:400 max(11px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
   #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
     letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
@@ -482,16 +484,45 @@
 })();
 </script>
 <script>
-/* ITALIANO / INGLESE — la versione ridotta di quella dell'atelier (la home).
-   Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non la dice
-   vale quella della pagina da cui si arriva, poi quella del browser. Qui si
-   traduce SOLO il menu: le voci con `data-t`, l'etichetta del ☰, e i link
-   verso il sito (`#nav [data-sito]`) che si portano dietro ?lang=en. */
+/* ITALIANO / INGLESE — tutta la pagina, non piu' solo il menu (Nike: «la
+   traduzione in inglese non traduce tutto. traduci tutte le scritte
+   possibili»). Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non
+   la dice vale quella della pagina da cui si arriva, poi quella del browser.
+   UN SOLO DIZIONARIO, in due metà:
+     · TESTI (qui sotto) — le scritte della PAGINA: menu (`data-t`), titolo e
+       descrizione, atrio, suggerimento, didascalia, elenco, i due link fissi;
+     · il record di ogni effetto in js/effetti-deck.js — nome, tipo e copy
+       della card, con la sua versione inglese in `en`.
+   Questo script gira PRIMA del mazzo: traduce subito quello che c'e' nel DOM
+   e poi avvisa (`atelier:lingua` sul document) chi disegna il resto — la
+   didascalia, i fermi, l'elenco sulla tela e la copy dentro la card —, che
+   legge la lingua corrente da `window.atelierLinguaOra`. Si cambia dal vivo,
+   senza ricaricare, in tutte e due le direzioni. */
 (function(){
   var TESTI = {
-    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu' },
-    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu' }
+    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
+         titolo:'Effetti speciali — Atelier',
+         desc:'Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.',
+         ogTitolo:'La costellazione | Axxell',
+         heroK:'// atelier', heroH:'Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.', entra:'Entra →',
+         hint:"scorri per cambiare mondo · usa l'anteprima", hintM:"scorri per girare · tocca l'anteprima",
+         fermi:'I mondi', indice:'ESPLORA IL MONDO',
+         torna:'Torna alla mappa', mondo:'Il tuo mondo →', mondoAria:'Il tuo mondo — preventivo',
+         noThree:'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.' },
+    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
+         titolo:'Special effects — Atelier',
+         desc:'Eight worlds built, one for every industry. The ninth spot is empty: it’s yours.',
+         ogTitolo:'The constellation | Axxell',
+         heroK:'// atelier', heroH:'Eight worlds built.<br>The ninth is <em>yours</em>.', entra:'Enter →',
+         /* Su telefono il suggerimento deve stare su UNA riga a 390 px, fra
+            le due icone d'angolo: l'inglese resta piu' corto dell'italiano. */
+         hint:'scroll to change world · try the preview', hintM:'swipe to turn · tap the preview',
+         fermi:'The worlds', indice:'EXPLORE THE WORLD',
+         torna:'Back to the map', mondo:'Your world →', mondoAria:'Your world — get a quote',
+         noThree:'three.js did not load. Open the page from a server (http://localhost:8788/atelier/), not by double-clicking it in the Finder.' }
   };
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
   function linguaIniziale(){
     try {
       var p = new URL(location.href).searchParams.get('lang');
@@ -504,10 +535,17 @@
     } catch(e){}
     return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
   }
+  function testo(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; return el; }
+  function meta(sel, v){ var m = document.querySelector(sel); if (m) m.setAttribute('content', v); }
   function atelierLingua(l){
     if (l !== 'it' && l !== 'en') return false;
-    var T = TESTI[l];
+    var T = TESTI[l], en = l === 'en';
+    window.atelierLinguaOra = l;
     document.documentElement.lang = l;
+    document.title = T.titolo;
+    meta('meta[name="description"]', T.desc);
+    meta('meta[property="og:description"]', T.desc);
+    meta('meta[property="og:title"]', T.ogTitolo);
     document.querySelectorAll('#nav [data-t], #preventivo [data-t]').forEach(function(el){
       var v = T[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v;
     });
@@ -515,17 +553,48 @@
     document.querySelectorAll('#nav [data-sito]').forEach(function(a){
       var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
       if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
-      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+      a.setAttribute('href', d + (en ? '?lang=en' : '') + h);
     });
+    /* I due link fissi si portano dietro la lingua anche loro: la mappa
+       dell'atelier e il modulo del preventivo si aprono in inglese. */
+    var torna = document.getElementById('torna');
+    if (torna){
+      torna.setAttribute('aria-label', T.torna);
+      torna.setAttribute('href', '/atelier?da=effetti-speciali' + (en ? '&lang=en' : ''));
+      var tt = torna.querySelector('.t-testo'); if (tt) tt.textContent = T.torna;
+    }
+    var pv = document.getElementById('preventivo');
+    if (pv){
+      pv.setAttribute('aria-label', T.mondoAria);
+      pv.setAttribute('href', '/atelier/parliamone' + (en ? '?lang=en' : ''));
+      var pt = pv.querySelector('.pv-t'); if (pt) pt.textContent = T.mondo;
+    }
+    /* L'atrio, il suggerimento in basso, l'etichetta dei fermi. */
+    var hero = document.getElementById('hero');
+    if (hero){
+      var hk = hero.querySelector('.k'), hh = hero.querySelector('h1');
+      if (hk) hk.textContent = T.heroK;
+      if (hh) hh.innerHTML = T.heroH;
+    }
+    testo('go', T.entra);
+    testo('hint', mobile ? T.hintM : T.hint);
+    var dots = document.getElementById('dots'); if (dots) dots.setAttribute('aria-label', T.fermi);
     ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
     try {
       var u = new URL(location.href);
       if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
       history.replaceState(history.state, '', u);
     } catch(e){}
+    /* Il resto lo disegna il mazzo (didascalia, fermi, elenco, copy). */
+    try { document.dispatchEvent(new CustomEvent('atelier:lingua', { detail: l })); } catch(e){}
     return false;
   }
+  window.atelierTesti = TESTI;
   window.atelierLingua = atelierLingua;
+  /* Il DOM di #hero, #hint, #torna ecc. sta PIU' IN BASSO di questo script:
+     qui si fissano subito lingua, titolo e menu; la seconda passata, sulle
+     scritte che ancora non c'erano, parte subito sotto a #err (vedi li'),
+     prima che il mazzo legga `atelierLinguaOra`. */
   atelierLingua(linguaIniziale());
 })();
 </script>
@@ -573,6 +642,8 @@
 <a id="torna" href="/atelier?da=effetti-speciali" aria-label="Torna alla mappa"><span aria-hidden="true">&larr;</span><span class="t-testo">Torna alla mappa</span></a>
 
 <div id="err"></div>
+<!-- Seconda passata della lingua: ora l'atrio, il suggerimento e i due link fissi esistono. -->
+<script>window.atelierLingua && atelierLingua(window.atelierLinguaOra);</script>
 
 <!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
      cui scorrere, così l'asse centrale (Task 2) ha un progresso di scroll
@@ -599,7 +670,7 @@
 <!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
-<script src="js/effetti-deck.js?v=20260924c"></script>
+<script src="js/effetti-deck.js?v=20260924e"></script>
 <!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
@@ -634,7 +705,7 @@
   var errBox = document.getElementById('err');
   if (typeof THREE === 'undefined'){
     errBox.style.display = 'grid';
-    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.';
+    errBox.textContent = window.atelierTesti[window.atelierLinguaOra || 'it'].noThree;
     return;
   }
 
@@ -693,6 +764,12 @@
      i trattini. Niente `vuoto`/`page`/`video`: le card sono poster di vetro. */
   var WORLDS = window.EFFETTI;
   WORLDS.forEach(function(w, i){ w.idx = i; });
+  /* LE SCRITTE DI UNA CARD NELLA LINGUA DELLA PAGINA: il record stesso in
+     italiano, la sua meta' `en` in inglese (vedi js/effetti-deck.js). Ha gli
+     stessi campi che il mazzo legge — `nome`, `sett`, `lp` —, quindi dove
+     prima si scriveva `w.nome` ora si scrive `inLingua(w).nome`. */
+  function inLingua(w){ return (window.atelierLinguaOra === 'en' && w.en) ? w.en : w; }
+  function testoPagina(k){ var T = window.atelierTesti; return T ? T[window.atelierLinguaOra || 'it'][k] : ''; }
 
   /* ══ IL MAZZO ═════════════════════════════════════════════════════════
      Non piu' un anello. L'anello era onesto — la lastra si volta e il vetro
@@ -1292,7 +1369,7 @@
     idxG.textBaseline = 'middle';
     idxG.font = '500 46px "DM Mono", ui-monospace, monospace';
     idxG.fillStyle = 'rgba(240,240,246,0.92)';
-    idxG.fillText('ESPLORA IL MONDO', 34, 80);
+    idxG.fillText(testoPagina('indice'), 34, 80);
     /* OGNI RIGA NEL COLORE DELLA SUA CARD, sempre (2026-09-24) — non solo
        quella accesa. Le tavolozze (Nebulosa, Genesi) in sfumatura
        orizzontale lungo la parola. Per distinguere: la card davanti a colore
@@ -1306,7 +1383,7 @@
     WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
       var davanti = !!(hot && hot.idx === i), sopra = (i === idxSopra);
-      var nome = w.nome.toUpperCase();
+      var nome = inLingua(w).nome.toUpperCase();
       idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
       if (davanti || sopra){
         idxG.globalAlpha = davanti ? 1 : 0.5;
@@ -1616,16 +1693,15 @@
   WORLDS.forEach(function(w, i){
     var b = document.createElement('button');
     b.type = 'button';
-    b.setAttribute('aria-label', w.nome + ' — ' + w.sett);
+    b.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
     b.style.setProperty('--now', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
     b.addEventListener('click', function(ev){ ev.stopPropagation(); portaDavanti(i); });
     dotsEl.appendChild(b);
     w.dot = b;
   });
 
-  if (mobile){
-    document.getElementById('hint').textContent = "scorri per girare · tocca l'anteprima";
-  }
+  /* Il suggerimento (e la sua variante da telefono) lo scrive la lingua:
+     vedi `hint`/`hintM` in TESTI, in testa alla pagina. */
 
   /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
      blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
@@ -1636,9 +1712,9 @@
   document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
   function aggiornaFocus(w){
     if (!w) return;
-    fNameEl.textContent = w.nome;
+    fNameEl.textContent = inLingua(w).nome;
     fNameEl.classList.toggle('-void', !!w.vuoto);
-    fSubEl.textContent = w.sett;
+    fSubEl.textContent = inLingua(w).sett;
     fNumEl.textContent = String(w.idx+1).padStart(2,'0');
     focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
     // L'accento della card anche per i link fissi della pagina (#torna, #preventivo)
@@ -1654,9 +1730,10 @@
   var lpDi = null, lpTw = null;
   function lpRiempi(w){
     lpDi = w;
-    lpK.textContent = w.lp.kicker;
-    lpL[0].textContent = w.lp.h[0]; lpL[1].textContent = w.lp.h[1] || '';
-    lpS.textContent = w.lp.sub; lpB.textContent = w.lp.cta;
+    var lp = inLingua(w).lp;
+    lpK.textContent = lp.kicker;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
+    lpS.textContent = lp.sub; lpB.textContent = lp.cta;
     lpEl.classList.toggle('-chiaro', !!w.chiaro);
     lpEl.classList.toggle('-forte', !!w.scrimForte);
     if (w.chiaro) lpEl.style.removeProperty('--lpc');
@@ -1676,12 +1753,28 @@
        bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
     var hEl = lpEl.querySelector('.lp-h');
     if (lpTw){ lpTw.kill(); lpTw = null; hEl.style.minHeight = ''; }
-    lpL[0].textContent = lpDi.lp.h[0]; lpL[1].textContent = lpDi.lp.h[1] || '';
+    var lp = inLingua(lpDi).lp;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
     hEl.style.minHeight = hEl.offsetHeight + 'px';
     lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
       scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
   }
   var lpFermo = false;
+
+  /* CAMBIO DI LINGUA DAL VIVO (IT/EN nella barra): il DOM fisso lo traduce
+     `atelierLingua`; qui si ridisegna quello che nasce dai record — i nomi
+     dei fermi, la didascalia (senza rifare lo scambio: la card e' la
+     stessa), l'elenco sulla tela e la copy della card davanti. Se la copy e'
+     gia' in vista e la card decifra («Contatto»), lo scramble riparte sul
+     testo nuovo. */
+  document.addEventListener('atelier:lingua', function(){
+    WORLDS.forEach(function(w){
+      if (w.dot) w.dot.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
+    });
+    if (hot){ fNameEl.textContent = inLingua(hot).nome; fSubEl.textContent = inLingua(hot).sett; }
+    idxDisegna();
+    if (lpDi){ lpRiempi(lpDi); if (lpFermo) lpDecifra(); }
+  });
   function lpFrame(){
     var w = hot;
     var ok = DECK_ON && deckCtl && stage === 'mappa' && w && w.mesh && w.lp;
