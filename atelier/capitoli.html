@@ -151,7 +151,6 @@
     padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
     background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
     transition:opacity .4s ease}
-  #nav.-hide{opacity:0;pointer-events:none}
   .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
   .nv-links{display:flex;list-style:none;gap:.3rem}
   .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
@@ -1093,7 +1092,7 @@
   /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
      parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
      si vede la rifrazione — cliccandoci si deve entrare nella lastra.
-     Torna l'indice della CARD (0..6), non piu' quello del cluster. */
+     Torna l'indice della CARD (0..6). */
   function pickRiga(){
     if (idxMat.opacity < 0.25) return -1;
     ray.setFromCamera(ptr, camera);
@@ -1442,7 +1441,6 @@
      c'e' sempre e solo un mondo davanti, ed e' quello. Il puntatore resta per
      una cosa sola: sapere su quale lastra si e' cliccato. */
   var hot = null;                 // il mondo davanti
-  var hotSince = 0;               // da quando: il precaricamento aspetta che ci si fermi
   var overCard = null;            // la lastra sotto al puntatore, se c'e'
   function pick(){
     ray.setFromCamera(ptr, camera);
@@ -1904,7 +1902,7 @@
     if (DECK_ON && stage === 'mappa'){
       var nw = WORLDS[frontIdx()];
       if (nw !== hot){
-        hot = nw; hotSince = now;
+        hot = nw;
         WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
         aggiornaFocus(hot);
         idxDisegna();
