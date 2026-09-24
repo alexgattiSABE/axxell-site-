@@ -85,6 +85,44 @@
   #stage-live.-viva{opacity:1;pointer-events:auto;touch-action:none}
   #stage-live canvas{display:block;width:100%;height:100%}
 
+  /* LA PAGINA DENTRO LA CARD (2026-09-24, richiesta di Nike: «a tutte aggiungi
+     scritte come se fossero landing page»). Livello suo, FUORI da #stage-live:
+     quello nasconde i figli che non sono l'effetto sveglio ed e' `hidden`
+     quando nessuno e' sveglio — qui la copy deve esserci anche sul poster e
+     con moto ridotto. Non prende il puntatore: sotto c'e' l'anteprima da usare. */
+  #lp{position:fixed;left:0;top:0;width:0;height:0;z-index:4;pointer-events:none;
+    display:flex;flex-direction:column;justify-content:center;gap:.9em;
+    box-sizing:border-box;padding:0 6% 0 6%;opacity:0;transition:opacity .35s ease;
+    border-radius:var(--raggio,18px);overflow:hidden;
+    font-size:var(--lpfs,16px);color:#f0f0f6;
+    background:linear-gradient(90deg,rgba(4,5,10,.72) 0%,rgba(4,5,10,.46) 34%,rgba(4,5,10,0) 52%)}
+  #lp.-on{opacity:1}
+  #lp > *{max-width:40%;margin:0}
+  /* Il titolo va a capo DENTRO la colonna (40% della card): due righe
+     logiche, ognuna libera di spezzarsi. Niente nowrap — a 1440 la riga piu'
+     lunga uscirebbe dalla sfumatura fino al centro dell'effetto. */
+  #lp .lp-k{font:500 max(11px,.72em)/1.2 'DM Mono',ui-monospace,monospace;font-style:normal;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
+  #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
+  #lp .lp-l{display:block}
+  #lp .lp-s{font:400 max(12px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
+  #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
+    letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
+    border:1px solid var(--lpc);color:#f0f0f6}
+  #lp.-chiaro{color:#10131a;
+    background:linear-gradient(90deg,rgba(255,255,255,.0) 0%,rgba(255,255,255,0) 100%)}
+  #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)}
+  /* Su bianco il colore della card (azzurro chiaro) non si legge (~1.6:1):
+     kicker e bottone passano a un blu profondo della stessa famiglia. */
+  #lp.-chiaro{--lpc:#1d4a6b} #lp.-chiaro .lp-b{color:#10131a}
+  /* Card stretta (telefono): una fascia in basso, solo titolo e bottone. */
+  #lp.-stretta{justify-content:flex-end;padding:0 6% 6% 6%;gap:.7em;
+    background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
+  #lp.-stretta > *{max-width:100%}
+  #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
+  #lp.-stretta .lp-h{font-size:1.25em}
+  #lp.-stretta .lp-l{white-space:normal}
+
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
      (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
      documento, `document.documentElement.scrollHeight` non supera mai
@@ -287,6 +325,12 @@
      a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
      `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
 <div id="stage-live" hidden></div>
+<div id="lp" aria-live="polite">
+  <i class="lp-k"></i>
+  <h2 class="lp-h"><span class="lp-l"></span><span class="lp-l"></span></h2>
+  <p class="lp-s"></p>
+  <span class="lp-b" role="presentation"></span>
+</div>
 
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
@@ -317,12 +361,14 @@
      pinnare), lenis (lo scroll fluido su desktop — WC.lenis, letto da
      dna.js per il progresso globale), e glsl.js (gli aiutanti G.* che dna.js
      usa: colori, smorzamento, atmosfera, puntatore). CustomEase/SplitText/
-     Flip/ScrambleTextPlugin restano fuori: core.js li registra solo se
-     `typeof` li trova, e qui non serve nessuno dei quattro. -->
+     Flip restano fuori: core.js li registra solo se `typeof` li trova, e qui
+     non serve nessuno dei tre. ScrambleTextPlugin invece c'e' (2026-09-24):
+     decifra il titolo della copy di «Contatto» (vedi `lpDecifra`). -->
 <script src="vendor/gsap.min.js?v=20260824a"></script>
 <script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
 <script src="vendor/lenis.min.js?v=20260824a"></script>
 <script src="vendor/three.min.js?v=20260824a"></script>
+<script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
 <script src="js/core.js?v=20260824a"></script>
 <script src="js/glsl.js?v=20260824a"></script>
 <script src="js/dna.js?v=20260824a"></script>
@@ -1292,6 +1338,59 @@
     fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
   }
 
+  /* LA COPY DELLA CARD DAVANTI — vedi #lp nel CSS. */
+  var lpEl = document.getElementById('lp');
+  var lpK = lpEl.querySelector('.lp-k'), lpL = lpEl.querySelectorAll('.lp-l'),
+      lpS = lpEl.querySelector('.lp-s'), lpB = lpEl.querySelector('.lp-b');
+  var lpDi = null, lpTw = null;
+  function lpRiempi(w){
+    lpDi = w;
+    lpK.textContent = w.lp.kicker;
+    lpL[0].textContent = w.lp.h[0]; lpL[1].textContent = w.lp.h[1] || '';
+    lpS.textContent = w.lp.sub; lpB.textContent = w.lp.cta;
+    lpEl.classList.toggle('-chiaro', !!w.chiaro);
+    if (w.chiaro) lpEl.style.removeProperty('--lpc');
+    else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
+    if (lpTw){ lpTw.kill(); lpTw = null; }
+  }
+  /* «Contatto»: il titolo si decifra a ogni arrivo, riga per riga — due righe
+     fisse, cosi' i caratteri a caso non rimandano a capo il testo. Stessi
+     parametri di js/headings.js. */
+  function lpDecifra(){
+    if (!lpDi || !lpDi.scramble || !WC.motionOk || !window.ScrambleTextPlugin) return;
+    /* Un tween lasciato a meta' (la card e' scivolata via e tornata) avrebbe
+       lasciato lettere a caso: '{original}' le prenderebbe per buone. Si
+       ferma e si rimette il testo vero PRIMA di ripartire; l'altezza resta
+       bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
+    if (lpTw){ lpTw.kill(); lpTw = null; }
+    lpL[0].textContent = lpDi.lp.h[0]; lpL[1].textContent = lpDi.lp.h[1] || '';
+    var hEl = lpEl.querySelector('.lp-h');
+    hEl.style.minHeight = hEl.offsetHeight + 'px';
+    lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
+      scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
+  }
+  var lpFermo = false;
+  function lpFrame(){
+    var w = hot;
+    var ok = DECK_ON && deckCtl && stage === 'mappa' && w && w.mesh && w.lp;
+    var frac = Math.abs(spin - Math.round(spin));
+    var fermo = ok && frac < 0.15 && !dragging;
+    if (ok && lpDi !== w) lpRiempi(w);
+    if (fermo){
+      var r = deckCtl ? deckCtl.rect(w.mesh) : null;
+      if (r){
+        lpEl.style.left = r.x + 'px'; lpEl.style.top = r.y + 'px';
+        lpEl.style.width = r.w + 'px'; lpEl.style.height = r.h + 'px';
+        lpEl.style.setProperty('--raggio', Math.round(r.w * 0.035) + 'px');
+        lpEl.style.setProperty('--lpfs', Math.max(12, Math.min(22, r.w / 44)).toFixed(1) + 'px');
+        lpEl.classList.toggle('-stretta', r.w < 420);
+      }
+    }
+    lpEl.classList.toggle('-on', !!fermo);
+    if (fermo && !lpFermo) lpDecifra();
+    lpFermo = !!fermo;
+  }
+
   /* ======================================================================
      5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
      ====================================================================== */
@@ -1814,6 +1913,7 @@
         bucoElica(true);
       }
     }
+    lpFrame();
 
     /* --- UN SOLO PASSAGGIO (Task 1) ---
        Qui c'erano tre passate: (A) il RIFLESSO, camera specchiata rispetto

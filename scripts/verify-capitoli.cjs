@@ -188,6 +188,36 @@ async function helixPixels(p, file){
       await p.mouse.click((side[0][0] + side[2][0]) / 2, (side[0][1] + side[2][1]) / 2);
       await p.waitForTimeout(1600);
       if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
+    } else if (check === 'copy'){
+      for (const i of [0, 2, 4]){
+        await settle(p, i); await p.waitForTimeout(1600);   // lo scramble dura ~1.3s
+        const r = await p.evaluate(i => {
+          const lp = document.getElementById('lp'), q = window.__capitoli.cards()[i].quad;
+          const b = lp.getBoundingClientRect(), h = lp.querySelector('.lp-h');
+          const minx = Math.min(...q.map(v => v[0])), maxx = Math.max(...q.map(v => v[0]));
+          const miny = Math.min(...q.map(v => v[1])), maxy = Math.max(...q.map(v => v[1]));
+          const kids = [...lp.querySelectorAll('.lp-k,.lp-l,.lp-s,.lp-b')].filter(e => e.offsetParent && getComputedStyle(e).display !== 'none').map(e => e.getBoundingClientRect());
+          return { op: getComputedStyle(lp).opacity, text: h.textContent, b: { l: b.left, t: b.top, r: b.right, bt: b.bottom },
+                   card: { minx, maxx, miny, maxy }, kids: kids.map(k => ({ l: k.left, t: k.top, r: k.right, b: k.bottom })) };
+        }, i);
+        const want = await p.evaluate(i => window.EFFETTI[i].lp.h.join(''), i);
+        if (parseFloat(r.op) < 0.9) fail(`card ${i}: copy not visible (opacity ${r.op})`);
+        if (r.text.replace(/\s/g, '') !== want.replace(/\s/g, '')) fail(`card ${i}: headline "${r.text}" != "${want}"`);
+        const pad = (r.card.maxx - r.card.minx) * 0.05;
+        // la copy resta nella meta' sinistra (o nella fascia bassa su telefono): il centro e' dell'effetto
+        const narrow = (r.card.maxx - r.card.minx) < 420;
+        if (!narrow) for (const k of r.kids) if (k.r > r.card.minx + (r.card.maxx - r.card.minx) * 0.52) fail(`card ${i}: copy reaches the centre`);
+        if (narrow) for (const k of r.kids) if (k.t < r.card.miny + (r.card.maxy - r.card.miny) * 0.45) fail(`card ${i}: mobile copy above the bottom band`);
+        for (const k of r.kids){
+          if (k.l < r.card.minx + pad || k.r > r.card.maxx - pad || k.t < r.card.miny + pad || k.b > r.card.maxy - pad)
+            fail(`card ${i}: copy touches the card edge`);
+        }
+        for (let a = 0; a < r.kids.length; a++) for (let c = a + 1; c < r.kids.length; c++){
+          const A = r.kids[a], B = r.kids[c];
+          if (A.l < B.r && B.l < A.r && A.t < B.b && B.t < A.b) fail(`card ${i}: copy lines overlap`);
+        }
+        await p.screenshot({ path: OUT + `/copy-${i}${mobile ? '-m' : ''}${reduce ? '-r' : ''}.png` });
+      }
     } else {
       console.log('SKIP ' + check + ' (not implemented yet)');
     }
