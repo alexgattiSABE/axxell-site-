@@ -407,7 +407,14 @@ WC.register('dna', function(ctx){
     uWrapT:         { value: 0.0 },
     uWorldColor:    { value: 0.0 },
     uColorLo:       { value: -4.0 },
-    uColorHi:       { value: 4.6 }
+    uColorHi:       { value: 4.6 },
+    /* TINTA A RUNTIME (WC.helix.setTint, sotto) — inerte a 0 come le tre
+     * qui sopra. `uTintMix` 0 = la scala di CONFIG intatta: lo shader salta
+     * del tutto il ramo, quindi le altre pagine (home, legacy) non cambiano
+     * di un bit. `uTintPal` sono TINT_SLOTS caselle di colore: ogni punto ne
+     * pesca una sola, per sempre (vedi il vertex shader). */
+    uTintMix:       { value: 0.0 },
+    uTintPal:       { value: (function(){ var a = []; for (var i = 0; i < 30; i++) a.push(new THREE.Vector3(1, 1, 1)); return a; })() }
   };
 
   if (standalone) {
@@ -432,6 +439,7 @@ WC.register('dna', function(ctx){
       'uniform vec3 uColLow; uniform vec3 uColAqua; uniform vec3 uColHigh; uniform vec3 uColRed;',
       'uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;',
       'uniform float uWrapT; uniform float uWorldColor; uniform float uColorLo; uniform float uColorHi;',
+      'uniform float uTintMix; uniform vec3 uTintPal[30];',
       'varying float vFade; varying vec3 vColor; varying float vDepth;',
       G.SNOISE,
       'void main(){',
@@ -551,6 +559,23 @@ WC.register('dna', function(ctx){
       '  vec3 col = mix(uColLow,  uColAqua, smoothstep(0.02, 0.24, g));',
       '  col      = mix(col,      uColHigh, smoothstep(0.40, 0.62, g));',
       '  col      = mix(col,      uColRed,  smoothstep(0.76, 0.97, g));',
+      /* ⚠️ L'UNICA MODIFICA ALLO SHADER PER LA TINTA, ed è il minimo: la
+       * regola resta "le tinte di scena passano dal CONFIG", ma una tavolozza
+       * MISTA (ogni punto un colore diverso) non si può scrivere con quattro
+       * fermate uniformi — serve che il punto SCELGA. Sceglie con un quarto
+       * `random` sulla sua `position`, che non cambia mai: stessa casella a
+       * ogni fotogramma, niente attributo nuovo da riempire.
+       *
+       * La tinta SOSTITUISCE la tinta, non la moltiplica: dalla scala di
+       * CONFIG si tiene solo la LUCE (il canale più alto, cioè quanto è
+       * accesa quella quota) e il colore lo mette la casella. Moltiplicando,
+       * un bianco sul ciano di base resterebbe ciano. Con uTintMix a 0 il
+       * ramo non si esegue: il colore è quello di sempre, esatto. */
+      '  if (uTintMix > 0.0) {',
+      '    float shade = max(col.r, max(col.g, col.b));',
+      '    int slot = int(min(floor(random(position + vec3(3.0)) * 30.0), 29.0));',
+      '    col = mix(col, uTintPal[slot] * shade, uTintMix);',
+      '  }',
       '  vColor = col;',
       /* LA PROFONDITÀ, che prima non c'era proprio: `vFade` valeva 1.0 per ogni
        * punto, la fusione è additiva, e la dimensione dipendeva da z solo per
@@ -773,11 +798,76 @@ WC.register('dna', function(ctx){
    * legata a `standalone`: il manifesto (`!standalone`) non la vede mai. */
   var throttled = false, throttleFlip = false;
 
+  /* TINTA A RUNTIME — `WC.helix.setTint(spec, opts)`, SOLO standalone.
+   * capitoli.html la chiama quando cambia la carta davanti: l'elica prende
+   * il colore della carta. `spec` è un colore [r,g,b] (0..1), una tavolozza
+   * [[r,g,b], …] da 2 a 5 colori, oppure null per tornare alla scala ciano
+   * di CONFIG.
+   *
+   * TRENTA CASELLE, non cinque. Ogni punto pesca una casella fissa su 30, e
+   * la tavolozza di N colori si stende sulle caselle in giro (casella i =
+   * colore i % N). 30 è divisibile per 1, 2, 3 e 5, quindi la mescolanza è
+   * alla pari; con 4 colori è 8/8/7/7, a occhio uguale. Il vantaggio vero è
+   * la DISSOLVENZA: si passa da uno stato all'altro sfumando ogni casella dal
+   * colore che ha ORA a quello nuovo, quindi colore→tavolozza,
+   * tavolozza→colore e una chiamata a metà dissolvenza sono tutti continui,
+   * senza scatti — si riparte sempre da quello che si vede.
+   *
+   * La dissolvenza (TINT_FADE, 0.8 s) va a orologio vero, non a fotogrammi:
+   * con la strozzatura a 30fps dura uguale. In reduced-motion il cambio è
+   * immediato, e si ridisegna un fotogramma perché lì non c'è un loop. */
+  var TINT_SLOTS = 30, TINT_FADE = 0.8;
+  var tint = null;   // { from:[…], to:[…], mixFrom, mixTo, t0 } finché dissolve
+  function tintSlots(spec){
+    var pal = (spec && typeof spec[0] === 'number') ? [spec] : spec;
+    var out = [];
+    for (var i = 0; i < TINT_SLOTS; i++) {
+      var c = pal[i % pal.length];
+      out.push([+c[0] || 0, +c[1] || 0, +c[2] || 0]);
+    }
+    return out;
+  }
+  function tintApply(k){
+    var e = k * k * (3 - 2 * k);   // smoothstep: parte e arriva morbida
+    var pal = uniforms.uTintPal.value;
+    for (var i = 0; i < TINT_SLOTS; i++) {
+      var a = tint.from[i], b = tint.to[i];
+      pal[i].set(a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e);
+    }
+    uniforms.uTintMix.value = tint.mixFrom + (tint.mixTo - tint.mixFrom) * e;
+  }
+  function tintStep(now){
+    if (!tint) return;
+    var k = Math.min(1, (now - tint.t0) / (tint.dur * 1000));
+    tintApply(k);
+    if (k >= 1) tint = null;
+  }
+  function setTint(spec, opts){
+    opts = opts || {};
+    var valid = spec && spec.length && (typeof spec[0] === 'number' ? spec.length >= 3 : spec[0] && spec[0].length >= 3);
+    var pal = uniforms.uTintPal.value;
+    var cur = [];
+    for (var i = 0; i < TINT_SLOTS; i++) cur.push([pal[i].x, pal[i].y, pal[i].z]);
+    var mixNow = uniforms.uTintMix.value;
+    // Da nessuna tinta: le caselle non si vedono (mix 0), quindi si
+    // posano subito sul colore nuovo e sfuma solo il mix — niente passaggio
+    // da un colore vecchio che non c'era.
+    var to = valid ? tintSlots(spec) : cur;
+    var from = (valid && mixNow <= 0) ? to : cur;
+    var dur = opts.duration != null ? Math.max(0, +opts.duration) : TINT_FADE;
+    if (!ctx.motionOk || opts.instant) dur = 0;
+    tint = { from: from, to: to, mixFrom: mixNow, mixTo: valid ? 1 : 0,
+             t0: performance.now(), dur: dur };
+    if (dur === 0) { tintApply(1); tint = null; }
+    if (reducedStandalone) renderOnce();
+  }
+
   function frame(){
     raf = requestAnimationFrame(frame);
     if (standalone && throttled){ throttleFlip = !throttleFlip; if (throttleFlip) return; }
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    tintStep(now);
 
     if (standalone) {
       var rawScroll = globalScrollProgress();
@@ -1003,7 +1093,7 @@ WC.register('dna', function(ctx){
    * capitoli.html; il manifesto non la espone). Il controller degli effetti la
    * usa per assottigliare la cadenza mentre un disco è a fuoco. */
   if (standalone) {
-    WC.helix = { throttle: function(on){ throttled = !!on; } };
+    WC.helix = { throttle: function(on){ throttled = !!on; }, setTint: setTint };
     cleanups.push(function(){ if (WC.helix && WC.helix.throttle) { WC.helix.throttle(false); WC.helix = null; } });
   }
 
