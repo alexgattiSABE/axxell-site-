@@ -1607,6 +1607,42 @@
     ptr.set(tmx, -tmy);
   }, {passive:true});
 
+  /* INCLINANDO IL TELEFONO LA SCENA OSCILLA (richiesta utente).
+     Sul telefono non c'e' un puntatore che vaga: la parallasse della camera
+     la da' il giroscopio. L'inclinazione si legge RISPETTO a come si teneva
+     il telefono al primo dato (nessuno lo tiene piatto), e satura a ~25°:
+     basta un polso, non serve girarsi. Su iPhone il permesso si chiede al
+     primo tocco (Safari lo vuole dentro un gesto) e il browser lo concede
+     solo su https: in locale via rete non parte, online si'. */
+  (function(){
+    if (!window.DeviceOrientationEvent || !window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+    var base = null, attivo = false;
+    function clamp1(v){ return v < -1 ? -1 : v > 1 ? 1 : v; }
+    function orient(e){
+      if (e.gamma == null || e.beta == null) return;
+      var land = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0) === 90;
+      var x = land ? e.beta : e.gamma, y = land ? -e.gamma : e.beta;
+      if (!base) base = { x:x, y:y };
+      /* la base segue piano la posa: se ci si sdraia, dopo qualche secondo
+         il "dritto" nuovo e' quello */
+      base.x += (x - base.x)*0.004; base.y += (y - base.y)*0.004;
+      if (dragging) return;
+      tmx = clamp1((x - base.x)/25);
+      tmy = clamp1((y - base.y)/25);
+    }
+    function avvia(){
+      if (attivo) return; attivo = true;
+      window.addEventListener('deviceorientation', orient, {passive:true});
+    }
+    if (typeof DeviceOrientationEvent.requestPermission === 'function'){
+      var chiedi = function(){
+        window.removeEventListener('touchend', chiedi);
+        DeviceOrientationEvent.requestPermission().then(function(r){ if (r === 'granted') avvia(); }).catch(function(){});
+      };
+      window.addEventListener('touchend', chiedi);
+    } else avvia();
+  })();
+
   ['pointerdown','keydown','touchstart'].forEach(function(ev){
     window.addEventListener(ev, function(){ video.play().catch(function(){}); }, {once:true});
   });
