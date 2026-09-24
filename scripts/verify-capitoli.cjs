@@ -93,7 +93,16 @@ async function helixPixels(p, file){
   try {
     if (check === 'helix'){
       await settle(p, 0);
+      // Per il conto a riposo si guarda SOLO l'elica: l'effetto vivo sulla
+      // card davanti (il fumo ciano di Vapore, mosso dal puntatore fantasma)
+      // e la copy (kicker nel colore della card) passano il filtro del ciano
+      // e verrebbero contati come punti del DNA dentro la card.
+      const solo = on => p.evaluate(on => {
+        document.querySelectorAll('canvas:not(#helixCanvas), #stage-live, #lp').forEach(e => { e.style.visibility = on ? 'hidden' : ''; });
+      }, on);
+      await solo(true);
       const r0 = await helixPixels(p, 'helix-rest.png'), rest = r0.out;
+      await solo(false);
       // la card davanti copre davvero l'elica (il buco taglia): quasi zero punti dentro
       if (r0.inFront > 25) fail('helix drawn over the front card: ' + r0.inFront + ' px');
       // raffica di rotellina: tre card, catture durante il moto
@@ -153,6 +162,32 @@ async function helixPixels(p, file){
       }
       await p.screenshot({ path: OUT + '/index.png' });
       await checkOverlap(p, 'index');
+    } else if (check === 'interact'){
+      await settle(p, 6);                               // Rivela: reagisce al puntatore
+      await p.waitForTimeout(900);
+      if (!(await p.evaluate(() => window.__capitoli.awake()))) fail('no effect awake on card 6');
+      const url0 = p.url(), s0 = await p.evaluate(() => window.__capitoli.spin());
+      const q = (await p.evaluate(() => window.__capitoli.cards()))[6].quad;
+      const cx = (q[0][0] + q[2][0]) / 2, cy = (q[0][1] + q[2][1]) / 2;
+      await p.mouse.click(cx, cy);
+      await p.mouse.move(cx - 120, cy); await p.mouse.down();
+      await p.mouse.move(cx + 160, cy + 40, { steps: 12 }); await p.mouse.up();
+      await p.waitForTimeout(700);
+      const s1 = await p.evaluate(() => window.__capitoli.spin());
+      if (p.url() !== url0) fail('navigated to ' + p.url());
+      if (Math.abs(s1 - s0) > 0.01) fail(`drag on preview spun the deck ${s0} -> ${s1}`);
+      if (!(await p.evaluate(() => window.__capitoli.awake()))) fail('effect froze during interaction');
+      await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+      if (p.url() !== url0) fail('Enter navigated');
+      // la rotellina sopra l'anteprima cambia ancora card
+      await p.mouse.move(cx, cy); await p.mouse.wheel(0, 1200); await p.waitForTimeout(1800);
+      if (await p.evaluate(() => window.__capitoli.front()) === 6) fail('wheel over preview did not change card');
+      // un clic su una card di fianco la porta davanti
+      await settle(p, 2);
+      const side = (await p.evaluate(() => window.__capitoli.cards()))[3].quad;
+      await p.mouse.click((side[0][0] + side[2][0]) / 2, (side[0][1] + side[2][1]) / 2);
+      await p.waitForTimeout(1600);
+      if (await p.evaluate(() => window.__capitoli.front()) !== 3) fail('click on side card did not bring it front');
     } else {
       console.log('SKIP ' + check + ' (not implemented yet)');
     }

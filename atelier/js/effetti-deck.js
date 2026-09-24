@@ -67,19 +67,6 @@
      alias, senza toccare il record letterale qui sopra. */
   for (var i = 0; i < EFFETTI.length; i++) EFFETTI[i].sett = EFFETTI[i].tipo;
 
-  /* ── L'INGRESSO AL DETTAGLIO (Task 8) ──────────────────────────────────────
-     Il mazzo inline eredita `enter(w)` di peso da index.html: clic sulla card
-     A FUOCO chiama `enter(hot)`, e quella funzione sa già coprire con lo
-     zoom, precaricare al passaggio (`prefetch`, `toccato && fermo da 600ms`) e
-     navigare a `w.page` dopo ~520ms — TUTTO condizionato su `w.page` essere
-     valorizzato. I record letterali qui sopra non lo portano apposta (sono
-     dati puri, non URL); si aggiunge qui, un giro solo, PRIMA che l'inline
-     legga `window.EFFETTI`. Relativo (non "/atelier/capitoli/…"): sotto
-     `<base href="/atelier/">` risolve comunque a `/atelier/capitoli/<id>`, ed
-     è la stessa pagina — capitoli-legacy.html, servita dal rewrite in
-     vercel.json — per tutti e sette gli effetti, cambia solo l'id in coda. */
-  for (var j = 0; j < EFFETTI.length; j++) EFFETTI[j].page = 'capitoli/' + EFFETTI[j].id;
-
   /* ── IL PERCORSO SULL'ELICA ────────────────────────────────────────────────
      Rimpiazza la vecchia `deckPlace` (che disponeva le lastre su un ANELLO
      attorno alla camera). Qui le card salgono lungo un'ELICA che avvolge lo
@@ -287,13 +274,16 @@
     function freeze(){
       if (!awakeId) return;
       var api = effects[awakeId];
-      if (api && api.stop) api.stop();
-      awakeId = null;
-      /* Si spegne anche in uscita, non solo in entrata: `hidden` toglierebbe
+      /* `-viva` si toglie PRIMA di fermare l'effetto: è lei a dare il
+         puntatore all'anteprima (vedi #stage-live nel CSS di capitoli.html),
+         e un'anteprima che si sta spegnendo deve ridarlo subito al mazzo.
+         Si spegne anche in uscita, non solo in entrata: `hidden` toglierebbe
          la tela in un fotogramma, e il ritorno al poster sarebbe lo stesso
          scatto visto al contrario. `hidden` arriva a dissolvenza finita — e
          solo se nel frattempo non si è svegliato qualcun altro. */
       stageLive.classList.remove('-viva');
+      if (api && api.stop) api.stop();
+      awakeId = null;
       setTimeout(function(){ if (!awakeId) stageLive.hidden = true; }, 280);
       var hx = helix(); if (hx && hx.throttle) hx.throttle(false);
     }

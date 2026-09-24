@@ -65,8 +65,8 @@
      rettangolo proiettato della card davanti: sopra la tela dello stage (dove
      vive il poster congelato) e sopra l'elica, ma SOTTO nav/etichette/didascalia.
      Quando nessun effetto è sveglio è `hidden` e non c'è nulla: si vede il
-     poster. `pointer-events:none` perché il clic sulla card (entrare nel mondo)
-     lo intercetta lo stage sotto, non questo. */
+     poster. `pointer-events:none` da congelata: il clic arriva al mazzo sotto;
+     da viva l'anteprima si usa (vedi `.-viva` più sotto). */
   #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
     pointer-events:none;overflow:hidden;
     /* LA TELA VIVA HA LA FORMA DELLA LASTRA, e non appare di scatto.
@@ -78,7 +78,11 @@
        fotogramma vivo, che sono due immagini diverse per definizione. */
     border-radius:var(--raggio,18px);
     opacity:0;transition:opacity .26s ease}
-  #stage-live.-viva{opacity:1}
+  /* L'ANTEPRIMA SI USA (2026-09-24, richiesta di Nike: niente pagine di
+     dettaglio, il cliente tocca l'effetto dentro la card). Solo da viva:
+     congelata e' un poster, e i clic devono arrivare al mazzo. `touch-action`
+     perche' un dito che striscia sull'anteprima muova l'effetto, non la pagina. */
+  #stage-live.-viva{opacity:1;pointer-events:auto;touch-action:none}
   #stage-live canvas{display:block;width:100%;height:100%}
 
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
@@ -196,26 +200,6 @@
     #hint{font-size:12px;letter-spacing:.06em;bottom:18px;white-space:nowrap}
   }
 
-  /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
-  #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
-    transition:opacity .28s ease;background:#04050a}
-  #world.-on{opacity:1;pointer-events:auto}
-  #world video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  #world .veil{position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(4,5,10,.82) 0%,rgba(4,5,10,.25) 42%,rgba(4,5,10,.88) 100%)}
-  #world .copy{position:absolute;left:clamp(1.4rem,5vw,4rem);bottom:clamp(2rem,8vh,5rem);max-width:36ch}
-  #world .copy i{font-style:normal;font-size:10.5px;letter-spacing:.2em;
-    text-transform:uppercase;color:var(--hot,#3ad8ff)}
-  #world .copy h2{font-size:clamp(1.8rem,4.4vw,3.1rem);font-weight:400;line-height:1.05;
-    letter-spacing:.02em;margin:.5rem 0 .6rem;text-transform:uppercase}
-  #world .copy p{font-size:12.5px;color:rgba(223,228,238,.6);letter-spacing:.04em;line-height:1.7}
-  #world .exits{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
-  #world button{background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.26);
-    padding:9px 16px;font:inherit;font-size:10.5px;letter-spacing:.14em;
-    text-transform:uppercase;cursor:pointer}
-  #world button:hover{border-color:var(--hot,#3ad8ff);color:var(--hot,#3ad8ff)}
-  #world button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
-
   #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:1.4rem;text-align:center;
     padding:2rem;transition:opacity .5s ease;pointer-events:none}
@@ -320,20 +304,6 @@
 </div>
 <p id="hint" style="opacity:0">scorri per cambiare mondo · usa l'anteprima</p>
 
-<div id="world" aria-hidden="true">
-  <div class="veil"></div>
-  <div class="copy">
-    <i id="wKick"></i>
-    <h2 id="wName"></h2>
-    <p id="wDesc"></p>
-    <div class="exits">
-      <button id="wNext">Il prossimo mondo →</button>
-      <button id="wTalk">Parliamone</button>
-      <button id="wBack">← Mappa</button>
-    </div>
-  </div>
-</div>
-
 <div id="err"></div>
 
 <!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
@@ -405,6 +375,10 @@
      cavalcano l'elica (window.helixPlace), guidate dallo scroll globale come
      l'asse centrale. */
   var DECK_ON = true;
+  /* L'anteprima viva (vedi #stage-live nel CSS): dichiarata qui in cima perche'
+     la leggono gia' i gestori dell'input (`inPreview`), molto prima del
+     controller che ci monta dentro gli effetti. */
+  var STAGE_LIVE = document.getElementById('stage-live');
 
   /* ⚠️ LA MINA DELLO SCROLL (Task 2→4). La giostra di index.html dirottava la
      rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
@@ -421,11 +395,10 @@
      dell'intero progetto. Il colore non è decorativo — è quello con cui il
      mondo tinge la nebbia intorno a sé quando lo guardi, così il fondo resta
      neutro e sono i portali a colorarlo.
-     `poster` è quello che si vede sempre; `video` parte solo al passaggio.
+     `poster` è quello che si vede sempre sulla lastra; l'effetto vivo lo
+     monta il controller sopra, in #stage-live. Nessun mondo ha piu' una
+     pagina sua (2026-09-24): l'effetto si usa dentro la card.
      ====================================================================== */
-  /* `page` = il mondo ha una pagina sua. Chi ce l'ha si raggiunge navigando,
-     sotto la copertura dello zoom; chi non ce l'ha ancora resta sul pannello
-     provvisorio, cosi' la mappa e' completa anche a costruzione in corso. */
   /* MISURA UNICA PER TUTTE LE LASTRE.
      Nella costellazione ogni portale aveva la sua taglia: erano fermi, e la
      differenza si leggeva come profondita'. In una giostra sfilano uno dietro
@@ -1072,46 +1045,6 @@
     return (k >= 0 && k < WORLDS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
   }
 
-  /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
-  var video = document.createElement('video');
-  video.muted = true; video.loop = true; video.playsInline = true;
-  video.setAttribute('playsinline',''); video.preload = 'auto';
-  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
-  document.body.appendChild(video);
-  var vtex = new THREE.VideoTexture(video);
-  vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
-  vtex.format = THREE.RGBFormat; vtex.encoding = THREE.sRGBEncoding;
-  var videoOn = null;
-
-  function playOn(w){
-    if (videoOn === w) return;
-    if (videoOn){ videoOn.uni.tVideo.value = videoOn.posterTex;
-                  videoOn.uni.uVidAsp.value = videoOn.posterAsp || 16/9;
-                  videoOn.uni.uGain.value = videoOn.gain || TARATURA.uGain;
-                  videoOn = null; }
-    if (!w || !w.video) { video.pause(); return; }
-    videoOn = w;
-    if (video.getAttribute('src') !== w.video){ video.src = w.video; }
-    video.play().catch(function(){});
-    /* LA TEXTURE SI ATTACCA SOLO QUANDO C'E' UN FOTOGRAMMA DA LEGGERE.
-       Assegnandola subito, three prova a caricare un video ancora vuoto e il
-       driver risponde `INVALID_VALUE: texImage2D: no video` — a ogni
-       fotogramma, finche' non arriva il primo. Non si perde niente ad
-       aspettare: fino a quel momento nella lastra resta il poster. */
-    /* Il guadagno segue la SORGENTE, non il mondo: il poster del prodotto e'
-       su fondo bianco e il suo video e' notturno, e un solo numero per tutti
-       e due li sbaglia tutti e due. */
-    function attacca(){
-      if (videoOn !== w) return;
-      w.uni.tVideo.value = vtex;
-      w.uni.uGain.value = w.gainVid || TARATURA.uGain;
-    }
-    if (video.readyState >= 2) attacca();
-    else video.addEventListener('loadeddata', function una(){
-      video.removeEventListener('loadeddata', una); attacca();
-    });
-  }
-
   /* ══════════════════════════════════════════════════════════════════════
      3.5 LA POZZA RIFLETTENTE — TOLTA (Task 1).
      C'era qui la riflessione planare di Mirror Hall: una camera specchiata
@@ -1224,23 +1157,26 @@
     }
     return false;
   }
-  /* L'unica guardia è `openW` (si è dentro a un mondo): niente più
-     RING_SCROLL — qui non c'è una modalità in cui l'input NON deve muovere
-     l'accumulatore, perché non c'è più una sorgente concorrente (la pagina)
-     che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra solo
-     per non fare `e.preventDefault()` su rotellina/frecce — vedi il
-     commento lì. */
+  /* Nessuna guardia: non c'è più un mondo in cui entrare (2026-09-24, niente
+     pagine di dettaglio), e non c'è una modalità in cui l'input NON deve
+     muovere l'accumulatore, perché non c'è più una sorgente concorrente (la
+     pagina) che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra
+     solo per non fare `e.preventDefault()` su rotellina/frecce — vedi il
+     commento lì. La rotellina NON guarda `inPreview`: anche sopra
+     l'anteprima cambia card. */
   function spingi(d){
-    if (openW) return;
     toccato = true; lastInput = performance.now();
     spinT += d;
+  }
+  /* Un gesto che nasce DENTRO l'anteprima viva e' dell'effetto, non del mazzo. */
+  function inPreview(e){
+    return !!(STAGE_LIVE && e && e.target && e.target.nodeType === 1 && STAGE_LIVE.contains(e.target));
   }
   /* Porta davanti un effetto preciso prendendo il giro piu' corto: si somma il
      numero intero di giri che avvicina di piu' il bersaglio a dove siamo.
      Con `spinT` senza fondo il "giro" è sempre relativo a dove siamo ORA, non
      a un progresso 0..1 — la stessa formula di prima, invariata. */
   function portaDavanti(i){
-    if (openW) return;
     toccato = true;
     lastInput = -1e9;                 // niente attesa: questo e' gia' un fermo
     spinT = i + Math.round((spinT - i)/WORLDS.length)*WORLDS.length;
@@ -1269,7 +1205,7 @@
      card a fuoco, che altrimenti con `spin` frazionario non si sveglia mai
      scorrendo di rotellina/trascino. */
   window.addEventListener('wheel', function(e){
-    if (openW || !WC.motionOk) return;
+    if (!WC.motionOk) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
     spingi(d * unit * (1/1200));
@@ -1283,7 +1219,7 @@
      `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
      spinga, trascinare non muove nulla). */
   window.addEventListener('pointerdown', function(e){
-    if (openW || e.button) return;
+    if (e.button || inPreview(e)) return;
     ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
     dragging = true; dragId = e.pointerId;
     dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
@@ -1312,14 +1248,11 @@
      dei due modi di navigare a passi richiesti dal brief (l'altro sono i
      click su fermi/elenco). */
   window.addEventListener('keydown', function(e){
-    if (openW) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
       spingi(STEP);
     } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
       spingi(-STEP);
-    } else if (k === 'Enter'){
-      if (hot){ e.preventDefault(); enter(hot); }
     }
   });
 
@@ -1366,26 +1299,6 @@
      GLI STADI. `hero` → `arrivo` → `mappa`. Non sono scene diverse: è lo
      stesso frame, con tre numeri che si muovono.
      ══════════════════════════════════════════════════════════════════════ */
-  /* UN INDIRIZZO PER MONDO, SUL PATH.
-     Si condivide, il tasto indietro funziona, e Google indicizza sette pagine
-     invece di una. Il rewrite che serve sta in vercel.json: senza, un ingresso
-     diretto su /atelier/la-notte darebbe 404. */
-  var ROOT = '/atelier';
-  function worldFromPath(){
-    var parts = location.pathname.replace(/\/+$/,'').split('/');
-    var last = parts[parts.length-1];
-    return (last === 'atelier' || last === '') ? '' : last;
-  }
-
-  /* SI TORNA DA UN MONDO: la coreografia d'ingresso e' roba da prima visita.
-     Chi rientra dalla pagina di un mondo trova la mappa gia' composta, col
-     portale da cui e' uscito acceso e un filo piu' avanti. Il parametro lo
-     mette il link «Mappa» delle pagine dei mondi. */
-  var CAME_FROM = (function(){
-    try { return new URLSearchParams(location.search).get('da') || ''; }
-    catch(e){ return ''; }
-  })();
-
   var stage = 'hero';
   var travel = 0, speed = 1;      // quanto scorre il tunnel, e a che velocità
   var assign = 0;                 // 0 = sfila, 1 = tutti a destinazione
@@ -1421,8 +1334,6 @@
     var h = ray.intersectObjects(cards.children, false);
     return h.length ? h[0].object.userData.world : null;
   }
-  var openW = null;               // il mondo in cui si è entrati
-  var zoom = 0, zoomT = 0;        // 0 = mappa, 1 = dentro
   var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
 
   /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
@@ -1430,91 +1341,20 @@
      spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
      davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
   window.addEventListener('pointermove', function(e){
-    tmx = (e.clientX/window.innerWidth)*2-1;
-    tmy = (e.clientY/window.innerHeight)*2-1;
-    ptr.set(tmx, -tmy);
+    var px = (e.clientX/window.innerWidth)*2-1, py = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(px, -py);
+    /* Sopra l'anteprima viva la parallasse si ferma: la camera che scivola
+       sotto la mano sposterebbe la card mentre la si sta usando. `ptr` invece
+       si aggiorna lo stesso — serve a sapere su cosa si clicca. */
+    if (inPreview(e)) return;
+    tmx = px; tmy = py;
   }, {passive:true});
 
-  ['pointerdown','keydown','touchstart'].forEach(function(ev){
-    window.addEventListener(ev, function(){ video.play().catch(function(){}); }, {once:true});
-  });
-
-  var prefetched = {};
-  function prefetch(w){
-    if (!w || !w.page || prefetched[w.id]) return;
-    prefetched[w.id] = 1;
-    var l = document.createElement('link');
-    l.rel = 'prefetch'; l.href = w.page; l.as = 'document';
-    document.head.appendChild(l);
-  }
-
-  function enter(w, push){
-    if (!w || openW) return;
-    /* Nella rotonda si entra in chi e' davanti; ma da URL/popstate il mondo
-       puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
-       dentro, se no la camera parte verso una lastra di fianco. */
-    if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
-
-    /* LA CARD È UNA PAGINA: SI VA, E BASTA (richiesta utente).
-       Prima il clic faceva volare la camera dentro alla lastra per mezzo
-       secondo e poi navigava: uno zoom su un'ISTANTANEA — il poster congelato,
-       o al più il fotogramma dell'effetto — che ingrandendosi si sgranava, e
-       che comunque copriva un caricamento che non c'era più (la pagina è già
-       precaricata al passaggio del puntatore). Tolto: niente `zoomT`, niente
-       posa, si segue il collegamento come un collegamento qualunque. */
-    if (w.page){
-      openW = w;                       // un solo clic: il secondo non riparte
-      document.getElementById('hint').style.opacity = 0;
-      location.href = w.page;
-      return;
-    }
-    openW = w; zoomT = 1;
-    playOn(w);
-    var el = document.getElementById('world');
-    el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
-    document.getElementById('wKick').textContent = '// ' + w.sett;
-    document.getElementById('wName').textContent = w.nome;
-    document.getElementById('wDesc').textContent = w.desc;
-    var vv = el.querySelector('video');
-    if (vv) vv.remove();
-    if (w.video){
-      var v2 = document.createElement('video');
-      v2.muted = true; v2.loop = true; v2.playsInline = true; v2.setAttribute('playsinline','');
-      v2.src = w.video; el.insertBefore(v2, el.firstChild); v2.play().catch(function(){});
-    }
-    setTimeout(function(){ el.classList.add('-on'); el.setAttribute('aria-hidden','false'); }, 380);
-    document.getElementById('hint').style.opacity = 0;
-    document.getElementById('nav').classList.add('-hide');
-    if (push !== false && window.history && history.pushState) history.pushState({w:w.id}, '', ROOT + '/' + w.id);
-  }
-  function leave(pop){
-    if (!openW) return;
-    var el = document.getElementById('world');
-    el.classList.remove('-on'); el.setAttribute('aria-hidden','true');
-    var vv = el.querySelector('video'); if (vv) vv.remove();
-    hot = openW; openW = null; zoomT = 0;
-    document.getElementById('hint').style.opacity = '';
-    document.getElementById('nav').classList.remove('-hide');
-    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT);
-  }
-  window.addEventListener('popstate', function(e){
-    var id = worldFromPath();
-    var w = WORLDS.filter(function(x){ return x.id === id; })[0];
-    if (w && !openW) enter(w, false);
-    else if (!w && openW) leave(true);
-  });
-  document.getElementById('wBack').addEventListener('click', function(){ leave(); });
-  document.getElementById('wTalk').addEventListener('click', function(){ leave(); });
-  document.getElementById('wNext').addEventListener('click', function(){
-    var i = WORLDS.indexOf(openW); leave();
-    setTimeout(function(){ enter(WORLDS[(i+1)%WORLDS.length]); }, 420);
-  });
-  window.addEventListener('keydown', function(e){ if (e.key === 'Escape') leave(); });
-
-  window.addEventListener('click', function(){
+  window.addEventListener('click', function(e){
     if (stage === 'hero'){ entra(); return; }
     if (stage === 'arrivo'){ skip(); return; }
-    if (openW) return;
+    /* Il clic dentro l'anteprima viva e' dell'effetto: il mazzo non lo vede. */
+    if (inPreview(e)) return;
     /* Un trascinamento finisce sempre con un clic: senza questa guardia
        girare la giostra farebbe entrare nel mondo su cui si e' lasciato. */
     if (dragMoved > 8){ dragMoved = 0; return; }
@@ -1522,7 +1362,9 @@
        il rilascio, prima che il ciclo di disegno abbia rifatto il raycast, e
        con un tocco secco il risultato del fotogramma precedente e' vecchio. */
     var w = pick();
-    if (w){ if (w === hot) enter(w); else portaDavanti(w.idx); return; }
+    /* La card davanti non si apre piu' (2026-09-24): da congelata un clic su
+       di lei non fa niente, da viva lo prende l'anteprima. */
+    if (w){ if (w !== hot) portaDavanti(w.idx); return; }
     /* `r` e' l'indice della CARD cliccata nell'elenco (Task 3): si porta
        davanti quella card, `portaDavanti` la anima come per i fermi — non
        salta. */
@@ -1692,7 +1534,6 @@
      inline) — Task 7 aggiunge `warp`/`lithos`; resta poster solo `sneaker`
      (nessuna sezione statica per lui in questa sotto-costellazione). La
      soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
-  var STAGE_LIVE = document.getElementById('stage-live');
   var HELIX_EL   = document.getElementById('helixStage');
 
   /* LE LASTRE DAVANTI ALL'ELICA LA COPRONO — SEMPRE, NON SOLO DA FERME.
@@ -1820,7 +1661,7 @@
        clamp: `spinT` può valere un milione, `Math.round` di un numero enorme
        resta un numero enorme — nessun avvolgimento da gestire qui, come già
        per `wrapN` sulle card. */
-    if (!openW && toccato && !dragging && now - lastInput > SETTLE_MS){
+    if (toccato && !dragging && now - lastInput > SETTLE_MS){
     /* PIÙ MORBIDO SUL FERMO (richiesta utente: «a volte, mentre si scorre,
        le card passano da un'immagine all'altra in modo scattante»).
        Il colpevole era qui: fermato il gesto, il bersaglio veniva tirato
@@ -1873,56 +1714,40 @@
     });
 
     mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
-    zoom += (zoomT-zoom)*(zoomT > zoom ? 0.115 : 0.16);   // entra in ~600ms, esce in ~400
 
     // a fuoco c'e' chi e' davanti, e basta — ma solo col mazzo acceso
-    if (DECK_ON && stage === 'mappa' && !openW){
+    if (DECK_ON && stage === 'mappa'){
       var nw = WORLDS[frontIdx()];
       if (nw !== hot){
-        hot = nw; hotSince = now; playOn(hot);
+        hot = nw; hotSince = now;
         WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
         aggiornaFocus(hot);
         idxDisegna();
       }
-      /* PRECARICARE CHI PASSA E' UN'ALTRA COSA DA PRECARICARE CHI E' SCELTO.
-         Prima il precaricamento partiva al passaggio del puntatore, che e'
-         gia' una scelta; una giostra invece porta davanti tutti e otto i
-         mondi da sola, e precaricandoli tutti si scaricherebbe un megabyte
-         e mezzo di pagine a chi non ha ancora deciso niente. Si aspetta che
-         qualcuno abbia preso in mano la giostra E che sia rimasto fermo su
-         quel mondo mezzo secondo. */
-      if (toccato && hot && now - hotSince > 600) prefetch(hot);
       if (!mobile && !dragging){
         overCard = pick();
         var r = overCard ? -1 : pickRiga();
         if (r !== idxSopra){ idxSopra = r; idxDisegna(); }
-        document.body.style.cursor = (overCard || r >= 0) ? 'pointer' : '';
+        /* La mano solo dove un clic fa qualcosa: una card di fianco o una riga
+           dell'elenco. Sulla card davanti no — congelata non risponde, e da
+           viva il cursore lo decide l'effetto. */
+        document.body.style.cursor = ((overCard && overCard !== hot) || r >= 0) ? 'pointer' : '';
       }
     }
 
     /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
        vicini si muovono più dei lontani senza doverlo scrivere da nessuna
-       parte. Entrando, va incontro al portale scelto. */
+       parte. */
     /* La camera sta al centro dell'anello e guarda verso la lastra davanti
        (0, lookY, -R). Il puntatore la sposta appena — la parallasse viene da
-       se'. Entrando, vola incontro al portale scelto (che a quel punto e' gia'
-       quello davanti) e finisce appena davanti a lui. */
+       se'. */
     var tx = mx*0.34, ty = RING.camH - my*0.18, tz = CAM0.z;
     var look = new THREE.Vector3(0, RING.lookY, -RING.R);
-    if (openW){
-      var wp = openW.mesh.position;
-      tx = wp.x*zoom + tx*(1-zoom);
-      ty = wp.y*zoom + ty*(1-zoom);
-      tz = (wp.z + 0.62)*zoom + CAM0.z*(1-zoom);
-      look.set(wp.x*zoom + 0*(1-zoom),
-               wp.y*zoom + RING.lookY*(1-zoom),
-               wp.z*zoom + (-RING.R)*(1-zoom));
-    }
     camera.position.set(tx, ty, tz);
     camera.lookAt(look);
 
     if (DECK_ON) WORLDS.forEach(function(w){
-      var isHot = (w === hot || w === openW);
+      var isHot = (w === hot);
       var u = w.uni;
       u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
       /* Chi non e' davanti arretra, ma non troppo: devono restare tutte
@@ -1933,23 +1758,21 @@
     });
 
     // la nebbia prende il colore del mondo guardato (nessuno, finche' il mazzo e' spento)
-    var target = hot || openW;
+    var target = hot;
     var ts = target ? 1 : 0;
     tintStr += (ts - tintStr)*0.08;
     if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
     fogMat.uniforms.uTint.value.copy(tintCol);
-    fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
-    if (!openW){
-      document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*1 : 0);
-      focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
-    }
+    fogMat.uniforms.uTintStr.value = tintStr;
+    document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*1 : 0);
+    focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
 
     /* L'elenco compare quando la fila si e' composta e si ritira entrando
        in un mondo: e' un attrezzo della mappa, non della scena — e la mappa
        non c'e' finche' DECK_ON e' false. In ritratto resta spento (Task 3):
        a sette righe non c'e' una fascia libera che lo contenga intero senza
        toccare una vicina (vedi il commento in resize()). */
-    var idxT = (DECK_ON && stage === 'mappa' && !openW && camera.aspect >= 1) ? spokeIn*0.92*(1-zoom) : 0;
+    var idxT = (DECK_ON && stage === 'mappa' && camera.aspect >= 1) ? spokeIn*0.92 : 0;
     idxMat.opacity += (idxT - idxMat.opacity)*0.10;
 
     /* IL TEMPO DELL'AMBIENTE (Task 9 — rifinitura reduced-motion).
@@ -1970,16 +1793,14 @@
     du.uTime.value = tAmb; du.uTravel.value = travel; du.uAssign.value = assign;
     du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
 
-    if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
-
     /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Si sveglia l'effetto della card
        davanti SOLO a pieno fuoco: ferma da ~250ms (spinT raggiunto e nessun
        gesto in corso da SETTLE_MS) e centrata (frazione di `spin` presso lo zero
-       → face≈1). Mentre si scorre — o dentro un mondo (openW) — nulla è sveglio
+       → face≈1). Mentre si scorre nulla è sveglio
        e tutte le card mostrano il poster. Un solo effetto per volta lo garantisce
        il controller stesso (freeze del precedente prima del wake del nuovo). */
     if (deckCtl){
-      if (DECK_ON && stage === 'mappa' && !openW){
+      if (DECK_ON && stage === 'mappa'){
         var _frac = Math.abs(spin - Math.round(spin));
         var _settled = !dragging && Math.abs(spinT - spin) < 0.02 && (now - lastInput) > SETTLE_MS;
         var _full = _settled && _frac < 0.045;   // face≈1
@@ -2023,32 +1844,6 @@
   }
 
   requestAnimationFrame(frame);
-
-  // se si arriva con un indirizzo già puntato a un mondo, ci si entra
-  // (irrilevante finche' il mazzo e' spento: `playOn`/`hot` presumono le mesh)
-  if (DECK_ON && CAME_FROM){
-    var back = WORLDS.filter(function(x){ return x.id === CAME_FROM; })[0];
-    if (back){
-      stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
-      /* La giostra e' gia' girata fin li': si esce dal mondo e lo si ritrova
-         davanti, fermo sul suo scatto. Ed e' gia' stata «toccata», quindi non
-         riparte il giro d'invito — quello e' per chi non ha ancora capito. */
-      spin = spinT = back.idx;
-      toccato = true;
-      hot = back; playOn(back);
-      WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === back); });
-      aggiornaFocus(back);
-      var h = document.getElementById('hero');
-      h.classList.add('-off'); h.style.display = 'none';
-      if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
-    }
-  }
-
-  var initial = worldFromPath();
-  if (initial){
-    var w0 = WORLDS.filter(function(x){ return x.id === initial; })[0];
-    if (w0) setTimeout(function(){ enter(w0, false); }, 600);
-  }
 
   /* LA SONDA DELLA VERIFICA (scripts/verify-capitoli.cjs). Solo letture e due
      comandi (portare davanti una card, fermare il mazzo a meta' giro): niente
