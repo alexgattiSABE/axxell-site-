@@ -123,6 +123,10 @@ function mountLithos(ctx, cfg){
   if (external){
     ibrido = true;               // Task 11: qui il faro parte da solo e il
                                   // mouse prende il comando appena si muove.
+    /* E `auto` si spegne: sul telefono (`pointer:fine` falso) era sempre vero,
+     * e in `frame()` la Lissajous vinceva su qualunque tocco. Il giro da solo
+     * lo garantisce gia' `ibrido`, finche' nessuno tocca. */
+    auto = false;
     /* Il faro in proporzione alla card: 260px su una card da telefono (~340px)
        la copre tutta, e il suo girare non si vede piu'. Al 41% della
        larghezza — sul desktop resta 260, il tetto — sul telefono si stringe. */
@@ -131,6 +135,14 @@ function mountLithos(ctx, cfg){
       reveal.style.setProperty('--lr', Math.round(Math.min(R, w * 0.41)) + 'px');
     };
     raggio();
+    /* IL DITO (2026-09-24, «alcune interazioni non vanno»). Su iPhone un
+     * trascinamento non manda `mousemove` — al massimo uno, sul tocco secco —
+     * quindi il faro non seguiva mai il dito. Gli eventi `pointer` coprono
+     * mouse, dito e penna con le stesse coordinate: si ascoltano quelli, e
+     * `pointerdown` sposta il faro subito dove si tocca. Il mouse continua a
+     * passare da `mousemove`, come prima; qui si filtra per non contarlo due
+     * volte. Alzato il dito, dopo 1,5 s il faro riprende il giro da solo. */
+    var onDito = function(e){ if (e.pointerType !== 'mouse') onMove(e); };
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     document.addEventListener('visibilitychange', onVisE);
@@ -139,11 +151,15 @@ function mountLithos(ctx, cfg){
         wantRun = true;
         raggio();
         rectEl.addEventListener('mousemove', onMove);
+        rectEl.addEventListener('pointerdown', onDito);
+        rectEl.addEventListener('pointermove', onDito);
         start();
       },
       stop: function(){
         wantRun = false;
         rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
         stop();
       },
       // La rect si legge live a ogni fotogramma (Lissajous) o a ogni evento
@@ -153,6 +169,8 @@ function mountLithos(ctx, cfg){
         stop();
         document.removeEventListener('visibilitychange', onVisE);
         rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
       }
     };
   }
