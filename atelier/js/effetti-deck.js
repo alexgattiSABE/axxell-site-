@@ -107,8 +107,25 @@
      (u=−1,0,+1), dentro il «3–4» del criterio. L'elica di js/dna.js resta
      visibile davanti/dietro (criterio d): è un canvas separato, z-index 2.
      Su ritratto (aspect<1) il passo si stringe da sé: vedi `helixTune()` in
-     capitoli.html, che stringe A/climb/yTop come fa resize() nella home. */
-  var TUNE = { A: 1.3, R: 4.5, turns: 0.38, climb: 0.85, yTop: 0.95 };
+     capitoli.html, che stringe A/climb/yTop come fa resize() nella home.
+     2026-09-24 («nessuna card ne tocca un'altra», richiesta di Nike): climb
+     0.85 → 2.2 (piu' salita fra un posto e il successivo, altrimenti la
+     vicina dietro finiva DENTRO il rettangolo della card a fuoco) e yTop
+     0.95 → 1.25 (la fila si alza quel tanto che serve perche' la vicina
+     davanti-in-alto non tocchi la barra di navigazione E la vicina
+     davanti-in-basso non tocchi la didascalia — sono in tensione fra loro,
+     1.25 e' il punto che libera entrambe). Le vicine rimpiccioliscono al 25%
+     (SCALE_SIDE in capitoli.html, vedi deckScale — sceso dal 55% di partenza:
+     a quella taglia la vicina restava troppo alta per liberare insieme barra
+     e didascalia) e deckFade si stringe da
+     cos(u)∈[-0.1,0.35] a [0.28,0.55] perche' la vicina successiva (|u|≈1.5,
+     di passaggio durante il giro) sia spenta PRIMA di toccare didascalia o
+     barra, invece di restare a meta' opacita' e continuare a toccarle.
+     Verificato con scripts/verify-capitoli.cjs overlap (desktop e mobile):
+     zero overlap card-card/card-UI a riposo, a meta' giro e dopo resize;
+     restano solo gli overlap con l'indice, accettati fino al Task 3 che lo
+     sposta. */
+  var TUNE = { A: 1.3, R: 4.5, turns: 0.38, climb: 2.2, yTop: 1.25 };
 
   function helixPlace(u, out) {
     var t = root.__HELIX_TUNE || TUNE;

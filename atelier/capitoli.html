@@ -361,7 +361,7 @@
 <!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
-<script src="js/effetti-deck.js?v=20260831a"></script>
+<script src="js/effetti-deck.js?v=20260924a"></script>
 <!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
@@ -508,13 +508,32 @@
      misura: e' la rotonda di Mirror Hall. Il mondo a fuoco non si stacca per
      grandezza ma perche' e' centrato, piu' acceso (uHot) e nominato dalla
      didascalia. */
-  function deckScale(u){ return 1; }
+  /* LE VICINE RIMPICCIOLISCONO (2026-09-24, richiesta di Nike: «nessuna card
+     deve toccarne un'altra»). A grandezza piena le card accanto finivano
+     quasi tutte DENTRO al rettangolo di quella davanti; scalate al 25% (con
+     la salita `climb` e la quota `yTop` tarate in js/effetti-deck.js) restano
+     staccate anche a meta' giro. Smussato (smoothstep su |u|) perche' la card
+     che arriva cresca, non scatti. 0.25 e' piu' piccolo del 55% di partenza:
+     al 55% la vicina restava troppo alta per liberare insieme la barra di
+     navigazione E la didascalia (sono ai due lati opposti dello schermo). */
+  var SCALE_SIDE = 0.25;
+  function deckScale(u){
+    var a = Math.min(1, Math.abs(u));
+    a = a * a * (3 - 2 * a);
+    return 1 - (1 - SCALE_SIDE) * a;
+  }
   /* Chi si volta di spalle sparisce. Dietro la camera non si vedrebbe
      comunque, ma questo spegne DOLCEMENTE l'arco posteriore ai lati invece di
-     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te. */
+     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te.
+     2026-09-24: soglie strette da [-0.1,0.35] a [0.28,0.55]. Durante il giro
+     (non a riposo) la card successiva passa per |u|≈1.5 prima di arrivare a
+     fianco: con le soglie vecchie ci arrivava ancora al 18% di opacita' e
+     toccava didascalia/barra. cos(1.5·2π/7)≈0.222 sta sotto la nuova soglia
+     bassa (0.28): a |u|≈1.5 e' gia' spenta. cos(1·2π/7)≈0.624 resta sopra la
+     soglia alta (0.55): la vicina ferma a |u|=1 resta piena, invariata. */
   function deckFade(u){
     var c = Math.cos(u * TWO_PI_N);
-    return c <= -0.1 ? 0 : (c >= 0.35 ? 1 : (c + 0.1) / 0.45);
+    return c <= 0.28 ? 0 : (c >= 0.55 ? 1 : (c - 0.28) / 0.27);
   }
 
   var canvas   = document.getElementById('c');
