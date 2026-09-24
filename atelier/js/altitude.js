@@ -529,6 +529,9 @@ function mountAltitude(ctx, cfg){
     texcoordX: 0, texcoordY: 0, prevTexcoordX: 0, prevTexcoordY: 0,
     deltaX: 0, deltaY: 0, moved: false, seen: false, color: generateColor()
   };
+  // Il puntatore fantasma (solo nella card, vedi driveVortex): quanto tempo fa
+  // si è mosso davvero il mouse, e se la traccia invisibile è abilitata.
+  var lastRealMove = 0, fantasma = false, passiFantasma = 0;
 
   function correctDeltaX(delta){
     var aspect = canvas.width / canvas.height;
@@ -571,10 +574,10 @@ function mountAltitude(ctx, cfg){
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
   }
 
-  var onMouseMove = function(e){ movePointer(e.clientX, e.clientY); };
+  var onMouseMove = function(e){ lastRealMove = performance.now(); movePointer(e.clientX, e.clientY); };
   var onTouchMove = function(e){
     var t = e.targetTouches[0];
-    if (t) movePointer(t.clientX, t.clientY);
+    if (t) { lastRealMove = performance.now(); movePointer(t.clientX, t.clientY); }
   };
   var onLeave = function(){ pointer.seen = false; pointer.moved = false; };
   window.addEventListener('mousemove', onMouseMove, { passive: true });
@@ -773,6 +776,17 @@ function mountAltitude(ctx, cfg){
   var vColor = null, lastVColor = 0;
 
   function driveVortex(now){
+    /* IL PUNTATORE FANTASMA (solo nella card, 2026-09-24): se la mano e' ferma
+     * da 1,5 s una traccia invisibile gira su una Lissajous lenta e continua a
+     * mescolare il fumo — «Vapore» non resta mai immobile ad aspettare il mouse.
+     * Appena il mouse vero si muove, il fantasma tace. */
+    if (fantasma && performance.now() - lastRealMove > 1500){
+      var r0 = canvas.getBoundingClientRect(), tt = performance.now() / 1000;
+      movePointer(r0.left + r0.width  * (0.5 + 0.30 * Math.sin(tt * 0.61)),
+                  r0.top  + r0.height * (0.5 + 0.24 * Math.sin(tt * 0.83 + 1.3)));
+      passiFantasma++;
+    }
+
     var w = canvas.clientWidth, h = canvas.clientHeight;
     if (w < 1 || h < 1) return;
 
@@ -908,6 +922,8 @@ function mountAltitude(ctx, cfg){
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     document.addEventListener('visibilitychange', onVisE);
+    fantasma = WC.motionOk !== false;
+    window.__altProbe = function(){ return { fantasma: passiFantasma }; };
     return {
       start: function(){ wantRun = true; start(); },
       stop:  function(){ wantRun = false; stop(); },
@@ -918,6 +934,7 @@ function mountAltitude(ctx, cfg){
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('touchmove', onTouchMove);
         window.removeEventListener('mouseout', onLeave);
+        delete window.__altProbe;
         if (dye) dye.destroy();
         if (velocity) velocity.destroy();
         if (pressure) pressure.destroy();
