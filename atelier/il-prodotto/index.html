@@ -71,6 +71,7 @@
   --radius-grid:12px;
   --radius-target:30px;
 
+  --stage-h:100vh;       /* phones switch to 100svh (see mobile block) */
   --font:"Zen Kaku Gothic New",ui-sans-serif,system-ui,-apple-system,sans-serif;
 }
 
@@ -122,7 +123,7 @@ a{color:inherit;text-decoration:none}
 ============================================================ */
 main{position:relative;z-index:2}
 .track{position:relative;width:100%}
-.sticky-stage{position:sticky;top:0;height:100vh;overflow:hidden;padding:4vmin}
+.sticky-stage{position:sticky;top:0;height:var(--stage-h);overflow:hidden;padding:4vmin}
 .backdrop{position:absolute;inset:0;z-index:0;background:#fff}
 .marquee-wrap{position:absolute;left:0;top:50%;z-index:1;width:100vw;transform:translateY(-50%);pointer-events:none}
 .marquee-row{display:flex;width:100vw;overflow:hidden;white-space:nowrap}
@@ -220,7 +221,7 @@ main{position:relative;z-index:2}
 .grid-tile{position:absolute;left:50%;top:50%;z-index:-1;overflow:hidden;background-size:cover;background-position:center;opacity:0}
 
 /* ---- target block ---- */
-.target-block{position:absolute;left:50%;top:50%;z-index:-1;height:100vh;width:100vw;overflow:hidden;background:var(--ink);opacity:0}
+.target-block{position:absolute;left:50%;top:50%;z-index:-1;height:var(--stage-h);width:100vw;overflow:hidden;background:var(--ink);opacity:0}
 #glTarget{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .final-frame{position:absolute;inset:-4vmin;z-index:3;border-radius:11vmin;border:8vmin solid #fff;opacity:0;pointer-events:none}
 .cta-block{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2.5vmin;padding:9vmin;opacity:0;pointer-events:none}
@@ -252,6 +253,68 @@ main{position:relative;z-index:2}
 #loader.exiting .loader-bloom{opacity:0}
 .loader-star{position:relative;will-change:transform;filter:drop-shadow(0 0 28px var(--loader-glow))}
 .loader-star img{width:132px;height:132px}
+
+/* ============================================================
+   MOBILE / TABLET-PORTRAIT — phone-sized proportions.
+   Desktop (>760px landscape) is untouched by everything below.
+============================================================ */
+@media (min-width:761px) and (max-width:1023px) and (orientation:portrait){
+  .hero-head{padding-top:84px}
+  .sphere-htop{top:76px}
+  .sphere-hbot{bottom:64px}
+  .sphere-body{bottom:72px;max-width:52vmin}
+}
+@media (max-width:760px){
+  :root{--stage-h:100svh}
+  .site-header{top:10px}
+  .nav-logo{width:44px;height:44px}
+  .nav-cta{height:44px}
+  /* hero */
+  .hero-head{padding:70px 22px 20px}
+  .hero-h1{font-size:clamp(32px,9.6vw,40px);line-height:1}
+  .hero-templates h2{font-size:15px}
+  .hero-bottom{padding:20px 22px 78px;gap:16px}
+  .hero-bottom .col{gap:16px;max-width:none}
+  .hero-bottom p.lead{font-size:15px;line-height:1.5}
+  .hero-bottom .btns{gap:10px}
+  .hero-bottom .btns button{flex:1;min-height:46px;padding:0 18px;font-size:15px}
+  /* carousel cards */
+  .cc .inner,.sphere-face .inner{padding:16px}
+  .cc .logo{width:26px;height:26px;border-radius:7px}
+  .cc .logo svg{width:15px;height:15px}
+  .cc .url,.sphere-face .url{font-size:11px}
+  .cc-pill{margin-top:14px;gap:8px;border-radius:22px;padding:10px 12px}
+  .cc-pill .lbl{gap:2px}
+  .cc-pill .lbl .s{font-size:10.5px}
+  .cc-pill .lbl .t{font-size:14px}
+  .cc-pill .plus,.cc-search .ic{width:24px;height:24px;font-size:14px}
+  .cc-search{gap:8px;border-radius:24px;padding:10px 12px}
+  .cc-search .q{font-size:12px}
+  .cc .foot h3{font-size:22px;line-height:1.1}
+  .cc .foot p{font-size:15px;line-height:1.3}
+  .sphere-face .lbl{font-size:10.5px;padding:5px 10px}
+  .sphere-face h3{font-size:22px;line-height:1.1}
+  .carousel-cta{bottom:84px}
+  .carousel-cta a{min-height:44px;padding:0 22px;font-size:14px}
+  /* sphere chapter */
+  .sphere-htop{top:66px;left:22px}
+  .sphere-hbot{bottom:22px;right:20px}
+  .sphere-body{left:22px;bottom:calc(24vmin + 64px);max-width:calc(100vw - 44px);gap:12px;font-size:15px;line-height:1.5}
+  /* portfolio */
+  .portfolio{padding-top:68px;padding-bottom:78px}
+  .pf-track{gap:12px;padding-left:16px}
+  .pf-card{width:80vw;padding:18px;border-radius:18px}
+  .pf-meta{font-size:12px;gap:6px}
+  .pf-card h3{font-size:clamp(34px,11vw,44px)}
+  /* final CTA */
+  .cta-block{justify-content:flex-start;gap:14px;padding:108px 28px 90px}
+  .cta-block h2{max-width:none;font-size:clamp(38px,12vw,48px);line-height:1}
+  .cta-block p{max-width:30ch;font-size:16px;line-height:1.45}
+  .cta-block a{margin-top:6px;min-height:48px;padding:0 24px;font-size:15px}
+  /* intro loader: lighter blur on phones */
+  .loader-bloom{filter:blur(48px)}
+  .loader-star img{width:96px;height:96px}
+}
 </style>
 </head>
 <body>
@@ -507,13 +570,18 @@ const phase4 = (p)=> clamp01((gp(p)-0.4)/0.35)
 
 // Card 1 (hero)
 const card1Width  = (p)=>{ const t=phase1(p); return `calc((100vw - var(--sr-hero-pad)) * ${1-t} + var(--sr-card-h) * ${t})` }
-const card1Height = (p)=>{ const t=phase1(p); return `calc((100vh - var(--sr-hero-pad)) * ${1-t} + var(--sr-card-w) * ${t})` }
+const card1Height = (p)=>{ const t=phase1(p); return `calc((var(--stage-h) - var(--sr-hero-pad)) * ${1-t} + var(--sr-card-w) * ${t})` }
 const card1Transform = (p)=>{ const rotateZ=phase1(p)*90; return `rotateZ(${rotateZ}deg) translateZ(calc(var(--sr-carousel-r) * ${phase2(p)} + 1px))` }
 const card1Opacity = (p)=> gp(p)>=0.75 ? 0 : 1
 const heroSlidePan = (p)=> phase1(p)*-100
 const heroTiltFade = (p)=> 1-phase1(p)
-const heroSliderWidth  = (p)=> `calc(min(90vw, 46vh) * ${1-phase1(p)} + 66vmin * ${phase1(p)})`
-const heroSliderHeight = (p)=> `calc(62vh * ${1-phase1(p)} + 46vmin * ${phase1(p)})`
+// phones / tablet-portrait: smaller opening image so headline, text and buttons all fit
+const MQ_PHONE = matchMedia('(max-width:760px)')
+const MQ_TABP  = matchMedia('(min-width:761px) and (max-width:1023px) and (orientation:portrait)')
+const heroImgW0 = ()=> MQ_PHONE.matches ? '78vw' : MQ_TABP.matches ? 'min(62vw, 34vh)' : 'min(90vw, 46vh)'
+const heroImgH0 = ()=> MQ_PHONE.matches ? '30svh' : MQ_TABP.matches ? '32vh' : '62vh'
+const heroSliderWidth  = (p)=> `calc(${heroImgW0()} * ${1-phase1(p)} + 66vmin * ${phase1(p)})`
+const heroSliderHeight = (p)=> `calc(${heroImgH0()} * ${1-phase1(p)} + 46vmin * ${phase1(p)})`
 const heroContentFade = (p)=> Math.max(0, 1 - phase1(p)*1.9)
 
 // Side cards
@@ -957,7 +1025,7 @@ void main(){
 }`
 const sphereCanvas=document.getElementById("glSphere")
 const sphereRenderer=new THREE.WebGLRenderer({ canvas:sphereCanvas, alpha:true, antialias:true })
-sphereRenderer.setPixelRatio(Math.min(Math.max(devicePixelRatio,2),3))
+sphereRenderer.setPixelRatio(matchMedia('(max-width:760px), (hover:none)').matches ? Math.min(devicePixelRatio,2) : Math.min(Math.max(devicePixelRatio,2),3))
 const sphereScene=new THREE.Scene()
 const sphereCam=new THREE.PerspectiveCamera(50, 1, 0.1, 100); sphereCam.position.set(0,0,3.8)
 const SPH_COUNT=34000
@@ -1033,7 +1101,7 @@ function renderTarget(t){
   const w=targetCanvas.clientWidth||1, h=targetCanvas.clientHeight||1
   targetRenderer.setSize(w,h,false); targetCam.aspect=w/h; targetCam.updateProjectionMatrix()
   const dpr=targetRenderer.getPixelRatio(); bgUniforms.u_resolution.value.set(Math.round(w*dpr),Math.round(h*dpr)); bgUniforms.u_time.value=t
-  if(starGroup){ const delta=Math.min(0.05, t-targetLastT); starSpin -= delta*(TWO_PI/12); starGroup.position.set(1.46,-0.43,-0.33); starGroup.scale.setScalar(1.74); starGroup.rotation.set(-44*DEG,-44*DEG,starSpin) }
+  if(starGroup){ const delta=Math.min(0.05, t-targetLastT); starSpin -= delta*(TWO_PI/12); if(w/h<0.8){ starGroup.position.set(0.55,-1.3,-0.33); starGroup.scale.setScalar(1.15) } else { starGroup.position.set(1.46,-0.43,-0.33); starGroup.scale.setScalar(1.74) }; starGroup.rotation.set(-44*DEG,-44*DEG,starSpin) }
   targetLastT=t
   targetRenderer.render(targetScene, targetCam)
 }
@@ -1203,6 +1271,7 @@ requestAnimationFrame(frame)
 
 // hero card 3D tilt from pointer (window-normalized) — matches HeroCard tilt spring
 addEventListener("pointermove",(e)=>{
+  if(e.pointerType==="touch") return   // no tilt while a finger scrolls
   const nx=(e.clientX/innerWidth)*2-1, ny=(e.clientY/innerHeight)*2-1
   refs._tiltRx = -ny*9; refs._tiltRy = nx*12
 },{passive:true})
@@ -1231,6 +1300,7 @@ navLinks.querySelectorAll("a").forEach(a=>{ a.addEventListener("click",(e)=>{ e.
     color:rgba(242,240,255,.5);background:rgba(8,6,20,.55);border:1px solid rgba(242,240,255,.14);
     backdrop-filter:blur(10px);padding:9px 14px;border-radius:999px;pointer-events:none}
   @media (max-width:560px){#demo{display:none}}
+  @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
 </style>
 <a id="torna" href="/atelier?da=il-prodotto">&larr; Torna alla mappa</a>
 <span id="demo">// mondo dimostrativo — Axxell</span>

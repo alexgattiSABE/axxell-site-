@@ -432,6 +432,55 @@ body{
 .preloader-count{font-family:var(--font-display);font-size:var(--counter-size);line-height:var(--display-leading);color:var(--on-media)}
 .preloader-count .pc-unit{color:color-mix(in oklab,var(--on-media) 60%,transparent)}
 
+/* ---------------------------------------------------------------------------
+   TELEFONO E TABLET — la griglia adattiva sopra fa crescere 1rem con la
+   larghezza (17px su un telefono da 390, 12px su un tablet da 768): sul
+   telefono la pagina sembrava un desktop ingrandito, sul tablet troppo
+   piccola. Qui 1rem torna fisso e le misure si ridisegnano per il palmo.
+   Il desktop (>= 1024px) non e' toccato.
+   --------------------------------------------------------------------------- */
+@media (max-width:1023.98px){
+  html{font-size:15px}
+  /* svh: la parte visibile anche con le barre del browser aperte. */
+  .main,.hero{min-height:100svh}
+  /* Spazio in fondo per la pillola «Torna alla mappa» e il badge demo,
+     che altrimenti coprono le due cifre. */
+  .hero-stats{padding-bottom:4.75rem}
+}
+@media (min-width:640px) and (max-width:1023.98px){
+  .hero-heading{font-size:2.5rem}
+  .hero-summary{max-width:36rem;justify-self:center}
+}
+@media (max-width:639.98px){
+  html{font-size:15px}
+  /* masthead: una riga compatta di link, marchio sopra */
+  .hero-nav{gap:0.125rem;padding:0.625rem 1rem 0.125rem}
+  .hero-brand{font-size:1.125rem;padding:0.5rem 0.75rem}
+  .hero-nav ul{gap:0.25rem}
+  .hero-nav-link{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 0.5rem;font-size:1rem}
+  .hero-nav-groups{margin:0 -0.5rem}
+
+  .hero-band{gap:1.5rem;padding:2rem 1.25rem}
+  .hero-heading{font-size:1.875rem;line-height:1.15}
+
+  /* modulo: campi alti quanto un dito, separati da una riga sottile */
+  .hero-form{gap:0;padding:0.375rem;border-radius:1.5rem;max-width:22.5rem}
+  .hero-field input{min-height:2.875rem;padding:0 1rem;font-size:16px} /* 16px: sotto, iOS zooma al tocco */
+  .hero-field + .hero-field{border-top:1px solid color-mix(in oklab,var(--on-media) 18%,transparent)}
+  .hero-submit{height:2.875rem;margin-top:0.375rem;font-size:1.0625rem;border-radius:1.25rem}
+
+  /* fascia in basso: piu' leggera, niente sfocatura pesante sopra il video */
+  .hero-stats{gap:1.25rem 1rem;padding:1.25rem 1.25rem 4.5rem;
+    background:color-mix(in oklab,var(--scrim) 62%,transparent);
+    -webkit-backdrop-filter:none;backdrop-filter:none}
+  .hero-summary{gap:0.625rem}
+  .hero-summary h2{font-size:1.375rem}
+  .hero-summary-body{font-size:1rem;line-height:1.45}
+  .figure{gap:0.125rem}
+  .figure dd{font-size:1.5rem}
+  .figure dt{font-size:0.875rem}
+}
+
 /* Lenis */
 html.lenis,html.lenis body{height:auto}
 .lenis.lenis-smooth{scroll-behavior:auto!important}

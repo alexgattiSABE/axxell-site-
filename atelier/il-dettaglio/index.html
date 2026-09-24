@@ -420,6 +420,137 @@ ul,ol{list-style:none}
   .e-up,.e-fade,.word,.mask .word,.hero-mark,.site-head,.hcard-panel{
     transition:none!important;opacity:1!important;transform:none!important}
 }
+
+/* ============================================================================
+   TELEFONO E TABLET — la pagina era una pagina desktop rimpicciolita: il
+   font-size radice seguiva la larghezza (4.44vw sotto i 640px → 17–28px),
+   quindi ogni misura in rem cresceva col telefono. Qui la radice resta
+   fissa e ogni blocco ha misure pensate per lo schermo piccolo.
+   Il desktop (≥1024px) non viene toccato.
+============================================================================ */
+/* tablet: il testo scendeva a 10–11px (radice 1.5625vw = 12px a 768) */
+@media (max-width:1024px){html{font-size:max(1.5625vw,14px)}}
+
+@media (max-width:1023px){
+  /* hero: velo chiaro dietro al testo, che era nero sopra la foto scura */
+  .hero-vignette{background:linear-gradient(to bottom,rgba(236,235,233,.86) 0%,rgba(236,235,233,.74) 40%,rgba(236,235,233,.35) 68%,rgba(236,235,233,.1) 100%)}
+  .partners{border-radius:var(--r-card-sm);background:rgba(255,255,255,.72);padding:.85rem 1rem;
+    outline:1px solid rgba(230,229,226,.7)}
+  .partners li{opacity:1}
+  :root{--watermark:19vw}
+  .foot-in{padding-bottom:5.5rem}
+  .foot-cta .pill{align-self:flex-start}
+  .hero-bar{color:rgba(255,255,255,.82);border-top-color:rgba(255,255,255,.18)}
+  .about-globe{min-height:7.5rem}
+  .about-globe .bigglobe{left:auto;right:-.75rem;top:40%;width:7rem;height:7rem}
+  .about-globe .lbl span{max-width:12.5rem}
+
+  /* menu: il bottone «Menu» non apriva niente e i link erano nascosti */
+  .menu-btn{min-height:44px}
+  .site-head.menu-open .nav{display:block;position:absolute;top:calc(100% - .5rem);left:1.25rem;right:1.25rem;
+    border-radius:var(--r-card-sm);background:#fff;padding:.4rem;z-index:60;
+    box-shadow:0 12px 32px rgba(0,0,0,.14),0 0 0 1px rgba(230,229,226,.9)}
+  .site-head.menu-open .nav ul{flex-direction:column;align-items:stretch;gap:0;font-size:1rem}
+  .site-head.menu-open .nav a{display:flex;min-height:48px;padding:0 1rem;border-radius:var(--r-control);color:var(--foreground)}
+  .site-head.menu-open .nav li+li{border-top:1px solid var(--line)}
+}
+
+@media (max-width:640px){
+  html{font-size:16px}
+  :root{--r-card:1.5rem}
+
+  .head-row{padding:.9rem 1.25rem}
+  .brand{font-size:1.0625rem;padding:.7rem 0}
+  .menu-btn{padding:.55rem .9rem}
+
+  /* hero */
+  .hero-grid{gap:1.5rem;padding:5.25rem 1.25rem 2rem}
+  .hero-left{gap:1.1rem}
+  .hero-h1{font-size:clamp(2rem,9.4vw,2.5rem);line-height:1.02;max-width:14ch}
+  .hero-rating .cust{font-size:.875rem;color:rgba(17,17,17,.8)}
+  .hero-ctas{gap:.6rem}
+  .hero-ctas .pill{min-height:46px;padding:.8rem 1.25rem;font-size:.9375rem}
+  .hero-right{gap:.75rem}
+  .hcard{max-width:none}
+  .hcard-logo{width:4.25rem;height:4.25rem;align-self:center;font-size:1.35rem}
+  .hcard-body{padding:.6rem .75rem}
+  .hcard-slot{min-height:2.9rem}
+  .hcard-nav button{width:2.6rem;height:2.6rem}
+  .partners{max-width:none}
+  .partners .plbl{margin-bottom:.5rem}
+  .partners ul{gap:.5rem .75rem}
+  .hero-mark{bottom:4.5rem}
+  .hero-bar{padding:1rem 1.25rem;font-size:.6875rem}
+
+  /* chi siamo */
+  .about-grid{gap:1.75rem;padding:3.5rem 1.25rem 2.5rem}
+  .about-globe .lbl{font-size:.9375rem}
+  .about-h2{font-size:1.3rem;line-height:1.4}
+  .about-right{gap:1.75rem}
+  .about-soc a{width:2.75rem;height:2.75rem}
+  .about-foot .pill{min-height:46px}
+
+  /* fascia «Pochi pezzi fatti bene»: quattro pillole alte 104px una sotto l'altra */
+  .create ul{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:1rem 1.25rem 1.5rem}
+  .create .cw{height:4rem;font-size:1.375rem}
+  .create .cw svg{width:26px;height:26px}
+
+  /* lavori */
+  .pf-wrap{padding:2rem 1.25rem 3rem}
+  .pf-head{margin:.9rem 0 1.75rem}
+  .pf-head h2{font-size:2.1rem}
+  .pf-grid{gap:1rem}
+  .pf-card{display:flex;flex-direction:column;min-height:0;padding:1.25rem}
+  .pf-logo{position:relative;inset:auto;height:6.5rem}
+  .pf-logo svg{width:52px;height:52px}
+  .pf-bot{position:relative;left:auto;right:auto;bottom:auto}
+  .pf-bot h3{font-size:1.375rem}
+  .pf-bot p{font-size:.9375rem;line-height:1.45}
+  .pf-tags{margin-top:1rem;gap:.4rem}
+  .pf-tag{font-size:.75rem;padding:.3rem .7rem}
+
+  /* cosa facciamo: la descrizione era nascosta sotto i 1024px */
+  .sv-wrap{padding:2.5rem 1.25rem 3rem}
+  .sv-head{font-size:2.1rem;line-height:1.08;margin:.9rem 0 1.25rem}
+  .sv-row a{display:grid;grid-template-columns:1.75rem 1fr auto;column-gap:.75rem;row-gap:.2rem;
+    align-items:center;padding:1.1rem .25rem}
+  .sv-idx{grid-column:1;grid-row:1}
+  .sv-title{grid-column:2;grid-row:1;font-size:1.25rem}
+  .sv-desc{display:block;grid-column:2;grid-row:2;max-width:none;font-size:.9375rem;line-height:1.4}
+  .sv-go{grid-column:3;grid-row:1/span 2;width:2.75rem;height:2.75rem}
+
+  /* in cifre */
+  .stats-wrap{padding:0 1.25rem 3rem}
+  .stats-card{padding:2rem 1.25rem 2.25rem}
+  .stats-h2{font-size:1.5rem;line-height:1.2}
+  .stats-grid{gap:1.75rem 1rem;margin-top:2rem}
+  .stat .val{font-size:2.5rem}
+  .stat .lab{margin-top:.35rem;font-size:.875rem}
+
+  /* footer: spazio in fondo per il bottone «Torna alla mappa» */
+  .foot-in{padding:3.25rem 1.25rem 6rem}
+  .foot-cta{gap:1.5rem;padding-bottom:2.5rem}
+  .foot-cta h2{font-size:2.1rem;line-height:1.05}
+  .foot-cta .pill{align-self:flex-start;min-height:48px}
+  .foot-cols{grid-template-columns:1fr 1fr;gap:2rem 1rem;padding:2.5rem 0}
+  .foot-brand{grid-column:1/-1}
+  .foot-col ul{gap:0}
+  .foot-col a{display:inline-block;padding:.7rem 0}
+  .foot-legal{align-items:flex-start;text-align:left}
+  .foot-legal a{display:inline-block;padding:.75rem 0}
+
+  .pl-brand{font-size:1.5rem}
+}
+
+/* touch: niente effetti «hover» che restano incollati dopo il tocco */
+@media (hover:none){
+  .pill:hover,.brand:hover,.menu-btn:hover,.pf-card:hover,.create .cw:hover,.about-soc a:hover,
+  .partners li:hover,.nav a:hover{transform:none}
+  .pf-card:hover .pf-arrow,.sv-row a:hover .sv-go{transform:none}
+  .sv-row a:hover{background:transparent}
+}
+@media (hover:none) and (max-width:640px){.sv-row a:hover{padding-left:.25rem}}
+@media (hover:none) and (min-width:641px){.sv-row a:hover{padding-left:1.5rem}}
 </style>
 </head>
 <body>
@@ -843,11 +974,26 @@ requestAnimationFrame(frame)
 
 /* ── hero liquid reveal — cursor brush unmasks the second portrait ────────── */
 const reveal=document.getElementById('hero-reveal')
-heroEl.addEventListener('pointermove',e=>{
+function moveBrush(e){
   const r=heroEl.getBoundingClientRect()
   reveal.style.setProperty('--mx',(e.clientX-r.left)+'px')
   reveal.style.setProperty('--my',(e.clientY-r.top)+'px')
-})
+}
+heroEl.addEventListener('pointermove',moveBrush)
+// touch: un tocco sulla foto mostra il secondo ritratto (senza mouse non c'è «passaggio sopra»)
+heroEl.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse') moveBrush(e) })
+
+/* ── menu su telefono/tablet: sotto i 1024px la nav è nascosta, il bottone la apre ── */
+const siteHead=document.getElementById('site-head')
+const menuBtn=siteHead.querySelector('.menu-btn')
+const smallNav=matchMedia('(max-width:1023px)')
+menuBtn.setAttribute('aria-expanded','false')
+function setMenu(open){ siteHead.classList.toggle('menu-open',open); menuBtn.setAttribute('aria-expanded',String(open)) }
+menuBtn.addEventListener('click',e=>{ if(!smallNav.matches) return; e.stopPropagation(); setMenu(!siteHead.classList.contains('menu-open')) })
+document.getElementById('nav-list').addEventListener('click',e=>{ if(e.target.closest('a')) setMenu(false) })
+document.addEventListener('click',e=>{ if(!e.target.closest('.site-head')) setMenu(false) })
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') setMenu(false) })
+smallNav.addEventListener('change',()=>setMenu(false))
 
 /* ── anchor links via Lenis ───────────────────────────────────────────────── */
 document.querySelectorAll('a[href^="#"]').forEach(a=>{
@@ -897,7 +1043,8 @@ requestAnimationFrame(countUp)
     font:400 10.5px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;
     color:rgba(26,23,20,.55);background:rgba(255,253,250,.74);border:1px solid rgba(26,23,20,.12);
     backdrop-filter:blur(10px);padding:9px 14px;border-radius:999px;pointer-events:none}
-  @media (max-width:560px){#demo{display:none}}
+  @media (max-width:560px){#demo{display:none}
+    #torna{min-height:44px;padding:0 16px;gap:8px;font-size:11px;letter-spacing:.12em}}
 </style>
 <a id="torna" href="/atelier?da=il-dettaglio">&larr; Torna alla mappa</a>
 <span id="demo">// mondo dimostrativo — Axxell</span>

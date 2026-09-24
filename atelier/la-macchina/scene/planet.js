@@ -153,9 +153,19 @@ export function initPlanet(canvas) {
       }`,
   }
 
+  /* ---------- VIEWPORT (telefono) ----------
+     Misure prese dal canvas (100lvh sul telefono), non da innerHeight: quando
+     la barra del browser mobile compare/sparisce innerHeight cambia e la scena
+     si ridimensionerebbe a ogni scroll. Sotto i 760px la densita' di pixel e'
+     limitata a 1.5: tre passaggi con bloom a densita' 3 fanno scaldare il
+     telefono senza differenza visibile. Desktop: invariato. */
+  const viewW = () => canvas.clientWidth || window.innerWidth
+  const viewH = () => canvas.clientHeight || window.innerHeight
+  const viewDpr = () => window.innerWidth < 760 ? Math.min(window.devicePixelRatio, 1.5) : window.devicePixelRatio
+
   /* ---------- RENDERER / SCENE / CAMERA ---------- */
   const renderer = new THREE.WebGL1Renderer({ canvas, antialias: true })
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setPixelRatio(viewDpr())
   renderer.outputEncoding = THREE.sRGBEncoding
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.VSMShadowMap
   const scene = new THREE.Scene()
@@ -435,7 +445,7 @@ export function initPlanet(canvas) {
     atmoMat = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 }, uColor: { value: hexToVec3(CONFIG.atmoColor) },
-        uRes: { value: new THREE.Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio) },
+        uRes: { value: new THREE.Vector2(viewW() * viewDpr(), viewH() * viewDpr()) },
       },
       vertexShader: `
         attribute float size; attribute float seed; uniform float uTime; uniform vec2 uRes;
@@ -498,7 +508,7 @@ export function initPlanet(canvas) {
       uniforms: {
         uTime: starTime, uSize: { value: CONFIG.starSize }, uFlicker: { value: CONFIG.starFlicker },
         uColor: { value: hexToVec3(CONFIG.starColor) },
-        uRes: { value: new THREE.Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio) },
+        uRes: { value: new THREE.Vector2(viewW() * viewDpr(), viewH() * viewDpr()) },
       },
       vertexShader: `
         attribute float seed; attribute float bright;
@@ -592,7 +602,7 @@ export function initPlanet(canvas) {
       uniforms: {
         uTime: markerTime, uColor: { value: hexToVec3(CONFIG.markerColor) },
         uSize: { value: CONFIG.markerSize }, uSpeed: { value: CONFIG.markerSpeed },
-        uRes: { value: new THREE.Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio) },
+        uRes: { value: new THREE.Vector2(viewW() * viewDpr(), viewH() * viewDpr()) },
       },
       vertexShader: `
         attribute float seed; uniform float uSize; uniform vec2 uRes;
@@ -628,8 +638,11 @@ export function initPlanet(canvas) {
   }
 
   /* ---------- RESIZE ---------- */
+  let lastW = 0, lastH = 0, lastDpr = 0
   function resize() {
-    const w = window.innerWidth, h = window.innerHeight, dpr = window.devicePixelRatio
+    const w = viewW(), h = viewH(), dpr = viewDpr()
+    if (w === lastW && h === lastH && dpr === lastDpr) return
+    lastW = w; lastH = h; lastDpr = dpr
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false)
     camera.aspect = w / h; camera.updateProjectionMatrix()
     for (const c of [torusComposer, bloomComposer, finalComposer]) { c.setPixelRatio(dpr); c.setSize(w, h) }
@@ -660,10 +673,21 @@ export function initPlanet(canvas) {
     const pTarget = clamp(window.scrollY / maxScroll, 0, 1)
     curP += (pTarget - curP) * Math.min(1, dt * 4.5)
     // less lateral travel on narrow screens so the planet never leaves frame entirely
-    const sideScale = clamp(window.innerWidth / 1200, 0.5, 1)
+    let sideScale = clamp(window.innerWidth / 1200, 0.5, 1)
+    // schermo verticale (telefono/tablet): l'inquadratura e' stretta, quindi il
+    // pianeta a scala desktop diventa un muro che riempie lo schermo. Lo si
+    // rimpicciolisce in proporzione, lo si tiene piu' basso nell'hero e si
+    // accorcia lo spostamento laterale. In orizzontale (desktop) m = 1: identico.
+    const aspect = camera.aspect
+    const m = aspect < 1 ? clamp(aspect / 1.1, 0.42, 1) : 1
+    let heroDrop = 0
+    if (m < 1) {
+      sideScale = Math.min(sideScale, Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 8 * aspect / 4.4)
+      heroDrop = (1 - m) * 2.6 * clamp(1 - curP / 0.32, 0, 1)
+    }
     const tx = sample(STOPS_X, curP) * sideScale
-    const ty = sample(STOPS_Y, curP)
-    const ts = sample(STOPS_S, curP)
+    const ty = sample(STOPS_Y, curP) + heroDrop
+    const ts = sample(STOPS_S, curP) * m
     const k = Math.min(1, dt * 3.2)
     curX += (tx - curX) * k; curY += (ty - curY) * k; curS += (ts - curS) * k
 

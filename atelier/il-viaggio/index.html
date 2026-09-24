@@ -684,6 +684,119 @@ ul { list-style: none; margin: 0; padding: 0; }
   .hero-grain { animation: none; }
   .plan-steam { animation: none; }
 }
+
+/* ===========================================================================
+   TELEFONO E TABLET — la pagina non deve sembrare "gigante".
+   Tutto qui sotto vale solo sotto i 1024px (tablet) o i 760px (telefono):
+   il desktop resta identico.
+   =========================================================================== */
+
+/* Menu a tendina (il tasto MENU prima non apriva niente). */
+@media (max-width: 1024px) {
+  /* testi piccoli leggibili anche sul tablet, dove la base scendeva a 10px */
+  :root {
+    --size-body: max(0.875rem, 15px);
+    --size-caption: max(0.75rem, 11.5px);
+    --line-caption: 1.2;
+  }
+  /* il marchio scorre via con la copertina invece di restare sopra ai testi */
+  .hero-wordmark { position: absolute; }
+  .hero-menu {
+    min-height: 44px; min-width: 44px;
+    margin: -14px -12px 0 0; padding: 14px 12px;
+  }
+  .hero-nav.is-open {
+    display: grid; position: absolute; z-index: 60;
+    left: auto; right: var(--gap-page); top: calc(var(--gap-page) + 36px);
+    width: auto; min-width: 11rem; gap: 0;
+    padding: 0.5rem 1rem; border-radius: 12px;
+    background: rgb(12 12 12 / 0.88);
+    opacity: 1 !important; transform: none !important;
+  }
+  .hero-nav.is-open a { padding: 12px 0; font-size: 13px; }
+  .hero-explore a, .hero-destinations > div.caption { display: block; padding: 12px 0; margin: -12px 0; }
+  /* il velo dei pannelli copre anche le foto chiare, così i testi si leggono */
+  .plan-footer { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  .travel-veil {
+    background:
+      linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.25) 70%),
+      rgb(0 0 0 / 0.18);
+  }
+}
+
+@media (max-width: 760px) {
+  /* base fissa a 16px: prima cresceva con lo schermo (fino a 28px a 640px) */
+  html { font-size: 16px; }
+
+  /* COPERTINA */
+  #hero { padding: 5.5rem var(--gap-page) 7.5rem; gap: 1rem; }
+  .hero-wordmark { font-size: 1.375rem; line-height: 1.2rem; }
+  .hero-title-start, .hero-title-end {
+    font-size: clamp(2.125rem, 9.4vw, 2.75rem); line-height: 0.92em;
+  }
+  .hero-card-wrap {
+    width: min(100vw - 3rem, 31.25rem, (100svh - 24rem) / 0.63);
+  }
+  /* "Galleria / Elenco" non fa nulla e si scontrava col MENU */
+  .hero-viewmodes { display: none; }
+  /* la riga in basso sale sopra al tasto "Torna alla mappa" */
+  .hero-destinations, .hero-explore {
+    bottom: calc(var(--gap-page) + 56px + env(safe-area-inset-bottom));
+  }
+
+  /* METE */
+  #destinations { padding: 4rem 0 3.5rem; }
+  .dest-heading {
+    font-size: clamp(2.25rem, 10vw, 2.875rem); line-height: 0.95em;
+    margin-bottom: 1.5rem;
+  }
+  /* le polaroid erano minuscole: la scena si allarga e sborda ai lati */
+  .dest-stage { width: 135%; max-width: none; margin-left: -17.5%; }
+
+  /* FILOSOFIA */
+  #philosophy { height: 240vh; }
+  .phil-pin { height: 100svh; }
+  .phil-title { font-size: clamp(2.25rem, 10vw, 2.875rem); line-height: 0.95em; }
+  .phil-asides { margin-top: 1.75rem; gap: 1rem; line-height: 1.45; }
+  .phil-signoff { font-size: 1.5rem; margin-top: 1.75rem; }
+
+  /* COME VIAGGIAMO */
+  .travel-header { padding: 4rem var(--gap-page) 2rem; }
+  .travel-title { font-size: clamp(2.25rem, 10vw, 2.875rem); line-height: 0.95em; }
+  .travel-subtitle { margin-top: 0.75rem; }
+  .travel-panel { height: 70svh; min-height: 24rem; max-height: 34rem; }
+  .travel-foot { gap: 1rem; }
+  .travel-panel-title { font-size: 1.875rem; }
+  .travel-signoff { font-size: 1.25rem; }
+
+  /* PROGETTA */
+  .plan-scene { height: 100svh; min-height: 36rem; }
+  .plan-content { gap: 1.25rem; }
+  .plan-title { font-size: clamp(2.25rem, 10vw, 2.875rem); line-height: 0.95em; }
+  .plan-note { width: 16.5rem; }
+  .plan-note-copy { font-size: 1.25rem; padding: 2rem 1.5rem; }
+  .plan-action { padding: 14px 4px; }
+
+  /* PIEDE: niente sfocatura su un'area enorme (pesa sul telefono),
+     due colonne di link invece di una lista lunghissima */
+  .plan-footer {
+    margin-top: -8rem;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    background: linear-gradient(to bottom, rgb(12 12 12 / 0.7), rgb(12 12 12 / 0.94) 22%);
+    padding: 4rem var(--gap-page) calc(5.5rem + env(safe-area-inset-bottom));
+  }
+  .plan-footer-inner { grid-template-columns: 1fr 1fr; gap: 2rem 1.5rem; }
+  .plan-footer-inner > :first-child,
+  .plan-footer-inner > :last-child { grid-column: 1 / -1; }
+  .footer-col-title { margin-bottom: 0.5rem; }
+  .footer-col li { margin: 0; }
+  .footer-col li a { display: block; padding: 8px 0; }
+  .footer-form input { padding: 0.75rem 0; font-size: 16px; }
+  .footer-form button { padding: 0 0 0 12px; min-height: 44px; }
+  .footer-social { gap: 0; margin: 0.75rem 0 0 -12px; }
+  .footer-social a { display: grid; place-items: center; width: 44px; height: 44px; }
+  .plan-footer-base { margin-top: 2rem; line-height: 1.5; }
+}
 </style>
 </head>
 <body>
@@ -1242,6 +1355,21 @@ heroEl.addEventListener("pointerleave", () => {
   returnAt = performance.now();
 });
 
+/* MENU su schermi piccoli: prima il tasto non apriva niente. */
+{
+  const menuBtn = document.querySelector(".hero-menu");
+  const navEl = document.getElementById("g-nav");
+  menuBtn.setAttribute("aria-expanded", "false");
+  menuBtn.setAttribute("aria-controls", "g-nav");
+  const setMenu = (open) => {
+    navEl.classList.toggle("is-open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+  };
+  menuBtn.addEventListener("click", (e) => { e.stopPropagation(); setMenu(!navEl.classList.contains("is-open")); });
+  document.addEventListener("click", (e) => { if (!navEl.contains(e.target)) setMenu(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+}
+
 const CARD_RANGE = 26; /* px of travel at the frame edge */
 
 onFrame((dt, now) => {
@@ -1480,6 +1608,7 @@ onFrame((dt) => {
    itself word by word.
    =========================================================================== */
 const BACKDROP_PAN = { from: 0, to: -50 };
+const PHONE_QUERY = "(max-width: 760px)";
 const HANDOVER = 0.14;
 const WORD_STAGGER = 0.03, WORD_DURATION = 0.14, WORD_TRAVEL_EM = 0.28;
 const REVEAL_STAGGER = 0.05, REVEAL_DURATION = 0.28;
@@ -1513,8 +1642,11 @@ onFrame(() => {
   if (r.bottom < 0 || r.top > window.innerHeight) return;
   const p = clamp01(-r.top / (r.height - window.innerHeight));
 
+  /* sul telefono la panoramica si ferma a -30%: a -50% lasciava una fascia
+     nera sotto la foto alla fine della sezione */
+  const panTo = window.matchMedia(PHONE_QUERY).matches ? -30 : BACKDROP_PAN.to;
   philBackdrop.style.transform =
-    `translateY(${lerp(BACKDROP_PAN.from, BACKDROP_PAN.to, p)}%) scale(1.6)`;
+    `translateY(${lerp(BACKDROP_PAN.from, panTo, p)}%) scale(1.6)`;
 
   philWords.forEach((w, i) => {
     const e = smooth((p - i * WORD_STAGGER) / WORD_DURATION);
@@ -1706,7 +1838,11 @@ onFrame((dt, now) => {
 
   /* the note writes itself across WRITE_WINDOW of the section's own scrub */
   const p = clamp01((window.innerHeight - r.top) / (window.innerHeight + r.height));
-  const target = clamp01((p - WRITE_WINDOW[0]) / (WRITE_WINDOW[1] - WRITE_WINDOW[0]));
+  /* sul telefono il piede copre la scena molto prima della fine della sezione:
+     il biglietto si scrive mentre la scena arriva in cima, non dopo */
+  const target = window.matchMedia(NARROW_QUERY).matches
+    ? clamp01((window.innerHeight * 0.55 - r.top) / (window.innerHeight * 0.6))
+    : clamp01((p - WRITE_WINDOW[0]) / (WRITE_WINDOW[1] - WRITE_WINDOW[0]));
   writeShown = lerp(writeShown, target, prefersReduced ? 1 : WRITE_LERP);
 
   planNoteLines.forEach((ln, i) => {

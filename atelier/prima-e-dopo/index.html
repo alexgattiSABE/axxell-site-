@@ -2236,6 +2236,140 @@ void main() {
 </style>
 <a id="torna" href="/atelier?da=prima-e-dopo">&larr; Torna alla mappa</a>
 <span id="demo">// mondo dimostrativo — Axxell</span>
+<style>
+  /* ===== TELEFONO E TABLET — misure da pagina mobile, non da desktop rimpicciolito.
+     Tutto qui sotto vive dentro media query: il desktop (>=1280) non cambia. ===== */
+
+  /* Tablet e telefoni larghi: le tre cifre stanno in riga senza uscire dallo schermo. */
+  @media (min-width:540px) and (max-width:1279.98px){
+    #numbers .stat{flex:1 1 0;min-width:0;width:auto}
+  }
+
+  @media (max-width:767.98px){
+    /* nav: bersagli da 44px */
+    #nav .logo,#burger{width:44px;height:44px}
+    #nav-panel ul{gap:.25rem;padding:.75rem 1.25rem}
+    #nav-panel .navlink,#nav-panel li>a{display:flex;align-items:center;min-height:44px}
+
+    /* hero: la didascalia sale sopra la pillola "Torna alla mappa" */
+    #hero{padding:6.5rem 1.25rem 9rem}
+    #hero h1{font-size:2.125rem;line-height:1.08}
+    #hero-sub{margin-top:1.125rem;font-size:15px;line-height:1.4;max-width:24rem}
+    #hero-cta{margin-top:1.5rem}
+    #hero-caption{bottom:5rem;font-size:14px;line-height:1.35}
+
+    /* bottoni: altezza comoda, testo leggibile */
+    .cta{height:48px}
+    .cta .label{font-size:15px}
+    .cta .tile{width:40px;height:40px}
+
+    /* il cantiere: il paragrafo non e' piu' un titolo da manifesto */
+    #about{padding:3.5rem 1.25rem}
+    #about .eyebrow{font-size:15px !important}
+    #about h2{font-size:1.5rem;line-height:1.3}
+    .head-slot{margin-top:1rem}
+    .rule{margin-top:2rem}
+    .hl-1,.hl-2{margin-top:2rem}
+    .hl .plate.circle,.hl .plate.tri{width:3.25rem;height:3.25rem}
+    .hl .plate.tri svg{left:.55rem;top:.6rem;width:2.1rem}
+    .hl .title{margin-top:1.125rem !important;font-size:17px}
+    .hl .body{margin-top:.75rem;font-size:15px;line-height:1.4}
+    .cta-slot{margin-top:2rem}
+    #about figure{margin-top:2rem;aspect-ratio:4/5}
+    figcaption.quote{left:.75rem;right:.75rem;bottom:.75rem;padding:1rem 1.125rem}
+    figcaption.quote p:first-child{font-size:16px;line-height:1.3;padding-right:1.75rem}
+    figcaption.quote p:last-child{margin-top:.625rem;font-size:13px}
+    figcaption.quote > svg{right:1.125rem;top:1.125rem}
+    #turntable-wrap{margin-top:.75rem;aspect-ratio:4/3}
+    .scrubber{left:1rem;right:1rem;bottom:1rem;height:44px;padding-inline:1.25rem}
+
+    /* in cifre: tre numeri in una riga, non tre schermate di cifre giganti */
+    #numbers{padding:3.5rem 1.25rem}
+    #numbers .eyebrow{font-size:15px !important}
+    #numbers h2{font-size:1.375rem;line-height:1.25}
+    #numbers .words.nowrap{flex-wrap:wrap !important}
+    #numbers .sub-slot{margin-top:1rem;font-size:15px;line-height:1.4}
+    #numbers dl{margin-top:2.25rem;flex-direction:row;align-items:flex-start;justify-content:center;gap:.5rem}
+    #numbers .stat{flex:1 1 0;min-width:0;width:auto;gap:.5rem}
+    #numbers dt{font-size:2.75rem;line-height:1.1}
+    #numbers dd{font-size:13px;line-height:1.3}
+
+    /* dove */
+    #location{padding:4.5rem 1.25rem}
+    #location .eyebrow{font-size:15px !important}
+    #location h2{font-size:15px;line-height:1.45}
+    #location .cta-slot{margin-top:1.75rem}
+
+    /* per chi e': schede compatte, titoli proporzionati */
+    #audience{padding:3.5rem 1.25rem}
+    #audience .eyebrow{font-size:15px !important}
+    #audience .intro-slot{font-size:15px;line-height:1.45}
+    #audience .grid{margin-top:1.75rem;gap:.5rem}
+    .card{min-height:0;padding:1.25rem}
+    .card > .inner{gap:1rem}
+    .card .head{gap:.5rem}
+    .card .idx{font-size:13px}
+    .card h3{font-size:1.5rem;line-height:1.2}
+    .card .desc{font-size:15px;line-height:1.4}
+
+    /* prima e dopo: testo sopra la foto, foto piu' alta per dipingere col dito */
+    #pittura{padding:3rem 1.25rem}
+    .pit{aspect-ratio:4/3;border-radius:var(--radius-card)}
+    .pit::after{background:linear-gradient(180deg,rgba(8,9,13,0) 60%,rgba(8,9,13,.32) 100%)}
+    #pittura > .pit-copy{position:static;max-width:none;color:var(--foreground);margin:0 0 1rem}
+    #pittura > .pit-copy .pit-k{color:var(--foreground-muted);opacity:1}
+    #pittura > .pit-copy .pit-h{font-size:1.5rem;line-height:1.15;margin:.5rem 0 .5rem}
+    #pittura > .pit-copy .pit-p{font-size:15px;line-height:1.45;opacity:1;color:var(--foreground-muted);max-width:none}
+
+    /* contatti: spazio in fondo cosi' il bottone non resta sotto la pillola */
+    #contact{padding:4.5rem 1.25rem 7rem}
+    #contact h2{margin-top:1rem;font-size:2rem;line-height:1.08}
+    #panel{margin-top:2rem;padding:1.25rem}
+    #panel .stack{gap:1.5rem}
+    #panel p.body{font-size:15px;line-height:1.45}
+    #panel form{gap:1.5rem}
+    #panel .fields{gap:.5rem}
+    .field{padding-bottom:0}
+    .field input{padding:.75rem 0;font-size:16px}
+
+    /* pillola di ritorno: bersaglio comodo, e si fa da parte mentre si scorre in giu' */
+    #torna{padding:0 16px;min-height:40px;font-size:11px;
+      transition:background .2s ease,border-color .2s ease,transform .3s ease,opacity .3s ease}
+    #torna.-via{transform:translateY(calc(100% + 24px));opacity:0;pointer-events:none}
+  }
+
+  /* vetro sfocato piu' leggero sui telefoni: meno lavoro per la scheda grafica */
+  @media (max-width:767.98px) and (hover:none){
+    .card{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+    #panel{-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+  }
+</style>
+<script>
+/* Telefono: il testo di "prima e dopo" esce dalla foto (resta tutta dipingibile),
+   e la pillola "Torna alla mappa" si nasconde scorrendo in giu', torna scorrendo in su. */
+(function(){
+  var mq=window.matchMedia('(max-width: 767.98px)');
+  var pit=document.getElementById('pit'), copy=pit&&pit.querySelector('.pit-copy');
+  function sposta(){
+    if(!pit||!copy) return;
+    if(mq.matches){ if(copy.parentNode!==pit.parentNode) pit.parentNode.insertBefore(copy,pit); }
+    else if(copy.parentNode!==pit){ pit.insertBefore(copy,pit.querySelector('.pit-brush')); }
+  }
+  sposta();
+  if(mq.addEventListener) mq.addEventListener('change',sposta);
+
+  var torna=document.getElementById('torna'), lastY=window.scrollY, ticking=false;
+  function aggiorna(){
+    ticking=false;
+    var y=window.scrollY, d=y-lastY;
+    if(!mq.matches||y<80){ torna.classList.remove('-via'); lastY=y; return; }
+    if(d>6) torna.classList.add('-via');
+    else if(d<-6) torna.classList.remove('-via');
+    if(Math.abs(d)>6) lastY=y;
+  }
+  window.addEventListener('scroll',function(){ if(!ticking){ ticking=true; requestAnimationFrame(aggiorna); } },{passive:true});
+})();
+</script>
 <script>
 /* La pittura del "dopo" — vedi il commento sulla sezione #pittura. */
 (function(){

@@ -346,6 +346,95 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
 @media (min-width:1024px){.foot-copy{grid-column:span 3;text-align:right}}
 .foot-copy p{font-size:var(--text-eyebrow);text-transform:uppercase;letter-spacing:.18em;color:var(--muted)}
 
+/* ============================================================================
+   PHONE + TABLET SIZING — the desktop scale (rem = viewport-relative, type set
+   for a 1920 canvas) blows up on small screens. Desktop (>1024px) untouched.
+============================================================================ */
+/* tablet band: keep the name inside the screen, lift unreadably small text */
+@media (max-width:1024px){
+  .hero-name{font-size:min(var(--text-hero),34vw)}
+}
+@media (min-width:641px) and (max-width:1023px){
+  :root{--text-body:max(1.0625rem,15px);--text-eyebrow:max(.8125rem,11px);--text-lead:max(1.375rem,17px)}
+}
+/* header scrolls away on screens without the nav links (no overlap on content) */
+@media (max-width:767px){
+  header.nav{position:absolute}
+}
+/* phone: a real mobile scale */
+@media (max-width:640px){
+  html{font-size:16px}
+  :root{
+    --text-mega:34vw;
+    --text-display:3.75rem;
+    --text-h1:2.75rem;
+    --text-h2:2.25rem;
+    --text-h3:1.3125rem;
+    --text-lead:1.0625rem;
+    --text-body:.9375rem;
+    --text-eyebrow:.75rem;
+    --section:4.5rem;
+  }
+  header.nav .bar{padding:1rem var(--gutter)}
+  .logo .mono{width:2.75rem;height:2.75rem;font-size:.875rem}
+
+  /* hero: roles + copy on top, portrait sized so it starts below the copy */
+  .hero-top{padding-top:5.25rem;gap:1rem}
+  .hero-roles{font-size:1.75rem}
+  .hero-desc{font-size:1rem;line-height:1.55}
+  .hero-portrait{height:calc(100svh - 20rem);min-height:18rem;width:78vw}
+  .hero-fade{height:22svh}
+  .scroll-cue{display:none}
+
+  .marquee{padding:1.125rem 0}
+  .marquee .item .w{font-size:1.75rem}
+  .marquee .item .d{margin:0 1.125rem;width:.5rem;height:.5rem}
+
+  .grid12{gap:2.25rem}
+  .story-h{margin-top:1rem}
+  .story-body{margin-top:1.25rem}
+  .principle{column-gap:1rem;padding:1.25rem 0}
+  .principle .idx{font-size:1rem;line-height:1.6}
+  .principle h3{font-size:1.125rem}
+  .principle p{margin-top:.5rem}
+
+  .sec-h.big{margin-top:1rem}
+  .sec-head{gap:.75rem}
+  .ventures-grid{margin-top:2.25rem;row-gap:2.75rem}
+  .v-meta{flex-direction:column;gap:.5rem;margin-top:1rem;padding-top:1rem}
+  .v-side{text-align:left;display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .75rem;order:-1}
+  .v-side .v-out{margin-top:0}
+  .v-name{font-size:1.25rem}
+  .v-cat{margin-top:.5rem}
+
+  .stats{margin-top:2.25rem;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{gap:.5rem;padding:1.5rem 0}
+  .stat:nth-child(2n){border-left:1px solid var(--line);padding-left:1.25rem}
+  .stat .val{font-size:2.75rem}
+  .stat .lab{font-size:.75rem;letter-spacing:.12em;line-height:1.45}
+
+  .voices-body{margin-top:2.25rem;gap:1.75rem}
+  .v-btn{padding:1rem 0;gap:1rem}
+  .v-btn .nm{font-size:1.125rem}
+  .v-quote-wrap{gap:1.25rem}
+  .v-portrait{width:9rem}
+  .v-quote blockquote{font-size:1.25rem;line-height:1.35}
+  .v-quote footer{margin-top:1.25rem}
+
+  .contact-h{margin-top:1rem}
+  .contact-body{margin-top:1.25rem}
+  .email{margin-top:2rem;font-size:1.375rem;padding:.4rem 0}
+  #contact{padding-bottom:4.5rem}
+  .foot-bar{gap:1.75rem;padding:2rem 0}
+  .foot-sig .sig{font-size:2rem}
+  .foot-soc ul{gap:0}
+  .foot-soc a{gap:0;min-height:44px;font-size:1rem}
+}
+@media (hover:none){
+  .email:hover{transform:none}
+  .venture:hover .v-img img{transform:none}
+}
+
 @media (prefers-reduced-motion:reduce){
   .reveal,.word,.letter,.e-up,.e-fade{transition:none!important;opacity:1!important;
     transform:none!important;filter:none!important}
@@ -471,7 +560,7 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
     <h2 class="contact-h disp" data-head>Avete un problema che nessuno vi sa spiegare?</h2>
     <p class="contact-body" data-words>&Egrave; di solito da l&igrave; che si comincia. Le richieste le leggiamo tutte, una per una.</p>
     <div>
-      <a class="email disp" href="mailto:studio@studioleva.it" style="text-transform:none">studio@studioleva.it <span class="arw" aria-hidden="true">↗</span></a>
+      <a class="email disp" aria-disabled="true" style="text-transform:none;cursor:default">studio@studioleva.it <span class="arw" aria-hidden="true">↗</span></a>
     </div>
     <div class="foot-bar">
       <div class="foot-sig">
@@ -788,6 +877,7 @@ requestAnimationFrame(countUp)
     color:rgba(244,241,234,.5);background:rgba(10,9,8,.55);border:1px solid rgba(244,241,234,.14);
     backdrop-filter:blur(10px);padding:9px 14px;border-radius:999px;pointer-events:none}
   @media (max-width:560px){#demo{display:none}}
+  @media (pointer:coarse){#torna{min-height:44px;padding:0 18px}}
 </style>
 <a id="torna" href="/atelier?da=lo-studio">&larr; Torna alla mappa</a>
 <span id="demo">// mondo dimostrativo — Axxell</span>
