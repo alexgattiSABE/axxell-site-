@@ -36,14 +36,24 @@ WC.robotSplineMaterials = (function () {
 
   function v3(a) { return new THREE.Vector3(a[0], a[1], a[2]); }
   function m3(a) { var m = new THREE.Matrix3(); m.fromArray(a); return m; }
+  /* IL ROBOT SI MOSTRA SOLO QUANDO E' VESTITO (richiesta utente: «si carica a
+     strati»). Ogni immagine dei materiali (matcap, poster degli occhi, logo)
+     lascia qui una promessa che si risolve quando arriva — o quando fallisce:
+     un file mancante non deve lasciare il robot invisibile per sempre.
+     robot.js aspetta `pronte()` prima di scoprire la tela. */
+  var ATTESA = [];
+  function pronte() { return Promise.all(ATTESA); }
   function tex(path, g, list) {
     // onError: senza, una texture che non arriva è uno strato nero
     // trasparente e basta — il materiale continua a funzionare, cambia solo
     // l'aspetto, e non si sa da dove. Con il warn il percorso si legge in
     // console. `console.warn` e non `error`: la sezione non è rotta, e
     // l'harness deve restare console-clean.
-    var t = new THREE.TextureLoader().load(path, undefined, undefined, function () {
+    var fatto;
+    ATTESA.push(new Promise(function (r) { fatto = r; }));
+    var t = new THREE.TextureLoader().load(path, function () { fatto(); }, undefined, function () {
       console.warn('[robot] texture non caricata:', path);
+      fatto();
     });
     t.encoding = THREE.LinearEncoding;
     t.flipY = g.flipY !== false;
@@ -264,11 +274,14 @@ WC.robotSplineMaterials = (function () {
         // quella a cui disegniamo. Va messa prima di `src` perché un'immagine
         // già in cache può risolversi subito, anche in modo sincrono.
         var img = new Image(LOGO_TEX_SIZE, LOGO_TEX_SIZE);
+        var logoFatto;
+        ATTESA.push(new Promise(function (r) { logoFatto = r; }));
         img.onload = function () {
           canvas.getContext('2d').drawImage(img, 0, 0, LOGO_TEX_SIZE, LOGO_TEX_SIZE);
           ltex.needsUpdate = true;
+          logoFatto();
         };
-        img.onerror = function () { console.warn('[robot] logo non caricato:', LOGO_SVG); };
+        img.onerror = function () { console.warn('[robot] logo non caricato:', LOGO_SVG); logoFatto(); };
         img.src = LOGO_SVG;
         m.uniforms.uLogo = { value: ltex };
         m.uniforms.uLogoCenter = { value: new THREE.Vector2(bb.min.x + sz.x * LOGO_CONFIG.u, bb.min.y + sz.y * LOGO_CONFIG.v) };
@@ -529,5 +542,5 @@ WC.robotSplineMaterials = (function () {
     return out;
   }
 
-  return { create: create, assign: assign };
+  return { create: create, assign: assign, pronte: pronte };
 })();

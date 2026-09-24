@@ -836,7 +836,29 @@ WC.register('robot', function(ctx){
         destra:   new THREE.Vector3(box.max.x, cBox.y, cBox.z),
         piedi:    new THREE.Vector3(cBox.x, box.min.y, cBox.z)
       };
-      if (hint) hint.remove();
+      /* La tela resta nascosta finche' TUTTI i materiali non sono arrivati
+         (vedi `pronte()` in robot-spline-materials.js): prima si vedeva il
+         robot nero, poi la testa, poi il petto col logo — «a strati». Il
+         "Scena in arrivo…" resta fino a quel momento, poi il robot entra
+         intero con una dissolvenza. Tetto di 8 s: se qualcosa non risponde
+         si mostra lo stesso, non si resta con la sezione vuota. */
+      (function () {
+        var tela = renderer.domElement, scoperto = false;
+        tela.style.opacity = '0';
+        tela.style.transition = 'opacity .7s cubic-bezier(.22,1,.36,1)';
+        function scopri() {
+          if (scoperto || torn) return; scoperto = true;
+          // due fotogrammi: il primo carica le texture sulla scheda grafica,
+          // il secondo e' quello pulito che si mostra
+          requestAnimationFrame(function () { requestAnimationFrame(function () {
+            tela.style.opacity = '1';
+            if (hint) hint.remove();
+          }); });
+        }
+        var M = WC.robotSplineMaterials;
+        if (M && M.pronte) M.pronte().then(scopri, scopri); else scopri();
+        setTimeout(scopri, 8000);
+      })();
 
       // Handle esposti per i task successivi (materiali/testa di vetro/
       // point-brain/fibre) e per la verifica headless: window.__robot

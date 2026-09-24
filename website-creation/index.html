@@ -13,6 +13,17 @@
      Verificato a schermo servendo la cartella come la serve Vercel, non
      dedotto. Vale anche per le `fetch` dei modelli dentro js/. -->
 <base href="/website-creation/">
+<!-- IL ROBOT PARTE PRIMA: la forma (robot.glb) e i suoi materiali si
+     scaricano INSIEME, appena si apre la pagina. Prima i materiali partivano
+     solo quando la forma era gia' arrivata, e il robot si vestiva a strati
+     davanti agli occhi. Il `?v=` del GLB e' lo stesso del file dei dati. -->
+<link rel="preload" href="assets/robot.glb?v=20260920a" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Head-16.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Body-2.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Body-11.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Parts-11.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Parts-16.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/eyes-poster.png" as="image" crossorigin="anonymous">
 <title>Website Creation | Axxell</title>
 <meta name="description" content="Siti web su misura progettati e costruiti da Axxell. Questa pagina è il portfolio: ogni sezione dimostra una capacità diversa.">
 <meta name="robots" content="index, follow">
