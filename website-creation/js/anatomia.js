@@ -613,6 +613,7 @@ WC.anatomia = (function () {
     // tocca il pezzo del robot che si e' aperto) e va subito.
     var DURATA = 1150;      // quanto dura lo spettacolo prima di cambiare pagina
     var RESTA = 3200;       // quanto resta acceso un pezzo che non porta da nessuna parte
+    var RESTA_CORPO = 6000; // quanto resta aperto un pezzo toccato direttamente sul robot
     function prefetch(url) {
       if (!url) return;
       var l = document.createElement('link');
@@ -648,10 +649,17 @@ WC.anatomia = (function () {
       scaletta.classList.add('-scelta');
       accendi(id);
       rifai(true);
-      if (conDestinazione(z)) {
+      if (conDestinazione(z) && !dalCorpo) {
         var url = hrefVero(z);
         prefetch(url);
         timerVai = setTimeout(function () { vaiDavvero(z); }, DURATA);
+      } else if (dalCorpo) {
+        // Tocco sul pezzo del robot (Nike: «non deve partire il caricamento»):
+        // si apre, la linea va alla voce, e la' si resta. Per andare si tocca
+        // la voce accesa o di nuovo lo stesso pezzo; se no, dopo un po' si
+        // richiude da solo.
+        if (conDestinazione(z)) prefetch(hrefVero(z));
+        timerSpegni = setTimeout(spegniTocco, RESTA_CORPO);
       } else {
         // La pancia non ha ancora una pagina: si vede la sfera e basta.
         timerSpegni = setTimeout(spegniTocco, RESTA);
