@@ -321,6 +321,51 @@
   #torna:hover{border-color:var(--pag,#dfe4ee);color:var(--pag,#dfe4ee)}
   #torna:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
   @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
+  /* IL PORTALE DEL PREVENTIVO (Nike: «il portale per il preventivo a destra
+     ad altezza centrata»). Le card sono portali di vetro, e questo ne e' uno
+     piccolo, in piedi sul bordo destro: vetro smerigliato, un filo di bordo
+     nel colore della card davanti (`--pag`), e sul bordo una luce che gira
+     piano (`::before`, una fascia in gradiente mascherata sul solo contorno).
+     Porta alla sezione preventivo del sito, come «Preventivo gratuito» nella
+     nav (stesso `data-sito`, e la lingua lo riscrive allo stesso modo). Con
+     moto ridotto la luce resta ferma. Su telefono diventa una linguetta
+     verticale attaccata al bordo (vedi sotto). */
+  #portale{position:fixed;right:clamp(24px,2.2vw,32px);top:50%;transform:translateY(-50%);z-index:6;
+    width:168px;height:210px;box-sizing:border-box;padding:18px 16px;border-radius:18px;
+    display:flex;flex-direction:column;justify-content:flex-end;gap:10px;overflow:hidden;
+    color:#f0f0f6;text-decoration:none;isolation:isolate;
+    background:linear-gradient(160deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.035) 48%,rgba(255,255,255,.07) 100%),rgba(8,10,20,.38);
+    backdrop-filter:blur(14px) saturate(1.25);-webkit-backdrop-filter:blur(14px) saturate(1.25);
+    border:1px solid color-mix(in srgb,var(--pag,#dfe4ee) 45%,transparent);
+    transition:border-color .5s ease,transform .3s ease,opacity .25s ease}
+  /* Solo sul telefono: mentre il mazzo gira la card che arriva passa sul
+     bordo destro, proprio dove sta la linguetta — si spegne finche' il mazzo
+     non e' fermo (vedi `lpFrame`), come fa la copy della card. */
+  #portale.-via{opacity:0;pointer-events:none}
+  #portale::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;z-index:-1;
+    background:linear-gradient(115deg,transparent 30%,var(--pag,#dfe4ee) 50%,transparent 70%) 0 0/250% 250%;
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+    opacity:.85;animation:portaleLuce 7s ease-in-out infinite}
+  @keyframes portaleLuce{0%,100%{background-position:100% 100%}50%{background-position:0% 0%}}
+  #portale .pv-k{font:500 10px/1.2 'DM Mono',ui-monospace,monospace;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--pag,#dfe4ee)}
+  #portale .pv-t{font:600 .85rem/1.25 'Space Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+  #portale .pv-f{font:500 1rem/1 'Space Grotesk',system-ui,sans-serif;transition:transform .3s ease}
+  #portale:hover{border-color:var(--pag,#dfe4ee)}
+  #portale:hover .pv-f{transform:translateX(4px)}
+  #portale:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:4px}
+  /* Su telefono la card davanti prende tutta la larghezza: il portale si fa
+     linguetta, 26 px attaccata al bordo destro, con la scritta girata di 90°.
+     La lastra davanti lascia 33 px a destra (vedi il margine in resize()). */
+  @media (max-width:600px){
+    #portale{right:0;width:26px;height:172px;padding:0;border-radius:12px 0 0 12px;border-right:0;
+      flex-direction:row;justify-content:center;align-items:center}
+    #portale .pv-k,#portale .pv-f{display:none}
+    #portale .pv-t{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;letter-spacing:.14em;white-space:nowrap}
+  }
+  @media (prefers-reduced-motion:reduce){#portale::before{animation:none;background-position:50% 50%}}
+
   /* SUL TELEFONO SOLO LA FRECCIA (Nike: «su tel il torna alla mappa è
      semplicemente una freccia»): un quadrato da 44 px, l'etichetta resta per
      chi legge lo schermo (aria-label). Didascalia e suggerimento restano dove
@@ -420,6 +465,9 @@
     </div>
   </div>
 </nav>
+<!-- Il portale del preventivo (vedi #portale nel CSS): prima dello script della
+     lingua, che ne riscrive etichetta e link come per la nav. -->
+<a id="portale" href="/#preventivo" data-sito="/#preventivo"><span class="pv-k" aria-hidden="true">// portale</span><span class="pv-t" data-t="preventivo">Preventivo gratuito</span><span class="pv-f" aria-hidden="true">&rarr;</span></a>
 <script>
 (function(){
   var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
@@ -464,11 +512,11 @@
     if (l !== 'it' && l !== 'en') return false;
     var T = TESTI[l];
     document.documentElement.lang = l;
-    document.querySelectorAll('#nav [data-t]').forEach(function(el){
+    document.querySelectorAll('#nav [data-t], #portale [data-t]').forEach(function(el){
       var v = T[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v;
     });
     var burger = document.getElementById('navBurger'); if (burger) burger.setAttribute('aria-label', T.menu);
-    document.querySelectorAll('#nav [data-sito]').forEach(function(a){
+    document.querySelectorAll('#nav [data-sito], #portale[data-sito]').forEach(function(a){
       var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
       if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
       a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
@@ -1638,6 +1686,7 @@
       scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
   }
   var lpFermo = false;
+  var portEl = document.getElementById('portale');
   function lpFrame(){
     var w = hot;
     var ok = DECK_ON && deckCtl && stage === 'mappa' && w && w.mesh && w.lp;
@@ -1659,6 +1708,9 @@
       }
     }
     lpEl.classList.toggle('-on', !!fermo);
+    /* La linguetta del preventivo, sul telefono, solo a mazzo fermo: a meta'
+       giro la card che arriva le passa sopra (vedi #portale.-via nel CSS). */
+    if (portEl) portEl.classList.toggle('-via', window.innerWidth <= 600 && !(frac < 0.02 && !dragging));
     if (fermo && !lpFermo) lpDecifra();
     lpFermo = !!fermo;
   }
@@ -1788,7 +1840,10 @@
        camera al centro dell'anello arretra un filo verso +z su schermo
        stretto perche' la lastra davanti ci stia intera coi suoi margini; sul
        desktop il conto da' meno di zero e la camera resta sul perno. */
-    var need = (CW*0.5 + (camera.aspect < 1 ? 0.22 : 0.30)) / (MEZZOFOV*camera.aspect);
+    /* Su ritratto il margine sale da 0.22 a 0.29 (round 3): a destra c'e' la
+       linguetta del portale del preventivo (#portale, 26 px), e la lastra
+       davanti deve lasciarle ~33 px invece dei 25 di prima. */
+    var need = (CW*0.5 + (camera.aspect < 1 ? 0.29 : 0.30)) / (MEZZOFOV*camera.aspect);
     /* Task 3 — la lastra davanti non sta più a z=−R (anello) ma a z=−R+A
        (elica: il punto più vicino della spirale). La camera arretra quel tanto
        che serve perché la card ci stia coi margini: distanza = CAM0.z + (R−A).
