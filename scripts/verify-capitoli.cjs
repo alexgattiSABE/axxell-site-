@@ -284,6 +284,18 @@ async function helixPixels(p, file){
       const b = await p.evaluate(() => window.__altProbe ? window.__altProbe() : null);
       if (!a) fail('no altitude probe');
       else if (!(b.fantasma > a.fantasma)) fail('phantom pointer is not stirring: ' + a.fantasma + ' -> ' + b.fantasma);
+    } else if (check === 'poster'){
+      for (const i of [1, 2, 3, 5]){
+        await settle(p, i); await p.waitForTimeout(2500);
+        const id = await p.evaluate(i => window.EFFETTI[i].id, i);
+        const r = await p.evaluate(() => { const e = document.getElementById('stage-live'); const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; });
+        await p.evaluate(() => { for (const id of ['lp', 'helixStage']) document.getElementById(id).style.visibility = 'hidden'; });
+        const buf = await p.screenshot({ clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+        await p.evaluate(() => { for (const id of ['lp', 'helixStage']) document.getElementById(id).style.visibility = ''; });
+        await sharp(buf).resize({ width: 1200, withoutEnlargement: true }).webp({ quality: 80 })
+          .toFile(`atelier/assets/effetti/${id}.webp`);
+        console.log('poster', id);
+      }
     } else {
       console.log('SKIP ' + check + ' (not implemented yet)');
     }
