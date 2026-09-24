@@ -2284,6 +2284,8 @@ WC.register('robot', function(ctx){
         if (robot) {
           robot.hover = { testa: hoverHead, collo: hoverCollo, pancia: hoverBelly, armL: surgeL, armR: surgeR };
         }
+        // La voce: particelle cervello → corde vocali → sfera (js/robot-voce.js).
+        if (robot && WC.robotVoce) WC.robotVoce.update(robot, dt);
         renderer.render(scene, cam);
       })();
       } catch (e) {
