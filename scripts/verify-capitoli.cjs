@@ -5,7 +5,7 @@ const sharp = require(NM + 'sharp');
 const fs = require('fs');
 const OUT = '/tmp/capitoli-verify'; fs.mkdirSync(OUT, { recursive: true });
 const EXE = '/Users/nico/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
-const URL = 'http://localhost:8803/atelier/capitoli.html';
+const URL = 'http://127.0.0.1:8812/atelier/capitoli.html';   // 8803 su 127.0.0.1 serve il sito del robot
 const argv = process.argv.slice(2);
 const check = argv[0], mobile = argv.includes('--mobile'), reduce = argv.includes('--reduce');
 const arg = argv.filter(a => !a.startsWith('--'))[1];
