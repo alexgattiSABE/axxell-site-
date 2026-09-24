@@ -586,7 +586,11 @@ ul { list-style: none; margin: 0; padding: 0; }
   position: absolute; inset: -4%; width: 108%; max-width: none; height: 108%;
   object-fit: cover; opacity: 0.85; mix-blend-mode: screen;
   will-change: transform, opacity;
-  filter: url(#b5-steam-wisps);
+  /* NIENTE filtro SVG qui (era `filter: url(#b5-steam-wisps)`): turbolenza
+     animata + spostamento dei pixel su un'immagine grande quanto lo schermo,
+     ricalcolati a ogni fotogramma. Misurato: faceva lavorare la scheda
+     grafica 5-25 volte di piu' in tutta la parte finale, ed era il lag.
+     Il vapore resta vivo col suo movimento e il suo respiro (JS sotto). */
 }
 .plan-wash { position: absolute; inset: 0; background: var(--scrim-cta); }
 .plan-content {
