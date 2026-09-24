@@ -69,6 +69,12 @@
     font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
     display:flex;align-items:center;transition:all .2s}
   .nav-cta:hover{background:#00d4ff;color:#060609}
+  .lang-sw{display:flex;align-items:center;gap:.15rem;margin-left:1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.12)}
+  .lang-sw button{background:none;border:none;cursor:pointer;color:rgba(240,240,246,.72);font-family:inherit;
+    font-size:.78rem;font-weight:600;letter-spacing:.06em;padding:.25rem .3rem;border-radius:3px;transition:color .2s}
+  .lang-sw button:hover{color:#fff}
+  .lang-sw button.on{color:#00d4ff}
+  .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem}
   #nav a:focus-visible,#nav button:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}
   .mobile-menu-wrap{display:none;position:relative;order:2}
   .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
@@ -86,6 +92,8 @@
     .nav-links,.nav-cta{display:none}
     .mobile-menu-wrap{display:flex}
     .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .nav-right{order:0;margin:0}
+    .lang-sw{margin:0;padding:0;border-left:none}
   }
   @media (max-width:480px){ #nav{height:60px} }
 
@@ -292,23 +300,26 @@
   <div class="mobile-menu-wrap">
     <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown">☰</button>
     <div class="mobile-dropdown" id="mobileDropdown">
-      <a href="/sabe">SABE</a>
-      <a href="/atlas">ATLAS</a>
-      <a href="/atelier" class="-atelier">Atelier</a>
-      <a href="/#servizi">Servizi</a>
-      <a href="/#visione">Visione</a>
+      <a href="/sabe" data-sito="/sabe">SABE</a>
+      <a href="/atlas" data-sito="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier" data-sito="/atelier">Atelier</a>
+      <a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a>
+      <a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a>
     </div>
   </div>
-  <a href="/" class="nav-logo-img"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <a href="/" class="nav-logo-img" data-sito="/"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
   <ul class="nav-links">
-    <li><a href="/sabe">Sabe</a></li>
-    <li><a href="/atlas">ATLAS</a></li>
-    <li><a href="/atelier" id="n-wc" aria-current="page">Atelier</a></li>
-    <li><a href="/#servizi">Servizi</a></li>
-    <li><a href="/#visione">Visione</a></li>
+    <li><a href="/sabe" data-sito="/sabe">Sabe</a></li>
+    <li><a href="/atlas" data-sito="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" aria-current="page" data-sito="/atelier">Atelier</a></li>
+    <li><a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a></li>
+    <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
   </ul>
   <div class="nav-right">
-    <a href="/#preventivo" class="nav-cta">Preventivo gratuito</a>
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <div class="lang-sw">
+      <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
+    </div>
   </div>
 </nav>
 <script>
@@ -321,6 +332,10 @@
   });
   /* il clic sulla scena non deve arrivare alla giostra mentre si usa il menu */
   m.addEventListener('click', function(e){ e.stopPropagation(); });
+  /* nemmeno IT/EN: senza, il clic sulla lingua faceva anche «Entra» */
+  document.querySelector('#nav .lang-sw').addEventListener('click', function(e){
+    e.stopPropagation(); m.classList.remove('-on'); b.setAttribute('aria-expanded','false');
+  });
   document.addEventListener('click', function(){ m.classList.remove('-on'); b.setAttribute('aria-expanded','false'); });
 })();
 </script>
@@ -334,13 +349,13 @@
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
 <div id="hero">
-  <h1>Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.</h1>
-  <button id="go">Entra →</button>
+  <h1 data-t="h1" data-html>Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.</h1>
+  <button id="go" data-t="entra">Entra →</button>
 </div>
 <div id="labels"><div id="labelCam"></div></div>
 <div id="focus" aria-live="polite">
   <div class="counter"><span class="num" id="fNum">01</span><i>/</i><span class="tot" id="fTot">09</span></div>
-  <div class="fname" id="fName">Il prodotto</div>
+  <div class="fname" id="fName">Il negozio</div>
   <div class="fsub" id="fSub">retail, e-commerce</div>
   <div id="dots" aria-label="I mondi"></div>
 </div>
@@ -353,9 +368,9 @@
     <h2 id="wName"></h2>
     <p id="wDesc"></p>
     <div class="exits">
-      <button id="wNext">Il prossimo mondo →</button>
-      <button id="wTalk">Parliamone</button>
-      <button id="wBack">← Mappa</button>
+      <button id="wNext" data-t="prossimo">Il prossimo mondo →</button>
+      <button id="wTalk" data-t="parliamone">Parliamone</button>
+      <button id="wBack" data-t="mappa">← Mappa</button>
     </div>
   </div>
 </div>
@@ -1029,6 +1044,7 @@
   var IFONT_T = '500 36px "DM Mono", ui-monospace, monospace';
   var IFONT_R = '400 33px "DM Mono", ui-monospace, monospace';
   var ICOLS = 2, IPERCOL = Math.ceil(WORLDS.length / 2);
+  var IDX_TITOLO = 'CHE COSA CERCHI?';   // lo cambia la lingua
   var idxCv = document.createElement('canvas');
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
@@ -1075,7 +1091,7 @@
     }
     var tot = colW*2 + ICOLGAP;
     idxG.font = IFONT_T;
-    var tw = idxG.measureText('CHE COSA CERCHI?').width;
+    var tw = idxG.measureText(IDX_TITOLO).width;
     var ox = Math.max(0, Math.round((IW - Math.max(tot, tw)) / 2));
     idxPos = WORLDS.map(function(w, i){
       var c = i < IPERCOL ? 0 : 1, r = c ? i - IPERCOL : i;
@@ -1089,7 +1105,7 @@
     var ox = idxLayout();
     idxG.font = IFONT_T;
     idxG.fillStyle = 'rgba(240,240,246,0.82)';
-    idxG.fillText('CHE COSA CERCHI?', ox, 56);
+    idxG.fillText(IDX_TITOLO, ox, 56);
     idxG.font = IFONT_R;
     WORLDS.forEach(function(w, i){
       var p = idxPos[i];
@@ -1412,9 +1428,6 @@
     w.dot = b;
   });
 
-  if (mobile){
-    document.getElementById('hint').textContent = 'Trascina per cambiare mondo, tocca per entrare';
-  }
 
   /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
      blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
@@ -1433,6 +1446,87 @@
     // riavvia l'animazione di scambio
     fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
   }
+
+  /* ══ ITALIANO / INGLESE ══════════════════════════════════════════════
+     Come nel sito: la lingua vive nell'URL (?lang=en), non nel browser.
+     Se l'URL non la dice, vale quella della pagina da cui si arriva (il
+     menu del sito la porta con se'), poi quella del browser: chi non ha un
+     browser italiano parte in inglese. I mondi (le pagine dei clienti
+     immaginari) restano in italiano: si traduce solo l'atelier. */
+  var TESTI = {
+    it:{ h1:'Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.', entra:'Entra →',
+         hint:'Scorri per cambiare mondo, clicca quello davanti per entrare',
+         hintMob:'Trascina per cambiare mondo, tocca per entrare',
+         indice:'CHE COSA CERCHI?', prossimo:'Il prossimo mondo →', parliamone:'Parliamone',
+         mappa:'← Mappa', servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito',
+         mondi:'I mondi', menu:'Apri il menu' },
+    en:{ h1:'Eight worlds built.<br>The ninth is <em>yours</em>.', entra:'Enter →',
+         hint:'Scroll to change world, click the one in front to enter',
+         hintMob:'Drag to change world, tap to enter',
+         indice:'WHAT ARE YOU LOOKING FOR?', prossimo:'Next world →', parliamone:'Let’s talk',
+         mappa:'← Map', servizi:'Services', visione:'Vision', preventivo:'Free quote',
+         mondi:'The worlds', menu:'Open the menu' }
+  };
+  var MONDI_EN = {
+    'il-prodotto':     ['The shop', 'retail, e-commerce', 'People buying through a screen can’t touch anything. They need to see enough to trust it.'],
+    'il-viaggio':      ['The journey', 'travel, hospitality', 'Travellers don’t buy an itinerary. They buy the memory they’ll bring home.'],
+    'la-macchina':     ['The machine shop', 'manufacturing, B2B', 'Precision to the hundredth and clients across Europe: the site has to say so before the quote.'],
+    'il-dettaglio':    ['The workshop', 'craftsmanship, luxury', 'Nobody notices the detail. Everyone notices it was there.'],
+    'prima-e-dopo':    ['The house', 'real estate, construction', 'A house is chosen before it’s seen. The website is the first viewing.'],
+    'la-notte':        ['The restaurant', 'restaurants, venues', 'At eleven at night the kitchen closes. The website keeps taking bookings.'],
+    'lo-studio':       ['The practice', 'consulting, professionals', 'Whoever looks you up has a second and a half to understand what you do. Then they decide.'],
+    'effetti-speciali':['Special effects', 'the techniques, one by one', 'The flying saucer, the robot, the fluid. What lies beneath the other seven.'],
+    'il-tuo':          ['Yours', 'still to be built', 'The other eight exist. This one doesn’t — yet.']
+  };
+  WORLDS.forEach(function(w){ w.it = [w.nome, w.sett, w.desc]; });
+  var LINGUA = 'it';
+  function linguaIniziale(){
+    try {
+      var p = new URL(location.href).searchParams.get('lang');
+      if (p === 'en' || p === 'it') return p;
+      if (document.referrer){
+        var r = new URL(document.referrer);
+        var rl = r.origin === location.origin ? r.searchParams.get('lang') : null;
+        if (rl === 'en' || rl === 'it') return rl;
+      }
+    } catch(e){}
+    return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+  }
+  function atelierLingua(l){
+    if (l !== 'it' && l !== 'en') return false;
+    LINGUA = l;
+    var T = TESTI[l];
+    document.documentElement.lang = l;
+    document.querySelectorAll('[data-t]').forEach(function(el){
+      var v = T[el.getAttribute('data-t')]; if (v === undefined) return;
+      if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v;
+    });
+    document.getElementById('hint').textContent = mobile ? T.hintMob : T.hint;
+    document.getElementById('dots').setAttribute('aria-label', T.mondi);
+    var burger = document.getElementById('navBurger'); if (burger) burger.setAttribute('aria-label', T.menu);
+    IDX_TITOLO = T.indice;
+    WORLDS.forEach(function(w){
+      var t = l === 'en' && MONDI_EN[w.id] ? MONDI_EN[w.id] : w.it;
+      w.nome = t[0]; w.sett = t[1]; w.desc = t[2];
+    });
+    /* i link verso il sito portano la lingua con se' */
+    document.querySelectorAll('#nav [data-sito]').forEach(function(a){
+      var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
+      if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
+      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+    });
+    ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
+    if (hot) aggiornaFocus(hot);
+    idxDisegna();
+    try {
+      var u = new URL(location.href);
+      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      history.replaceState(history.state, '', u);
+    } catch(e){}
+    return false;
+  }
+  window.atelierLingua = atelierLingua;
+  atelierLingua(linguaIniziale());
 
   /* ======================================================================
      5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
