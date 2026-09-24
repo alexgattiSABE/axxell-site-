@@ -46,9 +46,19 @@ const rectQuad = r => [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.
 
 async function checkOverlap(p, label){
   const s = await p.evaluate(() => ({ c: window.__capitoli.cards(), i: window.__capitoli.index(),
-                                      cap: window.__capitoli.caption(), nav: window.__capitoli.nav() }));
+                                      cap: window.__capitoli.caption(), nav: window.__capitoli.nav(),
+                                      ex: window.__capitoli.extra ? window.__capitoli.extra() : {} }));
   const vis = s.c.filter(c => c.reveal > 0.05);
   const obst = [{ n: 'caption', q: rectQuad(s.cap) }, { n: 'nav', q: rectQuad(s.nav) }];
+  // i link fissi della pagina (round 3): #torna in basso a sinistra, il portale del preventivo a destra
+  const fissi = Object.entries(s.ex).filter(([, r]) => r && r.w > 1).map(([n, r]) => ({ n, q: rectQuad(r) }));
+  obst.push(...fissi);
+  for (let a = 0; a < fissi.length; a++) for (let c = a + 1; c < fissi.length; c++)
+    if (overlaps(fissi[a].q, fissi[c].q)) fail(`${label}: ${fissi[a].n} overlaps ${fissi[c].n}`);
+  for (const f of fissi){
+    for (const o of [{ n: 'caption', q: rectQuad(s.cap) }, { n: 'nav', q: rectQuad(s.nav) }]) if (overlaps(f.q, o.q)) fail(`${label}: ${f.n} overlaps ${o.n}`);
+    if (s.i.opacity > 0.1 && overlaps(f.q, s.i.quad)) fail(`${label}: ${f.n} overlaps index`);
+  }
   if (s.i.opacity > 0.1) obst.push({ n: 'index', q: s.i.quad });
   for (let a = 0; a < vis.length; a++){
     for (let b = a + 1; b < vis.length; b++)

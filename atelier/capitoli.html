@@ -307,6 +307,32 @@
     #hint{font-size:12px;letter-spacing:.06em;bottom:18px;white-space:nowrap}
   }
 
+  /* TORNA ALLA MAPPA (Nike: «tasto torna alla mappa nell'angolo in basso a
+     sinistra»). Lo stesso bottone delle pagine dei capitoli (vedi #torna in
+     il-prodotto/index.html), con l'accento della card davanti al posto del
+     viola fisso: `--pag`, messo sulla radice da aggiornaFocus(). Niente alone.
+     Il suo clic e la sua pressione non arrivano alla scena (vedi `fuoriScena`). */
+  #torna{position:fixed;left:clamp(14px,2.5vw,28px);bottom:clamp(14px,2.5vw,28px);z-index:99999;
+    display:inline-flex;align-items:center;gap:.5em;padding:11px 18px;border-radius:999px;
+    font:500 11.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;
+    color:#f2f0ff;text-decoration:none;background:rgba(8,6,20,.66);
+    border:1px solid rgba(242,240,255,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    transition:border-color .2s ease,color .2s ease}
+  #torna:hover{border-color:var(--pag,#dfe4ee);color:var(--pag,#dfe4ee)}
+  #torna:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
+  @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
+  /* SUL TELEFONO SOLO LA FRECCIA (Nike: «su tel il torna alla mappa è
+     semplicemente una freccia»): un quadrato da 44 px, l'etichetta resta per
+     chi legge lo schermo (aria-label). Didascalia e suggerimento restano dove
+     sono: e' il bottone a stare un filo piu' su (40 px dal fondo), perche' il
+     suggerimento, centrato e largo ~290 px, comincia a x≈49 e un bottone a
+     14..58 px dal fondo gli finirebbe addosso. */
+  @media (max-width:760px){
+    #torna{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;
+      bottom:40px;font-size:16px;letter-spacing:0}
+    #torna .t-testo{display:none}
+  }
+
   #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:1.4rem;text-align:center;
     padding:2rem;transition:opacity .5s ease;pointer-events:none}
@@ -498,6 +524,9 @@
   <div id="dots" aria-label="I mondi"></div>
 </div>
 <p id="hint" style="opacity:0">scorri per cambiare mondo · usa l'anteprima</p>
+<!-- Torna alla mappa dell'atelier, parcheggiata sulla card «Effetti speciali»
+     (?da=… : la home salta il vapore dell'ingresso). -->
+<a id="torna" href="/atelier?da=effetti-speciali" aria-label="Torna alla mappa"><span aria-hidden="true">&larr;</span><span class="t-testo">Torna alla mappa</span></a>
 
 <div id="err"></div>
 
@@ -1458,7 +1487,16 @@
      La nav (menu a tendina compreso) non gira mai il mazzo. Perche' la
      pagina non scorra sotto al dito, `touch-action:none` su html/body. */
   var attesa = null;                  // { id, x, y } tocco nato sull'anteprima
-  function inNav(e){ return !!(e && e.target && e.target.closest && e.target.closest('#nav')); }
+  /* Fuori dalla scena: la nav (menu compreso) e i link fissi della pagina
+     (#torna, e il portale del preventivo) — non girano il mazzo e non sono un
+     clic sulla scena. */
+  function inNav(e){ return !!(e && e.target && e.target.closest && e.target.closest('#nav,#torna,#portale')); }
+  ['torna', 'portale'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    ['pointerdown', 'click', 'wheel'].forEach(function(t){
+      el.addEventListener(t, function(ev){ ev.stopPropagation(); }, t === 'wheel' ? { passive: true } : false);
+    });
+  });
   window.addEventListener('pointerdown', function(e){
     if (e.button || inNav(e)) return;
     if (inPreview(e)){
@@ -1559,6 +1597,8 @@
     fSubEl.textContent = w.sett;
     fNumEl.textContent = String(w.idx+1).padStart(2,'0');
     focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // L'accento della card anche per i link fissi della pagina (#torna, il portale)
+    document.documentElement.style.setProperty('--pag', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
     // riavvia l'animazione di scambio
     fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
   }
@@ -2255,7 +2295,16 @@
       var el = renderer.domElement;
       return [(sondaV.x * 0.5 + 0.5) * el.clientWidth, (1 - (sondaV.y * 0.5 + 0.5)) * el.clientHeight];
     },
-    caption: function(){ return sondaRect([document.getElementById('focus'), document.getElementById('hint')]); },
+    /* La didascalia si misura sulle scritte che la compongono, non sulla
+       scatola di #focus: quella e' larga il 92% dello schermo (serve per
+       andare a capo su telefono) e contava come «didascalia» anche l'aria vuota
+       ai lati, dove ora sta #torna. */
+    caption: function(){ return sondaRect([].slice.call(document.getElementById('focus').children)); },
+    /* Il suggerimento a parte: sul telefono sta in basso a destra, accanto a
+       #torna, e unito alla didascalia ne farebbe una scatola che copre anche
+       l'angolo di #torna. */
+    extra: function(){ return { hint: sondaRect([document.getElementById('hint')]),
+      torna: sondaRect([document.getElementById('torna')]), portale: sondaRect([document.getElementById('portale')]) }; },
     nav: function(){ return sondaRect([document.getElementById('nav')]); },
     goTo: function(i){ portaDavanti(i); },
     setSpin: function(v){ spin = spinT = v; lastInput = performance.now() + 1e7; dragging = false; },
