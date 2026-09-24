@@ -1671,6 +1671,75 @@
     return pts;
   })();
   var bucoV = new THREE.Vector3(), bucoKey = null;
+
+  /* ANCHE LE SCRITTE FISSE BUCANO L'ELICA. Nike: «nessuna sovrapposizione di
+     alcun tipo» — e i punti ciano che passavano dietro al contatore, al nome,
+     al settore, al suggerimento in basso e (in ritratto) ai link della nav
+     rendevano quei grigi illeggibili. Si buca il rettangolo del CONTENUTO, non
+     quello del contenitore: #focus e #nav sono larghi quasi quanto lo schermo,
+     e bucarli interi toglierebbe l'elica da tutta la fascia. Le misure si
+     prendono solo quando cambia qualcosa (resize, didascalia che cambia mondo),
+     non a ogni fotogramma: sono elementi fissi. Si leggono gli offset, non
+     getBoundingClientRect, per i figli di #focus: il nome entra col blur-rise
+     (translateY), e la misura presa a meta' animazione sarebbe sfasata. */
+  var BUCO_PAD = 10, BUCO_R = 12;
+  var hintEl = document.getElementById('hint'), navEl = document.getElementById('nav');
+  var bucoDom = null;                 // { focus:[l,t,r,b]|null, hint, nav:[...] }
+  function bucoDomMisura(){
+    function box(b){ return [b.left, b.top, b.right, b.bottom]; }
+    var fr = focusEl.getBoundingClientRect(), fu = null;
+    Array.prototype.forEach.call(focusEl.children, function(c){
+      if (!c.offsetWidth) return;
+      var l = fr.left + c.offsetLeft, t = fr.top + c.offsetTop;
+      var q = [l, t, l + c.offsetWidth, t + c.offsetHeight];
+      fu = fu ? [Math.min(fu[0], q[0]), Math.min(fu[1], q[1]), Math.max(fu[2], q[2]), Math.max(fu[3], q[3])] : q;
+    });
+    var nav = [];
+    if (navEl) Array.prototype.forEach.call(navEl.children, function(c){
+      if (c.offsetWidth) nav.push(box(c.getBoundingClientRect()));
+    });
+    bucoDom = { focus: fu, hint: hintEl && hintEl.offsetWidth ? box(hintEl.getBoundingClientRect()) : null, nav: nav };
+  }
+  function bucoDomScorda(){ bucoDom = null; }
+  window.addEventListener('resize', bucoDomScorda);
+  if (window.MutationObserver){
+    new MutationObserver(bucoDomScorda).observe(focusEl,
+      { attributes: true, attributeFilter: ['class'], subtree: true, childList: true, characterData: true });
+    if (hintEl) new MutationObserver(bucoDomScorda).observe(hintEl, { childList: true, characterData: true, subtree: true });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(bucoDomScorda);
+  /* Un rettangolo arrotondato, girato in senso ANTIORARIO sullo schermo (come
+     le sagome delle card): col `nonzero` dentro si annulla il rettangolo dello
+     schermo e l'elica si taglia. I rettangoli che col margine si toccherebbero
+     (la didascalia e il suggerimento sotto, i due pezzi della nav) si fondono
+     prima in uno solo: due buchi sovrapposti farebbero −2, e li' l'elica
+     ricomparirebbe. */
+  function bucoDomPaths(dy){
+    if (!bucoDom) bucoDomMisura();
+    var rs = [];
+    if (bucoDom.focus && focusEl.classList.contains('-on')) rs.push(bucoDom.focus.slice());
+    if (bucoDom.hint && parseFloat(hintEl.style.opacity || '1') > 0.05) rs.push(bucoDom.hint.slice());
+    bucoDom.nav.forEach(function(q){ rs.push(q.slice()); });
+    rs = rs.map(function(q){ return [q[0]-BUCO_PAD, q[1]-BUCO_PAD-dy, q[2]+BUCO_PAD, q[3]+BUCO_PAD-dy]; });
+    for (var fuso = true; fuso; ){
+      fuso = false;
+      for (var a = 0; a < rs.length && !fuso; a++) for (var c = a + 1; c < rs.length; c++){
+        var A = rs[a], B = rs[c];
+        if (A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]){
+          rs[a] = [Math.min(A[0],B[0]), Math.min(A[1],B[1]), Math.max(A[2],B[2]), Math.max(A[3],B[3])];
+          rs.splice(c, 1); fuso = true; break;
+        }
+      }
+    }
+    return rs.map(function(q){
+      var l = Math.round(q[0]), t = Math.round(q[1]), r = Math.round(q[2]), b = Math.round(q[3]);
+      var k = Math.min(BUCO_R, (r-l)/2, (b-t)/2);
+      return 'M' + (l+k) + ' ' + t + 'A' + k + ' ' + k + ' 0 0 0 ' + l + ' ' + (t+k) +
+             'V' + (b-k) + 'A' + k + ' ' + k + ' 0 0 0 ' + (l+k) + ' ' + b +
+             'H' + (r-k) + 'A' + k + ' ' + k + ' 0 0 0 ' + r + ' ' + (b-k) +
+             'V' + (t+k) + 'A' + k + ' ' + k + ' 0 0 0 ' + (r-k) + ' ' + t + 'Z';
+    });
+  }
   function bucoElica(spegni){
     if (!HELIX_EL) return;
     var el = renderer.domElement;
@@ -1699,6 +1768,7 @@
         }
         paths.push(d + 'Z');
       });
+      paths = paths.concat(bucoDomPaths(dy));
     }
     var key = paths.length ? W + 'x' + H + paths.join('') : '';
     if (key === bucoKey) return;
