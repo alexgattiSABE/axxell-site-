@@ -735,7 +735,9 @@
       '  vec3 base=mix(vec3(0.055,0.052,0.085),vec3(0.010,0.011,0.021),smoothstep(0.0,0.95,d));',
       '  base+=vec3(0.020,0.012,0.050)*(1.0-smoothstep(0.0,0.55,d));',
       // il mondo guardato tinge la nebbia: il fondo resta neutro, sono i portali a colorarlo
-      '  base+=uTint*uTintStr*0.085*(1.0-smoothstep(0.0,1.05,d));',
+      // (2026-09-24) 0.085 → 0.15: con un colore per card la tinta deve
+      // leggersi — una velatura chiara del colore, non un fondo colorato
+      '  base+=uTint*uTintStr*0.15*(1.0-smoothstep(0.0,1.05,d));',
       '  base+=(h(gl_FragCoord.xy+uTime)-0.5)*0.012;',
       '  gl_FragColor=vec4(base,1.0);',
       '}'
@@ -818,7 +820,8 @@
     transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
     uniforms:{ uTime:{value:0}, uPr:{value:renderer.getPixelRatio()},
                uTravel:{value:0}, uAssign:{value:0}, uSpeed:{value:1},
-               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN} },
+               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN},
+               uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
     vertexShader:[
       'attribute vec3 aTarget; attribute float aSeed, aRole;',
       'uniform float uTime,uPr,uTravel,uAssign,uSpeed,uCardsIn,uNZ,uLen;',
@@ -851,9 +854,12 @@
       '}'
     ].join('\n'),
     fragmentShader:[
-      'varying float vA;',
+      // il pulviscolo resta azzurro, ma tira un po' (35%) verso il colore
+      // della card davanti — la stessa tinta, e lo stesso passo, della nebbia
+      'varying float vA; uniform vec3 uTint; uniform float uTintStr;',
       'void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;',
-      '  gl_FragColor=vec4(vec3(0.62,0.78,0.95), vA*(1.0-smoothstep(0.18,0.5,d))); }'
+      '  vec3 c=mix(vec3(0.62,0.78,0.95), uTint, 0.35*uTintStr);',
+      '  gl_FragColor=vec4(c, vA*(1.0-smoothstep(0.18,0.5,d))); }'
     ].join('\n')
   });
   var dust = new THREE.Points(pGeo, dustMat);
@@ -1209,15 +1215,36 @@
     idxG.font = '500 46px "DM Mono", ui-monospace, monospace';
     idxG.fillStyle = 'rgba(240,240,246,0.92)';
     idxG.fillText('ESPLORA IL MONDO', 34, 80);
+    /* OGNI RIGA NEL COLORE DELLA SUA CARD, sempre (2026-09-24) — non solo
+       quella accesa. Le tavolozze (Nebulosa, Genesi) in sfumatura
+       orizzontale lungo la parola. Per distinguere: la card davanti a colore
+       pieno e con la freccia; quella sotto al puntatore a colore pieno con la
+       freccia a meta'; le altre schiarite di un quarto verso il bianco e a
+       .80 — non .72: moltiplicate per l'opacita' della lastra (.92) i viola e
+       l'arancio scendevano sotto il 4.5:1 sul fondo scuro. */
+    function idxTinta(c, a, chiaro){
+      return 'rgba(' + c.map(function(v){ return Math.round((v + (1 - v)*chiaro)*255); }).join(',') + ',' + a + ')';
+    }
     WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
-      var acceso = (hot && hot.idx === i) || (i === idxSopra);
+      var davanti = !!(hot && hot.idx === i), sopra = (i === idxSopra);
+      var a = (davanti || sopra) ? 1 : 0.80, chiaro = (davanti || sopra) ? 0 : 0.25;
+      var nome = w.nome.toUpperCase();
       idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
-      idxG.fillStyle = acceso
-        ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
-        : 'rgba(223,228,238,0.78)';
-      idxG.fillText('->', 34, y);
-      idxG.fillText(w.nome.toUpperCase(), 140, y);
+      if (davanti || sopra){
+        idxG.globalAlpha = davanti ? 1 : 0.5;
+        idxG.fillStyle = idxTinta(w.col, 1, 0);
+        idxG.fillText('->', 34, y);
+        idxG.globalAlpha = 1;
+      }
+      var pal = w.dna && typeof w.dna[0] !== 'number' ? w.dna : null;
+      if (pal){
+        var larga = idxG.measureText(nome).width;
+        var gr = idxG.createLinearGradient(140, 0, 140 + larga, 0);
+        pal.forEach(function(c, k){ gr.addColorStop(k/(pal.length - 1), idxTinta(c, a, chiaro)); });
+        idxG.fillStyle = gr;
+      } else idxG.fillStyle = idxTinta(w.col, a, chiaro);
+      idxG.fillText(nome, 140, y);
     });
     idxTex.needsUpdate = true;
   }
@@ -1622,6 +1649,7 @@
     return h.length ? h[0].object.userData.world : null;
   }
   var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
+  var tintaElica = null;           // la card di cui l'elica ha preso il colore
 
   /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
      fuoco era il raycast, e il primo fotogramma col mouse fermo altrove
@@ -2014,6 +2042,17 @@
         aggiornaFocus(hot);
         idxDisegna();
       }
+      /* L'ELICA PRENDE IL COLORE DELLA CARD (Nike: «quando cambia la card
+         davanti, la pagina prende il suo colore»). La tavolozza `dna` dove
+         c'e' (Nebulosa, Genesi), se no il colore della card — il bianco di
+         Anatomia compreso, cosi' com'e'. La dissolvenza (0.8 s) e' di dna.js.
+         Fuori dal blocco qui sopra, con un suo ricordo (`tintaElica`): alla
+         prima card l'elica puo' non essere ancora montata (WC.helix arriva
+         con l'init di dna.js), e quella chiamata andrebbe persa. */
+      if (hot && hot !== tintaElica && WC.helix && WC.helix.setTint){
+        tintaElica = hot;
+        WC.helix.setTint(hot.dna || hot.col);
+      }
       if (!mobile && !dragging){
         overCard = pick();
         var r = overCard ? -1 : pickRiga();
@@ -2051,9 +2090,18 @@
     var target = hot;
     var ts = target ? 1 : 0;
     tintStr += (ts - tintStr)*0.08;
-    if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
+    /* Il colore passa per sfumatura, non di scatto: prima la nebbia saltava
+       al colore nuovo nel fotogramma in cui cambiava la card (col ciano di
+       tutti i cluster non si notava; con arancio→ciano→bianco si'). */
+    if (target){
+      tintCol.x += (target.col[0] - tintCol.x)*0.06;
+      tintCol.y += (target.col[1] - tintCol.y)*0.06;
+      tintCol.z += (target.col[2] - tintCol.z)*0.06;
+    }
     fogMat.uniforms.uTint.value.copy(tintCol);
     fogMat.uniforms.uTintStr.value = tintStr;
+    dustMat.uniforms.uTint.value.copy(tintCol);
+    dustMat.uniforms.uTintStr.value = tintStr;
     document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*1 : 0);
     focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
 

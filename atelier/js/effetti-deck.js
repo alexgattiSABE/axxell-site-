@@ -8,7 +8,7 @@
    soltanto tre globali, sincroni, PRIMA che quello script parta:
 
      · window.EFFETTI   — i 7 record (uno per effetto), non i 9 mondi;
-     · window.CLUSTERS  — i 5 gruppi contigui, col colore;
+     · window.CLUSTERS  — i 5 gruppi contigui per tipo;
      · window.helixPlace(u, out) — la posizione della card lungo l'elica,
                                     al posto della vecchia deckPlace ad anello.
 
@@ -27,40 +27,45 @@
   /* ── I 7 RECORD ────────────────────────────────────────────────────────────
      `render` ∈ {'webgl','canvas2d','dom'} dice con che motore l'effetto vero
      girerà (Task 5–7); `modulo` è il nome WC dell'effetto (js/<modulo>.js);
-     `col` è il colore del CLUSTER a cui l'effetto appartiene — le card di uno
-     stesso tipo condividono la tinta, così il percorso dell'elica si legge a
-     grappoli. `poster` è il fotogramma congelato dentro al vetro finché
+     `col` è il colore della CARD (Nike, 2026-09-24: «quando cambia la card
+     davanti, la pagina prende il suo colore») — ognuna il suo, non piu'
+     quello del cluster: lo prendono il bordo del vetro, i fermi, il
+     contatore, l'accento della copy, la riga dell'elenco, la nebbia di fondo
+     e l'elica (WC.helix.setTint). `dna` (facoltativo) e' la tavolozza con cui
+     si tinge l'elica quando un colore solo non basta (Nebulosa, Genesi): `col`
+     ne e' allora la prima voce, e vale per tutto il resto. `poster` è il fotogramma congelato dentro al vetro finché
      l'effetto non si sveglia. `scrimForte` (facoltativo) scurisce di piu' la
      sfumatura sotto la copy: serve dove l'effetto accende il centro-sinistra
      (la galassia di Nebulosa), e la scritta altrimenti non terrebbe il 4.5:1. */
   var EFFETTI = [
-    { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[0.36,0.80,1.00],
+    { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[1.00,0.42,0.12],
       lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' } },
-    { id:'sneaker',  nome:'Gravità',  tipo:'Immagini animate', cluster:1, modulo:'sneaker',  render:'dom',   poster:'assets/effetti/sneaker.webp',  col:[0.60,0.85,1.00],
+    { id:'sneaker',  nome:'Gravità',  tipo:'Immagini animate', cluster:1, modulo:'sneaker',  render:'dom',   poster:'assets/effetti/sneaker.webp',  col:[0.36,0.80,1.00],
       lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' } },
-    { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.60,0.85,1.00], chiaro:true,
+    { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.95,0.95,0.97], chiaro:true,
       lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' } },
-    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.23,0.85,1.00], scrimForte:true,
+    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.62,0.45,1.00],
+      dna:[[0.62,0.45,1.00],[0.35,1.00,0.70],[1.00,0.50,0.85]], scrimForte:true,
       lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' } },
-    { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.23,0.85,1.00], scramble:true,
+    { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.35,1.00,0.45], scramble:true,
       lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' } },
-    { id:'warp',     nome:'Genesi',   tipo:'Testo', cluster:3, modulo:'warp', render:'dom', poster:'assets/effetti/warp.webp', col:[0.85,0.70,1.00],
+    { id:'warp',     nome:'Genesi',   tipo:'Testo', cluster:3, modulo:'warp', render:'dom', poster:'assets/effetti/warp.webp', col:[0.72,0.45,1.00],
+      dna:[[0.72,0.45,1.00],[0.95,0.40,0.85],[0.40,0.55,1.00]],
       lp:{ kicker:'Testo', h:["Tutto comincia","da un'elica."], sub:'Particelle che si ricompongono in forme sempre nuove.', cta:'Osserva' } },
-    { id:'lithos',   nome:'Rivela',   tipo:'Prima / dopo', cluster:4, modulo:'lithos', render:'canvas2d', poster:'assets/effetti/lithos.webp', col:[0.98,0.78,0.52],
+    { id:'lithos',   nome:'Rivela',   tipo:'Prima / dopo', cluster:4, modulo:'lithos', render:'canvas2d', poster:'assets/effetti/lithos.webp', col:[1.00,0.62,0.25],
       lp:{ kicker:'Prima / dopo', h:['La luce racconta','il prima e il dopo.'], sub:"Passa sopra l'immagine e scopri com'era.", cta:'Illumina' } }
   ];
 
   /* ── I 5 CLUSTER ───────────────────────────────────────────────────────────
-     Gruppi contigui: gli effetti sono già ordinati per cluster nell'array, così
-     lo stesso `col` cade su tratti d'elica adiacenti. (Tingere il TRATTO
-     d'elica sotto un cluster è un rifinimento di un task futuro; oggi la tinta
-     vive solo sulle card, via `col`.) */
+     Gruppi contigui per TIPO (gli effetti sono già ordinati per cluster
+     nell'array). Non portano piu' un colore: dal 2026-09-24 il colore e' della
+     card (`col` sul record), non del gruppo. */
   var CLUSTERS = [
-    { tipo:'Fluidi',               col:[0.36,0.80,1.00] },
-    { tipo:'Immagini animate',     col:[0.60,0.85,1.00] },
-    { tipo:'Modelli interattivi',  col:[0.23,0.85,1.00] },
-    { tipo:'Testo',                col:[0.85,0.70,1.00] },
-    { tipo:'Prima / dopo',         col:[0.98,0.78,0.52] }
+    { tipo:'Fluidi' },
+    { tipo:'Immagini animate' },
+    { tipo:'Modelli interattivi' },
+    { tipo:'Testo' },
+    { tipo:'Prima / dopo' }
   ];
 
   /* Il mazzo inline (ereditato da index.html) nomina il settore del mondo come
