@@ -123,13 +123,21 @@ function mountLithos(ctx, cfg){
   if (external){
     ibrido = true;               // Task 11: qui il faro parte da solo e il
                                   // mouse prende il comando appena si muove.
-    reveal.style.setProperty('--lr', R + 'px');
+    /* Il faro in proporzione alla card: 260px su una card da telefono (~340px)
+       la copre tutta, e il suo girare non si vede piu'. Al 41% della
+       larghezza — sul desktop resta 260, il tetto — sul telefono si stringe. */
+    var raggio = function(){
+      var w = rectEl.getBoundingClientRect().width || R / 0.41;
+      reveal.style.setProperty('--lr', Math.round(Math.min(R, w * 0.41)) + 'px');
+    };
+    raggio();
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     document.addEventListener('visibilitychange', onVisE);
     return {
       start: function(){
         wantRun = true;
+        raggio();
         rectEl.addEventListener('mousemove', onMove);
         start();
       },
@@ -138,10 +146,9 @@ function mountLithos(ctx, cfg){
         rectEl.removeEventListener('mousemove', onMove);
         stop();
       },
-      // Nessuna misura in cache da ricalcolare: la rect si legge live a ogni
-      // fotogramma (Lissajous) o a ogni evento (puntatore). Esposto per
-      // simmetria con gli altri handle — il controller lo chiama solo se c'è.
-      resize: function(){},
+      // La rect si legge live a ogni fotogramma (Lissajous) o a ogni evento
+      // (puntatore); l'unica misura da rifare e' il raggio del faro.
+      resize: function(){ raggio(); },
       dispose: function(){
         stop();
         document.removeEventListener('visibilitychange', onVisE);

@@ -122,6 +122,10 @@
   #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
   #lp.-stretta .lp-h{font-size:1.25em}
   #lp.-stretta .lp-l{white-space:normal}
+  /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
+     bianco dell'orologio, sotto un testo scuro. La fascia diventa bianca: sul
+     bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo. */
+  #lp.-chiaro.-stretta{background:linear-gradient(0deg,rgba(255,255,255,.86) 0%,rgba(255,255,255,.55) 40%,rgba(255,255,255,0) 62%)}
 
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
      (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
@@ -389,9 +393,9 @@
      tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
      servono per registrare i tre handle esterni su WC.effects, che il
      controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
-<script src="js/vesper.js?v=20260831a"></script>
-<script src="js/orologio.js?v=20260831a"></script>
-<script src="js/altitude.js?v=20260831a"></script>
+<script src="js/vesper.js?v=20260924a"></script>
+<script src="js/orologio.js?v=20260924a"></script>
+<script src="js/altitude.js?v=20260924a"></script>
 <!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
      (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
      vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
@@ -400,8 +404,11 @@
      esiste qui, quindi l'init WC di ciascuna è un no-op innocuo; servono per
      registrare i due handle esterni su WC.effects, che il controller sveglia
      dentro #stage-live. Caricati PRIMA dell'inline. -->
-<script src="js/lithos.js?v=20260831a"></script>
-<script src="js/warp.js?v=20260831a"></script>
+<script src="js/lithos.js?v=20260924a"></script>
+<script src="js/warp.js?v=20260924a"></script>
+<!-- «Gravità»: lo sneaker, l'handle esterno WC.effects.sneaker che il
+     controller sveglia dentro #stage-live (il video del prodotto sospeso). -->
+<script src="js/sneaker.js?v=20260924a"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');

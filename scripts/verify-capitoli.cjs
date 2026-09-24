@@ -218,6 +218,72 @@ async function helixPixels(p, file){
         }
         await p.screenshot({ path: OUT + `/copy-${i}${mobile ? '-m' : ''}${reduce ? '-r' : ''}.png` });
       }
+    } else if (check === 'alive'){
+      const ids = arg !== undefined ? [Number(arg)] : [0, 1, 2, 3, 4, 5, 6];
+      for (const i of ids){
+        await settle(p, i); await p.waitForTimeout(1200);
+        const q = (await p.evaluate(i => window.__capitoli.cards()[i].quad, i));
+        const x = Math.max(0, Math.round(Math.min(...q.map(v => v[0])) + 8)), y = Math.max(0, Math.round(Math.min(...q.map(v => v[1])) + 8));
+        const w = Math.round(Math.max(...q.map(v => v[0])) - x - 16), h = Math.round(Math.max(...q.map(v => v[1])) - y - 16);
+        const clip = { x, y, width: w, height: h };
+        const awake = await p.evaluate(() => window.__capitoli.awake());
+        const a = await p.screenshot({ clip, path: OUT + `/alive-${i}-a.png` });
+        await p.waitForTimeout(Number(process.env.ALIVE_WAIT || 2000));
+        const b2 = await p.screenshot({ clip, path: OUT + `/alive-${i}-b.png` });
+        const { data: A, info } = await sharp(a).raw().toBuffer({ resolveWithObject: true });
+        const B = await sharp(b2).raw().toBuffer();
+        const ch = info.channels;                       // i PNG di Playwright arrivano a 3 canali
+        let d = 0; for (let k = 0; k < A.length; k += ch) if (Math.abs(A[k] - B[k]) + Math.abs(A[k+1] - B[k+1]) + Math.abs(A[k+2] - B[k+2]) > 30) d++;
+        const frac = d / (A.length / ch);
+        if (!awake) fail(`card ${i}: no effect awake`);
+        if (frac < 0.02) fail(`card ${i}: not moving on its own (changed ${(frac*100).toFixed(2)}%)`);
+      }
+    } else if (check === 'ritorno'){
+      // Review Focus 5: nella STESSA pagina si torna su card gia' svegliate
+      for (const i of [1, 3, 1, 5, 3, 5]){
+        await settle(p, i); await p.waitForTimeout(1200);
+        if (await p.evaluate(() => window.__capitoli.awake()) !== (await p.evaluate(i => window.EFFETTI[i].modulo, i)))
+          fail(`card ${i}: not awake on return`);
+        const probe = await p.evaluate(() => window.__warpProbe ? window.__warpProbe() : null);
+        if (i === 5 && probe && probe.morph < 0.99) fail('warp replayed the tunnel on return');
+        // il video dell'host VISIBILE: quello di altitude (Vapore, la card di
+        // partenza) resta nel layer, nascosto e in pausa, e verrebbe prima
+        const t0 = await p.evaluate(() => { const v = [...document.querySelectorAll('#stage-live video')].find(v => v.getClientRects().length); return v ? v.currentTime : null; });
+        await p.waitForTimeout(800);
+        const t1 = await p.evaluate(() => { const v = [...document.querySelectorAll('#stage-live video')].find(v => v.getClientRects().length); return v ? v.currentTime : null; });
+        if (i === 1 && !(t1 > t0)) fail('sneaker video not playing on return');
+      }
+    } else if (check === 'format'){
+      await settle(p, 2); await p.waitForTimeout(1500);
+      const q = (await p.evaluate(() => window.__capitoli.cards()[2].quad));
+      const x = Math.round(Math.min(...q.map(v => v[0]))) + 10, y = Math.round(Math.min(...q.map(v => v[1]))) + 10;
+      const w = Math.round(Math.max(...q.map(v => v[0]))) - x - 10, h = Math.round(Math.max(...q.map(v => v[1]))) - y - 10;
+      const buf = await p.screenshot({ clip: { x, y, width: w, height: h }, path: OUT + `/format${mobile ? '-m' : ''}.png` });
+      const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+      // le due strisce ai lati (4% della larghezza) devono essere bianche piene
+      let bad = 0, n = 0;
+      for (const x0 of [2, info.width - 3]) for (let yy = 0; yy < info.height; yy += 3){
+        const o = (yy * info.width + x0) * info.channels; n++;
+        if (data[o] < 225 || data[o + 1] < 225 || data[o + 2] < 225) bad++;
+      }
+      if (bad / n > 0.1) fail(`side bands are not the frame background (${bad}/${n} dark samples)`);
+    } else if (check === 'tunnel'){
+      await settle(p, 5);
+      const samples = [];
+      for (let k = 0; k < 8; k++){
+        await p.waitForTimeout(1500);
+        samples.push(await p.evaluate(() => window.__warpProbe ? window.__warpProbe() : null));
+      }
+      if (samples.some(s => s === null)) fail('no warp probe');
+      else if (samples.some(s => s.morph < 0.99)) fail('tunnel phase visible: ' + samples.map(s => s.morph.toFixed(2)).join(','));
+      await p.screenshot({ path: OUT + '/tunnel.png' });
+    } else if (check === 'vapore'){
+      await settle(p, 0); await p.waitForTimeout(3500);   // mouse fermo > 1,5 s
+      const a = await p.evaluate(() => window.__altProbe ? window.__altProbe() : null);
+      await p.waitForTimeout(1500);
+      const b = await p.evaluate(() => window.__altProbe ? window.__altProbe() : null);
+      if (!a) fail('no altitude probe');
+      else if (!(b.fantasma > a.fantasma)) fail('phantom pointer is not stirring: ' + a.fantasma + ' -> ' + b.fantasma);
     } else {
       console.log('SKIP ' + check + ' (not implemented yet)');
     }
