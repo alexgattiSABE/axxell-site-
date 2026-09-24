@@ -447,6 +447,41 @@ WC.register('robot', function(ctx){
     stage.addEventListener('mousemove', onPointerMove);
     stage.addEventListener('mouseleave', onPointerLeave);
 
+    // LA TESTA SEGUE ANCHE IL TELEFONO (richiesta Nike). Inclinando il
+    // telefono la testa guarda da quella parte, come col cursore. Solo la
+    // MIRA: il raggio che apre le zone resta quello del dito, cosi'
+    // inclinare non apre il cervello o la pancia da solo. L'inclinazione si
+    // legge rispetto a come si teneva il telefono al primo dato e satura a
+    // ~25°. iPhone chiede il permesso al primo tocco; il browser lo concede
+    // solo su https.
+    var tilt = { x: 0, y: 0, active: false };
+    var tiltRay = new THREE.Raycaster(), tiltNdc = new THREE.Vector2();
+    (function () {
+      if (!window.DeviceOrientationEvent || !window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+      var base = null, on = false;
+      function c1(v) { return v < -1 ? -1 : v > 1 ? 1 : v; }
+      function orient(ev) {
+        if (ev.gamma == null || ev.beta == null) return;
+        var ang = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0);
+        var land = ang === 90;
+        var x = land ? ev.beta : ev.gamma, y = land ? -ev.gamma : ev.beta;
+        if (!base) base = { x: x, y: y };
+        base.x += (x - base.x) * 0.004; base.y += (y - base.y) * 0.004;
+        tilt.x = c1((x - base.x) / 25);
+        tilt.y = c1((y - base.y) / 25);
+        tilt.active = true;
+      }
+      function avvia() { if (on) return; on = true; window.addEventListener('deviceorientation', orient, { passive: true }); }
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        var chiedi = function () {
+          window.removeEventListener('touchend', chiedi);
+          DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') avvia(); }).catch(function () {});
+        };
+        window.addEventListener('touchend', chiedi);
+      } else avvia();
+      cleanups.push(function () { window.removeEventListener('deviceorientation', orient); });
+    })();
+
     // Task A3 — il clic DENTRO l'animazione porta alla sezione («la prima è
     // meglio», Nike). Non un `click` ma pointerdown/pointerup con la soglia
     // dei 5 px: sullo stage si trascina (il robot non ruota, ma il gesto
@@ -469,6 +504,21 @@ WC.register('robot', function(ctx){
       if (!g || !anat || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
       var st = window.__robot && window.__robot.anatomia;
+      // TELEFONO: il tocco sul pezzo del robot fa partire la linea dal pezzo
+      // alla sua voce (richiesta Nike, «stesso percorso dell'operazione
+      // inversa»). Il puntatore del tocco arriva a `pointer` solo col
+      // mousemove emulato, DOPO il pointerup: lo si scrive qui a mano e si
+      // lascia che tick() rifaccia il raggio (due fotogrammi) prima di
+      // chiedere quale zona e' stata toccata.
+      if (WC.anatomia.stretto()) {
+        if (st && st.activeId && st.hitId === st.activeId && anat.subito && anat.subito(st.activeId)) return;
+        onPointerMove(e);
+        requestAnimationFrame(function () { requestAnimationFrame(function () {
+          var s2 = window.__robot && window.__robot.anatomia;
+          if (s2 && s2.hitId && anat.toccaCorpo) anat.toccaCorpo(s2.hitId);
+        }); });
+        return;
+      }
       if (!st || !st.activeId || st.hitId !== st.activeId) return;
       // Task C3: `cliccabile` e non `attiva`. La pancia è una zona attiva (si
       // apre, l'etichetta esce) ma non ha ancora una pagina dove andare: il
@@ -1841,8 +1891,12 @@ WC.register('robot', function(ctx){
         // camera posato su `aimPlane`) e la testa gira per guardarlo.
         if (robot && robot.headGroup && robot.state) {
           var targetYaw = 0, targetPitch = 0;
-          if (pointer.active) {
-            if (aimPlane && raycaster.ray.intersectPlane(aimPlane, vAim)) {
+          // Sul telefono la mira la da' l'inclinazione (se c'e'), non il dito.
+          var aimRay = null;
+          if (tilt.active) { tiltNdc.set(tilt.x, -tilt.y); tiltRay.setFromCamera(tiltNdc, cam); aimRay = tiltRay.ray; }
+          else if (pointer.active) aimRay = raycaster.ray;
+          if (aimRay) {
+            if (aimPlane && aimRay.intersectPlane(aimPlane, vAim)) {
               // L'occhio NON sta fermo: la testa gira attorno al COLLO, quindi
               // il centro della testa si sposta con la rotazione. Si parte
               // dall'occhio di ADESSO (la posa del fotogramma precedente): è
@@ -1867,7 +1921,8 @@ WC.register('robot', function(ctx){
               targetYaw = Math.max(-CONFIG.yawMax, Math.min(CONFIG.yawMax, targetYaw));
               targetPitch = Math.max(-CONFIG.pitchMax, Math.min(CONFIG.pitchMax, targetPitch));
             }
-            robot.state.faceAmount = 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
+            robot.state.faceAmount = tilt.active ? 1 - Math.min(1, Math.hypot(tilt.x, tilt.y))
+              : 1 - Math.min(1, Math.hypot(pointer.x, pointer.y));
           } else if (robot.hold) {
             // Override deterministico per l'harness (window.__robot.hold): posa
             // la testa (yaw/pitch) senza dover simulare un vero mousemove
@@ -1875,7 +1930,7 @@ WC.register('robot', function(ctx){
             targetYaw = robot.hold.yaw || 0;
             targetPitch = robot.hold.pitch || 0;
           }
-          if (!pointer.active) {
+          if (!aimRay) {
             // hold e "nessun input" decadono faceAmount a 0 allo stesso modo
             // (diagnostica dell'harness: non pilota più vetro/brain).
             robot.state.faceAmount += (0 - robot.state.faceAmount) * 0.08;

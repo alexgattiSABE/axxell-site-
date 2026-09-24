@@ -333,6 +333,7 @@ WC.anatomia = (function () {
     host.appendChild(tratto);
     var forzata = null;        // la zona che il tocco tiene accesa
     var forzataRiga = null;    // la voce toccata (da cui parte la linea)
+    var inverso = false;       // la linea parte dal CORPO e va alla voce (tocco sul robot)
     var timerVai = null, timerSpegni = null;
     // Task D14 — il disegno progressivo lo fa il JS, non una transizione CSS.
     // In CSS la corda (`--corda`) e' il punto di partenza dello
@@ -527,6 +528,10 @@ WC.anatomia = (function () {
       if (Math.abs(corsia - x0) > 3) { pts.push([x0, y1]); pts.push([corsia, y1]); }
       pts.push([corsia, a.y]);
       pts.push([fineX, a.y]);
+      // Tocco sul pezzo del robot: stesso percorso, percorso al contrario —
+      // la linea nasce dal cervello (o dalla sfera, o dal braccio) e sale
+      // fino alla sua voce nella scaletta.
+      if (inverso) pts.reverse();
       var lung = 0;
       for (var k = 1; k < pts.length; k++) lung += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
       trattoLinea.setAttribute('points', pts.map(function (p) { return n2(p[0]) + ',' + n2(p[1]); }).join(' '));
@@ -624,18 +629,18 @@ WC.anatomia = (function () {
     }
     function spegniTocco() {
       pulisciTimer();
-      forzata = null; forzataRiga = null;
+      forzata = null; forzataRiga = null; inverso = false;
       tratto.classList.remove('-on');
       scaletta.classList.remove('-scelta');
       Array.prototype.forEach.call(scaletta.children, function (c) { c.classList.remove('-attiva'); });
       trattoLinea.setAttribute('points', '');
     }
     // Il tocco su una voce: accende la zona, tira la linea, scarica la pagina.
-    function tocca(id, riga) {
+    function tocca(id, riga, dalCorpo) {
       var z = perId(id);
       if (!z) return;
       pulisciTimer();
-      forzata = id; forzataRiga = riga; trattoDa = ora();
+      forzata = id; forzataRiga = riga; trattoDa = ora(); inverso = !!dalCorpo;
       Array.prototype.forEach.call(scaletta.children, function (c) {
         c.classList.toggle('-attiva', c === riga);
       });
@@ -713,6 +718,15 @@ WC.anatomia = (function () {
       // la legge come se fosse quella sotto il cursore: apre lo stesso pezzo,
       // con le stesse transizioni.
       forzata: function () { return forzata; },
+      // Tocco DIRETTO sul pezzo del robot (telefono): tutto come il tocco
+      // sulla voce della scaletta — il pezzo si apre, la pagina si scarica,
+      // poi si parte — ma la linea corre dal pezzo alla voce.
+      toccaCorpo: function (id) {
+        var z = perId(id);
+        if (!z || !z.attiva || forzata === id) return;
+        var riga = scaletta.querySelector('[data-zona="' + id + '"]');
+        if (riga) tocca(id, riga, true);
+      },
       // Il tocco sul pezzo del robot che si e' appena aperto salta l'attesa.
       // Vale solo per la zona in corso: toccare un'altra parte non naviga.
       subito: function (id) {
