@@ -414,7 +414,15 @@ WC.register('dna', function(ctx){
      * di un bit. `uTintPal` sono TINT_SLOTS caselle di colore: ogni punto ne
      * pesca una sola, per sempre (vedi il vertex shader). */
     uTintMix:       { value: 0.0 },
-    uTintPal:       { value: (function(){ var a = []; for (var i = 0; i < 30; i++) a.push(new THREE.Vector3(1, 1, 1)); return a; })() }
+    uTintPal:       { value: (function(){ var a = []; for (var i = 0; i < 30; i++) a.push(new THREE.Vector3(1, 1, 1)); return a; })() },
+    /* IL FREMITO A RIPOSO (WC.helix, solo standalone) — inerte a 0 come le
+     * altre. `uOsc` è l'ampiezza, in unità di scena PRIMA di `uScale`: a 0 lo
+     * shader salta il ramo, e home e legacy restano identiche al bit.
+     * `uOscTime` è un orologio a parte, in secondi veri: `uTime` no, perché
+     * `uTime` è la FORMA (vedi `shapeTime`) e muoverlo farebbe serpeggiare
+     * tutta l'elica. */
+    uOsc:           { value: 0.0 },
+    uOscTime:       { value: 0.0 }
   };
 
   if (standalone) {
@@ -422,6 +430,11 @@ WC.register('dna', function(ctx){
     // servono a far combaciare la cucitura del riavvolgimento (vedi sopra).
     uniforms.uWorldColor.value = 1.0;
     uniforms.uWrapT.value = HELIX_PERIOD_T;
+    /* Il fremito si accende solo col moto: in reduced-motion resta a 0, e
+     * l'elica è ferma come prima (lì non c'è nemmeno un loop che lo muova).
+     * 0.07 è meno di un settimo della grossezza del filamento (0.52): i punti
+     * tremano dentro al loro filamento, la forma resta quella. */
+    if (ctx.motionOk) uniforms.uOsc.value = 0.07;
   }
 
   /* ⚠️ IL RAGGIO SERVE ANCHE ALLO SHADER, che da `position.y` deve risalire
@@ -440,6 +453,7 @@ WC.register('dna', function(ctx){
       'uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;',
       'uniform float uWrapT; uniform float uWorldColor; uniform float uColorLo; uniform float uColorHi;',
       'uniform float uTintMix; uniform vec3 uTintPal[30];',
+      'uniform float uOsc; uniform float uOscTime;',
       'varying float vFade; varying vec3 vColor; varying float vDepth;',
       G.SNOISE,
       'void main(){',
@@ -494,6 +508,23 @@ WC.register('dna', function(ctx){
       '    vec3 p1 = vec3(dnaRadius * cos(discreteTwist), discreteT, dnaRadius * sin(discreteTwist));',
       '    vec3 p2 = vec3(dnaRadius * cos(discreteTwist + 3.14159), discreteT, dnaRadius * sin(discreteTwist + 3.14159));',
       '    dnaPos = mix(p1, p2, rungT) + vec3(rnd1 - 0.9, rnd2 - 0.5, rnd3 - 0.5) * 2.0 * 0.16;',
+      '  }',
+      /* IL FREMITO (solo standalone, uOsc > 0). Ogni punto oscilla lungo una
+       * SUA direzione, con una SUA fase e una SUA frequenza (0.4–1.2 Hz): non
+       * è l'elica che ondeggia, sono i punti che respirano ciascuno per conto
+       * proprio. Due seni per punto, il secondo a frequenza non multipla
+       * (×1.73) e più debole, così il moto non si ripete a vista e legge
+       * organico invece che meccanico. Gli `random` sono sulla `position`,
+       * che non cambia: direzione e ritmo sono fissi, per sempre, per punto.
+       * Con uOsc a 0 il ramo non si esegue e la posizione è quella di sempre. */
+      '  if (uOsc > 0.0) {',
+      '    float r4 = random(position + vec3(4.0));',
+      '    float r5 = random(position + vec3(5.0));',
+      '    vec3 oDir = normalize(vec3(rnd2 - 0.5, rnd3 - 0.5, r4 - 0.5) + vec3(0.0001));',
+      '    float oW = 6.28318530718 * (0.4 + 0.8 * r5);',
+      '    float oPh = r4 * 6.28318530718;',
+      '    float o = sin(uOscTime * oW + oPh) * 0.7 + sin(uOscTime * oW * 1.73 + oPh * 2.3) * 0.3;',
+      '    dnaPos += oDir * o * uOsc;',
       '  }',
       // Il serpeggiamento si tiene in due variabili invece di sommarlo al
       // volo: serve una seconda volta più sotto, per sapere dov'è l'ASSE
@@ -894,12 +925,16 @@ WC.register('dna', function(ctx){
     if (reducedStandalone) renderOnce();
   }
 
+  var oscT0 = performance.now();   // l'origine del fremito, vedi uOscTime
   function frame(){
     raf = requestAnimationFrame(frame);
     if (standalone && throttled){ throttleFlip = !throttleFlip; if (throttleFlip) return; }
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     tintStep(now);
+    // Orologio vero, non a fotogrammi: con la strozzatura a 30fps il fremito
+    // va alla stessa velocità, solo a scatti più radi. A 0 fuori standalone.
+    if (uniforms.uOsc.value > 0) uniforms.uOscTime.value = (now - oscT0) / 1000;
 
     if (standalone) {
       var rawScroll = globalScrollProgress();
