@@ -4303,12 +4303,12 @@ function setLang(lang){
 /* ARRIVI DA UN'ALTRA PAGINA DEL SITO. Servizi e Visione vivono dentro
    questa pagina (router `go`), e il preventivo e' un pannello: da fuori
    (il menu dell'atelier) ci si arriva con /#servizi, /#visione,
-   /#preventivo. */
+   /#preventivo; la privacy da /#privacy (il modulo del preventivo siti la linka). */
 (function(){
   var h = (location.hash || '').slice(1);
   if (!h) return;
   function via(){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} }
-  if (h === 'servizi' || h === 'visione'){ go(h); via(); }
+  if (h === 'servizi' || h === 'visione' || h === 'privacy' || h === 'legale'){ go(h); via(); }
   else if (h === 'preventivo'){ openPrev(); via(); }
 })();
 </script>

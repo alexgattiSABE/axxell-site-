@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "atelier/index.html"
+        ],
+        "createdAt": "2026-09-24T16:20:48.684Z",
+        "reason": "user asked the atelier nav to match the main site exactly; the gradient 'Atelier' link is copied from index.html #n-wc"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "atelier/parliamone.html"
+        ],
+        "createdAt": "2026-09-24T19:05:41.901Z",
+        "reason": "user asked the atelier nav to match the main site; gradient 'Atelier' link copied from index.html #n-wc"
+      }
+    ]
+  }
+}
