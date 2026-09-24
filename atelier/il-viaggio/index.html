@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
 <!-- BASE OBBLIGATORIA: la pagina vive a `/atelier/il-viaggio`
      senza barra finale, quindi senza base `assets/...` risolverebbe un livello
@@ -728,7 +728,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 <section id="hero" class="min-h-viewport" aria-label="Wanderlust">
   <div class="hero-media">
     <video class="hero-video" id="hero-video" muted playsinline preload="auto"
-           aria-label="Travel footage: a glacial river valley seen from the air"></video>
+           aria-label="Riprese di viaggio: una valle glaciale attraversata da un fiume, vista dall'alto"></video>
     <img class="hero-still" id="hero-still" alt="" />
     <div class="hero-veil" id="hero-veil"></div>
     <div class="hero-grain" id="hero-grain"></div>
@@ -736,7 +736,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 
   <div class="hero-wordmark display" id="hero-wordmark"></div>
 
-  <nav class="hero-nav caption reveal" id="g-nav" aria-label="Primary">
+  <nav class="hero-nav caption reveal" id="g-nav" aria-label="Menu principale">
     <a href="/journal">DIARIO.</a>
     <a href="/experiences">ESPERIENZE.</a>
     <a href="/about">CHI SIAMO.</a>
@@ -784,7 +784,7 @@ ul { list-style: none; margin: 0; padding: 0; }
   </div>
 
   <div class="hero-thumb hero-thumb-top reveal" id="g-thumbnails-top">
-    <img id="hero-thumb-a" alt="A traveller raising a camera over a glacial river valley" />
+    <img id="hero-thumb-a" alt="Un viaggiatore che alza la macchina fotografica sopra una valle glaciale" />
   </div>
   <div class="hero-thumb hero-thumb-bottom reveal" id="g-thumbnails-bottom">
     <img id="hero-thumb-b" alt="" />
@@ -811,10 +811,10 @@ ul { list-style: none; margin: 0; padding: 0; }
 <!-- ======================================================================
      BLOCK 3 — PHILOSOPHY  (pinned)
      ====================================================================== -->
-<section id="philosophy" aria-label="Vai dove ti resta addosso">
+<section id="philosophy" aria-label="Viaggi che ti restano dentro">
   <div class="phil-pin">
     <img class="phil-backdrop" id="phil-backdrop"
-         alt="A glacial river braiding across a green valley, seen from the air" />
+         alt="Un fiume glaciale che si dirama in una valle verde, visto dall'alto" />
     <div class="phil-scrim"></div>
     <div class="phil-content">
       <h2 class="phil-title display text-trim" id="phil-title"></h2>
@@ -832,7 +832,7 @@ ul { list-style: none; margin: 0; padding: 0; }
     </div>
     <figure class="phil-collage phil-reveal" id="phil-collage">
       <img id="phil-collage-img"
-           alt="A polaroid of a traveller with her arms outstretched, taped over torn notebook pages" />
+           alt="Una polaroid di una viaggiatrice a braccia aperte, fissata con il nastro su pagine strappate di un taccuino" />
     </figure>
   </div>
 </section>
@@ -855,8 +855,8 @@ ul { list-style: none; margin: 0; padding: 0; }
      ====================================================================== -->
 <section id="plan" aria-label="Progetta un viaggio">
   <div class="plan-scene" id="plan-scene">
-    <img class="plan-layer" id="plan-bg" alt="A green ridge running down into cloud" style="inset:0;width:100%;height:100%" />
-    <img class="plan-layer" id="plan-far" alt="A ridge of mountains behind low cloud" />
+    <img class="plan-layer" id="plan-bg" alt="Un crinale verde che scende fino alle nuvole" style="inset:0;width:100%;height:100%" />
+    <img class="plan-layer" id="plan-far" alt="Una catena di montagne dietro nuvole basse" />
     <img class="plan-steam" id="plan-steam" alt="" />
     <img class="plan-layer" id="plan-fg" alt="" />
     <div class="plan-wash"></div>
@@ -921,13 +921,13 @@ ul { list-style: none; margin: 0; padding: 0; }
           <button type="submit">Iscriviti</button>
         </form>
         <div class="footer-social">
-          <a href="#" aria-label="Wanderlust on Instagram"><img id="soc-1" alt="" /></a>
-          <a href="#" aria-label="Wanderlust on Facebook"><img id="soc-2" alt="" /></a>
-          <a href="#" aria-label="Wanderlust on YouTube"><img id="soc-3" alt="" /></a>
+          <a href="#" aria-label="WanderLust su Instagram"><img id="soc-1" alt="" /></a>
+          <a href="#" aria-label="WanderLust su Facebook"><img id="soc-2" alt="" /></a>
+          <a href="#" aria-label="WanderLust su YouTube"><img id="soc-3" alt="" /></a>
         </div>
       </div>
     </div>
-    <div class="plan-footer-base">WanderLust — azienda di fantasia, costruita per mostrare un sito.</div>
+    <div class="plan-footer-base">WanderLust è un'agenzia immaginaria: questo sito è una dimostrazione.</div>
   </footer>
 </section>
 
@@ -1360,7 +1360,7 @@ DESTINATIONS.forEach((d, i) => {
   el.style.width = `${(d.w / FRAME_W) * 100}cqw`;
   el.style.zIndex = String(d.z);
   const img = document.createElement("img");
-  img.alt = `A polaroid captioned ${d.name.charAt(0) + d.name.slice(1).toLowerCase()}`;
+  img.alt = `Una polaroid con la scritta ${d.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())}`;
   setImg(img, d.file, { lazy: true });
   el.appendChild(img);
   scene.appendChild(el);
@@ -1485,9 +1485,9 @@ setImg(document.getElementById("phil-collage-img"), "Block 3/Collage.png", { laz
 
 /* leading capital of every word italic — G, S, T, S, W, Y */
 const PHIL_TITLE = [
-  [{ text: "V", italic: true }, { text: "ai " }, { text: "D", italic: true }, { text: "ove " }, { text: "T", italic: true }, { text: "i " }],
-  [{ text: "S", italic: true }, { text: "tays " }],
-  [{ text: "W", italic: true }, { text: "ith " }, { text: "Y", italic: true }, { text: "ou" }],
+  [{ text: "V", italic: true }, { text: "iaggi " }, { text: "C", italic: true }, { text: "he " }, { text: "T", italic: true }, { text: "i " }],
+  [{ text: "R", italic: true }, { text: "estano " }],
+  [{ text: "D", italic: true }, { text: "entro" }],
 ];
 const philTitleEl = document.getElementById("phil-title");
 philTitleEl.innerHTML = PHIL_TITLE
@@ -1545,20 +1545,20 @@ const NARROW_QUERY = "(max-width: 1024px)";
 const PANELS = [
   { id: "small-group-trips", title: [{ text: "G", italic: true }, { text: "ruppi " }, { text: "p", italic: true }, { text: "iccoli" }],
     body: "Si parte in pochi, così ci si sente inclusi, ascoltati e liberi di essere sé stessi.",
-    signOff: "Più incontro, meno folla.", bodyWidth: 390, file: "Block4/OpenedImage1.png",
-    alt: "Four travellers in bright rain jackets cheering on a mossy clifftop above a canyon" },
+    signOff: "Più incontri, meno folla.", bodyWidth: 390, file: "Block4/OpenedImage1.png",
+    alt: "Quattro viaggiatori in giacche a vento colorate esultano su una scogliera coperta di muschio, sopra un canyon" },
   { id: "road-trips", title: [{ text: "S", italic: true }, { text: "u " }, { text: "s", italic: true }, { text: "trada" }],
     body: "Strade panoramiche, soste impreviste e la libertà di cambiare piano quando ha senso.",
     signOff: "I posti più belli non stanno sulle mappe.", bodyWidth: 420, file: "Block4/OpenedImage2.png",
-    alt: "A white car alone on a road across black sand, under a jagged mountain ridge" },
+    alt: "Un'auto bianca, sola su una strada tra la sabbia nera, sotto una cresta di montagne frastagliata" },
   { id: "handpicked-stays", title: [{ text: "P", italic: true }, { text: "osti " }, { text: "s", italic: true }, { text: "celti" }],
     body: "Scegliamo posti con un'anima: locali, belli, comodi e tenuti da gente a cui importa.",
-    signOff: "Dormi in un posto che ti ricordi.", bodyWidth: 400, file: "Block4/OpenedImage3.png",
-    alt: "A traveller standing on wet rocks beside a turquoise waterfall" },
+    signOff: "Dormi in un posto che ricorderai.", bodyWidth: 400, file: "Block4/OpenedImage3.png",
+    alt: "Un viaggiatore in piedi sulle rocce bagnate, accanto a una cascata turchese" },
   { id: "local-experiences", title: [{ text: "E", italic: true }, { text: "sperienze " }, { text: "v", italic: true }, { text: "ere" }],
     body: "Si incontra chi ci vive, si mangia davvero, si ascoltano le storie e si vedono i posti che sulle guide non ci sono.",
     signOff: "Il cuore del viaggio.", bodyWidth: 490, file: "Block4/OpenedImage4.png",
-    alt: "Four people around a picnic table with warm mugs, snow-dusted hills behind them" },
+    alt: "Quattro persone attorno a un tavolo da picnic con tazze calde, alle spalle colline spolverate di neve" },
 ];
 
 const travelRow = document.getElementById("travel-row");

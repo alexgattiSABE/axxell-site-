@@ -145,6 +145,21 @@
   }
 
   /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
+  /* LA FINESTRA SI APRE (richiesta utente: niente piu' volo dentro la lastra).
+     Prima la camera volava contro la lastra e si finiva dentro a un
+     ingrandimento sfocato del poster, poi la pagina arrivava diversa. Ora la
+     lastra davanti diventa una finestra vera: un riquadro col suo stesso
+     poster nasce esattamente sopra di lei, si allarga fino ai bordi dello
+     schermo perdendo gli angoli tondi, e intanto l'immagine dentro rientra
+     di scala (contro-movimento, cosi' non sembra uno zoom). Il resto della
+     scena si spegne. Finito il gesto si naviga: il browser tiene il
+     fotogramma finche' la pagina nuova non dipinge. */
+  #finestra{position:fixed;z-index:9;overflow:hidden;pointer-events:none;
+    background:#04050a;opacity:0;will-change:left,top,width,height,border-radius}
+  #finestra i{position:absolute;inset:0;background-position:center;background-size:cover;
+    transform:scale(1.10);will-change:transform}
+  body.-apre #stage,body.-apre #cadenti,body.-apre #labels,body.-apre #focus,
+  body.-apre #hint{opacity:0;transition:opacity .5s cubic-bezier(.4,0,.2,1)}
   #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
     transition:opacity .28s ease;background:#04050a}
   #world.-on{opacity:1;pointer-events:auto}
@@ -323,12 +338,13 @@
   var CW = 2.95, CH = 1.84;
 
   var WORLDS = [
-    { id:'il-prodotto', nome:'Il prodotto', sett:'retail, e-commerce',
+    { id:'il-prodotto', nome:'Il negozio', sett:'retail, e-commerce',
       desc:'Chi compra da uno schermo non tocca niente. Deve poterlo guardare abbastanza da fidarsi.',
-      /* `gain` basso: questo poster e' l'unico su fondo BIANCO, e al guadagno
-         di base diventa una lastra accesa in mezzo a otto notturne. */
-      col:[0.62,0.44,1.00], poster:'assets/il-prodotto.webp', video:'assets/sneaker.mp4',
-      page:'/atelier/il-prodotto', gain:0.72, gainVid:1.30 },
+      /* Il poster e' la pagina vera (l'apertura viola del negozio), e niente
+         video: un'anteprima che cambia quando la lastra arriva davanti
+         sembrava un errore (richiesta utente). Vale per tutti i mondi. */
+      col:[0.62,0.44,1.00], poster:'assets/il-negozio.webp', video:null,
+      page:'/atelier/il-prodotto', gain:0.86 },
 
     /* Era «La notte — ristoranti, locali». Costruendolo si e' visto che il
        template (wanderlust) e' fatto di paesi e fotografie di viaggio: la sua
@@ -338,23 +354,23 @@
        `altitude`, sotto. */
     { id:'il-viaggio', nome:'Il viaggio', sett:'turismo, ospitalità',
       desc:'Chi parte non compra un itinerario. Compra il ricordo che avrà al ritorno.',
-      col:[0.96,0.94,0.90], poster:'assets/il-viaggio.jpg', video:'assets/starry.mp4',
+      col:[0.96,0.94,0.90], poster:'assets/il-viaggio.webp', video:null,
       page:'/atelier/il-viaggio', gain:0.92 },
 
-    { id:'la-macchina', nome:'La macchina', sett:'industria, B2B',
-      desc:'Quello che fate non entra in una fotografia. Entra in un modello che si gira col dito.',
-      col:[0.365,0.941,0.659], poster:'assets/industria.jpg', video:null,
+    { id:'la-macchina', nome:'L\u2019officina', sett:'industria, B2B',
+      desc:'Precisione al centesimo e clienti in mezza Europa: il sito deve dirlo prima del preventivo.',
+      col:[0.23,0.85,1.00], poster:'assets/la-macchina.webp', video:null,
       page:'/atelier/la-macchina' },
 
-    { id:'il-dettaglio', nome:'Il dettaglio', sett:'artigianato, lusso',
+    { id:'il-dettaglio', nome:'La bottega', sett:'artigianato, lusso',
       desc:'Nessuno nota il dettaglio. Tutti notano che c’era.',
       /* Lumora e' un mondo CHIARO con un solo accento arancio bruciato: il
          portale prende quello, ed e' l'unico caldo-terroso della giostra. */
       col:[0.98,0.55,0.28], poster:'assets/il-dettaglio.webp', video:null, gain:0.86,
       page:'/atelier/il-dettaglio' },
 
-    { id:'prima-e-dopo', nome:'Prima e dopo', sett:'edilizia, estetica',
-      desc:'Il cliente non compra il lavoro. Compra la differenza fra le due fotografie.',
+    { id:'prima-e-dopo', nome:'La casa', sett:'immobiliare, edilizia',
+      desc:'Una casa si sceglie prima di vederla. Il sito è la prima visita.',
       /* Il poster e' una fotografia DI QUEL MONDO (il crinale nell'ora blu), non
          un'immagine generica: il portale dev'essere una finestra su cio' che c'e'
          dentro. E il colore e' quello della sua luce, l'ambra delle finestre
@@ -362,13 +378,13 @@
       col:[0.98,0.78,0.52], poster:'assets/prima-e-dopo.jpg', video:null, gain:0.78,
       page:'/atelier/prima-e-dopo' },
 
-    { id:'la-notte', nome:'La notte', sett:'ristoranti, locali',
-      desc:'Alle undici di sera il tuo locale lavora ancora — ma il sito lavora da solo.',
+    { id:'la-notte', nome:'Il ristorante', sett:'ristoranti, locali',
+      desc:'Alle undici di sera la cucina chiude. Il sito continua a prendere prenotazioni.',
       col:[0.97,0.78,0.48], poster:'assets/la-notte.webp', video:null,
       page:'/atelier/la-notte' },
 
-    { id:'lo-studio', nome:'Lo studio', sett:'professionisti',
-      desc:'Un secondo e mezzo per capire di cosa vi occupate. Poi decide.',
+    { id:'lo-studio', nome:'Lo studio', sett:'consulenza, professionisti',
+      desc:'Chi vi cerca ha un secondo e mezzo per capire di cosa vi occupate. Poi decide.',
       /* marcus-vane: nero cinematografico con un solo accento brace elettrica. */
       col:[1.00,0.42,0.17], poster:'assets/lo-studio.webp', video:null, gain:0.9,
       page:'/atelier/lo-studio' },
@@ -386,8 +402,8 @@
        porta a un cliente immaginario ma a casa nostra.
        `gain` alto perche' quel fotogramma e' quasi tutto notte. */
     { id:'effetti-speciali', nome:'Effetti speciali', sett:'le tecniche, una per una',
-      desc:'Il disco volante, il robot, il fluido. Quello che c’è sotto agli altri sette.',
-      col:[0.23,0.85,1.00], poster:'assets/effetti-speciali.webp', video:null, gain:1.34,
+      desc:'Il disco volante, il robot, il fluido. Quello che c’è sotto gli altri sette.',
+      col:[0.365,0.941,0.659], poster:'assets/effetti-speciali.webp', video:null, gain:1.34,
       page:'/atelier/capitoli' },
 
     /* LA NONA, ED E' VUOTA.
@@ -942,7 +958,20 @@
      porta davanti quel mondo. Le nove righe dicono quello che i nove
      trattini in basso non possono dire.
      ══════════════════════════════════════════════════════════════════ */
-  var IW = 900, IH = 540, IROW0 = 150, IROWH = 44;
+  /* DUE COLONNE, LETTERE PIU' GRANDI (richiesta utente).
+     Su una colonna sola l'elenco era una striscia stretta e alta con le
+     lettere piccole; diviso in due (cinque righe a sinistra, quattro a
+     destra) occupa piu' larghezza, meno altezza, e i caratteri crescono di
+     un terzo senza che il blocco scenda sulle lastre. La scala del piano e'
+     la stessa di prima per pixel di tela (2.40/900), quindi l'ingrandimento
+     e' tutto nelle lettere. */
+  /* Sul telefono lo schermo e' stretto: una colonna sola, come prima,
+     ma con le lettere grandi. `idxColonne` rifa' tela e piano quando il
+     formato cambia. */
+  var IW = 1600, IH = 420, IROW0 = 138, IROWH = 58, IGAP = 64, ICOLGAP = 120;
+  var IFONT_T = '500 36px "DM Mono", ui-monospace, monospace';
+  var IFONT_R = '400 33px "DM Mono", ui-monospace, monospace';
+  var ICOLS = 2, IPERCOL = Math.ceil(WORLDS.length / 2);
   var idxCv = document.createElement('canvas');
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
@@ -952,53 +981,67 @@
   var idxMat = new THREE.MeshBasicMaterial({
     map:idxTex, transparent:true, depthWrite:false, opacity:0
   });
-  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.40, 1.44), idxMat);
+  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(IW*2.40/900, IH*2.40/900), idxMat);
   idxMesh.position.set(-2.62, -1.12, -2.00);
   idxMesh.frustumCulled = false;
   /* In `bg`, non in `scene`: `bg` viene disegnato nel render target PRIMA
      delle lastre, ed e' quel passaggio che il vetro legge. Messo insieme
      alle lastre, sarebbe visibile ma non rifrangibile. */
   bg.add(idxMesh);
+  function idxColonne(n){
+    if (n === ICOLS) return;
+    ICOLS = n; IPERCOL = Math.ceil(WORLDS.length / n);
+    IW = n === 2 ? 1600 : 900;
+    IH = IROW0 + (IPERCOL - 1)*IROWH + 40;
+    idxCv.width = IW; idxCv.height = IH;
+    idxTex.dispose();
+    idxMesh.geometry.dispose();
+    idxMesh.geometry = new THREE.PlaneGeometry(IW*2.40/900, IH*2.40/900);
+    idxDisegna();
+  }
 
   var idxSopra = -1;                 // la riga sotto al puntatore
-  /* IL BLOCCO VA CENTRATO NELLA TELA, non solo la tela nello schermo.
-     Le righe sono scritte da x=34 su una tela larga 900: finché l'elenco
-     stava a sinistra non contava, ma portandolo in alto AL CENTRO il blocco
-     restava schiacciato nella metà sinistra del suo piano — centrato di
-     piano, storto d'occhio. Qui si misura la riga più larga (freccia +
-     etichetta, col letter-spacing già impostato) e si sposta tutto del tanto
-     che serve: le righe restano allineate a sinistra fra loro — è un elenco,
-     non un titolo — ma il blocco sta in mezzo. */
-  var IGAP = 50;                     // quanto sta la freccia prima dell'etichetta
-  function idxOffsetX(){
-    idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
-    var max = 0;
+  /* IL BLOCCO VA CENTRATO NELLA TELA. Si misura la colonna piu' larga
+     (freccia + etichetta, col letter-spacing gia' impostato): le due
+     colonne hanno la stessa larghezza, le righe restano allineate a
+     sinistra dentro la loro colonna — e' un elenco, non un titolo — e il
+     blocco intero sta in mezzo. `idxPos` dice dove sta ogni riga, e serve
+     tanto al disegno quanto al clic. */
+  var idxPos = [];
+  function idxLayout(){
+    try { idxG.letterSpacing = '3px'; } catch(e){}
+    idxG.font = IFONT_R;
+    var colW = 0;
     for (var i = 0; i < WORLDS.length; i++){
       var w = IGAP + idxG.measureText(WORLDS[i].sett.toUpperCase()).width;
-      if (w > max) max = w;
+      if (w > colW) colW = w;
     }
-    idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
-    var t = idxG.measureText('CHE COSA CERCHI?').width;
-    if (t > max) max = t;
-    return Math.max(0, Math.round((IW - max) / 2));
+    var tot = colW*2 + ICOLGAP;
+    idxG.font = IFONT_T;
+    var tw = idxG.measureText('CHE COSA CERCHI?').width;
+    var ox = Math.max(0, Math.round((IW - Math.max(tot, tw)) / 2));
+    idxPos = WORLDS.map(function(w, i){
+      var c = i < IPERCOL ? 0 : 1, r = c ? i - IPERCOL : i;
+      return { x: ox + c*(colW + ICOLGAP), y: IROW0 + r*IROWH, w: colW };
+    });
+    return ox;
   }
   function idxDisegna(){
     idxG.clearRect(0,0,IW,IH);
-    try { idxG.letterSpacing = '3px'; } catch(e){}
     idxG.textBaseline = 'middle';
-    var ox = idxOffsetX();
-    idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
+    var ox = idxLayout();
+    idxG.font = IFONT_T;
     idxG.fillStyle = 'rgba(240,240,246,0.82)';
-    idxG.fillText('CHE COSA CERCHI?', ox, 60);
+    idxG.fillText('CHE COSA CERCHI?', ox, 56);
+    idxG.font = IFONT_R;
     WORLDS.forEach(function(w, i){
-      var y = IROW0 + i*IROWH;
+      var p = idxPos[i];
       var acceso = (w === hot) || (i === idxSopra);
-      idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
       idxG.fillStyle = acceso
         ? 'rgba(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
-        : 'rgba(223,228,238,0.60)';
-      idxG.fillText('->', ox, y);
-      idxG.fillText(w.sett.toUpperCase(), ox + IGAP, y);
+        : 'rgba(223,228,238,0.64)';
+      idxG.fillText('->', p.x, p.y);
+      idxG.fillText(w.sett.toUpperCase(), p.x + IGAP, p.y);
     });
     idxTex.needsUpdate = true;
   }
@@ -1008,16 +1051,19 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(idxDisegna);
 
   /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
-     parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
-     si vede la rifrazione — cliccandoci si deve entrare nella lastra. */
+     parte dell'elenco che sta DIETRO a quella davanti e' li' che si vede
+     la rifrazione — cliccandoci si deve entrare nella lastra. */
   function pickRiga(){
     if (idxMat.opacity < 0.25) return -1;
     ray.setFromCamera(ptr, camera);
     var h = ray.intersectObject(idxMesh, false);
     if (!h.length || !h[0].uv) return -1;
-    var y = (1 - h[0].uv.y) * IH;
-    var k = Math.round((y - IROW0)/IROWH);
-    return (k >= 0 && k < WORLDS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
+    var x = h[0].uv.x * IW, y = (1 - h[0].uv.y) * IH;
+    for (var i = 0; i < idxPos.length; i++){
+      var p = idxPos[i];
+      if (x >= p.x - 8 && x <= p.x + p.w && Math.abs(y - p.y) < IROWH*0.46) return i;
+    }
+    return -1;
   }
 
   /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
@@ -1426,7 +1472,7 @@
        puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
        dentro, se no la camera parte verso una lastra di fianco. */
     if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
-    openW = w; zoomT = 1;
+    openW = w;
     playOn(w);
 
     /* IL MONDO E' UNA PAGINA: lo zoom non e' una transizione DECORATIVA, e' la
@@ -1437,9 +1483,14 @@
     if (w.page){
       document.getElementById('hint').style.opacity = 0;
       document.getElementById('nav').classList.add('-hide');
-      setTimeout(function(){ location.href = w.page; }, 520);
+      /* due fotogrammi: se l'anello e' appena scattato su di lui, la lastra
+         deve essere gia' al suo posto quando se ne misurano gli angoli */
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        apriFinestra(w, function(){ location.href = w.page; });
+      }); });
       return;
     }
+    zoomT = 1;
     var el = document.getElementById('world');
     el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
     document.getElementById('wKick').textContent = '// ' + w.sett;
@@ -1457,6 +1508,56 @@
     document.getElementById('nav').classList.add('-hide');
     if (push !== false && window.history && history.pushState) history.pushState({w:w.id}, '', ROOT + '/' + w.id);
   }
+  /* Dove sta la lastra sullo schermo: i quattro angoli proiettati con la
+     stessa camera che la disegna. Davanti e' di faccia, quindi il loro
+     rettangolo e' la lastra. */
+  function rettangoloLastra(w){
+    var R = renderer.domElement.getBoundingClientRect();
+    var v = new THREE.Vector3(), x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    camera.updateMatrixWorld(); w.mesh.updateMatrixWorld();
+    [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(c){
+      v.set(c[0]*CW/2, c[1]*CH/2, 0); w.mesh.localToWorld(v); v.project(camera);
+      var x = R.left + (v.x + 1)/2*R.width, y = R.top + (1 - v.y)/2*R.height;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    });
+    return { x:x0, y:y0, w:x1 - x0, h:y1 - y0 };
+  }
+  function apriFinestra(w, poi){
+    var r = rettangoloLastra(w);
+    var f = document.createElement('div'); f.id = 'finestra';
+    var img = document.createElement('i');
+    img.style.backgroundImage = 'url("' + w.poster + '")';
+    f.appendChild(img);
+    var rad = Math.round(r.w*0.035) + 'px';
+    f.style.left = r.x + 'px'; f.style.top = r.y + 'px';
+    f.style.width = r.w + 'px'; f.style.height = r.h + 'px'; f.style.borderRadius = rad;
+    document.body.appendChild(f);
+    document.body.classList.add('-apre');
+    var fatto = false;
+    function fine(){ if (fatto) return; fatto = true; poi(); }
+    if (!f.animate){ f.style.cssText += ';left:0;top:0;width:100%;height:100%;opacity:1'; setTimeout(fine, 60); return; }
+    var EASE = 'cubic-bezier(.76,0,.24,1)', DUR = 760;
+    f.animate([{ opacity:0 }, { opacity:1, offset:0.22 }, { opacity:1 }],
+              { duration:DUR, easing:'linear', fill:'forwards' });
+    f.animate([
+      { left:r.x+'px', top:r.y+'px', width:r.w+'px', height:r.h+'px', borderRadius:rad },
+      { left:'0px', top:'0px', width:innerWidth+'px', height:innerHeight+'px', borderRadius:'0px' }
+    ], { duration:DUR, easing:EASE, fill:'forwards' }).onfinish = fine;
+    img.animate([{ transform:'scale(1.10)' }, { transform:'scale(1)' }],
+                { duration:DUR, easing:EASE, fill:'forwards' });
+    setTimeout(fine, DUR + 200);          // se l'animazione non chiude, si va lo stesso
+  }
+  /* Tornando indietro col browser la pagina puo' uscire dalla cache cosi'
+     com'era, con la finestra ancora aperta: si richiude tutto. */
+  window.addEventListener('pageshow', function(e){
+    if (!e.persisted) return;
+    var f = document.getElementById('finestra'); if (f) f.remove();
+    document.body.classList.remove('-apre');
+    document.getElementById('nav').classList.remove('-hide');
+    document.getElementById('hint').style.opacity = '';
+    openW = null; zoomT = 0;
+  });
+
   function leave(pop){
     if (!openW) return;
     var el = document.getElementById('world');
@@ -1526,8 +1627,9 @@
        verso il centro cosi' la camera-al-perno lo legge di faccia invece che
        di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
        IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
+    idxColonne(camera.aspect < 1 ? 1 : 2);
     if (camera.aspect < 1){
-      idxMesh.position.set(0, 1.78, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.66);
+      idxMesh.position.set(0, 2.00, -3.05); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.62);
     } else {
       /* L'ELENCO VA IN ALTO AL CENTRO (richiesta utente). Stava a sinistra,
          girato di 0.52 rad verso il centro perché la camera-al-perno lo
@@ -1536,7 +1638,7 @@
          guarda già di faccia, quindi `rotation` va a zero e le righe stanno
          dritte. Resta sopra il pelo dell'acqua (y positivo) come prima, così
          non annega nella pozza ma continua a specchiarsi. */
-      idxMesh.position.set(0, 2.46, -4.35); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.90);
+      idxMesh.position.set(0, 2.58, -4.35); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(1.22);
     }
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
@@ -1953,7 +2055,34 @@
   }
 
   var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (ridotto || !cv || !mark){ apri(); return; }
+
+  /* IL SIPARIO SOLO A CHI CLICCA «ATELIER» (richiesta utente).
+     Non al refresh, non col tasto indietro/avanti, non a chi incolla
+     l'indirizzo, non a chi torna da un mondo (`?da=`). Resta solo il caso
+     di un link seguito da un'altra pagina del sito: una navigazione di tipo
+     `navigate` con un referrer della stessa origine che non sia l'atelier
+     stesso. */
+  function daClicAtelier(){
+    try {
+      /* il clic su «Atelier» stando gia' nell'atelier: il referrer e' la
+         pagina stessa, quindi lo segnala il link (vedi sotto) */
+      if (sessionStorage.getItem('atelier-velo')){ sessionStorage.removeItem('atelier-velo'); return true; }
+      var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+      var tipo = nav ? nav.type : (performance.navigation && performance.navigation.type === 0 ? 'navigate' : 'altro');
+      if (tipo !== 'navigate') return false;
+      if (new URLSearchParams(location.search).get('da')) return false;
+      if (!document.referrer) return false;
+      var r = new URL(document.referrer);
+      if (r.origin !== location.origin) return false;
+      var p = r.pathname.replace(/\/+$/, '').replace(/\/index(\.html)?$/, '');
+      return p !== '/atelier';
+    } catch(e){ return false; }
+  }
+
+  document.querySelectorAll('#nav a[href="/atelier"]').forEach(function(l){
+    l.addEventListener('click', function(){ try { sessionStorage.setItem('atelier-velo', '1'); } catch(e){} });
+  });
+  if (ridotto || !cv || !mark || !daClicAtelier()){ apri(); return; }
 
   document.body.style.overflow = 'hidden';
 

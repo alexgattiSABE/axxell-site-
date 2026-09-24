@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
 <base href="/atelier/lo-studio/">
 <meta charset="utf-8">
@@ -8,7 +8,6 @@
 <meta name="description" content="Come può essere il sito di un professionista. Uno dei mondi della costellazione Axxell.">
 <meta property="og:title" content="Lo studio — un mondo della costellazione | Axxell">
 <meta property="og:url" content="https://axxell.ai/atelier/lo-studio">
-<meta name="description" content="Studio Leva — founder, investor, and operator. Four companies built and exited, $3.2B in enterprise value created. Conviction before consensus.">
 <meta name="theme-color" content="#08080a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -114,7 +113,7 @@ section,footer{position:relative}
 .revealed .word{opacity:1;transform:none;filter:blur(0)}
 
 /* Anton headline words rise from behind a per-line mask */
-.mask{display:inline-block;overflow:hidden;vertical-align:top}
+.mask{display:inline-block;overflow:hidden;vertical-align:top;padding-top:.14em;margin-top:-.14em}
 .mask .word{transform:translateY(110%);filter:blur(0)}
 .revealed .mask .word{transform:none}
 
@@ -364,8 +363,8 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
 <!-- SITE NAV -->
 <header class="nav">
   <nav class="bar">
-    <a class="logo" href="#top" aria-label="Studio Leva — home">
-      <span class="mono">MV</span>
+    <a class="logo" href="#top" aria-label="Studio Leva — torna all'inizio">
+      <span class="mono">SL</span>
       <span class="lname">Studio Leva</span>
     </a>
     <ul class="navlinks">
@@ -383,13 +382,13 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
   <section id="top">
     <div class="hero-top">
       <h2 class="hero-roles disp" data-roles>
-        <span class="rl">Consulente</span><span class="rl">Analista</span><span class="rl">In reparto</span><span class="rl">Diretto</span>
+        <span class="rl">Consulenza</span><span class="rl">Analisi</span><span class="rl">In reparto</span><span class="rl">Senza filtri</span>
       </h2>
       <p class="hero-desc e-up">Aiutiamo imprese che hanno smesso di crescere a capire dove si sono fermate. Vent'anni di bilanci letti, e una regola sola: prima i numeri, poi le opinioni.</p>
     </div>
 
     <div class="hero-portrait">
-      <img id="hero-img" alt="Portrait of Studio Leva">
+      <img id="hero-img" alt="Ritratto del fondatore di Studio Leva">
     </div>
     <div class="hero-fade" aria-hidden="true"></div>
 
@@ -402,7 +401,7 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
   </section>
 
   <!-- MARQUEE -->
-  <section class="marquee" aria-label="Operating principles">
+  <section class="marquee" aria-label="I nostri principi">
     <div class="track" id="marquee-track"></div>
   </section>
 
@@ -430,7 +429,7 @@ header.nav .bar{pointer-events:auto;display:flex;align-items:center;
         <p class="eyebrow"><span class="dot"></span>Alcuni incarichi</p>
         <h2 class="sec-h big disp" data-head>Quello che è cambiato dopo.</h2>
       </div>
-      <p class="count-note">04 / Aziende</p>
+      <p class="count-note">04 / Incarichi</p>
     </div>
     <ul class="ventures-grid" id="ventures-grid"></ul>
   </section>
@@ -513,23 +512,23 @@ const IMG = {
   "voice3": "data:image/webp;base64,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",
 };
 
-const marqueeWords = ["Prima i numeri","Un passo alla volta","Guardare il reparto","Parlare con chi lavora","Dire anche quello che scomoda"]
+const marqueeWords = ["Prima i numeri","Un passo alla volta","Scendere in reparto","Parlare con chi lavora","Dire anche quello che scomoda"]
 const ventures = [
   {name:"Reparto",category:"Produzione",year:"2019",outcome:"Meccanica — 140 addetti",blurb:"Riorganizzato il flusso di reparto: stesso organico, ventotto per cento di pezzi in più.",img:IMG.v1},
   {name:"Listino",category:"Controllo di gestione",year:"2015",outcome:"Alimentare — 60 addetti",blurb:"Rifatto il listino su costi reali: margine da nove a diciassette per cento in due esercizi.",img:IMG.v2},
   {name:"Successione",category:"Passaggio generazionale",year:"2011",outcome:"Servizi — 35 addetti",blurb:"Passaggio generazionale accompagnato per tre anni, senza perdere un cliente né un tecnico.",img:IMG.v3},
-  {name:"Affiancamento",category:"Direzione",year:"2008",outcome:"In corso — 12 aziende",blurb:"Affiancamento continuo alla direzione: una giornata al mese, per chi non vuole restare solo a decidere.",img:IMG.v4},
+  {name:"Affiancamento",category:"Direzione",year:"Dal 2008",outcome:"In corso — 12 aziende",blurb:"Affiancamento continuo alla direzione: una giornata al mese, per chi non vuole restare solo a decidere.",img:IMG.v4},
 ]
 const stats = [
   {value:"20",label:"Anni sul campo"},
   {value:"180+",label:"Aziende seguite"},
   {value:"14",label:"Passaggi generazionali accompagnati"},
-  {value:"9 su 10",label:"Clienti che richiamano"},
+  {value:"9 su 10",label:"Clienti che tornano"},
 ]
 const voices = [
-  {quote:"Ci hanno fatto vedere in due settimane quello che noi non vedevamo da tre anni. Scomodo, ma erano i nostri numeri.",name:"Elena Caroli",role:"Direzione, meccanica di precisione",img:IMG.voice1},
+  {quote:"Ci hanno fatto vedere in due settimane quello che noi non vedevamo da tre anni. Scomodo, ma erano i nostri numeri.",name:"Enrico Caroli",role:"Direzione, meccanica di precisione",img:IMG.voice1},
   {quote:"Non sono rimasti in ufficio a guardare i bilanci: sono scesi in reparto e hanno parlato con i capoturno. Da lì è cambiato tutto.",name:"Davide Oliva",role:"Titolare, azienda alimentare",img:IMG.voice2},
-  {quote:"Il passaggio in famiglia lo rimandavamo da sei anni. Ci hanno accompagnati per tre, e non abbiamo perso nessuno per strada.",name:"Piera Nardini",role:"Seconda generazione, servizi",img:IMG.voice3},
+  {quote:"Il passaggio in famiglia lo rimandavamo da sei anni. Ci hanno accompagnati per tre, e non abbiamo perso nessuno per strada.",name:"Piero Nardini",role:"Seconda generazione, servizi",img:IMG.voice3},
 ]
 
 /* ── Hydrate images ───────────────────────────────────────────────────────── */
@@ -678,7 +677,7 @@ function selectVoice(i){
   vquote.textContent = `“${v.quote}”`
   buildWords(vquote, 0, 22)
   vcite.textContent = `${v.name} — ${v.role}`
-  vimg.src = v.img; vimg.alt = `Portrait of ${v.name}`
+  vimg.src = v.img; vimg.alt = `Ritratto di ${v.name}`
   // replay the reveal for the quote words
   vquote.querySelectorAll('.word').forEach(w=>{ w.style.opacity=''; w.style.transform=''; w.style.filter='' })
   if(document.getElementById('voices').classList.contains('revealed')){
