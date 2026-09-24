@@ -510,12 +510,18 @@ WC.register('robot', function(ctx){
       // mousemove emulato, DOPO il pointerup: lo si scrive qui a mano e si
       // lascia che tick() rifaccia il raggio (due fotogrammi) prima di
       // chiedere quale zona e' stata toccata.
+      // Si parte SOLO ritoccando lo stesso pezzo: la zona colpita si legge
+      // dopo aver rifatto il raggio sul punto di QUESTO tocco. Prima si
+      // usava quella del fotogramma precedente — cioe' il tocco di prima,
+      // ancora sulla testa — e qualunque tocco dopo portava ad Atlas.
       if (WC.anatomia.stretto()) {
-        if (st && st.activeId && st.hitId === st.activeId && anat.subito && anat.subito(st.activeId)) return;
         onPointerMove(e);
         requestAnimationFrame(function () { requestAnimationFrame(function () {
           var s2 = window.__robot && window.__robot.anatomia;
-          if (s2 && s2.hitId && anat.toccaCorpo) anat.toccaCorpo(s2.hitId);
+          var colpita = s2 && s2.hitId;
+          if (!colpita || !anat) return;
+          if (anat.forzata && anat.forzata() === colpita) { if (anat.subito) anat.subito(colpita); return; }
+          if (anat.toccaCorpo) anat.toccaCorpo(colpita);
         }); });
         return;
       }
@@ -1771,6 +1777,7 @@ WC.register('robot', function(ctx){
       // Task A2: il gemello per la pancia (raycast sul SOLO torso) e
       // l'orologio della posa della sfera.
       var hoverBelly = 0, orbTime = 0;
+      var collare;                     // la manica sotto il collo, cercata una volta sola
       // Task 6: surge delle fibre per braccio (0..1, smorzato) — stesso
       // Raycaster riusato (Task 7: stesso raggio del reveal testa sotto,
       // niente secondo setFromCamera — il puntatore è lo stesso NDC per i
@@ -2111,6 +2118,19 @@ WC.register('robot', function(ctx){
           robot.orb.points.rotation.x = Math.sin(orbTime * 0.1) * SFERA_CONFIG.tilt;
           robot.orb.update(dt, hoverBelly, cam);
           robot.orb.points.visible = hoverBelly > 0.01;
+          // Il COLLARE sotto il collo (Cylinder_3, la manica a tronco di cono)
+          // di solito sta dentro il petto; aprendo SABE o il gestionale il
+          // petto diventa vetro e lui resta li' pieno (Nike: «nascondi quella
+          // specie di cilindro trapezoidale»). Si toglie finche' una delle due
+          // zone e' aperta.
+          if (collare === undefined) {
+            collare = null;
+            (robot.parts.collo || []).forEach(function (m) { if (m.name === 'Cylinder_3') collare = m; });
+          }
+          if (collare) {
+            var vuoleCollare = hoverBelly < 0.02 && hoverCollo < 0.02;
+            if (collare.visible !== vuoleCollare) { collare.visible = vuoleCollare; renderer.shadowMap.needsUpdate = true; }
+          }
         }
         // Task C3 — il contenuto della pancia, quando ci sarà: si accende col
         // reveal del torso come il cervello col suo. Oggi non c'è (vedi
