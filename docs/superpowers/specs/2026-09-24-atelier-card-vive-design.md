@@ -53,7 +53,7 @@ He asked for this explicitly on cards 4 and 6.
 ### A. Page and movement
 
 1. **Helix cut-out without a mask image.** Replace the SVG `mask-image` with `clip-path: path(nonzero, "...")`, written every frame.
-   - The path is a full-screen rectangle wound clockwise, plus the outline of each card in front of the helix axis, wound counter-clockwise. With nonzero, overlapping outlines never cancel each other (evenodd would).
+   - The path is a full-screen rectangle plus the outline of each card in front of the helix axis, wound opposite to the rectangle, so the winding inside a card is zero and the helix is cut there. Overlapping outlines would repaint (winding −1). That is safe because point 3 guarantees that cards never overlap.
    - It is synchronous (Safari 13.1+, Chrome 88+), so there is no decode and no flicker. `path()` coordinates are CSS px of the border box, which here is the viewport (`fixed; inset:0`).
    - The rule stays the same: cut only the cards with `z > −R` and `uReveal ≥ 0.3`, using the real rounded outline projected by the scene camera.
    - During the entrance (`body.-entra`, translateY 42px), subtract the element's live offset (`getBoundingClientRect().top`) from the y coordinates.
@@ -61,7 +61,7 @@ He asked for this explicitly on cards 4 and 6.
 2. **Captions stay fixed in front** (Nike: "those stay fixed in front").
    - The hint (currently .34 alpha, 10.5px), `.fsub` (.55), `.counter i/.tot` (.34/.5) and `#dots` (.26) go to at least .72 alpha.
    - The hint goes up to 12px or more. All caption text stays at 11px or more.
-   - The hint text becomes "scorri per cambiare mondo · usa l'anteprima" (mobile: "scorri fuori dalla card · tocca l'anteprima", one line at 390px).
+   - The hint text becomes "scorri per cambiare mondo · usa l'anteprima" (mobile: "scorri fuori · tocca l'anteprima", 12px, one line at 390px).
 3. **No card touches another** (checked at u = −1, 0, +1 and at mid-transition u = ±0.5, on 1440×900 and 390×844).
    - Start from `TUNE.climb = 2.2` and `deckScale(u) = 1 − 0.45·min(1,|u|)`.
    - Then adjust `yTop`/`climb`/`deckFade` so the neighbours do not sit under the bottom caption or the nav.
