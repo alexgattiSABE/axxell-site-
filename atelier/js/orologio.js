@@ -126,11 +126,44 @@ function mountOrologio(ctx, cfg){
   }
 
   var shown = -1, want = 0;
+  var pieno = false, fondo = null;
 
   function draw(){
     if (!ready) return;
     var im = pick(want);
     if (!im) return;
+    if (pieno){
+      /* NELLA CARD (esterno): niente bande trasparenti ai lati — da li'
+         traspariva il poster sfocato. Si riempie tutto col bianco del
+         fotogramma stesso (letto una volta dal primo pixel) e l'orologio va
+         nella meta' destra: la sinistra e' della copy (#lp in capitoli.html). */
+      if (!fondo){
+        try {
+          var c1 = document.createElement('canvas'); c1.width = c1.height = 1;
+          var g1 = c1.getContext('2d'); g1.drawImage(im, 0, 0, 1, 1, 0, 0, 1, 1);
+          var px = g1.getImageData(0, 0, 1, 1).data;
+          fondo = 'rgb(' + px[0] + ',' + px[1] + ',' + px[2] + ')';
+        } catch(e){ fondo = '#ffffff'; }
+      }
+      ctx2d.fillStyle = fondo; ctx2d.fillRect(0, 0, W, H);
+      /* Stretta = la stessa soglia di #lp.-stretta, in pixel CSS (W/H qui sono
+         pixel del canvas, moltiplicati per il dpr): la copy va in una fascia
+         in basso, quindi l'orologio sale e si rimpicciolisce sopra di lei. */
+      var stretta = (canvas.clientWidth || W) < 420;
+      var s2, w2, h2, x2, y2;
+      if (stretta){
+        s2 = Math.min(W * 0.9 / im.naturalWidth, H * 0.62 / im.naturalHeight);
+        w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
+        x2 = (W - w2) / 2; y2 = H * 0.04;
+      } else {
+        s2 = Math.min(W * 0.5 / im.naturalWidth, H * 0.94 / im.naturalHeight);
+        w2 = im.naturalWidth * s2; h2 = im.naturalHeight * s2;
+        x2 = W * 0.5 + (W * 0.5 - w2) / 2; y2 = (H - h2) / 2;
+      }
+      ctx2d.drawImage(im, x2, y2, w2, h2);
+      shown = want;
+      return;
+    }
     ctx2d.clearRect(0, 0, W, H);
     /* `contain` e non `cover`: qui il ritaglio non è un'opzione. Le colonne
      * vuote ai lati SONO la composizione — è lì che vanno le frasi — e un
@@ -172,6 +205,7 @@ function mountOrologio(ctx, cfg){
    * l'altro — `stop()` lo mette in pausa, non lo distrugge, così l'orologio
    * riprende da dove si era fermato invece di ripartire da capo. */
   if (external){
+    pieno = true;
     load();
     var extTl = gsap.timeline({ repeat: -1, paused: true });
     extTl.to(state, { t: 1, duration: 7, ease: 'none', onUpdate: applyT }, 0);
