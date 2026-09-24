@@ -677,6 +677,38 @@ WC.register('dna', function(ctx){
                                 speed: CONFIG.atmoSpeed, color: CONFIG.atmoColor });
   scene.add(atmo.points);
 
+  /* IL PULVISCOLO SEGUE LA TINTA (WC.helix.setTint), SOLO standalone.
+   * Il pulviscolo nasce in glsl.js, condiviso con altre pagine, e lì non si
+   * tocca: qui, PRIMA del primo disegno, si ritocca il sorgente del SUO
+   * materiale con lo stesso ramo dell'elica. Le due uniformi sono gli STESSI
+   * oggetti di `uniforms` (non copie): la dissolvenza che muove l'elica
+   * muove anche il pulviscolo, senza una riga in più. Ogni granello pesca
+   * la sua casella su 30 con un hash della `position`, come i punti
+   * dell'elica. Qui la tinta NON si moltiplica per una luce: `atmoColor` è
+   * già a luce piena (#7fe6ff), quindi il colore della casella va dritto.
+   * Con uTintMix a 0 il colore è `uColor`, esatto: il pulviscolo di sempre.
+   * Se un giorno glsl.js cambia quelle righe e gli agganci non si trovano,
+   * non si ritocca niente: il pulviscolo resta ciano, l'elica si tinge lo
+   * stesso. */
+  if (standalone) {
+    var am = atmo.material;
+    var vsHook = 'void main(){';
+    var fsHook = 'gl_FragColor = vec4(uColor * tex';
+    if (am.vertexShader.indexOf(vsHook) >= 0 && am.fragmentShader.indexOf(fsHook) >= 0) {
+      am.uniforms.uTintMix = uniforms.uTintMix;
+      am.uniforms.uTintPal = uniforms.uTintPal;
+      am.vertexShader = am.vertexShader.replace(vsHook,
+        'uniform vec3 uTintPal[30]; varying vec3 vTint;\n' + vsHook + '\n' +
+        '  float tr = fract(sin(dot(position + vec3(3.0), vec3(12.9898, 78.233, 45.164))) * 43758.5453);\n' +
+        '  vTint = uTintPal[int(min(floor(tr * 30.0), 29.0))];');
+      am.fragmentShader = 'uniform float uTintMix; varying vec3 vTint;\n' +
+        am.fragmentShader.replace(fsHook,
+          'vec3 aCol = uColor; if (uTintMix > 0.0) aCol = mix(uColor, vTint, uTintMix);\n  ' +
+          'gl_FragColor = vec4(aCol * tex');
+      am.needsUpdate = true;
+    }
+  }
+
   var pointer = G.makePointer();
   cleanups.push(function(){ pointer.dispose(); });
 
