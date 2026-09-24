@@ -7,7 +7,9 @@
  * attratte dalla gravità della sfera per poi entrarci». E poi: «fa sì che
  * facciano delle orbite diverse, alcune arrivano dirette, insomma un caos ma
  * senza esagerare col numero di particelle»; «le corde devono brillare a
- * impulsi».
+ * impulsi», precisato subito dopo: «le corde devono essere immobili, io
+ * intendevo che la luminosità è dinamica quindi aumenta e diminuisce di
+ * intensità ma non velocemente».
  *
  * COSA SI VEDE, zona per zona (sempre parole di Nike): il flusso scorre SEMPRE
  * dentro il robot, e ogni zona aperta ne mostra solo il suo pezzo — «in questo
@@ -29,9 +31,8 @@
  * nessun buffer riscritto a ogni fotogramma, e sul telefono il costo è quello
  * di qualche centinaio di punti.
  *
- * Le particelle viaggiano a PACCHETTI (CONFIG.pacchetti): partono insieme dal
- * cervello, passano insieme nelle corde — ed è lì che le corde fanno l'impulso
- * di luce e vibrano, come quando si parla — poi si sparpagliano nelle orbite.
+ * Le corde stanno FERME (Nike: «le corde devono essere immobili»): a muoversi
+ * è solo la loro luce, che sale e scende piano, come un respiro.
  *
  * Aggancio: robot.js chiama `WC.robotVoce.update(robot, dt)` a ogni
  * fotogramma, subito dopo aver scritto `robot.hover`. La costruzione è pigra:
@@ -46,28 +47,18 @@ WC.robotVoce = (function () {
 
   var CONFIG = {
     // --- quantità -----------------------------------------------------------
-    // Nike: «senza esagerare col numero di particelle». Il cervello ne ha
-    // 24000; qui bastano poche centinaia, e sul telefono meno della metà.
-    punti: TELEFONO ? 200 : 480,
-    // Quota di particelle che viaggia FUORI dai pacchetti: un filo continuo,
-    // così fra un impulso e l'altro il percorso non resta mai vuoto del tutto.
-    sciolte: 0.2,
+    // Nike: «senza esagerare col numero di particelle», e poi «troppe
+    // particelle, riduci a una frazione»: da 480 a 120 (un quarto), e sul
+    // telefono da 200 a 50.
+    punti: TELEFONO ? 50 : 120,
 
     // --- tempi --------------------------------------------------------------
     // Un ciclo intero (cervello → sfera), in secondi, e dove finiscono i
     // tratti A (discesa dal cervello) e B (dentro le corde), in frazione del
     // ciclo. Il resto è la caduta nella sfera.
     periodo: 4.2,
-    fineA: 0.26,
-    fineB: 0.38,
-    // Fasi dei pacchetti dentro il ciclo. Non equidistanti di proposito: con
-    // un ritmo regolare le corde sembrerebbero un lampeggiante, così
-    // «parlano».
-    pacchetti: [0.0, 0.31, 0.68],
-    // Quanto è lungo un pacchetto, in frazione del ciclo (± attorno alla sua
-    // fase): stretto abbastanza da leggersi come impulso, largo abbastanza da
-    // non essere un blocco solo.
-    sparsoPacchetto: 0.035,
+    fineA: 0.22,
+    fineB: 0.36,
 
     // --- corde vocali -------------------------------------------------------
     // Misure in unità del modello (a 1440×900 un'unità vale ~2,5 px). Il
@@ -77,15 +68,13 @@ WC.robotVoce = (function () {
     cordaDistanza: 4.4,        // mezza distanza fra i due assi
     cordaSopra: 13,            // quanto salgono oltre la cima delle vertebre
     cordaSotto: 8,             // quanto scendono sotto il fondo delle vertebre
-    // Vibrazione: le due corde si aprono e si chiudono in controfase, come le
-    // corde vocali vere. Ampiezza a riposo e al passaggio di un pacchetto.
-    vibra: 0.9,
-    vibraFreq: 26,             // rad/s
-    // Luce: il filo di base (collo aperto, nessun pacchetto) e quanto sale
-    // con l'impulso.
-    cordaBase: 0.45,
-    cordaLampo: 0.9,
-    cordaBanda: 1.5,
+    // Luce: sale e scende PIANO fra `cordaMin` e `cordaMax` (Nike: «la
+    // luminosità è dinamica quindi aumenta e diminuisce di intensità ma non
+    // velocemente»). Due onde lente di periodo diverso, così il respiro non è
+    // un metronomo.
+    cordaMin: 0.3,
+    cordaMax: 1.25,
+    cordaPeriodi: [3.4, 5.3],
 
     // --- orbite -------------------------------------------------------------
     // Tre famiglie, scelte a caso per particella: dirette, un giro largo,
@@ -125,14 +114,6 @@ WC.robotVoce = (function () {
       srgbToLinear(((n >> 8) & 255) / 255), srgbToLinear((n & 255) / 255));
   }
 
-  // La vibrazione delle corde, UNA formula per due shader: la corda la usa
-  // per spostare i vertici, la particella dentro la corda per seguirla.
-  var VIBRA_GLSL = [
-    'float vibra(float s, float lato) {',
-    '  return lato * uVib * sin(3.14159265 * s) * sin(uVibFase);',
-    '}'
-  ].join('\n');
-
   var PUNTI_VERT = [
     'attribute vec4 aRnd;',      // x colore, y scintilla, z durata caduta, w lato corda (−1/+1)
     'attribute vec3 aStart;',    // partenza nel cervello (locale testa)
@@ -150,8 +131,6 @@ WC.robotVoce = (function () {
     'uniform vec3 uSfera;',
     'uniform float uSferaR;',
     'uniform float uSchiaccia;',
-    'uniform float uVib;',
-    'uniform float uVibFase;',
     'uniform float uTesta;',
     'uniform float uCollo;',
     'uniform float uPancia;',
@@ -160,7 +139,6 @@ WC.robotVoce = (function () {
     'varying float vInt;',
     'varying float vCol;',
     'varying float vCaldo;',
-    VIBRA_GLSL,
     'void main() {',
     '  float p = fract(uCiclo - aOrb.w);',
     '  float lato = aRnd.w;',
@@ -181,10 +159,10 @@ WC.robotVoce = (function () {
     '    mT = 1.0;',
     '    mC = smoothstep(0.6, 1.0, s);',
     '  } else if (p < uFineB) {',
-    // B — dentro la corda, dall'alto in basso, seguendone la vibrazione.
+    // B — dentro la corda, dall'alto in basso.
     '    float s = (p - uFineA) / (uFineB - uFineA);',
     '    vec3 h = mix(uCordaSu, uCordaGiu, s) + jit;',
-    '    h.x += lato * uCordaDx + vibra(s, lato);',
+    '    h.x += lato * uCordaDx;',
     '    pos = (uHead * vec4(h, 1.0)).xyz;',
     '    mT = 1.0 - smoothstep(0.0, 0.25, s);',
     '    mC = 1.0;',
@@ -252,17 +230,11 @@ WC.robotVoce = (function () {
 
   var CORDE_VERT = [
     'attribute float aS;',       // 0 in cima, 1 in fondo
-    'attribute float aLato;',    // −1 / +1
-    'uniform float uVib;',
-    'uniform float uVibFase;',
     'varying float vS;',
     'varying vec3 vN;',
     'varying vec3 vV;',
-    VIBRA_GLSL,
     'void main() {',
-    '  vec3 p = position;',
-    '  p.x += vibra(aS, aLato);',
-    '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+    '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
     '  vS = aS;',
     '  vN = normalMatrix * normal;',
     '  vV = -mv.xyz;',
@@ -276,24 +248,19 @@ WC.robotVoce = (function () {
     'uniform vec3 uVerde;',
     'uniform vec3 uBianco;',
     'uniform float uCollo;',
-    'uniform float uBase;',
-    'uniform float uLampo;',
-    'uniform float uLampoK;',
-    'uniform float uBandaK;',
-    'uniform vec3 uBanda;',      // dove sta, lungo la corda, ciascun pacchetto (−9 = assente)
+    'uniform float uLuce;',      // il respiro della luce, da update()
     'varying float vS;',
     'varying vec3 vN;',
     'varying vec3 vV;',
-    'float g(float x) { return exp(-x * x / 0.018); }',
     'void main() {',
     // Più luce al centro della corda che sui bordi: legge come un'asta di
     // luce tonda, non come un nastro piatto.
     '  float fronte = abs(dot(normalize(vN), normalize(vV)));',
     '  float nucleo = 0.35 + 0.65 * pow(fronte, 1.3);',
-    '  float banda = g(vS - uBanda.x) + g(vS - uBanda.y) + g(vS - uBanda.z);',
-    '  float i = (uBase + uLampo * uLampoK + banda * uBandaK) * uCollo;',
+    '  float i = uLuce * uCollo;',
     '  vec3 col = mix(uCiano, uVerde, vS * 0.6);',
-    '  col = mix(col, uBianco, clamp(banda * 0.55 + uLampo * 0.3, 0.0, 0.85));',
+    // Al massimo del respiro la corda schiarisce verso il bianco.
+    '  col = mix(col, uBianco, clamp((uLuce - 0.7) * 0.6, 0.0, 0.4));',
     '  gl_FragColor = vec4(col * i * nucleo, clamp(i * nucleo, 0.0, 1.0));',
     '}'
   ].join('\n');
@@ -323,11 +290,15 @@ WC.robotVoce = (function () {
     var cordaSu = new THREE.Vector3(cv.x, vb.max.y + CONFIG.cordaSopra, cv.z);
     var cordaGiu = new THREE.Vector3(cv.x, vb.min.y - CONFIG.cordaSotto, cv.z);
 
-    // Il cervello: centro e raggio nello stesso frame (headGroup).
+    // Il cervello: centro, raggio e FONDO nello stesso frame (headGroup). Le
+    // particelle partono dal fondo (Nike: «dal cervello partono più in
+    // basso»), non da dentro la forma.
     var bg = brain.points.geometry;
     if (!bg.boundingSphere) bg.computeBoundingSphere();
+    if (!bg.boundingBox) bg.computeBoundingBox();
     var bC = brain.points.position.clone().add(bg.boundingSphere.center);
     var bR = bg.boundingSphere.radius;
+    var bFondo = brain.points.position.y + bg.boundingBox.min.y;
 
     var sferaC = orb.points.position.clone();
     var sferaR = robot.pancia.locale;
@@ -338,11 +309,10 @@ WC.robotVoce = (function () {
     var aRnd = new Float32Array(N * 4), aStart = new Float32Array(N * 3);
     var aAsse = new Float32Array(N * 4), aOrb = new Float32Array(N * 4), aJit = new Float32Array(N * 3);
     var pos = new Float32Array(N * 3);   // non usata dallo shader, ma three la vuole
-    var P = CONFIG.pacchetti;
     for (var i = 0; i < N; i++) {
-      // fase di nascita: dentro un pacchetto, o sciolta
-      var fase = caso() < CONFIG.sciolte ? caso()
-        : P[Math.floor(caso() * P.length)] + (caso() * 2 - 1) * CONFIG.sparsoPacchetto;
+      // fase di nascita: equidistanti, con un po' di scarto, così il filo è
+      // continuo e non a grumi
+      var fase = (i + caso() * 0.8) / N;
       // famiglia d'orbita
       var r = caso(), fam = CONFIG.orbite[CONFIG.orbite.length - 1];
       for (var k = 0, acc = 0; k < CONFIG.orbite.length; k++) {
@@ -355,16 +325,16 @@ WC.robotVoce = (function () {
       aRnd[i * 4 + 1] = caso();
       aRnd[i * 4 + 2] = tra(caso, fam.durata);
       aRnd[i * 4 + 3] = caso() < 0.5 ? -1 : 1;
-      // partenza: nella metà bassa del cervello, dentro la forma
-      aStart[i * 3] = bC.x + bR * (caso() * 2 - 1) * 0.5;
-      aStart[i * 3 + 1] = bC.y - bR * (0.15 + caso() * 0.55);
-      aStart[i * 3 + 2] = bC.z + bR * (caso() * 2 - 1) * 0.4;
+      // partenza: il fondo del cervello, al centro (il tronco encefalico)
+      aStart[i * 3] = bC.x + bR * (caso() * 2 - 1) * 0.28;
+      aStart[i * 3 + 1] = bFondo + bR * caso() * 0.12;
+      aStart[i * 3 + 2] = bC.z + bR * (caso() * 2 - 1) * 0.25;
       aAsse[i * 4] = asse.x; aAsse[i * 4 + 1] = asse.y; aAsse[i * 4 + 2] = asse.z;
       aAsse[i * 4 + 3] = tra(caso, fam.giri) * (caso() < 0.5 ? -1 : 1);
       aOrb[i * 4] = tra(caso, fam.raggio);
       aOrb[i * 4 + 1] = tra(caso, fam.cattura);
       aOrb[i * 4 + 2] = tra(caso, fam.tuffo);
-      aOrb[i * 4 + 3] = ((fase % 1) + 1) % 1;
+      aOrb[i * 4 + 3] = fase % 1;
       var ja = caso() * Math.PI * 2, jr = Math.sqrt(caso());
       aJit[i * 3] = Math.cos(ja) * jr; aJit[i * 3 + 1] = 0; aJit[i * 3 + 2] = Math.sin(ja) * jr;
     }
@@ -381,14 +351,12 @@ WC.robotVoce = (function () {
       uVerde: { value: hexToLinear(CONFIG.verde) },
       uBianco: { value: hexToLinear(CONFIG.bianco) }
     };
-    var vib = { uVib: { value: 0 }, uVibFase: { value: 0 } };
     var uP = {
       uCiclo: { value: 0 }, uFineA: { value: CONFIG.fineA }, uFineB: { value: CONFIG.fineB },
       uHead: { value: new THREE.Matrix4() },
       uCordaSu: { value: cordaSu }, uCordaGiu: { value: cordaGiu },
       uCordaDx: { value: CONFIG.cordaDistanza }, uCordaR: { value: CONFIG.cordaRaggio },
       uSfera: { value: sferaC }, uSferaR: { value: sferaR }, uSchiaccia: { value: CONFIG.schiacciaX },
-      uVib: vib.uVib, uVibFase: vib.uVibFase,
       uTesta: { value: 0 }, uCollo: { value: 0 }, uPancia: { value: 0 },
       uSize: { value: 0 }, uPR: { value: 1 }, uGuadagno: { value: CONFIG.guadagno },
       uCiano: colori.uCiano, uVerde: colori.uVerde, uBianco: colori.uBianco
@@ -422,22 +390,15 @@ WC.robotVoce = (function () {
       var a = cordaSu.clone(), b = cordaGiu.clone();
       a.x += lato * CONFIG.cordaDistanza; b.x += lato * CONFIG.cordaDistanza;
       var t = new THREE.TubeGeometry(new THREE.LineCurve3(a, b), 24, CONFIG.cordaRaggio, 12, false);
-      var n = t.attributes.position.count, s = new Float32Array(n), l = new Float32Array(n);
-      for (var j = 0; j < n; j++) {
-        s[j] = (cordaSu.y - t.attributes.position.getY(j)) / (cordaSu.y - cordaGiu.y);
-        l[j] = lato;
-      }
+      var n = t.attributes.position.count, s = new Float32Array(n);
+      for (var j = 0; j < n; j++) s[j] = (cordaSu.y - t.attributes.position.getY(j)) / (cordaSu.y - cordaGiu.y);
       t.setAttribute('aS', new THREE.BufferAttribute(s, 1));
-      t.setAttribute('aLato', new THREE.BufferAttribute(l, 1));
       return t;
     });
     var cordeGeo = unisci(pezzi);
     pezzi.forEach(function (g) { g.dispose(); });
     var uC = {
-      uVib: vib.uVib, uVibFase: vib.uVibFase,
-      uCollo: { value: 0 }, uBase: { value: CONFIG.cordaBase },
-      uLampo: { value: 0 }, uLampoK: { value: CONFIG.cordaLampo },
-      uBandaK: { value: CONFIG.cordaBanda }, uBanda: { value: new THREE.Vector3(-9, -9, -9) },
+      uCollo: { value: 0 }, uLuce: { value: CONFIG.cordaMin },
       uCiano: colori.uCiano, uVerde: colori.uVerde, uBianco: colori.uBianco
     };
     var corde = new THREE.Mesh(cordeGeo, new THREE.ShaderMaterial({
@@ -457,7 +418,7 @@ WC.robotVoce = (function () {
 
   // Le due corde in UNA geometria: una chiamata di disegno sola.
   function unisci(geos) {
-    var nomi = ['position', 'normal', 'aS', 'aLato'];
+    var nomi = ['position', 'normal', 'aS'];
     var out = new THREE.BufferGeometry(), idx = [], base = 0;
     nomi.forEach(function (nome) {
       var size = geos[0].attributes[nome].itemSize, tot = 0;
@@ -477,21 +438,11 @@ WC.robotVoce = (function () {
 
   var stato = null;
 
-  // L'impulso: per ogni pacchetto, dove sta lungo la corda (0 cima, 1 fondo)
-  // e quanto accende la corda — sale quando il pacchetto entra, resta mentre
-  // passa, si spegne piano dopo (la corda «risuona»).
-  function impulsi(ciclo) {
-    var banda = [-9, -9, -9], lampo = 0;
-    var A = CONFIG.fineA, B = CONFIG.fineB;
-    CONFIG.pacchetti.forEach(function (f, k) {
-      var p = ((ciclo - f) % 1 + 1) % 1;
-      if (p >= A && p < B && k < 3) banda[k] = (p - A) / (B - A);
-      var e = 0;
-      if (p >= A - 0.03 && p < B) e = Math.min(1, (p - (A - 0.03)) / 0.05);
-      else if (p >= B) e = Math.exp(-(p - B) * CONFIG.periodo * 3.5);
-      lampo = Math.max(lampo, e);
-    });
-    return { banda: banda, lampo: lampo };
+  // Il respiro della luce delle corde: 0..1, due onde lente sommate.
+  function respiro(t) {
+    var P = CONFIG.cordaPeriodi;
+    var w = 0.6 * Math.sin(t * 2 * Math.PI / P[0]) + 0.4 * Math.sin(t * 2 * Math.PI / P[1] + 1.3);
+    return 0.5 + 0.5 * w;
   }
 
   function update(robot, dt) {
@@ -506,15 +457,11 @@ WC.robotVoce = (function () {
     var testa = h.testa || 0, collo = h.collo || 0, pancia = h.pancia || 0;
     stato.t += dt || 0;
     var ciclo = stato.t / CONFIG.periodo;
-    var imp = impulsi(ciclo);
     var uP = stato.uP, uC = stato.uC;
     uP.uCiclo.value = ciclo % 1000;
     uP.uTesta.value = testa; uP.uCollo.value = collo; uP.uPancia.value = pancia;
-    uP.uVib.value = CONFIG.vibra * (0.15 + imp.lampo);
-    uP.uVibFase.value = (stato.t * CONFIG.vibraFreq) % (Math.PI * 2);
     uC.uCollo.value = collo;
-    uC.uLampo.value = imp.lampo;
-    uC.uBanda.value.set(imp.banda[0], imp.banda[1], imp.banda[2]);
+    uC.uLuce.value = CONFIG.cordaMin + (CONFIG.cordaMax - CONFIG.cordaMin) * respiro(stato.t);
     // Grana: come le fibre (robot-fibers.js, tune), ricalcolata qui perché
     // costa quattro moltiplicazioni e segue da sola ogni ridimensionamento.
     var cam = robot.camera, el = robot.renderer.domElement;

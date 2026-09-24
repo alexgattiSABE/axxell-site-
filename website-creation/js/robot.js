@@ -1656,7 +1656,14 @@ WC.register('robot', function(ctx){
           ancoraTestaLoc = hg.worldToLocal(bordoEsterno(visorBoxW, 1, 0.25));
           if (window.__robot.collo) {
             var cbx = window.__robot.collo.box;
-            var yCollo = (window.__robot.collo.yMento + window.__robot.collo.yLogo) / 2;
+            // 2026-09-24 — la linea di SABE è diventata DRITTA (anatomia.js,
+            // `dritta`): esce orizzontale, quindi deve partire dalle corde
+            // vocali, cioè a metà dello spiraglio VISIBILE del collo, fra il
+            // mento e la cima del petto. Il vecchio punto medio mento-logo
+            // stava dietro il petto, e la linea partiva dal suo bordo.
+            var yPetto = window.__robot.parts.chest
+              ? new THREE.Box3().setFromObject(window.__robot.parts.chest).max.y : window.__robot.collo.yLogo;
+            var yCollo = (window.__robot.collo.yMento + Math.min(yPetto, window.__robot.collo.yMento)) / 2;
             ancoraColloLoc = hg.worldToLocal(bordoEsterno(cbx, 1,
               (cbx.max.y - yCollo) / Math.max(1e-6, cbx.max.y - cbx.min.y)));
           }

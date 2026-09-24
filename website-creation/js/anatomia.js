@@ -64,9 +64,11 @@ WC.anatomia = (function () {
   // piccolo. Prima era il contrario. Le due colonne qui sono nominate per
   // QUELLO CHE SONO, non per dove finiscono: se un giorno si riscambiano,
   // cambia l'ordine nel DOM e non il significato dei campi.
+  // `dritta` (Nike, 2026-09-24: «la linea anatomica di sabe falla tutta
+  // dritta»): niente tratto obliquo, il filo esce orizzontale dal pezzo.
   var ZONE = [
     { id: 'testa',     lato: 'destra',   nome: 'Atlas',      descrizione: 'cervello',         href: '../atlas.html',  attiva: true },
-    { id: 'collo',     lato: 'destra',   nome: 'SABE',       descrizione: 'Agente Vocale',    href: '../sabe.html',   attiva: true },
+    { id: 'collo',     lato: 'destra',   nome: 'SABE',       descrizione: 'Agente Vocale',    href: '../sabe.html',   attiva: true, dritta: true },
     { id: 'pancia',    lato: 'destra',   nome: 'gestionale', descrizione: 'anima',            href: '',               attiva: true },
     { id: 'braccioSx', lato: 'sinistra', nome: 'atelier',    descrizione: 'website creation', href: 'CORRENTE#cap01', attiva: true },
     { id: 'braccioDx', lato: 'destra',   nome: '',           descrizione: '',                 href: '',               attiva: false }
@@ -141,7 +143,7 @@ WC.anatomia = (function () {
   // alla quinta cifra.
   var FISSI = {
     testa:     [ 0.11252, -0.32044 ],
-    collo:     [ 0.09509, -0.09856 ],
+    collo:     [ 0.09509, -0.13195 ],   // 2026-09-24: all'altezza delle corde vocali (linea dritta)
     pancia:    [ 0.18251,  0.12092 ],
     braccioSx: [-0.39432,  0.16901 ]
   };
@@ -388,10 +390,13 @@ WC.anatomia = (function () {
 
     // --------------------------------------------------------- geometria
     var RAD = LINEA.obliquoGradi * Math.PI / 180;
-    var KX = 1 + LINEA.obliquoFrazione * Math.cos(RAD);   // quanto orizzontale costa l'intera spezzata, in unità di corsa
+    // Quanto orizzontale costa l'intera spezzata, in unità di corsa: 1 per la
+    // linea dritta, di più per quella col gomito.
+    function kx(fr) { return 1 + fr * Math.cos(RAD); }
 
     // Quanta corsa orizzontale ci sta da un lato. `dir` +1 = verso destra.
-    function corsaDa(dir, ax, testoW, stacco) {
+    function corsaDa(dir, ax, testoW, stacco, fr) {
+      var KX = kx(fr);
       var spazio = dir > 0 ? (lar - ax) : ax;
       var budget = spazio - testoW - stacco - LINEA.margineBordo;
       var ideale = Math.min(LINEA.orizzontaleObiettivo * lar, budget / KX);
@@ -406,16 +411,17 @@ WC.anatomia = (function () {
       if (!an || !lar || !alt) return null;
       var stacco = LINEA.staccoTesto * e.m.riga;
       var dir = e.z.lato === 'sinistra' ? -1 : 1;
-      var q = corsaDa(dir, an.x, e.m.w, stacco);
+      var fr = e.z.dritta ? 0 : LINEA.obliquoFrazione;
+      var q = corsaDa(dir, an.x, e.m.w, stacco, fr);
       if (!q.ci_sta) {
         // Nemmeno il minimo ci sta: si prova l'altro lato. Se non ci sta
         // nemmeno là si resta dove si era — il lato ESTERNO della zona, mai
         // attraverso il corpo — e il testo si aggrappa al bordo.
-        var altroLato = corsaDa(-dir, an.x, e.m.w, stacco);
+        var altroLato = corsaDa(-dir, an.x, e.m.w, stacco, fr);
         if (altroLato.ci_sta) { dir = -dir; q = altroLato; }
       }
       var corsa = q.corsa;
-      var obl = corsa * LINEA.obliquoFrazione;
+      var obl = corsa * fr;
       var gx = an.x + dir * obl * Math.cos(RAD);
       var gy = an.y - obl * Math.sin(RAD);       // la spezzata sale sempre: il testo sta in alto, fuori dal corpo
       var fx = gx + dir * corsa;
