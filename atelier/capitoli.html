@@ -54,27 +54,18 @@
      L'elica vive su un canvas suo, sopra allo stage (il renderer dello stage è
      opaco: dietro non ci sarebbe niente da vedere), quindi nessuna lastra del
      mazzo può coprirla — i punti passavano DENTRO al quadro della card, sopra
-     al poster e sopra l'effetto. Qui si fora la maschera dell'elica sul
-     rettangolo della card davanti: due livelli di maschera, tutto lo schermo
-     meno quel riquadro (`exclude`). Le misure arrivano ogni fotogramma dal
-     controller (`deckCtl.rect`), che proietta gli stessi quattro angoli con la
-     stessa camera con cui la card è disegnata.
-     Il buco si apre solo quando la card è FRONTALE (vedi `-buco` in frame()):
-     girata, il suo rettangolo proiettato è più largo della lastra e si
-     mangerebbe elica anche fuori dal quadro. La transizione sulla misura fa il
-     resto — si apre e si chiude, non sbatte. */
+     al poster e sopra l'effetto. Qui si fora la maschera dell'elica
+     con la SAGOMA vera delle lastre che stanno davanti all'asse: una maschera
+     SVG ricostruita dal frame loop (`bucoElica()`), a qualunque inclinazione. */
   #helixStage.-buco{
-    -webkit-mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
-            mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
-    -webkit-mask-repeat:no-repeat,no-repeat;
-            mask-repeat:no-repeat,no-repeat;
-    -webkit-mask-position:0 0,var(--bx,0) var(--by,0);
-            mask-position:0 0,var(--bx,0) var(--by,0);
-    -webkit-mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
-            mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
-    -webkit-mask-composite:xor;
-            mask-composite:exclude;
-    transition:-webkit-mask-size .22s ease, mask-size .22s ease}
+    -webkit-mask-image:var(--buco);
+            mask-image:var(--buco);
+    -webkit-mask-repeat:no-repeat;
+            mask-repeat:no-repeat;
+    -webkit-mask-position:0 0;
+            mask-position:0 0;
+    -webkit-mask-size:100% 100%;
+            mask-size:100% 100%}
   body.-entra #helixStage{opacity:0;transform:translateY(42px)}
 
   /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
@@ -1674,6 +1665,70 @@
      soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
   var STAGE_LIVE = document.getElementById('stage-live');
   var HELIX_EL   = document.getElementById('helixStage');
+
+  /* LE LASTRE DAVANTI ALL'ELICA LA COPRONO — SEMPRE, NON SOLO DA FERME.
+     L'elica vive su un canvas suo, sopra allo stage, quindi di suo passa
+     sopra a tutto. Prima si bucava la sua maschera con un rettangolo dritto,
+     e solo a card frontale: appena la lastra si girava il buco si chiudeva e
+     il DNA le scorreva sopra, facendola sembrare DIETRO anche se stava davanti.
+     Qui il buco ha la sagoma vera della lastra (angoli smussati compresi),
+     proiettata con la stessa camera che la disegna, a ogni fotogramma e a
+     ogni inclinazione. Si buca solo per le lastre piu' vicine alla camera
+     dell'asse dell'elica: quelle dietro l'asse devono restare coperte dal DNA,
+     ed e' proprio quel davanti/dietro a dare la profondita'. */
+  var BUCO_PTS = (function(){
+    var r = CW * 0.035, hw = CW/2 - r, hh = CH/2 - r, pts = [], k, a;
+    var centri = [[hw,hh,0],[-hw,hh,1],[-hw,-hh,2],[hw,-hh,3]];
+    centri.forEach(function(c){
+      for (k = 0; k <= 5; k++){
+        a = (c[2] + k/5) * Math.PI/2;
+        pts.push([c[0] + Math.cos(a)*r, c[1] + Math.sin(a)*r]);
+      }
+    });
+    return pts;
+  })();
+  var bucoV = new THREE.Vector3(), bucoKey = null;
+  function bucoElica(spegni){
+    if (!HELIX_EL) return;
+    var paths = [];
+    if (!spegni){
+      var el = renderer.domElement;
+      var W = el.clientWidth || window.innerWidth, H = el.clientHeight || window.innerHeight;
+      var asseZ = -((window.__HELIX_TUNE && window.__HELIX_TUNE.R) || 4.5);
+      camera.updateMatrixWorld();
+      WORLDS.forEach(function(w){
+        if (!w.mesh || w.uni.uReveal.value < 0.3) return;
+        if (w.mesh.position.z <= asseZ) return;
+        w.mesh.updateWorldMatrix(true, false);
+        var d = '';
+        BUCO_PTS.forEach(function(p, i){
+          bucoV.set(p[0], p[1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
+          d += (i ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
+               Math.round((1-(bucoV.y*0.5+0.5))*H);
+        });
+        paths.push(d + 'Z');
+      });
+      var key = W + 'x' + H + paths.join('');
+      if (key === bucoKey) return;
+      bucoKey = key;
+      if (paths.length){
+        /* Maschera SVG con dentro un'altra maschera: il bianco tiene l'elica,
+           le sagome nere la tolgono. Con un tracciato solo in evenodd due
+           lastre sovrapposte si annullerebbero a vicenda. */
+        var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + W + "' height='" + H +
+          "' viewBox='0 0 " + W + " " + H + "'><mask id='m'><rect width='100%' height='100%' fill='#fff'/>" +
+          "<path fill='#000' d='" + paths.join('') + "'/></mask>" +
+          "<rect width='100%' height='100%' fill='#fff' mask='url(#m)'/></svg>";
+        HELIX_EL.style.setProperty('--buco', 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")');
+        HELIX_EL.classList.add('-buco');
+        return;
+      }
+    }
+    if (bucoKey === '') return;
+    bucoKey = '';
+    HELIX_EL.classList.remove('-buco');
+    HELIX_EL.style.removeProperty('--buco');
+  }
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
     ? window.EffettiController.create({
@@ -1771,6 +1826,10 @@
     if (DECK_ON) WORLDS.forEach(function(w, i){
       var u = deckU(i, spin);
       w.u = u;
+      /* Chi e' piu' vicino alla camera si disegna per ultimo. Senza, three
+         ordina i trasparenti per distanza dal CENTRO, e con lastre inclinate
+         e di scala diversa l'ordine a volte si inverte per un istante. */
+      w.mesh.renderOrder = Math.round(-Math.abs(u) * 100);
       deckPlace(u, w.mesh.position);
       w.mesh.rotation.set(0, deckYaw(u), deckRoll(u));
       w.mesh.scale.setScalar(deckScale(u));
@@ -1897,20 +1956,10 @@
         deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
         /* IL BUCO PER L'ELICA. Frontale entro ~0.10 di giro: da lì in poi il
            rettangolo proiettato è la lastra, e il DNA si ferma sul bordo. */
-        if (HELIX_EL && _hw && _hw.mesh && _frac < 0.10){
-          var _r = deckCtl.rect(_hw.mesh);
-          HELIX_EL.style.setProperty('--bx', Math.round(_r.x) + 'px');
-          HELIX_EL.style.setProperty('--by', Math.round(_r.y) + 'px');
-          HELIX_EL.style.setProperty('--bw', Math.round(_r.w) + 'px');
-          HELIX_EL.style.setProperty('--bh', Math.round(_r.h) + 'px');
-          HELIX_EL.classList.add('-buco');
-        } else if (HELIX_EL){
-          HELIX_EL.style.setProperty('--bw', '0px');
-          HELIX_EL.style.setProperty('--bh', '0px');
-        }
+        bucoElica();
       } else {
         deckCtl.tick(now, null, null, false);
-        if (HELIX_EL){ HELIX_EL.classList.remove('-buco'); }
+        bucoElica(true);
       }
     }
 
