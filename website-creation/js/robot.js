@@ -514,15 +514,25 @@ WC.register('robot', function(ctx){
       // dopo aver rifatto il raggio sul punto di QUESTO tocco. Prima si
       // usava quella del fotogramma precedente — cioe' il tocco di prima,
       // ancora sulla testa — e qualunque tocco dopo portava ad Atlas.
+      // Il dito e' largo e il braccio stretto (~40 px sul telefono): se il
+      // punto esatto non prende niente si riprova attorno, fino a 28 px di lato.
       if (WC.anatomia.stretto()) {
-        onPointerMove(e);
-        requestAnimationFrame(function () { requestAnimationFrame(function () {
-          var s2 = window.__robot && window.__robot.anatomia;
-          var colpita = s2 && s2.hitId;
-          if (!colpita || !anat) return;
-          if (anat.forzata && anat.forzata() === colpita) { if (anat.subito) anat.subito(colpita); return; }
-          if (anat.toccaCorpo) anat.toccaCorpo(colpita);
-        }); });
+        var PROVE = [[0, 0], [-14, 0], [14, 0], [0, -16], [0, 16], [-28, 0], [28, 0]];
+        (function prova(i) {
+          onPointerMove({ clientX: e.clientX + PROVE[i][0], clientY: e.clientY + PROVE[i][1] });
+          requestAnimationFrame(function () { requestAnimationFrame(function () {
+            var s2 = window.__robot && window.__robot.anatomia;
+            var colpita = s2 && s2.hitId;
+            if (!anat) return;
+            if (!colpita || !anat.attiva(colpita)) {
+              if (i + 1 < PROVE.length) prova(i + 1);
+              else onPointerMove(e);
+              return;
+            }
+            if (anat.forzata && anat.forzata() === colpita) { if (anat.subito) anat.subito(colpita); return; }
+            if (anat.toccaCorpo) anat.toccaCorpo(colpita);
+          }); });
+        })(0);
         return;
       }
       if (!st || !st.activeId || st.hitId !== st.activeId) return;
@@ -553,8 +563,16 @@ WC.register('robot', function(ctx){
       stage.removeEventListener('pointercancel', onCancel);
     });
 
-    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    /* TELEFONO: meno pixel e ombre meno frequenti (Nike: «piu' tocco le
+       parti e piu' lagga»). Sul telefono la testa si muove di continuo —
+       la segue l'inclinazione — e ogni suo movimento rifaceva l'ombra della
+       luce puntiforme, sei passate dell'intero modello a fotogramma: il
+       telefono si scaldava e rallentava sempre di piu'. Qui la risoluzione
+       scende a 1,5x e l'ombra si rifa' al massimo quattro volte al secondo. */
+    var TELEFONO = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    var renderer = new THREE.WebGLRenderer({ antialias: !TELEFONO, alpha: true });
+    renderer.setPixelRatio(Math.min(TELEFONO ? 1.5 : 2, window.devicePixelRatio || 1));
+    var ombraUltima = 0;
     // Nessuna codifica in uscita e nessun tone mapping: r128 lascia
     // `outputEncoding` su LinearEncoding e va bene così. Tutti i materiali di
     // questa scena sono ShaderMaterial scritti a mano (robot-spline-glsl.js,
@@ -1948,7 +1966,9 @@ WC.register('robot', function(ctx){
           // abbastanza dall'ultimo disegno. Scritto con una negazione così il
           // primo giro (shadowYaw = NaN, ogni confronto falso) la marca.
           if (!(Math.abs(robot.headGroup.rotation.y - shadowYaw) < SHADOW_EPS &&
-                Math.abs(robot.headGroup.rotation.x - shadowPitch) < SHADOW_EPS)) {
+                Math.abs(robot.headGroup.rotation.x - shadowPitch) < SHADOW_EPS) &&
+              (!TELEFONO || now - ombraUltima > 250)) {
+            ombraUltima = now;
             shadowYaw = robot.headGroup.rotation.y;
             shadowPitch = robot.headGroup.rotation.x;
             renderer.shadowMap.needsUpdate = true;

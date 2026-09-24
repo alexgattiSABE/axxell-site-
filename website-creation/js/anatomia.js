@@ -614,8 +614,10 @@ WC.anatomia = (function () {
     var DURATA = 1150;      // quanto dura lo spettacolo prima di cambiare pagina
     var RESTA = 3200;       // quanto resta acceso un pezzo che non porta da nessuna parte
     var RESTA_CORPO = 6000; // quanto resta aperto un pezzo toccato direttamente sul robot
+    var giaPrefetch = {};
     function prefetch(url) {
-      if (!url) return;
+      if (!url || giaPrefetch[url]) return;
+      giaPrefetch[url] = 1;
       var l = document.createElement('link');
       // `prefetch` e non `preload`: il secondo vuole un `as` giusto o il
       // browser lo scarta e avvisa in console; il primo e' esattamente «questa
