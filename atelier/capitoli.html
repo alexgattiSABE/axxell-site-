@@ -873,7 +873,20 @@
 
   var canvas   = document.getElementById('c');
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  /* LA NITIDEZZA DEL TELEFONO (2026-09-25 — «la qualità è bassa su tel», Nike).
+     Il tetto era 2: su un iPhone (dpr 3) la tela intera — pulviscolo, vicine,
+     bordo di luce del vetro — usciva ingrandita del 50% dal browser. Ora il dpr
+     vero fino a 3, dentro un tetto di ~2,5 megapixel che su uno schermo grande
+     abbassa il dpr da solo; ma mai sotto 2, cosi' il desktop resta dov'era. Il
+     render target della rifrazione NON segue (vedi `resize()`): oggi `frame()`
+     non ci disegna niente (un solo passaggio a schermo), e se tornera' a
+     riempirsi quello che ci finisce dentro esce smerigliato dal vetro — a dpr
+     2 basta e avanza, e non si alloca memoria per nulla. */
+  function prMazzo(){
+    var d = window.devicePixelRatio || 1;
+    return Math.min(d, 3, Math.max(2, Math.sqrt(2.5e6 / Math.max(1, window.innerWidth * window.innerHeight))));
+  }
+  renderer.setPixelRatio(prMazzo());
   renderer.setClearColor(0x04050a, 1);
   renderer.autoClear = false;
 
@@ -1930,6 +1943,8 @@
   }
 
   function resize(){
+    renderer.setPixelRatio(prMazzo());
+    dustMat.uniforms.uPr.value = renderer.getPixelRatio();
     var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
     renderer.setSize(w,h,false);
     camera.aspect = w/h; camera.updateProjectionMatrix();
@@ -1988,7 +2003,11 @@
          restano interi e leggibili sul lato sinistro. */
       idxMesh.position.set(-3.18, 0.55, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.60);
     }
-    rt.setSize(Math.round(w*pr), Math.round(h*pr));
+    /* Il render target a dpr 2 al massimo: il vetro lo legge in coordinate
+       normalizzate (gl_FragCoord/uRes, con uRes = la tela vera), quindi puo'
+       essere piu' piccolo della tela senza spostare niente. */
+    var prRt = Math.min(pr, 2);
+    rt.setSize(Math.round(w*prRt), Math.round(h*prRt));
     RES.set(Math.round(w*pr), Math.round(h*pr));
     fogMat.uniforms.uAspect.value = w/h;
   }
