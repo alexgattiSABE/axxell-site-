@@ -458,14 +458,14 @@
     <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
   </ul>
   <div class="nav-right">
-    <a href="/atelier/parliamone?da=effetti-speciali" id="navPreventivo" class="nav-cta" data-t="preventivo">Preventivo gratuito</a>
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
     <div class="lang-sw">
       <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
     </div>
   </div>
 </nav>
 <!-- «Il tuo mondo», il preventivo dei siti (vedi #preventivo nel CSS). -->
-<a id="preventivo" href="/atelier/parliamone?da=effetti-speciali" aria-label="Il tuo mondo — preventivo"><span class="pv-t">Il tuo mondo &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></a>
+<a id="preventivo" href="/atelier/parliamone" aria-label="Il tuo mondo — preventivo"><span class="pv-t">Il tuo mondo &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></a>
 <script>
 (function(){
   var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
@@ -556,14 +556,7 @@
       a.setAttribute('href', d + (en ? '?lang=en' : '') + h);
     });
     /* I due link fissi si portano dietro la lingua anche loro: la mappa
-       dell'atelier e il modulo del preventivo si aprono in inglese.
-       Il preventivo (Nike: «il tab del free quote deve portare al nuovo free
-       quote») e' il modulo dei siti, col mondo degli effetti gia' scelto
-       (`?da=effetti-speciali`): lo stesso indirizzo per «Il tuo mondo» e per
-       il «Preventivo gratuito» del menu. Niente `data-sito` su nessuno dei
-       due, se no il giro sopra li riscriverebbe verso la home. */
-    var quote = '/atelier/parliamone?da=effetti-speciali' + (en ? '&lang=en' : '');
-    var cta = document.getElementById('navPreventivo'); if (cta) cta.setAttribute('href', quote);
+       dell'atelier e il modulo del preventivo si aprono in inglese. */
     var torna = document.getElementById('torna');
     if (torna){
       torna.setAttribute('aria-label', T.torna);
@@ -573,7 +566,7 @@
     var pv = document.getElementById('preventivo');
     if (pv){
       pv.setAttribute('aria-label', T.mondoAria);
-      pv.setAttribute('href', quote);
+      pv.setAttribute('href', '/atelier/parliamone' + (en ? '?lang=en' : ''));
       var pt = pv.querySelector('.pv-t'); if (pt) pt.textContent = T.mondo;
     }
     /* L'atrio, il suggerimento in basso, l'etichetta dei fermi. */
