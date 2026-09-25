@@ -64,7 +64,8 @@ WC.robotVoce = (function () {
     // Misure in unità del modello (a 1440×900 un'unità vale ~2,5 px). Il
     // centro è quello dell'anello di vertebre del collo; sopra e sotto le
     // corde entrano nel visore e nel petto, che le coprono.
-    cordaRaggio: 2.3,          // «abbastanza spesse per essere evidenti»
+    cordaRaggio: 2.2,          // al centro del fuso: «abbastanza spesse per essere evidenti»
+    cordaCapo: 0.45,           // il raggio ai capi, in frazione di quello al centro
     cordaDistanza: 4.4,        // mezza distanza fra i due assi
     cordaSopra: 13,            // quanto salgono oltre la cima delle vertebre
     cordaSotto: 8,             // quanto scendono sotto il fondo delle vertebre
@@ -242,28 +243,86 @@ WC.robotVoce = (function () {
     '}'
   ].join('\n');
 
+  /* ---------------------------------------------------------- LE CORDE
+   * Nike (2026-09-25): «le corde vocali sembrano troppo forzate visivamente,
+   * nel senso che sembra una cosa incollata sopra al robot». Messe a
+   * confronto tre versioni (dentro il collo, fasci di filamenti, lamelle),
+   * Nike ha scelto la prima. Cosa le tiene DENTRO il robot:
+   *  - sono fusi, non tubi: più spesse al centro e sottili ai capi, e i capi
+   *    sfumano nel buio invece di finire di netto;
+   *  - la luce viene da dentro: un filo chiaro al centro e un alone largo e
+   *    basso, ciano più scuro sul bordo; dietro, un riverbero morbido che fa
+   *    sembrare illuminato il collo attorno;
+   *  - si disegnano PRIMA dei gusci del collo (renderOrder −1): aperto, il
+   *    collo è vetro coi bordi ancora leggibili, e disegnato sopra le corde
+   *    le copre coi suoi bordi — si vedono attraverso il collo, non incollate
+   *    davanti. Chiuso, il collo è opaco e le nasconde del tutto.
+   */
   var CORDE_FRAG = [
     'precision highp float;',
-    'uniform vec3 uCiano;',
-    'uniform vec3 uVerde;',
-    'uniform vec3 uBianco;',
-    'uniform float uCollo;',
-    'uniform float uLuce;',      // il respiro della luce, da update()
-    'varying float vS;',
-    'varying vec3 vN;',
-    'varying vec3 vV;',
+    'uniform vec3 uCiano;', 'uniform vec3 uVerde;', 'uniform vec3 uBianco;',
+    'uniform float uCollo;', 'uniform float uLuce;',
+    'varying float vS;', 'varying vec3 vN;', 'varying vec3 vV;',
+    'float capi(float s) { return smoothstep(0.0, 0.24, s) * (1.0 - smoothstep(0.76, 1.0, s)); }',
     'void main() {',
-    // Più luce al centro della corda che sui bordi: legge come un'asta di
-    // luce tonda, non come un nastro piatto.
     '  float fronte = abs(dot(normalize(vN), normalize(vV)));',
-    '  float nucleo = 0.35 + 0.65 * pow(fronte, 1.3);',
-    '  float i = uLuce * uCollo;',
-    '  vec3 col = mix(uCiano, uVerde, vS * 0.6);',
-    // Al massimo del respiro la corda schiarisce verso il bianco.
-    '  col = mix(col, uBianco, clamp((uLuce - 0.7) * 0.6, 0.0, 0.4));',
-    '  gl_FragColor = vec4(col * i * nucleo, clamp(i * nucleo, 0.0, 1.0));',
+    '  float nucleo = pow(fronte, 4.0);',
+    '  float alone = 0.24 * fronte;',
+    '  float i = uLuce * uCollo * capi(vS);',
+    '  vec3 col = mix(uCiano * 0.5, mix(uCiano, uVerde, vS * 0.5), fronte);',
+    '  col = mix(col, uBianco, nucleo * 0.55);',
+    '  float a = (nucleo * 0.85 + alone) * i;',
+    '  gl_FragColor = vec4(col * a, clamp(a, 0.0, 1.0));',
     '}'
   ].join('\n');
+
+  // Il riverbero: una macchia di luce morbida dietro le corde.
+  function texAlone() {
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  // Le due corde (una geometria sola) e il riverbero, in un gruppo figlio di
+  // headGroup. Ritorna { oggetto, alone }.
+  function costruisciCorde(su, giu, uC) {
+    var lung = su.y - giu.y, gruppo = new THREE.Group();
+    gruppo.name = 'voceCorde';
+    var pezzi = [-1, 1].map(function (lato) {
+      var ax = su.x + lato * CONFIG.cordaDistanza;
+      var g = new THREE.TubeGeometry(new THREE.LineCurve3(
+        new THREE.Vector3(ax, su.y, su.z), new THREE.Vector3(ax, giu.y, giu.z)), 32, CONFIG.cordaRaggio, 16, false);
+      var P = g.attributes.position, aS = new Float32Array(P.count);
+      for (var j = 0; j < P.count; j++) {
+        aS[j] = (su.y - P.getY(j)) / lung;
+        // Il fuso: raggio pieno al centro, `cordaCapo` del raggio ai capi.
+        var k = CONFIG.cordaCapo + (1 - CONFIG.cordaCapo) * Math.sin(Math.PI * aS[j]);
+        P.setX(j, ax + (P.getX(j) - ax) * k);
+        P.setZ(j, su.z + (P.getZ(j) - su.z) * k);
+      }
+      g.setAttribute('aS', new THREE.BufferAttribute(aS, 1));
+      g.computeVertexNormals();
+      return g;
+    });
+    var mesh = new THREE.Mesh(unisci(pezzi, ['position', 'normal', 'aS']), new THREE.ShaderMaterial({
+      uniforms: uC, vertexShader: CORDE_VERT, fragmentShader: CORDE_FRAG,
+      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
+    }));
+    pezzi.forEach(function (g) { g.dispose(); });
+    mesh.renderOrder = -1;
+    mesh.castShadow = false; mesh.receiveShadow = false;
+    var col = hexToLinear(CONFIG.ciano);
+    var alone = new THREE.Sprite(new THREE.SpriteMaterial({ map: texAlone(), color: new THREE.Color(col.x, col.y, col.z),
+      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, opacity: 0 }));
+    alone.position.set(su.x, (su.y + giu.y) / 2, su.z - 2);
+    alone.scale.set(CONFIG.cordaDistanza * 2 + 16, lung * 0.75, 1);
+    alone.renderOrder = -2;
+    gruppo.add(alone, mesh);
+    gruppo.visible = false;
+    return { oggetto: gruppo, alone: alone };
+  }
 
   // Le vertebre del collo in coordinate di headGroup: il riquadro delle mesh
   // del collo tranne i due montanti laterali (`Cylinder_4*`) e il collare
@@ -386,39 +445,20 @@ WC.robotVoce = (function () {
     genitore.add(punti);
 
     // --- le corde ---------------------------------------------------------
-    var pezzi = [-1, 1].map(function (lato) {
-      var a = cordaSu.clone(), b = cordaGiu.clone();
-      a.x += lato * CONFIG.cordaDistanza; b.x += lato * CONFIG.cordaDistanza;
-      var t = new THREE.TubeGeometry(new THREE.LineCurve3(a, b), 24, CONFIG.cordaRaggio, 12, false);
-      var n = t.attributes.position.count, s = new Float32Array(n);
-      for (var j = 0; j < n; j++) s[j] = (cordaSu.y - t.attributes.position.getY(j)) / (cordaSu.y - cordaGiu.y);
-      t.setAttribute('aS', new THREE.BufferAttribute(s, 1));
-      return t;
-    });
-    var cordeGeo = unisci(pezzi);
-    pezzi.forEach(function (g) { g.dispose(); });
     var uC = {
       uCollo: { value: 0 }, uLuce: { value: CONFIG.cordaMin },
       uCiano: colori.uCiano, uVerde: colori.uVerde, uBianco: colori.uBianco
     };
-    var corde = new THREE.Mesh(cordeGeo, new THREE.ShaderMaterial({
-      uniforms: uC, vertexShader: CORDE_VERT, fragmentShader: CORDE_FRAG,
-      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
-    }));
-    corde.name = 'voceCorde';
-    corde.castShadow = false; corde.receiveShadow = false;
-    corde.renderOrder = 1.5;
-    corde.visible = false;
-    hg.add(corde);
+    var cc = costruisciCorde(cordaSu, cordaGiu, uC);
+    hg.add(cc.oggetto);
 
-    return { robot: robot, punti: punti, corde: corde, uP: uP, uC: uC, t: 0,
+    return { robot: robot, punti: punti, corde: cc.oggetto, alone: cc.alone, uP: uP, uC: uC, t: 0,
       info: { punti: N, cordaSu: cordaSu.toArray(), cordaGiu: cordaGiu.toArray(),
         cervello: bC.toArray().concat([bR]), sfera: sferaC.toArray().concat([sferaR]) } };
   }
 
-  // Le due corde in UNA geometria: una chiamata di disegno sola.
-  function unisci(geos) {
-    var nomi = ['position', 'normal', 'aS'];
+  // Più pezzi in UNA geometria: una chiamata di disegno sola.
+  function unisci(geos, nomi) {
     var out = new THREE.BufferGeometry(), idx = [], base = 0;
     nomi.forEach(function (nome) {
       var size = geos[0].attributes[nome].itemSize, tot = 0;
@@ -461,7 +501,9 @@ WC.robotVoce = (function () {
     uP.uCiclo.value = ciclo % 1000;
     uP.uTesta.value = testa; uP.uCollo.value = collo; uP.uPancia.value = pancia;
     uC.uCollo.value = collo;
-    uC.uLuce.value = CONFIG.cordaMin + (CONFIG.cordaMax - CONFIG.cordaMin) * respiro(stato.t);
+    var r = respiro(stato.t);
+    uC.uLuce.value = CONFIG.cordaMin + (CONFIG.cordaMax - CONFIG.cordaMin) * r;
+    if (stato.alone) stato.alone.material.opacity = 0.22 * collo * (0.5 + 0.5 * r);
     // Grana: come le fibre (robot-fibers.js, tune), ricalcolata qui perché
     // costa quattro moltiplicazioni e segue da sola ogni ridimensionamento.
     var cam = robot.camera, el = robot.renderer.domElement;
