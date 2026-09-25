@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- BASE OBBLIGATORIA, e qui serve piu' che altrove.
+     `vercel.json` ha `trailingSlash:false`, quindi questa pagina vive a
+     `/atelier`; ma ogni mondo vive un livello piu' in giu', a
+     `/atelier/la-notte`. Senza base, entrando da li'
+     `vendor/three.min.js` diventerebbe `/atelier/vendor/...`,
+     404, e resterebbe lo scheletro. Con la base gli indirizzi relativi
+     partono sempre da `/atelier/`, a qualunque profondita' si entri. -->
+<base href="/atelier/">
+<title>Effetti speciali — Atelier</title>
+<meta name="description" content="Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta property="og:title" content="La costellazione | Axxell">
+<meta property="og:description" content="Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.">
+<meta property="og:url" content="https://axxell.ai/atelier">
+<meta property="og:type" content="website">
+<!-- Font in casa (atelier/fonts/), come /fonts/fonts.css del sito madre: nessuna richiesta a Google. -->
+<link href="/atelier/fonts/space-grotesk.css" rel="stylesheet">
+<link href="/atelier/fonts/dm-mono.css" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#04050a;color:#dfe4ee;font-family:'DM Mono',ui-monospace,monospace;
+    -webkit-font-smoothing:antialiased;
+    /* NEL FOGLIO ORIGINALE (indice, mazzo acceso) lo scorrimento era
+       DIROTTATO sulla rotazione dell'anello e la pagina non scorreva affatto
+       — da qui touch-action:none e overflow:hidden. Qui il mazzo è spento e
+       l'asse centrale (Task 2) ha bisogno del contrario: una pagina che
+       scorre DAVVERO, perché è lo scroll a far salire e girare l'elica. */
+    overscroll-behavior-y:none}
+  /* Col dito il gesto verticale e' del mazzo (vedi «SU TELEFONO SI SCORRE PER
+     GIRARE» nello script): la pagina non deve scorrere ne' rimbalzare sotto,
+     se no il browser si prende il gesto e il trascino viene annullato. La
+     rotellina non passa di qui: su desktop non cambia niente. */
+  html,body{touch-action:none}
+  canvas{display:block;width:100%;height:100%}
+  #stage{position:fixed;inset:0}
+
+  /* L'ASSE CENTRALE (Task 2) — l'elica DNA di js/dna.js, montata su questo
+     elemento invece che sul pin del manifesto (`[data-role="helix-stage"]`
+     è quello che dna.js cerca quando non trova #wcManifestoPin). Sta SOPRA
+     al fondo (#stage: il suo renderer è opaco, cancella ogni fotogramma —
+     dietro non ci sarebbe niente da vedere) e SOTTO alla nav/atrio/etichette,
+     che restano leggibili sopra di lei. `pointer-events:none`: è un fondale,
+     non deve intercettare i click destinati al bottone dell'atrio. */
+  #helixStage{position:fixed;inset:0;z-index:2;pointer-events:none}
+  /* L'INGRESSO DELL'ASSE. Col sipario tolto non c'è più niente dietro cui
+     nascondersi: l'elica è viva dal primo fotogramma e sale al suo posto da
+     sé, una volta sola, senza velo da attraversare. `body.-entra` è messo
+     dall'inline in cima alla pagina e tolto al primo fotogramma utile; in
+     reduced-motion non viene mai messo, quindi l'asse è già fermo a posto. */
+  #helixStage{transition:opacity .75s ease, transform .95s cubic-bezier(.16,1,.3,1);
+    will-change:opacity,transform}
+
+  /* IL DNA NON ENTRA NELL'ANTEPRIMA (richiesta utente).
+     L'elica vive su un canvas suo, sopra allo stage (il renderer dello stage è
+     opaco: dietro non ci sarebbe niente da vedere), quindi nessuna lastra del
+     mazzo può coprirla — i punti passavano DENTRO al quadro della card, sopra
+     al poster e sopra l'effetto. Qui si fora la maschera dell'elica
+     con la SAGOMA vera delle lastre che stanno davanti all'asse: un
+     clip-path path() scritto a ogni fotogramma. */
+  #helixStage.-buco{-webkit-clip-path:var(--buco);clip-path:var(--buco)}
+  body.-entra #helixStage{opacity:0;transform:translateY(42px)}
+
+  /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
+     che il controller (js/effetti-deck.js) riposiziona ogni fotogramma sul
+     rettangolo proiettato della card davanti: sopra la tela dello stage (dove
+     vive il poster congelato) e sopra l'elica, ma SOTTO nav/etichette/didascalia.
+     Quando nessun effetto è sveglio è `hidden` e non c'è nulla: si vede il
+     poster. `pointer-events:none` da congelata: il clic arriva al mazzo sotto;
+     da viva l'anteprima si usa (vedi `.-viva` più sotto). */
+  #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
+    pointer-events:none;overflow:hidden;
+    /* LA TELA VIVA HA LA FORMA DELLA LASTRA, e non appare di scatto.
+       Erano due stacchi secchi in uno: un rettangolo a spigoli vivi che si
+       sovrapponeva a una lastra con gli angoli tondi, e un poster che diventava
+       effetto in un fotogramma solo. Il raggio lo detta il controller (una
+       frazione della larghezza del riquadro, come nello shader del vetro); la
+       dissolvenza copre il salto fra il fotogramma congelato e il primo
+       fotogramma vivo, che sono due immagini diverse per definizione. */
+    border-radius:var(--raggio,18px);
+    opacity:0;transition:opacity .26s ease}
+  /* L'ANTEPRIMA SI USA (2026-09-24, richiesta di Nike: niente pagine di
+     dettaglio, il cliente tocca l'effetto dentro la card). Solo da viva:
+     congelata e' un poster, e i clic devono arrivare al mazzo. `touch-action`
+     perche' un dito che striscia sull'anteprima muova l'effetto, non la pagina. */
+  #stage-live.-viva{opacity:1;pointer-events:auto;touch-action:none}
+  #stage-live canvas{display:block;width:100%;height:100%}
+  /* IL BORDO CHE SFUMA (vedi `orlo()` in js/effetti-deck.js). Appena sveglia
+     la tela viva lascia trasparente una fascia larga `--orlo` lungo i quattro
+     lati — in gradiente, da vuoto sul filo a pieno verso l'interno — e ci si
+     vede sotto il bordo luminoso del vetro, disegnato dallo shader. Il
+     controller stringe la fascia fino a zero in ~0.8 s e poi toglie la classe.
+     Due gradienti incrociati (uno per asse) intersecati: gli angoli tondi li
+     taglia gia' `border-radius`. */
+  #stage-live.-orlo{
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+                       linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    -webkit-mask-composite:source-in;
+    mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+               linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    mask-composite:intersect}
+
+  /* LA PAGINA DENTRO LA CARD (2026-09-24, richiesta di Nike: «a tutte aggiungi
+     scritte come se fossero landing page»). Livello suo, FUORI da #stage-live:
+     quello nasconde i figli che non sono l'effetto sveglio ed e' `hidden`
+     quando nessuno e' sveglio — qui la copy deve esserci anche sul poster e
+     con moto ridotto. Non prende il puntatore: sotto c'e' l'anteprima da usare. */
+  #lp{position:fixed;left:0;top:0;width:0;height:0;z-index:4;pointer-events:none;
+    display:flex;flex-direction:column;justify-content:center;gap:.9em;
+    box-sizing:border-box;padding:0 6% 0 6%;opacity:0;transition:opacity .35s ease;
+    border-radius:var(--raggio,18px);overflow:hidden;
+    font-size:var(--lpfs,16px);color:#f0f0f6;
+    background:linear-gradient(90deg,rgba(4,5,10,.72) 0%,rgba(4,5,10,.46) 34%,rgba(4,5,10,0) 52%)}
+  #lp.-on{opacity:1}
+  #lp > *{max-width:40%;margin:0}
+  /* Il titolo va a capo DENTRO la colonna (40% della card): due righe
+     logiche, ognuna libera di spezzarsi. Niente nowrap — a 1440 la riga piu'
+     lunga uscirebbe dalla sfumatura fino al centro dell'effetto. */
+  #lp .lp-k{font:500 max(11px,.72em)/1.2 'DM Mono',ui-monospace,monospace;font-style:normal;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
+  #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
+  /* `balance`: quando una riga va a capo le due meta' escono pari, invece di
+     lasciare sola l'ultima parola («galaxy.», «idea.» in inglese). */
+  #lp .lp-l{display:block;text-wrap:balance}
+  #lp .lp-s{font:400 max(11px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
+  #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
+    letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
+    border:1px solid var(--lpc);color:#f0f0f6}
+  #lp.-chiaro{color:#10131a;
+    background:linear-gradient(90deg,rgba(255,255,255,.0) 0%,rgba(255,255,255,0) 100%)}
+  #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)}
+  /* Sfumatura forte (record `scrimForte`, oggi Nebulosa): la galassia accende
+     proprio il centro-sinistra, e sulla sfumatura normale «un'idea.» e il
+     sottotitolo ci finivano sopra. Qui sotto la colonna del testo (fino al 46%)
+     il nero resta ad almeno .80, e si spegne del tutto entro il 60%. */
+  #lp.-forte{background:linear-gradient(90deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.82) 46%,rgba(4,5,10,0) 60%)}
+  /* Su bianco il colore della card (azzurro chiaro) non si legge (~1.6:1):
+     kicker e bottone passano a un blu profondo della stessa famiglia. */
+  #lp.-chiaro{--lpc:#1d4a6b} #lp.-chiaro .lp-b{color:#10131a}
+  /* Card stretta (telefono): una fascia in basso, solo titolo e bottone. */
+  #lp.-stretta{justify-content:flex-end;padding:0 6% 6% 6%;gap:.7em;
+    background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
+  #lp.-stretta > *{max-width:100%}
+  #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
+  #lp.-stretta .lp-h{font-size:max(15px,1.25em)}
+  #lp.-stretta .lp-l{white-space:normal}
+  #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
+  /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
+     bianco dell'orologio, sotto un testo scuro. La fascia diventa bianca: sul
+     bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo.
+     Round 3 (Nike: «su tel alcune animazioni non si vedono completamente»): a
+     tutta larghezza il velo bianco sbiancava la meta' bassa dell'orologio, che
+     su telefono sta a destra (js/orologio.js) e sotto la scritta non passa mai.
+     Ora il velo resta nella fascia bassa e SOLO sotto la colonna del testo, e
+     si spegne prima di arrivare al metallo. */
+  #lp.-chiaro.-stretta{background:linear-gradient(90deg,rgba(255,255,255,.86) 0%,rgba(255,255,255,.6) 30%,rgba(255,255,255,0) 44%) left bottom/100% 62% no-repeat}
+
+  /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
+     (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
+     documento, `document.documentElement.scrollHeight` non supera mai
+     l'altezza dello schermo e non c'è scroll — né nativo né di Lenis — da
+     dare all'elica. Non si vede (è dietro a tutto, a `z-index` di base) ma
+     è lui a dare al documento l'altezza su cui scorrere. */
+  #scrollSpacer{position:relative;height:400vh;pointer-events:none}
+
+  /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
+     superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
+     script proiettando il punto in basso di ogni portale. */
+  /* IL MENU E' QUELLO DEL SITO (richiesta utente): stesso logo, stesse
+     voci, stesse misure e stesso comportamento su telefono di index.html
+     alla radice. Qui e' riscritto su `#nav` perche' il foglio del sito non
+     e' caricato: questa pagina non scorre e non ne ha bisogno. */
+  #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
+    display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+    font-family:'Space Grotesk',sans-serif;transition:opacity .4s ease}
+  #nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-30px;z-index:-1;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(6,6,9,.97) 0%,rgba(6,6,9,.94) 52%,rgba(6,6,9,.62) 78%,rgba(6,6,9,0) 100%);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%)}
+  #nav.-hide{opacity:0;pointer-events:none}
+  .nav-logo-img{display:flex;align-items:center;text-decoration:none}
+  .nav-logo-img img{height:42px;width:auto;display:block}
+  .nav-links{display:flex;list-style:none;gap:.2rem;margin:0;padding:0}
+  .nav-links a{color:rgba(240,240,246,.72);text-decoration:none;font-size:.88rem;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;padding:.5rem 1.1rem;border-radius:4px;
+    transition:color .2s,background .2s;display:inline-block}
+  .nav-links a:hover,.nav-links a.active{color:#f0f0f6;background:rgba(255,255,255,.05)}
+  @keyframes atelierShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  #n-wc,.mobile-dropdown a.-atelier{
+    background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+    background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){#n-wc,.mobile-dropdown a.-atelier{animation:none;background-position:0% 50%}}
+  .nav-right{display:flex;align-items:center}
+  .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;border:1px solid #00d4ff;color:#00d4ff;
+    font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:center;transition:all .2s}
+  .nav-cta:hover{background:#00d4ff;color:#060609}
+  .lang-sw{display:flex;align-items:center;gap:.15rem;margin-left:1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.12)}
+  .lang-sw button{background:none;border:none;cursor:pointer;color:rgba(240,240,246,.72);font-family:inherit;
+    font-size:.78rem;font-weight:600;letter-spacing:.06em;padding:.25rem .3rem;border-radius:3px;transition:color .2s}
+  .lang-sw button:hover{color:#fff}
+  .lang-sw button.on{color:#00d4ff}
+  .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem}
+  #nav a:focus-visible,#nav button:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}
+  .mobile-menu-wrap{display:none;position:relative;order:2}
+  .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
+    color:#fff;border-radius:10px;font-size:1.2rem;cursor:pointer}
+  .mobile-dropdown{position:absolute;top:52px;right:0;width:180px;background:#060609;
+    border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.5rem;display:none;
+    flex-direction:column;gap:.3rem;z-index:9999;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  .mobile-dropdown.-on{display:flex}
+  .mobile-dropdown a{color:#fff;text-decoration:none;padding:.8rem 1rem;border-radius:10px;font-size:.85rem;white-space:nowrap}
+  .mobile-dropdown a:hover{background:rgba(255,255,255,.06)}
+  @media (max-width:960px){
+    #nav{padding:0 1rem}
+    #nav::before{bottom:-26px}
+    .nav-links,.nav-cta{display:none}
+    .mobile-menu-wrap{display:flex}
+    .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .nav-right{order:0;margin:0}
+    .lang-sw{margin:0;padding:0;border-left:none}
+  }
+  @media (max-width:480px){ #nav{height:60px} }
+
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+  #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
+    transform-style:preserve-3d}
+/* Le scritte stanno DAVANTI alle card, non sotto. Sono ancorate al centro
+     della lastra ma spostate verso di te lungo la sua normale: muovendo il
+     puntatore scorrono contro il proprio portale, ed è quella parallasse a
+     dare la profondità. Non toccano il vetro, quindi non vengono né rifratte
+     né smerigliate — l'obiezione che valeva per un testo APPOGGIATO sopra qui
+     non vale.
+     L'alone scuro dietro non è decorazione: sotto ci può passare un video
+     chiaro, e senza quello la scritta sparisce. */
+  /* La trasformazione la scrive lo script per intero: qui NIENTE transform,
+     se no sovrascrive la matrice 3D e la scritta torna piatta. */
+  .lb{position:absolute;top:0;left:0;text-align:center;transform-style:preserve-3d;
+    opacity:0;transition:opacity .35s ease;white-space:nowrap}
+  .lb.-on{opacity:1}
+  .lb::before{content:'';position:absolute;inset:-170% -34%;pointer-events:none;
+    background:radial-gradient(ellipse at center,
+      rgba(4,5,10,.60) 0%, rgba(4,5,10,.30) 46%, rgba(4,5,10,0) 74%)}
+  .lb b,.lb span{position:relative;display:block}
+  /* il margine negativo toglie lo spazio in coda che la spaziatura aggiunge
+     dopo l'ultima lettera: se no la scritta appare storta a sinistra */
+  .lb b{font-family:'Space Grotesk',system-ui,sans-serif;
+    font-weight:600;font-size:19px;letter-spacing:.34em;margin-right:-.34em;
+    color:#f0f0f6;text-transform:uppercase;
+    text-shadow:0 2px 20px rgba(4,5,10,.95);
+    transition:letter-spacing .35s cubic-bezier(.22,1,.36,1),color .3s ease}
+  .lb span{font-family:'DM Mono',ui-monospace,monospace;
+    font-size:9.5px;letter-spacing:.24em;margin-right:-.24em;margin-top:10px;
+    color:rgba(223,228,238,.54);text-transform:uppercase;
+    text-shadow:0 1px 14px rgba(4,5,10,.95);transition:color .3s ease}
+  .lb.-hot b{color:var(--hot,#3ad8ff);letter-spacing:.46em;margin-right:-.46em}
+  .lb.-hot span{color:rgba(223,228,238,.78)}
+  /* LA SCRITTA DEL VUOTO. E' l'unico elemento della scena senza colore, e la
+     sua scritta deve dirlo: piu' piccola, piu' spenta, in corsivo di peso e
+     non di forma. Si accende soltanto quando ci passi sopra — e allora e' un
+     invito, non un bottone. */
+  .lb.-void b{font-size:15px;color:rgba(240,240,246,.50)}
+  .lb.-void span{color:rgba(223,228,238,.34)}
+  .lb.-void.-hot b{color:#3ad8ff}
+  @media (max-width:760px){ .lb.-void b{font-size:10.5px} }
+
+  /* LE SCRITTE STANNO SOPRA AL DNA PER z-index, E BASTA (Nike, round 2: «è
+     come se avessero uno sfondo che coprisse il dna, toglilo»). Niente buchi
+     nell'elica attorno al testo e niente fasce: i punti passano dietro alle
+     lettere. Per leggerle resta solo un'ombra corta, nera e neutra — non un
+     alone colorato. */
+  #hint,#focus .counter,#focus .fname,#focus .fsub{
+    text-shadow:0 1px 2px rgba(0,0,0,.55),0 0 10px rgba(0,0,0,.35)}
+  #hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:6;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(223,228,238,.84);transition:opacity .4s ease;text-align:center;white-space:nowrap}
+
+  /* LA FOCUS CAPTION — le scritte come in Mirror Hall.
+     Non piu' un'etichetta appesa a ogni card (nella rotonda sono nove e si
+     accavallano): una sola didascalia in basso al centro che segue il mondo
+     davanti. Contatore, NOME grande che si scambia col blur-rise, settore, e
+     sotto i fermi a capsula. Tutto DOM, nitido, sopra il canvas. */
+  #focus{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:6;
+    width:92%;display:flex;flex-direction:column;align-items:center;gap:11px;
+    text-align:center;opacity:0;transition:opacity .5s ease;pointer-events:none}
+  #focus.-on{opacity:1}
+  #focus .counter{display:flex;align-items:baseline;gap:7px;
+    font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.16em}
+  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px}
+  #focus .counter i{color:rgba(190,214,246,.72);font-style:normal}
+  #focus .counter .tot{color:rgba(190,214,246,.80)}
+  #focus .fname{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
+    font-size:clamp(21px,3.2vw,34px);letter-spacing:.16em;margin-right:-.16em;
+    text-transform:uppercase;color:#f0f0f6;line-height:1;
+    will-change:transform,opacity,filter}
+  /* IL VUOTO: l'unica scritta senza colore, in corsivo di peso e non di forma. */
+  #focus .fname.-void{color:rgba(240,240,246,.58);font-weight:500;font-style:italic}
+  @keyframes focusSwap{
+    from{opacity:0;transform:translateY(9px);filter:blur(5px)}
+    to{opacity:1;transform:none;filter:blur(0)}}
+  #focus .fname.-swap{animation:focusSwap .5s cubic-bezier(.22,.61,.36,1) both}
+  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;
+    letter-spacing:.26em;margin-right:-.26em;margin-top:-2px;text-transform:uppercase;
+    color:rgba(223,228,238,.82)}
+  /* I FERMI, a capsula come in Mirror Hall: un punto per mondo che quando e'
+     davanti sboccia in una capsula del colore del mondo. */
+  #dots{display:flex;align-items:center;gap:9px;margin-top:3px}
+  #dots button{width:5px;height:5px;padding:0;border:0;border-radius:4px;
+    background:rgba(176,204,244,.72);cursor:pointer;pointer-events:auto;
+    transition:width .5s cubic-bezier(.22,.61,.36,1),background .5s ease,box-shadow .5s ease}
+  #dots button:hover{background:rgba(176,204,244,.95)}
+  #dots button.-now{width:22px;background:var(--now,#3ad8ff)}
+  #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
+  @media (max-width:600px){
+    #focus{bottom:44px} #dots button.-now{width:18px}
+    #hint{font-size:12px;letter-spacing:.06em;bottom:18px;white-space:nowrap}
+  }
+
+  /* TORNA ALLA MAPPA (Nike: «tasto torna alla mappa nell'angolo in basso a
+     sinistra»). Lo stesso bottone delle pagine dei capitoli (vedi #torna in
+     il-prodotto/index.html), con l'accento della card davanti al posto del
+     viola fisso: `--pag`, messo sulla radice da aggiornaFocus(). Niente alone.
+     Il suo clic e la sua pressione non arrivano alla scena (vedi `fuoriScena`). */
+  #torna{position:fixed;left:clamp(14px,2.5vw,28px);bottom:clamp(14px,2.5vw,28px);z-index:99999;
+    display:inline-flex;align-items:center;gap:.5em;padding:11px 18px;border-radius:999px;
+    font:500 11.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;
+    color:#f2f0ff;text-decoration:none;background:rgba(8,6,20,.66);
+    border:1px solid rgba(242,240,255,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    transition:border-color .2s ease,color .2s ease}
+  #torna:hover{border-color:var(--pag,#dfe4ee);color:var(--pag,#dfe4ee)}
+  #torna:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
+  @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
+  /* IL TUO MONDO — il preventivo (Nike: «chiamalo il tuo mondo e anziché
+     l'azzurro lo voglio bianco con effetto riflettente dinamico automatico»).
+     Un bottone semplice che porta al modulo dei siti (/atelier/parliamone):
+     filo e scritta bianchi su fondo scuro, e un riflesso che ci scorre sopra da
+     solo ogni pochi secondi, come la luce su un metallo lucido. Il riflesso e'
+     `::after`: una fascia diagonale bianca a bassa opacita', larga ~25%, che si
+     sposta con `transform` (costa poco) ed e' tagliata dagli angoli tondi
+     (`overflow:hidden`); mentre passa il filo si schiarisce appena. Niente
+     alone, niente colore. Con moto ridotto il riflesso resta fermo, tenue.
+     Niente `data-sito`: la lingua non lo riscrive verso la home. Desktop: sul
+     bordo destro, a meta' altezza. Telefono: in basso a destra (vedi sotto). */
+  #preventivo{position:fixed;right:clamp(24px,2.2vw,32px);top:50%;transform:translateY(-50%);z-index:6;
+    height:40px;padding:0 1.2rem;box-sizing:border-box;border-radius:4px;overflow:hidden;isolation:isolate;
+    display:inline-flex;align-items:center;gap:.5em;
+    border:1px solid rgba(255,255,255,.72);color:#fff;background:rgba(6,6,9,.55);
+    font:600 .8rem/1 'Space Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;
+    text-decoration:none;transition:background .2s ease;animation:mondoFilo 5.5s ease-in-out infinite}
+  #preventivo::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:26%;z-index:-1;pointer-events:none;
+    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.30) 50%,rgba(255,255,255,0));
+    transform:translateX(-160%) skewX(-22deg);animation:mondoRiflesso 5.5s ease-in-out infinite}
+  @keyframes mondoRiflesso{0%,55%{transform:translateX(-160%) skewX(-22deg)}85%,100%{transform:translateX(560%) skewX(-22deg)}}
+  @keyframes mondoFilo{0%,58%,100%{border-color:rgba(255,255,255,.72)}70%{border-color:#fff}}
+  #preventivo:hover{background:rgba(255,255,255,.12)}
+  #preventivo:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  #preventivo svg{display:none}
+  @media (prefers-reduced-motion:reduce){
+    #preventivo{animation:none}
+    #preventivo::after{animation:none;transform:translateX(150%) skewX(-22deg);opacity:.5}
+  }
+  /* Telefono: la stessa taglia e gli stessi margini della freccia di #torna,
+     nell'angolo opposto. «Il tuo mondo» per esteso non ci sta: a 40 px dal
+     fondo toccherebbe il settore della didascalia («MODELLI INTERATTIVI»
+     arriva a x≈284 su 390), e piu' in basso il suggerimento. Resta un'icona
+     da 44×44 (un piccolo globo), col nome per chi legge lo schermo. */
+  @media (max-width:760px){
+    #preventivo{top:auto;transform:none;right:clamp(14px,2.5vw,28px);bottom:40px;
+      width:44px;height:44px;padding:0;justify-content:center;border-radius:999px}
+    #preventivo .pv-t{display:none}
+    #preventivo svg{display:block}
+    #preventivo::after{width:40%}
+  }
+
+  /* SUL TELEFONO SOLO LA FRECCIA (Nike: «su tel il torna alla mappa è
+     semplicemente una freccia»): un quadrato da 44 px, l'etichetta resta per
+     chi legge lo schermo (aria-label). Didascalia e suggerimento restano dove
+     sono: e' il bottone a stare un filo piu' su (40 px dal fondo), perche' il
+     suggerimento, centrato e largo ~290 px, comincia a x≈49 e un bottone a
+     14..58 px dal fondo gli finirebbe addosso. */
+  @media (max-width:760px){
+    #torna{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;
+      bottom:40px;font-size:16px;letter-spacing:0}
+    #torna .t-testo{display:none}
+  }
+
+  #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1.4rem;text-align:center;
+    padding:2rem;transition:opacity .5s ease;pointer-events:none}
+  #hero.-off{opacity:0}
+  #hero .k{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:#3ad8ff}
+  #hero h1{font-size:clamp(1.9rem,4.6vw,3.4rem);font-weight:400;line-height:1.16;
+    letter-spacing:.01em;text-transform:uppercase;
+    text-shadow:0 2px 30px rgba(4,5,10,.95)}
+  #hero h1 em{font-style:normal;color:#3ad8ff}
+  #hero button{pointer-events:auto;margin-top:.6rem;background:transparent;color:#dfe4ee;
+    border:1px solid rgba(223,228,238,.3);padding:11px 26px;font:inherit;font-size:11px;
+    letter-spacing:.2em;text-transform:uppercase;cursor:pointer}
+  #hero button:hover{border-color:#3ad8ff;color:#3ad8ff}
+  #hero button:focus-visible{outline:2px solid #3ad8ff;outline-offset:3px}
+
+  #err{position:fixed;inset:0;display:none;place-items:center;padding:32px;text-align:center;
+    color:#ff6b6b;font-size:13px;line-height:1.7;z-index:20}
+  @media (max-width:760px){ .lb b{font-size:11px} .lb span{font-size:9.5px} }
+</style>
+
+
+<style>
+  /* ── NIENTE SIPARIO QUI (richiesta utente) ────────────────────────────────
+     Il marchio che si condensa dal vapore è il gesto d'ingresso dell'ATELIER:
+     si vede una volta, cliccando «Atelier», e basta. Rivederlo a ogni passo
+     interno — entrando nella sotto-costellazione, poi in ogni card — lo
+     trasformava da soglia in pedaggio. Qui la pagina si apre e basta: il velo,
+     le sue tende e il canvas del vapore sono stati tolti insieme al loro
+     runtime in coda al file. */
+  /* fino a che il sipario non parte, l'atrio non si vede: entra attraverso */
+  #hero{opacity:0;transition:opacity .8s ease}
+  body.-aperto #hero{opacity:1}
+  /* E QUANDO SE NE VA, DEVE SFUMARE.
+     `body.-aperto #hero` pesa (1,1,1) e `#hero.-off` pesa (1,1,0): finito il
+     sipario vinceva sempre il primo, quindi l'atrio restava a piena opacita'
+     e spariva di colpo al `display:none` dopo 600 ms. La dissolvenza c'era
+     nel CSS e non si e' mai vista. Questa riga rimette il peso a posto. */
+  body.-aperto #hero.-off{opacity:0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false"
+     style="position:absolute;pointer-events:none;">
+  <defs>
+        <g id="wcAxxellMark" stroke-linejoin="round">
+          <path d="M 73.00 214.25 C 74.00 211.64 76.72 206.12 79.06 202.00 C 86.94 188.12 92.03 178.55 95.97 170.24 C 98.12 165.69 100.75 160.74 101.80 159.24 C 103.73 156.48 113.41 138.58 115.42 134.06 C 116.01 132.73 118.37 128.00 120.66 123.56 L 124.82 115.50 L 134.66 115.50 L 144.50 115.50 L 154.50 135.56 C 160.00 146.60 165.69 157.62 167.14 160.06 C 169.26 163.62 173.94 172.63 183.75 192.00 C 184.52 193.53 166.75 200.58 164.95 199.47 C 164.39 199.13 161.84 194.49 159.29 189.17 C 156.73 183.85 151.48 173.88 147.63 167.00 C 143.77 160.12 139.28 151.81 137.65 148.53 C 135.42 144.06 134.46 142.93 133.81 144.03 C 133.34 144.84 131.34 148.20 129.36 151.50 C 127.39 154.80 121.04 166.23 115.25 176.91 C 109.46 187.58 103.77 197.73 102.61 199.45 C 101.45 201.17 98.70 206.26 96.50 210.76 L 92.50 218.97 L 81.85 218.97 L 71.19 218.97 L 73.00 214.25Z"/>
+          <path d="M 59.00 233.31 C 53.58 232.40 46.79 229.70 43.97 227.32 C 37.17 221.60 42.19 212.75 58.44 201.75 C 64.34 197.77 64.96 198.38 59.56 202.85 C 53.76 207.64 52.35 209.64 51.48 214.25 C 50.89 217.41 51.16 218.25 53.52 220.43 C 57.31 223.95 61.06 224.51 80.50 224.45 C 93.98 224.42 99.88 223.94 109.00 222.14 C 115.33 220.89 122.97 219.40 126.00 218.83 C 136.81 216.77 163.60 207.61 176.50 201.55 C 179.25 200.26 183.55 198.48 186.05 197.60 C 192.02 195.49 208.21 184.76 214.32 178.87 C 218.47 174.88 219.10 173.76 218.82 170.90 C 218.44 166.98 213.93 163.41 208.14 162.45 C 202.06 161.44 201.25 160.59 206.00 160.19 C 212.46 159.65 223.42 161.81 227.23 164.37 C 229.97 166.21 230.55 167.28 230.82 170.97 C 231.13 175.27 230.97 175.53 223.95 182.18 C 218.08 187.75 203.47 198.00 201.42 198.00 C 201.14 198.00 194.97 200.89 187.70 204.41 C 173.10 211.50 155.19 219.00 152.86 219.00 C 152.03 219.00 148.01 220.14 143.93 221.54 C 131.42 225.81 110.14 230.77 97.16 232.42 C 85.91 233.86 65.17 234.34 59.00 233.31Z"/>
+          <path d="M 457.00 191.50 L 457.00 168.00 L 480.50 168.00 L 504.00 168.00 L 504.00 172.50 L 504.00 177.00 L 486.00 177.00 L 468.00 177.00 L 468.00 182.00 L 468.00 187.00 L 485.00 187.00 L 502.00 187.00 L 502.00 191.50 L 502.00 196.00 L 484.95 196.00 L 468.20 196.00 L 468.20 200.75 L 468.20 205.77 L 486.25 205.77 L 504.00 205.77 L 504.00 210.52 L 504.00 215.00 L 480.50 215.00 L 457.00 215.00 L 457.00 191.50Z"/>
+          <path d="M 256.00 214.66 C 256.00 214.20 261.57 201.60 262.93 198.99 C 263.37 198.16 266.73 191.53 270.40 184.27 C 274.08 177.00 277.77 170.37 278.61 169.53 C 280.21 167.93 288.55 167.40 290.61 168.77 C 291.89 169.61 301.45 188.27 302.51 192.00 C 302.91 193.38 304.04 195.85 305.03 197.50 C 307.14 201.01 314.00 214.12 314.00 214.64 C 314.00 214.84 311.61 215.00 308.69 215.00 L 303.38 215.00 L 300.94 209.75 L 298.50 204.50 L 285.00 204.50 L 271.50 204.50 L 269.00 209.50 C 266.52 214.46 266.46 214.50 261.25 214.80 C 258.36 214.97 256.00 214.91 256.00 214.66Z M 293.93 195.75 C 293.82 193.51 285.53 177.74 284.50 177.79 C 283.36 177.85 283.23 178.08 279.07 187.36 C 277.38 191.14 276.00 194.85 276.00 195.61 C 276.00 196.69 277.99 197.00 285.00 197.00 C 291.57 197.00 293.98 196.66 293.93 195.75Z"/>
+          <path d="M 393.86 211.25 C 395.53 209.19 399.84 204.12 403.44 200.00 C 407.04 195.88 409.99 192.14 410.00 191.71 C 410.00 190.21 405.48 184.48 398.00 176.50 L 390.50 168.34 L 397.00 168.34 C 402.71 167.92 403.68 168.14 405.00 170.02 C 407.83 174.07 416.39 183.50 417.48 183.78 C 418.42 184.02 422.86 179.09 429.73 170.20 C 431.31 168.14 432.21 167.93 437.95 168.35 L 444.40 168.35 L 436.93 176.50 C 429.18 184.81 425.00 190.14 425.00 191.74 C 425.00 192.25 428.71 196.92 433.25 202.12 C 445.79 216.50 445.26 215.00 437.82 215.00 L 431.39 215.00 L 426.79 208.75 C 424.26 205.31 421.10 201.48 419.76 200.23 L 417.33 197.96 L 412.39 203.73 C 409.67 206.90 406.66 210.74 405.70 212.25 C 404.08 214.79 403.46 215.00 397.39 215.00 L 390.83 215.00 L 393.86 211.25Z"/>
+          <path d="M 326.00 214.36 C 326.00 213.67 335.15 202.98 341.25 196.55 C 343.31 194.38 345.00 192.02 345.00 191.30 C 345.00 190.03 333.71 176.76 328.63 172.08 C 327.18 170.74 326.00 169.28 326.00 168.83 C 326.00 168.37 328.67 168.00 331.92 168.00 C 337.36 168.00 338.04 168.25 340.17 171.06 C 341.45 172.74 344.64 176.46 347.25 179.31 L 351.99 184.50 L 357.58 178.50 C 360.66 175.20 363.86 171.49 364.70 170.25 C 366.00 168.34 367.13 168.00 372.12 168.00 C 375.35 168.00 378.00 168.30 378.00 168.67 C 378.00 169.05 374.96 172.61 371.25 176.59 C 367.54 180.58 363.21 185.46 361.64 187.43 C 358.55 191.32 358.73 192.24 363.67 197.50 C 367.46 201.54 378.00 214.07 378.00 214.53 C 378.00 214.79 375.41 215.00 372.25 215.00 L 366.50 215.00 L 359.64 206.50 C 355.87 201.82 352.40 198.00 351.92 198.00 C 351.44 198.00 349.26 200.36 347.07 203.25 C 337.84 215.45 338.42 215.00 331.90 215.00 C 328.66 215.00 326.00 214.71 326.00 214.36Z"/>
+          <path d="M 518.00 191.50 L 518.00 168.00 L 523.48 168.00 L 529.23 168.00 L 529.23 186.75 L 529.23 205.78 L 544.75 205.78 L 560.00 205.78 L 560.00 210.53 L 560.00 215.00 L 539.00 215.00 L 518.00 215.00 L 518.00 191.50Z"/>
+          <path d="M 573.00 191.50 L 573.00 168.00 L 577.98 168.00 L 583.23 168.00 L 583.23 186.75 L 583.23 205.78 L 598.75 205.78 L 614.00 205.78 L 614.00 210.53 L 614.00 215.00 L 593.50 215.00 L 573.00 215.00 L 573.00 191.50Z"/>
+          <path d="M 188.09 244.09 C 187.03 243.03 184.05 237.75 181.46 232.34 C 178.88 226.93 176.15 221.32 175.40 219.88 L 174.05 217.27 L 183.11 213.06 C 188.10 210.74 192.30 208.99 192.46 209.17 C 193.20 210.03 198.00 219.57 198.00 220.18 C 198.00 220.56 200.93 226.30 204.50 232.92 C 208.07 239.55 211.00 245.20 211.00 245.49 C 211.00 245.77 206.28 246.00 200.50 246.00 C 191.49 246.00 189.73 245.73 188.09 244.09Z"/>
+          <path d="M 54.00 245.06 C 54.00 244.54 55.01 243.04 56.25 241.74 C 58.40 239.46 58.97 239.38 69.25 239.77 C 75.16 240.00 80.00 240.59 80.00 241.09 C 80.00 241.59 79.10 242.90 78.00 244.00 C 76.24 245.76 74.67 246.00 65.00 246.00 C 58.77 246.00 54.00 245.59 54.00 245.06Z"/>
+        </g>
+  </defs>
+</svg>
+
+
+<nav id="nav">
+  <div class="mobile-menu-wrap">
+    <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown">☰</button>
+    <div class="mobile-dropdown" id="mobileDropdown">
+      <a href="/sabe" data-sito="/sabe">SABE</a>
+      <a href="/atlas" data-sito="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier" data-sito="/atelier">Atelier</a>
+      <a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a>
+      <a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a>
+    </div>
+  </div>
+  <a href="/" class="nav-logo-img" data-sito="/"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <ul class="nav-links">
+    <li><a href="/sabe" data-sito="/sabe">Sabe</a></li>
+    <li><a href="/atlas" data-sito="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" class="active" aria-current="page" data-sito="/atelier">Atelier</a></li>
+    <li><a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a></li>
+    <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <div class="lang-sw">
+      <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
+    </div>
+  </div>
+</nav>
+<!-- «Il tuo mondo», il preventivo dei siti (vedi #preventivo nel CSS). -->
+<a id="preventivo" href="/atelier/parliamone" aria-label="Il tuo mondo — preventivo"><span class="pv-t">Il tuo mondo &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></a>
+<script>
+(function(){
+  var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
+  b.addEventListener('click', function(e){
+    e.stopPropagation();
+    var on = m.classList.toggle('-on');
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+  /* il clic sulla scena non deve arrivare alla giostra mentre si usa il menu */
+  m.addEventListener('click', function(e){ e.stopPropagation(); });
+  /* nemmeno IT/EN: senza, il clic sulla lingua faceva anche «Entra» */
+  document.querySelector('#nav .lang-sw').addEventListener('click', function(e){
+    e.stopPropagation(); m.classList.remove('-on'); b.setAttribute('aria-expanded','false');
+  });
+  document.addEventListener('click', function(){ m.classList.remove('-on'); b.setAttribute('aria-expanded','false'); });
+})();
+</script>
+<script>
+/* ITALIANO / INGLESE — tutta la pagina, non piu' solo il menu (Nike: «la
+   traduzione in inglese non traduce tutto. traduci tutte le scritte
+   possibili»). Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non
+   la dice vale quella della pagina da cui si arriva, poi quella del browser.
+   UN SOLO DIZIONARIO, in due metà:
+     · TESTI (qui sotto) — le scritte della PAGINA: menu (`data-t`), titolo e
+       descrizione, atrio, suggerimento, didascalia, elenco, i due link fissi;
+     · il record di ogni effetto in js/effetti-deck.js — nome, tipo e copy
+       della card, con la sua versione inglese in `en`.
+   Questo script gira PRIMA del mazzo: traduce subito quello che c'e' nel DOM
+   e poi avvisa (`atelier:lingua` sul document) chi disegna il resto — la
+   didascalia, i fermi, l'elenco sulla tela e la copy dentro la card —, che
+   legge la lingua corrente da `window.atelierLinguaOra`. Si cambia dal vivo,
+   senza ricaricare, in tutte e due le direzioni. */
+(function(){
+  var TESTI = {
+    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
+         titolo:'Effetti speciali — Atelier',
+         desc:'Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.',
+         ogTitolo:'La costellazione | Axxell',
+         heroK:'// atelier', heroH:'Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.', entra:'Entra →',
+         hint:"scorri per cambiare mondo · usa l'anteprima", hintM:"scorri per girare · tocca l'anteprima",
+         fermi:'I mondi', indice:'ESPLORA IL MONDO',
+         torna:'Torna alla mappa', mondo:'Il tuo mondo →', mondoAria:'Il tuo mondo — preventivo',
+         noThree:'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.' },
+    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
+         titolo:'Special effects — Atelier',
+         desc:'Eight worlds built, one for every industry. The ninth spot is empty: it’s yours.',
+         ogTitolo:'The constellation | Axxell',
+         heroK:'// atelier', heroH:'Eight worlds built.<br>The ninth is <em>yours</em>.', entra:'Enter →',
+         /* Su telefono il suggerimento deve stare su UNA riga a 390 px, fra
+            le due icone d'angolo: l'inglese resta piu' corto dell'italiano. */
+         hint:'scroll to change world · try the preview', hintM:'swipe to turn · tap the preview',
+         fermi:'The worlds', indice:'EXPLORE THE WORLD',
+         torna:'Back to the map', mondo:'Your world →', mondoAria:'Your world — get a quote',
+         noThree:'three.js did not load. Open the page from a server (http://localhost:8788/atelier/), not by double-clicking it in the Finder.' }
+  };
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
+  function linguaIniziale(){
+    try {
+      var p = new URL(location.href).searchParams.get('lang');
+      if (p === 'en' || p === 'it') return p;
+      if (document.referrer){
+        var r = new URL(document.referrer);
+        var rl = r.origin === location.origin ? r.searchParams.get('lang') : null;
+        if (rl === 'en' || rl === 'it') return rl;
+      }
+    } catch(e){}
+    return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+  }
+  function testo(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; return el; }
+  function meta(sel, v){ var m = document.querySelector(sel); if (m) m.setAttribute('content', v); }
+  function atelierLingua(l){
+    if (l !== 'it' && l !== 'en') return false;
+    var T = TESTI[l], en = l === 'en';
+    window.atelierLinguaOra = l;
+    document.documentElement.lang = l;
+    document.title = T.titolo;
+    meta('meta[name="description"]', T.desc);
+    meta('meta[property="og:description"]', T.desc);
+    meta('meta[property="og:title"]', T.ogTitolo);
+    document.querySelectorAll('#nav [data-t], #preventivo [data-t]').forEach(function(el){
+      var v = T[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v;
+    });
+    var burger = document.getElementById('navBurger'); if (burger) burger.setAttribute('aria-label', T.menu);
+    document.querySelectorAll('#nav [data-sito]').forEach(function(a){
+      var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
+      if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
+      a.setAttribute('href', d + (en ? '?lang=en' : '') + h);
+    });
+    /* I due link fissi si portano dietro la lingua anche loro: la mappa
+       dell'atelier e il modulo del preventivo si aprono in inglese. */
+    var torna = document.getElementById('torna');
+    if (torna){
+      torna.setAttribute('aria-label', T.torna);
+      torna.setAttribute('href', '/atelier?da=effetti-speciali' + (en ? '&lang=en' : ''));
+      var tt = torna.querySelector('.t-testo'); if (tt) tt.textContent = T.torna;
+    }
+    var pv = document.getElementById('preventivo');
+    if (pv){
+      pv.setAttribute('aria-label', T.mondoAria);
+      pv.setAttribute('href', '/atelier/parliamone' + (en ? '?lang=en' : ''));
+      var pt = pv.querySelector('.pv-t'); if (pt) pt.textContent = T.mondo;
+    }
+    /* L'atrio, il suggerimento in basso, l'etichetta dei fermi. */
+    var hero = document.getElementById('hero');
+    if (hero){
+      var hk = hero.querySelector('.k'), hh = hero.querySelector('h1');
+      if (hk) hk.textContent = T.heroK;
+      if (hh) hh.innerHTML = T.heroH;
+    }
+    testo('go', T.entra);
+    testo('hint', mobile ? T.hintM : T.hint);
+    var dots = document.getElementById('dots'); if (dots) dots.setAttribute('aria-label', T.fermi);
+    ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
+    try {
+      var u = new URL(location.href);
+      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      history.replaceState(history.state, '', u);
+    } catch(e){}
+    /* Il resto lo disegna il mazzo (didascalia, fermi, elenco, copy). */
+    try { document.dispatchEvent(new CustomEvent('atelier:lingua', { detail: l })); } catch(e){}
+    return false;
+  }
+  window.atelierTesti = TESTI;
+  window.atelierLingua = atelierLingua;
+  /* Il DOM di #hero, #hint, #torna ecc. sta PIU' IN BASSO di questo script:
+     qui si fissano subito lingua, titolo e menu; la seconda passata, sulle
+     scritte che ancora non c'erano, parte subito sotto a #err (vedi li'),
+     prima che il mazzo legga `atelierLinguaOra`. */
+  atelierLingua(linguaIniziale());
+})();
+</script>
+
+<div id="stage"><canvas id="c"></canvas></div>
+
+<!-- L'ASSE CENTRALE (Task 2): l'elica DNA, sempre viva, dietro al mazzo
+     (spento per ora) e davanti al fondo. `data-role="helix-stage"` è
+     l'elemento di misura che js/dna.js usa al posto di #wcManifestoPin
+     quando non trova il manifesto — qui grande quanto lo schermo, e
+     centrata (offsetX = 0) invece che spostata a destra della colonna di
+     testo che qui non c'è. -->
+<div id="helixStage" data-role="helix-stage" aria-hidden="true">
+  <canvas id="helixCanvas"></canvas>
+</div>
+
+<!-- IL LAYER VIVO (Task 5): il controller ci monta dentro la tela dell'effetto
+     a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
+     `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
+<div id="stage-live" hidden></div>
+<div id="lp" aria-hidden="true">
+  <i class="lp-k"></i>
+  <h2 class="lp-h"><span class="lp-l"></span><span class="lp-l"></span></h2>
+  <p class="lp-s"></p>
+  <span class="lp-b" role="presentation"></span>
+</div>
+
+<!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
+     video di attesa, è la stessa scena in cui si sta per entrare. -->
+<div id="hero">
+  <p class="k">// atelier</p>
+  <h1>Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.</h1>
+  <button id="go">Entra →</button>
+</div>
+<div id="labels"><div id="labelCam"></div></div>
+<div id="focus" aria-live="polite">
+  <div class="counter"><span class="num" id="fNum">01</span><i>/</i><span class="tot" id="fTot">09</span></div>
+  <div class="fname" id="fName">Il prodotto</div>
+  <div class="fsub" id="fSub">retail, e-commerce</div>
+  <div id="dots" aria-label="I mondi"></div>
+</div>
+<p id="hint" style="opacity:0">scorri per cambiare mondo · usa l'anteprima</p>
+<!-- Torna alla mappa dell'atelier, parcheggiata sulla card «Effetti speciali»
+     (?da=… : la home salta il vapore dell'ingresso). -->
+<a id="torna" href="/atelier?da=effetti-speciali" aria-label="Torna alla mappa"><span aria-hidden="true">&larr;</span><span class="t-testo">Torna alla mappa</span></a>
+
+<div id="err"></div>
+<!-- Seconda passata della lingua: ora l'atrio, il suggerimento e i due link fissi esistono. -->
+<script>window.atelierLingua && atelierLingua(window.atelierLinguaOra);</script>
+
+<!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
+     cui scorrere, così l'asse centrale (Task 2) ha un progresso di scroll
+     globale da leggere. -->
+<div id="scrollSpacer" aria-hidden="true"></div>
+
+<!-- Task 2 — l'asse centrale (l'elica DNA di js/dna.js) porta con sé il
+     modulo WC che la registra e la sua base di scroll: gsap+ScrollTrigger
+     (core.js li registra sempre, anche se qui non c'è una sezione da
+     pinnare), lenis (lo scroll fluido su desktop — WC.lenis, letto da
+     dna.js per il progresso globale), e glsl.js (gli aiutanti G.* che dna.js
+     usa: colori, smorzamento, atmosfera, puntatore). CustomEase/SplitText/
+     Flip restano fuori: core.js li registra solo se `typeof` li trova, e qui
+     non serve nessuno dei tre. ScrambleTextPlugin invece c'e' (2026-09-24):
+     decifra il titolo della copy di «Contatto» (vedi `lpDecifra`). -->
+<script src="vendor/gsap.min.js?v=20260824a"></script>
+<script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
+<script src="vendor/lenis.min.js?v=20260824a"></script>
+<script src="vendor/three.min.js?v=20260824a"></script>
+<script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
+<script src="js/core.js?v=20260824a"></script>
+<script src="js/glsl.js?v=20260824a"></script>
+<script src="js/dna.js?v=20260924c"></script>
+<!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
+     sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
+     window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
+<script src="js/effetti-deck.js?v=20260925a"></script>
+<!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
+     quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
+     WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
+     PRIMA dell'inline: il controller lo cerca in WC.effects. -->
+<script src="js/saucer.js?v=20260924d"></script>
+<!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
+     dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
+     js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
+     invece che a scroll) e «La piega» (altitude, il fluido sopra il video —
+     l'H.264 non decodifica sotto swiftshader headless, atteso). Nessuna delle
+     tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
+     servono per registrare i tre handle esterni su WC.effects, che il
+     controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/vesper.js?v=20260924d"></script>
+<script src="js/orologio.js?v=20260924b"></script>
+<script src="js/altitude.js?v=20260924b"></script>
+<!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
+     (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
+     vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
+     WebGL del volo/DNA/vesper di cap. 02, non testo DOM: vedi la nota sul
+     record del mazzo in testa a js/warp.js). Nessuna delle due sezioni
+     esiste qui, quindi l'init WC di ciascuna è un no-op innocuo; servono per
+     registrare i due handle esterni su WC.effects, che il controller sveglia
+     dentro #stage-live. Caricati PRIMA dell'inline. -->
+<script src="js/lithos.js?v=20260924b"></script>
+<script src="js/warp.js?v=20260924d"></script>
+<!-- «Gravità»: lo sneaker, l'handle esterno WC.effects.sneaker che il
+     controller sveglia dentro #stage-live (il video del prodotto sospeso). -->
+<script src="js/sneaker.js?v=20260924b"></script>
+<script>
+(function(){
+  var errBox = document.getElementById('err');
+  if (typeof THREE === 'undefined'){
+    errBox.style.display = 'grid';
+    errBox.textContent = window.atelierTesti[window.atelierLinguaOra || 'it'].noThree;
+    return;
+  }
+
+  /* IL FLAG DEL CANTIERE (Task 1). La pozza Mirror Hall e' tolta, e il
+     mazzo di portali non si costruisce ancora: le funzioni del vetro
+     (VERT/FRAG/TARATURA) restano definite piu' sotto perche' servono ai
+     prossimi task, ma non vengono chiamate finche' questo resta a false.
+     Con DECK_ON=false lo stage e' vuoto: solo lo sfondo (nebbia+pulviscolo),
+     la nav, nessun portale, nessuna didascalia a fuoco. */
+  /* Task 3 — IL MAZZO È ACCESO. Le 7 card degli effetti si costruiscono e
+     cavalcano l'elica (window.helixPlace), guidate dallo scroll globale come
+     l'asse centrale. */
+  var DECK_ON = true;
+  /* L'anteprima viva (vedi #stage-live nel CSS): dichiarata qui in cima perche'
+     la leggono gia' i gestori dell'input (`inPreview`), molto prima del
+     controller che ci monta dentro gli effetti. */
+  var STAGE_LIVE = document.getElementById('stage-live');
+
+  /* ⚠️ LA MINA DELLO SCROLL (Task 2→4). La giostra di index.html dirottava la
+     rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
+     e bloccava lo scroll della pagina — qui NON deve mai succedere: la pagina
+     resta scrollabile normalmente (vedi #scrollSpacer), anche se dal Task 4 in
+     poi non è più lei a muovere il mazzo. `RING_SCROLL` è rimasto come
+     interruttore per quel SOLO comportamento (il preventDefault che dirotta
+     rotellina/frecce): resta SEMPRE `false` — sezione 4 più sotto spiega da
+     dove viene invece mosso il mazzo dal Task 4. */
+  var RING_SCROLL = false;
+
+  /* ======================================================================
+     I SEI MONDI. Ognuno è un SETTORE, non una tecnica: è la condizione
+     dell'intero progetto. Il colore non è decorativo — è quello con cui il
+     mondo tinge la nebbia intorno a sé quando lo guardi, così il fondo resta
+     neutro e sono i portali a colorarlo.
+     `poster` è quello che si vede sempre sulla lastra; l'effetto vivo lo
+     monta il controller sopra, in #stage-live. Nessun mondo ha piu' una
+     pagina sua (2026-09-24): l'effetto si usa dentro la card.
+     ====================================================================== */
+  /* MISURA UNICA PER TUTTE LE LASTRE.
+     Nella costellazione ogni portale aveva la sua taglia: erano fermi, e la
+     differenza si leggeva come profondita'. In una giostra sfilano uno dietro
+     l'altro nello stesso posto, e la stessa differenza si legge come un
+     errore. Ed e' la misura del NUCLEO: ogni mondo e' grande esattamente
+     quanto lo slot che resta da riempire. */
+  /* La misura e' TARATA sulla fila, non scelta a occhio: e' quella per cui
+     la lastra davanti riempie il quadro come si deve E si sovrappone alla
+     successiva. La sovrapposizione non e' un effetto collaterale — senza,
+     il vetro non ha niente da rifrangere e torna a essere una cornice. */
+  var CW = 2.95, CH = 1.84;
+
+  /* Task 3 — LA SORGENTE DEI DATI È window.EFFETTI (7 effetti), non più la
+     lista dei 9 mondi. Vive in js/effetti-deck.js, caricato prima di questo
+     script. Il resto del mazzo (mesh, vetro, focus, trattini) continua a
+     leggere `WORLDS`: qui è solo un alias del nuovo array, così il blocco
+     ereditato non va riscritto. I record hanno `col` e `poster` come i mondi;
+     `sett` è aliasato a `tipo` dentro effetti-deck.js per la focus-caption e
+     i trattini. Niente `vuoto`/`page`/`video`: le card sono poster di vetro. */
+  var WORLDS = window.EFFETTI;
+  WORLDS.forEach(function(w, i){ w.idx = i; });
+  /* LE SCRITTE DI UNA CARD NELLA LINGUA DELLA PAGINA: il record stesso in
+     italiano, la sua meta' `en` in inglese (vedi js/effetti-deck.js). Ha gli
+     stessi campi che il mazzo legge — `nome`, `sett`, `lp` —, quindi dove
+     prima si scriveva `w.nome` ora si scrive `inLingua(w).nome`. */
+  function inLingua(w){ return (window.atelierLinguaOra === 'en' && w.en) ? w.en : w; }
+  function testoPagina(k){ var T = window.atelierTesti; return T ? T[window.atelierLinguaOra || 'it'][k] : ''; }
+
+  /* ══ IL MAZZO ═════════════════════════════════════════════════════════
+     Non piu' un anello. L'anello era onesto — la lastra si volta e il vetro
+     si chiude — ma teneva meta' delle lastre girate di spalle, e per arrivare
+     alla quinta bisognava fare mezzo giro al buio. Qui invece si devono
+     VEDERE tutte, e si deve poter andare su una qualsiasi quando si vuole.
+     Le nove lastre stanno quindi su una fila che sfugge in profondita' da
+     tutti e due i lati, come un mazzo aperto a ventaglio. Chi e' al posto
+     zero e' davanti, grande e di faccia; gli altri arretrano, rimpiccioliscono
+     e si girano, ma restano tutti in quadro e tutti cliccabili. Si scorre, la
+     fila scorre, e la lastra che arriva davanti si ingrandisce.
+     Due conti fanno tutto il lavoro, e nessuno dei due e' decorativo:
+       · `tanh` sulla x — la fila non se ne va fuori schermo, si accumula
+         verso un punto di fuga. Senza, la quarta lastra e' gia' fuori.
+       · la profondita' cresce LINEARE mentre la x satura. Se saturano
+         tutt'e due, l'angolo di vista non e' piu' monotono: le lastre si
+         sorpassano e la fila torna indietro su se stessa (provato).
+     E soprattutto: LE LASTRE SI SOVRAPPONGONO, di proposito. E' la condizione
+     perche' il vetro abbia qualcosa da rifrangere.
+     ═════════════════════════════════════════════════════════════════════ */
+  var NZ = -1.55;                       // dove gira lo sciame senza destinazione
+  var STEP = 1;                         // l'unita' di scorrimento e' UNA lastra
+  /* ══ LA ROTONDA (Mirror Hall) ══════════════════════════════════════════
+     Le nove lastre non stanno piu' su una fila a ventaglio: stanno su un
+     ANELLO, e la camera e' AL CENTRO che guarda in fuori. Chi e' davanti
+     (u=0) sta a (0, cardY, -R), di faccia; girando l'anello gli altri mondi
+     arrivano davanti. Si vede l'arco che ti sta di fronte (~5 lastre); gli
+     altri sono dietro le tue spalle e si scoprono girando — e' il patto della
+     rotonda, scelto sapendo il compromesso.
+     Le lastre restano PIATTE e tangenti all'anello (non incurvate come le
+     card di Mirror Hall): incurvarle romperebbe la normale dello smusso del
+     vetro, la taratura del 24/08. La pozza riflettente sta sotto, alla quota
+     y=0, e le lastre sono alzate a `cardY` perche' stiano sopra il pelo. */
+  var RING = { R:6.6, cardY:1.18, camH:0.92, lookY:0.98 };
+  var TWO_PI_N = 2*Math.PI / WORLDS.length;
+
+  function wrapN(u, n){ u = (u + n*0.5) % n; if (u < 0) u += n; return u - n*0.5; }
+  /* Quanti posti separano una lastra da quello davanti, col segno e col giro
+     corto: e' il numero da cui discende tutto il resto. */
+  function deckU(i, pos){ return wrapN(i - pos, WORLDS.length); }
+  /* Task 3 — LA POSIZIONE NON È PIÙ SULL'ANELLO, È SULL'ELICA.
+     La vecchia deckPlace disponeva le lastre su un anello attorno alla camera
+     (out.set(R·sinθ, cardY, −R·cosθ)). Ora delega a window.helixPlace, che le
+     fa salire lungo l'elica dell'asse centrale (vedi js/effetti-deck.js). Resta
+     una funzione locale così i tre punti di chiamata (portalPoint, costruzione
+     card, frame()) non cambiano. deckYaw/deckScale/deckFade restano quelli
+     dell'anello, ereditati. */
+  function deckPlace(u, out){
+    return window.helixPlace(u, out);
+  }
+  /* La lastra guarda il centro: la sua normale (+Z locale) punta alla camera.
+     rotation.y = -theta. E la `fwd` calcolata a valle come
+     (sin(yaw),0,cos(yaw)) torna la normale giusta. */
+  function deckYaw(u){ return -u * TWO_PI_N; }
+  function deckRoll(u){ return 0; }              // su un anello non serve rollio
+  /* Tutte le lastre sono alla stessa distanza dal centro, quindi alla stessa
+     misura: e' la rotonda di Mirror Hall. Il mondo a fuoco non si stacca per
+     grandezza ma perche' e' centrato, piu' acceso (uHot) e nominato dalla
+     didascalia. */
+  /* LE VICINE RIMPICCIOLISCONO (2026-09-24, richiesta di Nike: «nessuna card
+     deve toccarne un'altra»). A grandezza piena le card accanto finivano
+     quasi tutte DENTRO al rettangolo di quella davanti; scalate al 25% (con
+     la salita `climb` e la quota `yTop` tarate in js/effetti-deck.js) restano
+     staccate anche a meta' giro. Smussato (smoothstep su |u|) perche' la card
+     che arriva cresca, non scatti. 0.25 e' piu' piccolo del 55% di partenza:
+     al 55% la vicina restava troppo alta per liberare insieme la barra di
+     navigazione E la didascalia (sono ai due lati opposti dello schermo). */
+  var SCALE_SIDE = 0.25;
+  function deckScale(u){
+    var a = Math.min(1, Math.abs(u));
+    a = a * a * (3 - 2 * a);
+    return 1 - (1 - SCALE_SIDE) * a;
+  }
+  /* Chi si volta di spalle sparisce. Dietro la camera non si vedrebbe
+     comunque, ma questo spegne DOLCEMENTE l'arco posteriore ai lati invece di
+     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te.
+     2026-09-24: soglie strette da [-0.1,0.35] a [0.28,0.55]. Durante il giro
+     (non a riposo) la card successiva passa per |u|≈1.5 prima di arrivare a
+     fianco: con le soglie vecchie ci arrivava ancora al 18% di opacita' e
+     toccava didascalia/barra. cos(1.5·2π/7)≈0.222 sta sotto la nuova soglia
+     bassa (0.28): a |u|≈1.5 e' gia' spenta. cos(1·2π/7)≈0.624 resta sopra la
+     soglia alta (0.55): la vicina ferma a |u|=1 resta piena, invariata. */
+  function deckFade(u){
+    var c = Math.cos(u * TWO_PI_N);
+    return c <= 0.28 ? 0 : (c >= 0.55 ? 1 : (c - 0.28) / 0.27);
+  }
+
+  var canvas   = document.getElementById('c');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x04050a, 1);
+  renderer.autoClear = false;
+
+  var camera = new THREE.PerspectiveCamera(66, 1, 0.1, 240);
+  /* La camera sta AL CENTRO dell'anello e guarda in fuori. Un filo di z
+     positivo per non stare esattamente sul perno; `resize()` la fa arretrare
+     su schermo stretto perche' la lastra davanti ci stia comunque. */
+  var CAM0 = new THREE.Vector3(0, RING.camH, 0.001);
+  camera.position.copy(CAM0);
+
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
+
+  /* ======================================================================
+     1. IL MONDO DIETRO
+     ====================================================================== */
+  var bg = new THREE.Scene();
+
+  var fogMat = new THREE.ShaderMaterial({
+    depthTest:false, depthWrite:false,
+    uniforms:{ uTime:{value:0}, uAspect:{value:1}, uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.999,1.0); }',
+    fragmentShader:[
+      'varying vec2 vUv; uniform float uTime,uAspect,uTintStr; uniform vec3 uTint;',
+      'float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }',
+      'void main(){',
+      '  vec2 p=(vUv-0.5)*vec2(uAspect,1.0); float d=length(p);',
+      '  vec3 base=mix(vec3(0.055,0.052,0.085),vec3(0.010,0.011,0.021),smoothstep(0.0,0.95,d));',
+      '  base+=vec3(0.020,0.012,0.050)*(1.0-smoothstep(0.0,0.55,d));',
+      // il mondo guardato tinge la nebbia: il fondo resta neutro, sono i portali a colorarlo
+      // (2026-09-24) 0.085 → 0.15: con un colore per card la tinta deve
+      // leggersi — una velatura chiara del colore, non un fondo colorato
+      '  base+=uTint*uTintStr*0.15*(1.0-smoothstep(0.0,1.05,d));',
+      '  base+=(h(gl_FragCoord.xy+uTime)-0.5)*0.012;',
+      '  gl_FragColor=vec4(base,1.0);',
+      '}'
+    ].join('\n')
+  });
+  var fog = new THREE.Mesh(new THREE.PlaneGeometry(2,2), fogMat);
+  fog.frustumCulled = false;
+  bg.add(fog);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LE PARTICELLE — UNA SOLA POPOLAZIONE, TRE DESTINI.
+
+     Questo è il pezzo che tiene insieme tutto il capitolo: NON esiste un
+     tunnel e poi una mappa. Esiste un solo sistema di punti, una sola camera,
+     e una sola scena. All'inizio i punti sfilano verso di te (il tunnel);
+     poi il viaggio rallenta fino a fermarsi, e ognuno raggiunge la
+     destinazione che aveva già assegnata dall'inizio:
+
+       ruolo 0 — l'85%: si allarga e diventa il pulviscolo di fondo;
+       ruolo 1 — il 12%: converge sulla superficie di uno dei sei portali e
+                 lì densifica finché il portale non traspare e lo sostituisce;
+       ruolo 2 — il resto: NON ha una destinazione. Resta a girare attorno al
+                 nucleo vuoto. Sono le uniche rimaste senza posto, ed è
+                 l'altra metà della frase che sta già scritta nel capitolo
+                 dell'elica: «ognuna con la sua destinazione già assegnata».
+
+     Non c'è niente da cucire fra tunnel e mappa perché non si taglia niente:
+     cambia solo `uAssign`, da 0 a 1. ══════════════════════════════════════ */
+  var PN = mobile ? 1500 : 3400;
+  var TUNNEL_LEN = 26.0;
+  var pPos = new Float32Array(PN*3), pTgt = new Float32Array(PN*3),
+      pSeed = new Float32Array(PN), pRole = new Float32Array(PN);
+
+  /* Le facce dei portali servono da bersaglio: un punto a caso sulla lastra,
+     portato in coordinate di mondo. Si prendono le posizioni dell'anello A
+     GIRO FERMO (spin = 0), che sono quelle su cui le lastre traspaiono a fine
+     coreografia: l'ingresso avviene prima che la giostra si muova, e comunque
+     appena i portali sono formati queste particelle si spengono. */
+  var tmpP = new THREE.Vector3();
+  function portalPoint(w, out){
+    var u = deckU(w.idx, 0), sc = deckScale(u);
+    out.set((Math.random()-0.5)*CW*sc*0.94, (Math.random()-0.5)*CH*sc*0.94, 0);
+    out.applyEuler(new THREE.Euler(0, deckYaw(u), deckRoll(u)));
+    out.add(deckPlace(u, tmpP));
+    return out;
+  }
+  var tmpV = new THREE.Vector3();
+  for (var i=0;i<PN;i++){
+    // posizione di partenza: sparsa nel tubo che sfila
+    var ang = Math.random()*6.283, rad = 0.9 + Math.pow(Math.random(),0.6)*4.6;
+    pPos[i*3]   = Math.cos(ang)*rad;
+    pPos[i*3+1] = Math.sin(ang)*rad*0.72;
+    pPos[i*3+2] = Math.random()*TUNNEL_LEN;
+    pSeed[i]    = Math.random();
+
+    var r = Math.random();
+    if (r < 0.12){                                   // sulla faccia di un portale
+      pRole[i] = 1;
+      var w = WORLDS[i % WORLDS.length];
+      portalPoint(w, tmpV);
+      pTgt[i*3]=tmpV.x; pTgt[i*3+1]=tmpV.y; pTgt[i*3+2]=tmpV.z;
+    } else if (r < 0.17){                            // senza destinazione, attorno al vuoto
+      pRole[i] = 2;
+      pTgt[i*3]=0; pTgt[i*3+1]=0; pTgt[i*3+2]=0;
+    } else {                                         // il fondo
+      pRole[i] = 0;
+      pTgt[i*3]   = (Math.random()-0.5)*15;
+      pTgt[i*3+1] = (Math.random()-0.5)*9;
+      pTgt[i*3+2] = (Math.random()-0.5)*7 - 1.8;
+    }
+  }
+  var pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+  pGeo.setAttribute('aTarget',  new THREE.BufferAttribute(pTgt,3));
+  pGeo.setAttribute('aSeed',    new THREE.BufferAttribute(pSeed,1));
+  pGeo.setAttribute('aRole',    new THREE.BufferAttribute(pRole,1));
+  pGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 40);
+
+  var dustMat = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    uniforms:{ uTime:{value:0}, uPr:{value:renderer.getPixelRatio()},
+               uTravel:{value:0}, uAssign:{value:0}, uSpeed:{value:1},
+               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN},
+               uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
+    vertexShader:[
+      'attribute vec3 aTarget; attribute float aSeed, aRole;',
+      'uniform float uTime,uPr,uTravel,uAssign,uSpeed,uCardsIn,uNZ,uLen;',
+      'varying float vA;',
+      'void main(){',
+      // dov'è mentre sfila: la z scorre e si riavvolge
+      '  vec3 sp = vec3(position.xy, mod(position.z + uTravel, uLen) - uLen*0.62);',
+      // ogni particella parte con un suo ritardo: l'assegnazione non è un salto
+      '  float d = clamp((uAssign - aSeed*0.26) / 0.74, 0.0, 1.0);',
+      '  d = d*d*(3.0-2.0*d);',
+      '  vec3 tgt = aTarget;',
+      '  if (aRole > 1.5){',                     // quelle senza posto: girano attorno al vuoto
+      '    float a = aSeed*6.283 + uTime*0.055;',
+      '    float rr = 0.95 + fract(aSeed*7.3)*0.8;',
+      '    tgt = vec3(cos(a)*rr, sin(a)*rr*0.58, uNZ + (fract(aSeed*13.1)-0.5)*0.4);',
+      '  }',
+      '  vec3 p = mix(sp, tgt, d);',
+      '  if (aRole < 0.5){',                     // il fondo respira piano
+      '    p.x += sin(uTime*0.11 + aSeed*6.28)*0.20*d;',
+      '    p.y += cos(uTime*0.09 + aSeed*11.0)*0.16*d;',
+      '  }',
+      '  vec4 mv = modelViewMatrix * vec4(p,1.0);',
+      '  float base = 0.16 + 0.5*(0.5+0.5*sin(uTime*0.5 + aSeed*19.0));',
+      '  vA = mix(0.85, base, d) * (0.35 + 0.65*uSpeed*0.0 + 0.65);',
+      // sulla faccia dei portali le particelle si spengono via via che il
+      // portale traspare: sono loro a diventarlo
+      '  if (aRole > 0.5 && aRole < 1.5) vA *= (1.0 - uCardsIn);',
+      '  gl_PointSize = (1.3 + 1.4*fract(aSeed*3.1) + uSpeed*2.6) * uPr * (3.4 / max(0.3, -mv.z));',
+      '  gl_Position = projectionMatrix * mv;',
+      '}'
+    ].join('\n'),
+    fragmentShader:[
+      // il pulviscolo resta azzurro, ma tira un po' (35%) verso il colore
+      // della card davanti — la stessa tinta, e lo stesso passo, della nebbia
+      'varying float vA; uniform vec3 uTint; uniform float uTintStr;',
+      'void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;',
+      '  vec3 c=mix(vec3(0.62,0.78,0.95), uTint, 0.35*uTintStr);',
+      '  gl_FragColor=vec4(c, vA*(1.0-smoothstep(0.18,0.5,d))); }'
+    ].join('\n')
+  });
+  var dust = new THREE.Points(pGeo, dustMat);
+  dust.frustumCulled = false;
+  bg.add(dust);
+
+  /* IL NUCLEO AL CENTRO NON C'E' PIU', E I RAGGI NEMMENO.
+     Erano il perno dell'anello: un contorno vuoto al centro e otto raggi che
+     ci convergevano. Con la fila non c'e' un centro da tenere sgombro — il
+     posto vuoto e' l'ULTIMA lastra, la si raggiunge scorrendo come tutte le
+     altre, e i raggi non avrebbero piu' un punto verso cui puntare. Quello
+     che resta della vecchia scena e' il pulviscolo, che serviva a comporre la
+     fila e continua a servire. */
+
+  /* ======================================================================
+     2. IL VETRO — materiale approvato il 24/08/2026. NON ritarare.
+     `uFlat` è l'unica aggiunta: a 1 il portale si disegna piatto, ed è la
+     versione che finisce nel render target per farsi vedere dagli altri.
+     ====================================================================== */
+  /* IL VETRO E' TORNATO A ESSERE VETRO.
+     La taratura del 24/08 era di una lastra che si guarda da sola su fondo
+     nero: aperta di faccia (`uOpen` 0.75) mostrava il contenuto quasi
+     pulito, e la rifrazione viveva solo sullo smusso (`rMask` partiva da
+     0.10). In una fila di lastre sovrapposte quel materiale sparisce — sono
+     nove cornici con dentro nove fotografie.
+     Qui il vetro ha un CORPO: smeriglia il contenuto anche al centro
+     (`uInside`, che prima non esisteva), non si apre mai del tutto
+     (`uOpen` 0.46), rifrange su tutta la superficie e non solo al bordo, e
+     ha un velo lattiginoso (`uMilk`) che ne fa una lastra invece di una
+     finestra. Quello che c'e' dentro si INTUISCE. */
+  /* DE-SFOCO (27/08): la fila di lastre sovrapposte chiedeva un vetro con un
+     CORPO fitto per non essere nove cornici; ma nella rotonda, e con la
+     richiesta esplicita di «vedere il contenuto», quel velo era troppo. I tre
+     numeri che nascondono il contenuto scendono: `uInside` (velo al centro)
+     0.30→0.12, `uMilk` (corpo lattiginoso) 0.38→0.20, `uFrost` (smeriglia al
+     bordo) 0.85→0.52. Rifrazione e trasmissione restano: e' ancora vetro, si
+     vede solo cosa c'e' dentro. */
+  var TARATURA = { uFres:2.2, uOpen:0.56, uThick:0.022, uDisp:0.26,
+                   uBev:0.16, uRim:0.62, uGain:1.28, uPar:0.06, uBlur:0.60,
+                   uFrost:0.52, uInside:0.12, uMilk:0.20, uThru:0.60 };
+
+  var VERT = [
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'void main(){',
+    '  vUv=uv;',
+    '  vec4 mv=modelViewMatrix*vec4(position,1.0);',
+    '  vView=-mv.xyz;',
+    '  vec3 T=normalize((modelViewMatrix*vec4(1.0,0.0,0.0,0.0)).xyz);',
+    '  vec3 B=normalize((modelViewMatrix*vec4(0.0,1.0,0.0,0.0)).xyz);',
+    '  vec3 N=normalize((modelViewMatrix*vec4(0.0,0.0,1.0,0.0)).xyz);',
+    '  vTBN=mat3(T,B,N);',
+    '  gl_Position=projectionMatrix*mv;',
+    '}'
+  ].join('\n');
+
+  var FRAG = [
+    'precision highp float;',
+    'varying vec2 vUv; varying vec3 vView; varying mat3 vTBN;',
+    'uniform sampler2D tScene,tVideo;',
+    'uniform vec2 uRes;',
+    'uniform float uFres,uOpen,uThick,uDisp,uBev,uRim,uGain,uPar,uBlur,uFrost,uInside,uMilk,uThru;',
+    'uniform float uVidAsp,uCardAsp,uFlat,uHot,uDim,uReveal,uVuoto;',
+    'uniform vec3 uCol;',
+
+    'float sdBox(vec2 p,vec2 b,float r){ vec2 q=abs(p)-b+r;',
+    '  return min(max(q.x,q.y),0.0)+length(max(q,0.0))-r; }',
+
+    // DUE anelli di prelievi, non uno: con un anello solo una smerigliatura
+    // larga non sfoca, SDOPPIA — si vedono le otto copie del contorno.
+    'vec3 blurVid(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tVideo,uv).rgb;',
+    '  float d=r*0.70710678, h=r*0.5, e=h*0.70710678;',
+    '  vec3 s=texture2D(tVideo,uv).rgb*0.16;',
+    '  s+=texture2D(tVideo,uv+vec2( r,0.0)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-r,0.0)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0, r)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0,-r)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( d, d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( d,-d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-d, d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2(-d,-d)).rgb*0.06;',
+    '  s+=texture2D(tVideo,uv+vec2( h,0.0)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-h,0.0)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0, h)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(0.0,-h)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2( e, e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2( e,-e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-e, e)).rgb*0.045;',
+    '  s+=texture2D(tVideo,uv+vec2(-e,-e)).rgb*0.045;',
+    '  return s; }',
+
+    'vec3 blur9(vec2 uv,float r){',
+    '  if(r<=0.0) return texture2D(tScene,uv).rgb;',
+    '  vec3 s=texture2D(tScene,uv).rgb*0.28; float d=r*0.70710678;',
+    '  s+=texture2D(tScene,uv+vec2( r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-r,0.0)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0, r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(0.0,-r)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2( d,-d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d, d)).rgb*0.09;',
+    '  s+=texture2D(tScene,uv+vec2(-d,-d)).rgb*0.09;',
+    '  return s; }',
+
+    'void main(){',
+    '  vec2 p=(vUv-0.5)*2.0; p.x*=uCardAsp;',
+    '  vec2 b=vec2(uCardAsp,1.0)-0.012; float rad=0.14;',
+    '  float sd=sdBox(p,b,rad);',
+    '  if(sd>0.0) discard;',
+
+    // normale dello smusso: un asse per volta, continua ovunque
+    '  vec2 tE=clamp((abs(p)-(b-uBev))/max(uBev,1e-4),0.0,1.0);',
+    '  tE=tE*tE*(3.0-2.0*tE);',
+    '  vec2 tilt=sign(p)*tE;',
+    '  float bend=clamp(max(abs(tilt.x),abs(tilt.y)),0.0,1.0);',
+    '  vec3 N=normalize(vTBN*normalize(vec3(tilt*1.35,1.0-bend*0.30)));',
+    '  vec3 V=normalize(vView);',
+
+    // il contenuto, smerigliato più verso il bordo
+    '  vec2 vuv=vUv; float k=uCardAsp/uVidAsp;',
+    '  if(k<1.0){ vuv.y=(vuv.y-0.5)*k+0.5; } else { vuv.x=(vuv.x-0.5)/k+0.5; }',
+    '  vuv-=vec2(V.x,V.y)*uPar;',
+    // LA SMERIGLIATURA NON PARTE PIU' DA ZERO AL CENTRO. `uInside` e' il velo
+    // che c'e' anche in mezzo alla lastra: e' quello che fa intuire il
+    // contenuto invece di mostrarlo.
+    // Chi e' davanti smeriglia MENO: resta veloce da leggere senza per questo
+    // diventare una finestra. Il velo c'e' comunque, e' la lastra a scostarsi.
+    '  float frost=(uInside*(1.0-uHot*0.42) + uFrost*bend)*0.055;',
+    '  vec3 inside=blurVid(clamp(vuv,0.006,0.994),frost)*uGain;',
+    '  inside*=(1.0-uVuoto);',
+
+    '  float f=pow(1.0-clamp(dot(N,V),0.0,1.0),uFres);',
+    // La fascia del bordo e' in unita' NORMALIZZATE della lastra: crescendo la
+    // lastra cresceva anche in pixel, e da filo di luce diventava un tubo.
+    '  float rim=smoothstep(0.038,0.0,-sd);',
+    '  float a=1.0-smoothstep(-0.006,0.0,sd);',
+
+    // passaggio piatto: nessuna lettura della scena, serve solo a farsi vedere
+    /* IL PASSAGGIO PIATTO E' SEMITRASPARENTE, E QUI STA IL PUNTO.
+       Nel render target ci finiscono lo sfondo e poi le lastre piatte. Ma la
+       lastra che poi legge quel bersaglio ci trova sopra anche SE STESSA:
+       disegnandosi piatta e OPACA si tappava il proprio buco, e attraverso il
+       vetro non passava piu' niente di cio' che ha dietro — ne' l'elenco ne'
+       la nebbia. Restava solo la propria immagine, spostata di poco.
+       A meta' alfa il bersaglio contiene tutt'e due: la lastra vede
+       attraverso di se' quello che le sta dietro, e continua a vedere le
+       compagne. E' l'unico numero che decide se questo vetro trasmette. */
+    '  if(uFlat>0.5){',
+    '    vec3 fc=inside*0.62+uCol*rim*0.5;',
+    '    gl_FragColor=vec4(fc,a*0.48*uReveal); return;',
+    '  }',
+
+    /* LA SFOCATURA DI CIO' CHE STA DIETRO E' BASSA DI PROPOSITO (`uBlur`
+       0.40, non 1.5). Il velo che rende illeggibile il contenuto e'
+       `uInside`, ed e' un'altra cosa: agisce sulla texture della lastra.
+       Questa qui agisce su cio' che si vede ATTRAVERSO, e sfocandolo tanto
+       il testo dell'elenco dietro al mazzo si spappolava — spariva invece di
+       spezzarsi. Il vetro deve DEFORMARE quello che ha dietro, non
+       cancellarlo. */
+    '  vec2 suv=gl_FragCoord.xy/uRes;',
+    // LA RIFRAZIONE VIVE SU TUTTA LA LASTRA, non solo sullo smusso: e' quello
+    // che fa scorrere e spezzare cio' che sta dietro anche in mezzo al vetro.
+    '  float rMask=mix(0.42,1.0,bend);',
+    /* LO SPESSORE E' PICCOLO PERCHE' LE LASTRE SONO GRANDI.
+       `off` e' in unita' di SCHERMO: a 0.078 lo scostamento era di oltre
+       cento pixel, e cio' che si vedeva attraverso non era piu' quello che
+       sta dietro alla lastra ma quello che sta dietro a un palmo di distanza
+       — il testo dell'elenco veniva teleportato fuori dal vetro invece di
+       essere spezzato. A 0.022 la deformazione si vede e resta quella
+       giusta. Con lastre piccole questo numero puo' tornare a crescere. */
+    '  vec2 off=N.xy*uThick*rMask;',
+    '  float br=uBlur*0.009;',
+    '  vec3 sR=blur9(suv+off*(1.0+uDisp),br);',
+    '  vec3 sG=blur9(suv+off,br);',
+    '  vec3 sB=blur9(suv+off*(1.0-uDisp),br);',
+    '  vec3 refr=vec3(sR.r,sG.g,sB.b);',
+
+    // uHot: quanto è "guardato". Apre di più e accende il bordo del suo colore.
+    '  float open=clamp((1.0-f)*uOpen*(1.0+uHot*0.34)*(1.0-uVuoto),0.0,1.0);',
+    '  vec3 col=mix(refr,inside,open);',
+    /* CIO' CHE STA DIETRO SI SOMMA, non si contende il posto.
+       Con la sola mescolanza il contenuto della lastra e quello che le passa
+       dietro si dividono lo stesso pixel: l'elenco dietro al mazzo arrivava
+       al 40% del suo grigio su un poster scuro, cioe' non arrivava. Sommato,
+       invece, passa cio' che DIETRO E' CHIARO e non passa cio' che e' scuro —
+       che e' come si comporta una lastra traslucida, ed e' la ragione per cui
+       il testo si legge attraverso il vetro mentre il nero resta nero. */
+    // Chi e' davanti trasmette MENO: e' la lastra che si sta scegliendo, e
+    // la sagoma della vicina che le passa dietro le toglierebbe leggibilita'
+    // proprio quando serve. Di fianco invece si trasmette pieno, ed e' li'
+    // che il testo dell'elenco attraversa il vetro.
+    '  col+=refr*uThru*(1.0-uHot*0.55);',
+    // IL CORPO DEL VETRO: un velo lattiginoso, tinto appena del colore del
+    // mondo, piu' fitto verso il bordo. Senza, la lastra e' una finestra.
+    '  float lum=dot(col,vec3(0.299,0.587,0.114));',
+    '  col=mix(col, mix(vec3(lum),uCol*0.55+0.30,0.30)*1.06, uMilk*(0.40+0.60*bend));',
+    '  col+=mix(vec3(0.42,0.78,0.95),uCol,uHot)*rim*(uRim+uHot*0.38)*(0.35+0.65*f);',
+    '  col+=vec3(0.10,0.16,0.24)*f*0.5;',
+    '  col*=uDim;',                       // gli altri portali arretrano
+    '  gl_FragColor=vec4(col,a*uReveal);',
+    '}'
+  ].join('\n');
+
+  /* ======================================================================
+     3. I PORTALI
+     ====================================================================== */
+  var loader = new THREE.TextureLoader();
+  var cards = new THREE.Group();
+  var scene = new THREE.Scene();
+  scene.add(cards);
+
+  var RES = new THREE.Vector2(1,1);
+  /* Un pixel nero, e serve davvero: e' quello che prende il posto della
+     texture della scena mentre si sta disegnando dentro alla scena. */
+  var vuota = new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1, THREE.RGBAFormat);
+  vuota.needsUpdate = true;
+  var rt = new THREE.WebGLRenderTarget(2,2,{
+    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+    format:THREE.RGBAFormat, stencilBuffer:false, depthBuffer:true
+  });
+
+  /* IL MAZZO NON SI COSTRUISCE ANCORA (Task 1). Le prossime righe creano una
+     mesh per ogni mondo — poster, materiale del vetro, ancora della scritta.
+     Restano scritte per il task che rimette il mazzo in scena; qui, dietro
+     DECK_ON=false, non girano mai e `cards` resta un gruppo vuoto. */
+  if (DECK_ON) WORLDS.forEach(function(w, i){
+    /* La lastra vuota non carica niente: dentro non c'e' un mondo, e il
+       pixel nero fa da contenuto assente senza casi speciali a valle. */
+    var tex = vuota;
+    if (!w.vuoto){
+      tex = loader.load(w.poster, function(t){
+        w.posterAsp = t.image.width / t.image.height;
+        w.mat.uniforms.uVidAsp.value = w.posterAsp;
+      });
+      tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+      tex.encoding = THREE.sRGBEncoding;
+    }
+    w.posterTex = tex;
+
+    var uni = {
+      tScene:{value:rt.texture}, tVideo:{value:tex}, uRes:{value:RES},
+      uVidAsp:{value:16/9}, uCardAsp:{value:CW/CH},
+      uFlat:{value:0}, uHot:{value:0}, uDim:{value:1}, uReveal:{value:0},
+      uVuoto:{value:w.vuoto ? 1 : 0},
+      uCol:{value:new THREE.Vector3(w.col[0],w.col[1],w.col[2])}
+    };
+    Object.keys(TARATURA).forEach(function(k){ uni[k] = { value: TARATURA[k] }; });
+    /* Esposizione per mondo. La taratura del vetro non si tocca — questo è
+       l'unico numero che cambia da un portale all'altro, e serve perché un
+       contenuto girato di giorno in mezzo a cinque mondi notturni buca la
+       scena e si mangia l'attenzione che deve andare al centro. */
+    if (w.gain) uni.uGain.value = w.gain;
+
+    var mat = new THREE.ShaderMaterial({
+      uniforms:uni, vertexShader:VERT, fragmentShader:FRAG,
+      /* DUE LATI. Su una giostra meta' delle lastre e' girata di spalle: con
+         il taglio delle facce posteriori sparirebbero di colpo a meta' giro.
+         Viste da dietro il Fresnel le trova completamente chiuse — nessun
+         contenuto, solo rifrazione e bordo — che e' esattamente cio' che deve
+         essere il dorso di un portale. */
+      side:THREE.DoubleSide,
+      transparent:true, depthWrite:false
+    });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(CW, CH), mat);
+    deckPlace(deckU(i, 0), mesh.position);
+    mesh.rotation.set(0, deckYaw(deckU(i, 0)), deckRoll(deckU(i, 0)));
+    mesh.scale.setScalar(deckScale(deckU(i, 0)));
+    /* NIENTE renderOrder. Prima era fisso (10+i) perche' le lastre erano
+       ferme; qui girano, e un ordine fisso farebbe disegnare una lastra
+       lontana SOPRA a una vicina a ogni mezzo giro. Lasciato a zero, three
+       riordina i trasparenti dal fondo per profondita' a ogni fotogramma. */
+    mesh.userData.world = w;
+    w.mesh = mesh; w.mat = mat; w.uni = uni;
+    cards.add(mesh);
+
+
+    /* L'ANCORA DELLA SCRITTA È UN FIGLIO DELLA CARD.
+       Non un punto proiettato: un oggetto agganciato alla lastra, spostato di
+       `lift` lungo il suo asse z locale — che è la normale della card. Così
+       eredita di suo posizione, INCLINAZIONE e scala, e la scritta si posa sul
+       piano del portale invece di restare appiccicata allo schermo. Se la card
+       è girata di tre quarti, lo è anche la scritta. */
+    w.fwd = new THREE.Vector3(0,0,1).applyEuler(new THREE.Euler(0, deckYaw(deckU(i,0)), 0));
+    w.u = deckU(i, 0);                // il posto nella fila, col segno
+    w.lift = 0.30 + CW*0.10;
+    w.liftNow = w.lift;
+    var anchor = new THREE.Object3D();
+    anchor.position.set(0, 0, w.lift);
+    mesh.add(anchor);
+    w.anchorObj = anchor;
+
+    /* NIENTE PIU' ETICHETTA PER-CARD. Nella rotonda le nove scritte
+       appese alle lastre si accavallano; il nome del mondo davanti lo dice
+       ora la focus-caption in basso, come in Mirror Hall. L'ancora resta
+       (inerte) per non toccare oltre. */
+    w.label = null;
+  });
+
+  /* ══ L'INDICE — ED E' TESTO CHE STA DENTRO ALLA SCENA ═════════════════
+     Le scritte delle lastre sono DOM: nitide a qualunque risoluzione, con
+     una parallasse vera, e per questo restano dove sono. Ma proprio perche'
+     sono DOM stanno SOPRA al canvas, e il vetro non le puo' rifrangere —
+     non entrano mai nel render target da cui la rifrazione legge.
+     Questo invece e' testo disegnato su una tela e appeso nella scena,
+     DIETRO al mazzo: le lastre ci passano sopra e lo scompongono, lo
+     spostano, lo sdoppiano nei tre colori. E' l'unico modo per avere
+     davvero del testo rifratto senza rinunciare alla nitidezza di quello
+     che conta.
+     Non e' solo una dimostrazione: e' l'elenco "ESPLORA IL MONDO" (Task 3 —
+     torna a sette righe, una per EFFETTO: elencare i cinque TIPI ("questi
+     sono i cinque modi in cui lavoriamo") rispondeva a una domanda che chi
+     arriva non si è ancora fatto; sette nomi evocativi ("questi sono i sette
+     posti da esplorare") invitano a curiosare invece di classificare. Chi
+     arriva legge il titolo di ogni effetto e, cliccando una riga, si porta
+     davanti QUELLA card — non più il primo di un gruppo). I sette trattini in
+     basso restano uno per effetto: ora dicono la stessa cosa dell'elenco,
+     solo in forma di fermo invece che di riga.
+     ══════════════════════════════════════════════════════════════════ */
+  /* 2026-09-24 (fix round 1): Nike voleva la scaletta "più grande" — a
+     parita' di posizione/scala della lastra, il testo di una riga cresce
+     solo aumentando quanto SPAZIO del canvas occupa: fonte riga 36→58px,
+     passo riga 70→80 (piu' largo, non piu' stretto, perche' 58px in 70px di
+     passo restava leggibile ma compresso) e titolo 40→46px. Misurato con
+     `window.__capitoli.rowHeight(k, FS)`: 8.66px a schermo (1440×900) sulla
+     versione base (e066c88, fonte 25px/passo 44), 9.06px con questa lastra
+     prima del fix (fonte 36px — solo +5%, non e' "più grande"), 14.6px dopo
+     (fonte 58px) — ×1.69 sulla base, sopra la soglia ×1.5 richiesta. */
+  var IW = 1100, IH = 760, IROW0 = 190, IROWH = 80;
+  var idxCv = document.createElement('canvas');
+  idxCv.width = IW; idxCv.height = IH;
+  var idxG = idxCv.getContext('2d');
+  var idxTex = new THREE.CanvasTexture(idxCv);
+  idxTex.minFilter = THREE.LinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  idxTex.encoding = THREE.sRGBEncoding;
+  var idxMat = new THREE.MeshBasicMaterial({
+    map:idxTex, transparent:true, depthWrite:false, opacity:0
+  });
+  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.90, 2.00), idxMat);
+  idxMesh.position.set(-2.62, -1.12, -2.00);
+  idxMesh.frustumCulled = false;
+  /* In `bg`, non in `scene`: `bg` viene disegnato nel render target PRIMA
+     delle lastre, ed e' quel passaggio che il vetro legge. Messo insieme
+     alle lastre, sarebbe visibile ma non rifrangibile. */
+  bg.add(idxMesh);
+
+  var idxSopra = -1;                 // la riga sotto al puntatore
+  /* Chi e' acceso e' di nuovo "questa e' la card a fuoco" (un solo `w`, per
+     `idx`) — l'elenco torna a essere per effetto, non per tipo. */
+  function idxDisegna(){
+    idxG.clearRect(0,0,IW,IH);
+    try { idxG.letterSpacing = '4px'; } catch(e){}
+    idxG.textBaseline = 'middle';
+    idxG.font = '500 46px "DM Mono", ui-monospace, monospace';
+    idxG.fillStyle = 'rgba(240,240,246,0.92)';
+    idxG.fillText(testoPagina('indice'), 34, 80);
+    /* OGNI RIGA NEL COLORE DELLA SUA CARD, sempre (2026-09-24) — non solo
+       quella accesa. Le tavolozze (Nebulosa, Genesi) in sfumatura
+       orizzontale lungo la parola. Per distinguere: la card davanti a colore
+       pieno e con la freccia; quella sotto al puntatore a colore pieno con la
+       freccia a meta'; le altre schiarite di un quarto verso il bianco e a
+       .80 — non .72: moltiplicate per l'opacita' della lastra (.92) i viola e
+       l'arancio scendevano sotto il 4.5:1 sul fondo scuro. */
+    function idxTinta(c, a, chiaro){
+      return 'rgba(' + c.map(function(v){ return Math.round((v + (1 - v)*chiaro)*255); }).join(',') + ',' + a + ')';
+    }
+    WORLDS.forEach(function(w, i){
+      var y = IROW0 + i*IROWH;
+      var davanti = !!(hot && hot.idx === i), sopra = (i === idxSopra);
+      var nome = inLingua(w).nome.toUpperCase();
+      idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
+      if (davanti || sopra){
+        idxG.globalAlpha = davanti ? 1 : 0.5;
+        idxG.fillStyle = idxTinta(w.col, 1, 0);
+        idxG.fillText('->', 34, y);
+        idxG.globalAlpha = 1;
+      }
+      /* IL COLORE SOLO A CHI E' SCELTO (Nike, 2026-09-24): la parola prende
+         il colore della sua card solo quando la card e' davanti o la parola e'
+         sotto al puntatore; le altre restano di un bianco neutro, leggibile.
+         UN colore per parola: anche Nebulosa e Genesi usano il loro `col`
+         pieno, niente sfumatura dentro al testo. */
+      idxG.fillStyle = (davanti || sopra) ? idxTinta(w.col, 1, 0) : 'rgba(223,228,238,0.78)';
+      idxG.fillText(nome, 140, y);
+    });
+    idxTex.needsUpdate = true;
+  }
+  idxDisegna();
+  /* Il carattere arriva dopo: la prima passata esce col monospazio di
+     sistema, e senza questa seconda ci resterebbe per sempre. */
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(idxDisegna);
+
+  /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
+     parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
+     si vede la rifrazione — cliccandoci si deve entrare nella lastra.
+     Torna l'indice della CARD (0..6). */
+  function pickRiga(){
+    if (idxMat.opacity < 0.25) return -1;
+    ray.setFromCamera(ptr, camera);
+    var h = ray.intersectObject(idxMesh, false);
+    if (!h.length || !h[0].uv) return -1;
+    var y = (1 - h[0].uv.y) * IH;
+    var k = Math.round((y - IROW0)/IROWH);
+    return (k >= 0 && k < WORLDS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     3.5 LA POZZA RIFLETTENTE — TOLTA (Task 1).
+     C'era qui la riflessione planare di Mirror Hall: una camera specchiata
+     (`reflectCam`) che rendeva bg+lastre piatte dentro `reflectRT`, un piano
+     d'acqua (`water`) che campionava quel bersaglio increspandolo con onde
+     procedurali, e una scia (`dropRipple`, raycast su y=0) che il puntatore
+     lasciava nell'acqua. Tolta di netto — non dietro un flag, perche' lo
+     stage di questo task non ha ne' pelo d'acqua ne' un piano y=0 da colpire.
+     Il render e' tornato a un solo passaggio (vedi `frame()`, sezione 4).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ======================================================================
+     4. LO SCORRIMENTO INFINITO (Task 4) — un accumulatore che non tocca mai
+     fondo.
+     Task 3 leggeva il progresso GLOBALE della pagina (`deckScrollProgress()`,
+     0..1 da Lenis o da `scrollY`, dato da #scrollSpacer alto 400vh) e lo
+     mappava sulle sette card: bello finché non si arrivava in fondo allo
+     spacer, dopodiché lo scroll semplicemente si fermava — un mazzo di sette
+     effetti che finisce non è la promessa di un catalogo che cresce.
+     Qui `spinT` (e il suo inseguitore smorzato `spin`) tornano a essere quello
+     che erano nella giostra originale: un ACCUMULATORE senza fondo, mosso
+     direttamente dal gesto (rotellina, trascino, frecce) invece che dalla
+     posizione di scroll della pagina. Non c'è un massimo né un minimo: si
+     somma o si sottrae ad ogni gesto, e cresce o cala senza limite.
+     L'INFINITO STA TUTTO IN `wrapN`, GIÀ SCRITTO IN Task 3. Ogni card legge
+     solo la propria distanza dal fuoco `u = wrapN(i - spin, N)`, che è
+     periodica per costruzione: `spin` può valere 1000000 o -1000000, `u`
+     resta sempre nell'intervallo corto (-N/2, N/2]. Non c'è quindi nessun
+     "punto di riavvolgimento" da gestire a mano per le card — la coda si
+     ricongiunge alla testa da sola, esattamente come già succedeva scorrendo
+     avanti e indietro nella giostra originale, e il salto capo↔coda cade
+     dove `deckFade` ha già spento la lastra (vedi la taratura di Task 3).
+     `#scrollSpacer` resta in pagina (dà comunque un'altezza su cui il
+     documento PUO' scorrere, e con essa a Lenis un limite su cui calcolare
+     `.progress` per chi altro lo leggesse) ma NON è più la sorgente di
+     `spin`: il documento può arrivare in fondo al suo scroll nativo — la
+     barra si ferma — senza che il mazzo smetta di avanzare, perché il mazzo
+     non lo guarda più.
+     L'ELICA SEGUE LO STESSO `spin`, MAI RIAVVOLTO QUI — vedi `window.__effettiHelixScroll`
+     più sotto: questo numero (e quindi `spin`) cresce o cala senza limite
+     esattamente come prima, e resta l'unica cosa che sincronizza card ed
+     elica. Il riavvolgimento vive DENTRO dna.js (`wrapHelixScroll`, vedi il
+     suo commento), non qui: lì si conosce la geometria e la si è resa
+     TASSELLABILE (periodica in verticale), così il numero si riporta in un
+     intervallo finito e il salto è invisibile perché prima e dopo l'immagine
+     è identica — nessun tratto vuoto, mai. Qui non cambia niente: `spin`
+     resta l'accumulatore grezzo che era. */
+  var spin = 0, spinT = 0;            // dov'e' il mazzo, e dove sta andando
+  var toccato = false;                // qualcuno l'ha preso in mano?
+  var lastInput = -1e9;
+  var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+  var premuto = false;                // premuto ma non ancora mosso: non e' input
+
+  /* IL PONTE VERSO L'ELICA (Task 4). dna.js, montato in modalità standalone
+     su #helixStage, cerca questa funzione PRIMA di leggere Lenis/scrollY (è
+     la stessa `globalScrollProgress()` che leggeva lo scroll globale, vedi il
+     suo commento): se la trova, l'elica sale e gira su `spin`, non più sul
+     progresso 0..1 della pagina — LO STESSO NUMERO SMORZATO che muove le
+     card, MAI RIAVVOLTO (vedi il commento sulla sezione 4). È tutto quello
+     che serve perché elica e mazzo restino sincronizzati e continui: non un
+     evento da ascoltare, una funzione da interrogare a ogni fotogramma —
+     dna.js la chiama dal proprio `frame()` in moto normale, e da qui la si
+     sveglia a mano (l'evento 'scroll' sintetico che `frame()` dispaccia più
+     sotto) quando è dna.js a
+     non avere un proprio rAF, cioè in reduced-motion.
+     `HELIX_LOOPS_PER_UNIT` — perché non `spin/(N-1)` e basta. Un "giro" del
+     mazzo (`spin` che avanza di N−1=6) e' esattamente l'intera escursione
+     che dna.js percorreva UNA volta sola nel manifesto (l'intero manifesto,
+     letto in un solo scroll dall'inizio alla fine): a quel ritmo la
+     geometria — una striscia di punti FINITA, non periodica, vedi il
+     commento in dna.js — si esauriva (schermo vuoto) dopo circa quattro giri
+     del mazzo, verificato a schermo. Un mazzo INFINITO che consuma la sua
+     elica dopo quattro giri non e' accettabile. Con questo divisore un giro
+     di scroll dell'elica costa OTTO giri del mazzo: l'elica resta comunque
+     visibilmente viva a ogni giro (sale e gira di un ottavo, non e' ferma) e
+     lo stesso punto di esaurimento arriva dopo ~32 giri del mazzo — verificato
+     a schermo restare piena e continua ben oltre i pochi giri con cui la si
+     collauda.
+     ⚠️ NIENTE PIÙ ESAURIMENTO — RIAVVOLGIMENTO SENZA CUCITURA (fix round 2):
+     dna.js ora rende l'elica TASSELLABILE e riavvolge `wrapHelixScroll` di un
+     periodo geometrico esatto, così l'immagine è identica prima e dopo e non
+     c'è mai un vuoto (vedi il commento su HELIX_PITCH_T in dna.js). Il divisore
+     resta 8: non serve più a spostare più in là un esaurimento (non esiste
+     più), ma decide comunque IL PASSO — quanto sale/gira l'elica per ogni giro
+     del mazzo — e 8 lo tiene visibilmente vivo senza correre. Con questo passo
+     il periodo di riavvolgimento vale ~13 giri del mazzo. */
+  /* ⚡ PASSO PIÙ RAPIDO (richiesta utente: «fai ruotare più velocemente il dna
+     con lo scroll»). Era 8 — un giro di elica ogni otto giri di mazzo, cioè un
+     ottavo di giro per ogni card che passa: vivo ma lento da leggere. A 3
+     l'elica sale e gira di un terzo di giro per ogni giro di mazzo, tre volte
+     più svelta, e il riavvolgimento senza cucitura di dna.js non cambia: è
+     periodico, cade solo più spesso (~5 giri di mazzo invece di ~13). */
+  var HELIX_LOOPS_PER_UNIT = 3;
+  window.__effettiHelixScroll = function(){ return spin / (WORLDS.length - 1) / HELIX_LOOPS_PER_UNIT; };
+
+  /* Quale mondo e' davanti: th = i*STEP + spin, e davanti c'e' chi ha th = 0. */
+  function frontIdx(){
+    var k = Math.round(spin) % WORLDS.length;
+    return (k + WORLDS.length) % WORLDS.length;
+  }
+  /* Il primo gesto di scorrimento ENTRA, non salta: chi arriva e scorre
+     subito deve vedere il tunnel fermarsi e la giostra comporsi, e' il
+     mezzo secondo per cui esiste tutta la scena. Ma un trackpad manda venti
+     eventi in un gesto solo, e se ognuno saltasse la coreografia non si
+     vedrebbe mai: si salta solo con un gesto NUOVO, dopo 800 ms. */
+  function svegliaGiostra(){
+    if (stage === 'hero'){ entra(); return true; }
+    if (stage === 'arrivo'){
+      if (performance.now() - arriveT > 800) skip();
+      return true;
+    }
+    return false;
+  }
+  /* Nessuna guardia: non c'è più un mondo in cui entrare (2026-09-24, niente
+     pagine di dettaglio), e non c'è una modalità in cui l'input NON deve
+     muovere l'accumulatore, perché non c'è più una sorgente concorrente (la
+     pagina) che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra
+     solo per non fare `e.preventDefault()` su rotellina/frecce — vedi il
+     commento lì. La rotellina NON guarda `inPreview`: anche sopra
+     l'anteprima cambia card. */
+  function spingi(d){
+    toccato = true; lastInput = performance.now();
+    spinT += d;
+  }
+  /* Un gesto che nasce DENTRO l'anteprima viva e' dell'effetto, non del mazzo. */
+  function inPreview(e){
+    return !!(STAGE_LIVE && e && e.target && e.target.nodeType === 1 && STAGE_LIVE.contains(e.target));
+  }
+  /* Porta davanti un effetto preciso prendendo il giro piu' corto: si somma il
+     numero intero di giri che avvicina di piu' il bersaglio a dove siamo.
+     Con `spinT` senza fondo il "giro" è sempre relativo a dove siamo ORA, non
+     a un progresso 0..1 — la stessa formula di prima, invariata. */
+  function portaDavanti(i){
+    toccato = true;
+    lastInput = -1e9;                 // niente attesa: questo e' gia' un fermo
+    spinT = i + Math.round((spinT - i)/WORLDS.length)*WORLDS.length;
+  }
+
+  /* La rotellina e il trackpad. `deltaMode` va normalizzato: a righe (1) un
+     "clic" vale una manciata di pixel, a pagine (2) vale una schermata, e
+     senza questo conto lo stesso gesto gira di un dito su un portatile e di
+     mezzo giro su un mouse a scatti.
+     REDUCED-MOTION (Task 4): la rotellina è un gesto CONTINUO — è lei a dare
+     l'illusione di girare un mazzo. Con `!WC.motionOk` resta disattiva: ci si
+     sposta solo a passi, con le frecce o cliccando un fermo/una riga
+     dell'elenco (vedi più sotto). Niente preventDefault qui, MAI: lo scroll
+     nativo della pagina resta libero (nessuna barra dirottata, vedi il
+     commento sull'accumulatore più sopra). */
+  /* Il coefficiente NON e' piu' quello della giostra (0.0026, tarato per un
+     anello che scattava sul fermo piu' vicino dopo il gesto): li' un gesto
+     "grosso" poteva anche superare una card, tanto lo scatto finale
+     correggeva. Qui, DURANTE il gesto, non c'e' nessuno scatto — la card dove
+     il gesto ti lascia e' quella buona — quindi il passo deve restare
+     leggibile: un colpo di rotellina "pieno" (~1200 unita', la stessa entita'
+     con cui la verifica a schermo lo simula) avanza di UNA card, non di tre.
+     (fix round 1) Lo scatto torna SOLO DOPO che il gesto e' finito e la mano
+     e' ferma da `SETTLE_MS` — vedi «LO SCATTO SUL FERMO» piu' sotto nel
+     `frame()`: serve al controller (Task 5) per accendere l'effetto sulla
+     card a fuoco, che altrimenti con `spin` frazionario non si sveglia mai
+     scorrendo di rotellina/trascino. */
+  window.addEventListener('wheel', function(e){
+    if (!WC.motionOk) return;
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
+    spingi(d * unit * (1/1200));
+  }, {passive:true});
+
+  /* Il trascinamento, dito o mouse che sia (tocco compreso: i Pointer Events
+     unificano mouse/penna/touch, quindi qui il touch funziona già). L'asse si
+     decide al primo movimento e non si cambia piu' idea: se no un gesto un
+     po' storto fa ballare il mazzo avanti e indietro.
+     REDUCED-MOTION: come la rotellina, è un gesto continuo — disattivo con
+     `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
+     spinga, trascinare non muove nulla). */
+  /* SU TELEFONO SI SCORRE PER GIRARE (Nike, round 2: «su tel voglio anche
+     poter scrollare per far girare le card»). Il dito che striscia in
+     VERTICALE fa quello che fa la rotellina, ovunque — anche sopra
+     l'anteprima viva. Sull'anteprima pero' il gesto nasce dell'effetto: un
+     tocco, o un trascinamento soprattutto orizzontale, restano suoi. Quindi
+     un tocco che parte li' resta IN ATTESA (`attesa`) e non e' ancora un
+     trascino — `dragging` acceso anche solo per un istante addormenterebbe
+     l'effetto (vedi `_settled` nel frame) mentre lo si sta usando. Diventa
+     trascino del mazzo solo quando, superati i 6px, si capisce che va in su
+     o in giu'; se va di lato, lo si lascia all'effetto. Col mouse non cambia
+     niente: sopra l'anteprima il trascino resta dell'effetto, come prima.
+     La nav (menu a tendina compreso) non gira mai il mazzo. Perche' la
+     pagina non scorra sotto al dito, `touch-action:none` su html/body. */
+  var attesa = null;                  // { id, x, y } tocco nato sull'anteprima
+  /* Fuori dalla scena: la nav (menu compreso) e i link fissi della pagina
+     (#torna, #preventivo) — non girano il mazzo e non sono un
+     clic sulla scena. */
+  function inNav(e){ return !!(e && e.target && e.target.closest && e.target.closest('#nav,#torna,#preventivo')); }
+  ['torna', 'preventivo'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    ['pointerdown', 'click', 'wheel'].forEach(function(t){
+      el.addEventListener(t, function(ev){ ev.stopPropagation(); }, t === 'wheel' ? { passive: true } : false);
+    });
+  });
+  window.addEventListener('pointerdown', function(e){
+    if (e.button || inNav(e)) return;
+    if (inPreview(e)){
+      if (e.pointerType === 'touch') attesa = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
+    ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
+    /* UN TOCCO NON E' UN GESTO (round 3, Nike: «quando tocco fuori dalla card
+       si refresha l'animazione», anche col mouse su pc). Qui prima si
+       accendeva subito `dragging`: il gate `_settled` del frame cadeva per un
+       istante, il controller congelava l'effetto e al rilascio (con
+       `lastInput` rinfrescato) lo risvegliava — sul telefono i moduli si
+       rimontano da capo al risveglio, quindi ripartiva dall'inizio. Ora la
+       pressione resta solo PREMUTA (`premuto`): diventa trascino, e conta
+       come input, solo quando supera i 6px nel `pointermove` qui sotto. */
+    premuto = true; dragId = e.pointerId;
+    dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
+  });
+  window.addEventListener('pointermove', function(e){
+    if (attesa && e.pointerId === attesa.id){
+      var ax = e.clientX - attesa.x, ay = e.clientY - attesa.y;
+      if (Math.abs(ax) + Math.abs(ay) <= 6) return;
+      attesa = null;
+      if (Math.abs(ay) <= Math.abs(ax)) return;          // di lato: e' dell'effetto
+      dragging = true; dragId = e.pointerId; dragAxis = 2;
+      dragMoved = Math.abs(ax) + Math.abs(ay);
+      dragX = e.clientX; dragY = e.clientY;
+      if (WC.motionOk) spingi(-ay*0.0060);
+      return;
+    }
+    if (!(dragging || premuto) || e.pointerId !== dragId || !WC.motionOk) return;
+    var dx = e.clientX - dragX, dy = e.clientY - dragY;
+    dragX = e.clientX; dragY = e.clientY;
+    dragMoved += Math.abs(dx) + Math.abs(dy);
+    if (!dragAxis && dragMoved > 6){
+      dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+      premuto = false; dragging = true;      // adesso si' che e' un trascino
+    }
+    if (!dragAxis) return;
+    /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
+       DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
+       Alzando lo spin la lastra davanti scorre a destra (la sua x e'
+       sin(th)*r, e in zero la derivata e' +r): quindi dito a sinistra =
+       spin che cala, cioe' `dx` cosi' com'e'. In verticale vale lo stesso
+       patto della rotellina: dito in su = come scorrere in giu' = avanti. */
+    spingi(dragAxis === 1 ? -dx*0.0060 : -dy*0.0060);
+  }, {passive:true});
+  function fineTrascino(e){
+    if (attesa && (!e || e.pointerId === attesa.id)) attesa = null;
+    premuto = false;                  // una pressione senza moto non lascia traccia
+    if (dragging){ dragging = false; lastInput = performance.now(); }
+  }
+  window.addEventListener('pointerup', fineTrascino);
+  window.addEventListener('pointercancel', fineTrascino);
+
+  /* Le frecce restano attive ANCHE in reduced-motion: sono già "a passi" per
+     natura (un colpo = una card, STEP=1), non un gesto continuo — sono uno
+     dei due modi di navigare a passi richiesti dal brief (l'altro sono i
+     click su fermi/elenco). */
+  window.addEventListener('keydown', function(e){
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
+      spingi(STEP);
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
+      spingi(-STEP);
+    }
+  });
+
+  /* I FERMI, in basso: otto trattini, uno per mondo, e si puo' saltare
+     direttamente a uno qualsiasi. In un carosello con otto posti il conto
+     di quanti ne restano non deve costare un giro completo per scoprirlo. */
+  var dotsEl = document.getElementById('dots');
+  WORLDS.forEach(function(w, i){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
+    b.style.setProperty('--now', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    b.addEventListener('click', function(ev){ ev.stopPropagation(); portaDavanti(i); });
+    dotsEl.appendChild(b);
+    w.dot = b;
+  });
+
+  /* Il suggerimento (e la sua variante da telefono) lo scrive la lingua:
+     vedi `hint`/`hintM` in TESTI, in testa alla pagina. */
+
+  /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
+     blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
+  var focusEl = document.getElementById('focus');
+  var fNameEl = document.getElementById('fName'),
+      fSubEl  = document.getElementById('fSub'),
+      fNumEl  = document.getElementById('fNum');
+  document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
+  function aggiornaFocus(w){
+    if (!w) return;
+    fNameEl.textContent = inLingua(w).nome;
+    fNameEl.classList.toggle('-void', !!w.vuoto);
+    fSubEl.textContent = inLingua(w).sett;
+    fNumEl.textContent = String(w.idx+1).padStart(2,'0');
+    focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // L'accento della card anche per i link fissi della pagina (#torna, #preventivo)
+    document.documentElement.style.setProperty('--pag', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // riavvia l'animazione di scambio
+    fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
+  }
+
+  /* LA COPY DELLA CARD DAVANTI — vedi #lp nel CSS. */
+  var lpEl = document.getElementById('lp');
+  var lpK = lpEl.querySelector('.lp-k'), lpL = lpEl.querySelectorAll('.lp-l'),
+      lpS = lpEl.querySelector('.lp-s'), lpB = lpEl.querySelector('.lp-b');
+  var lpDi = null, lpTw = null;
+  function lpRiempi(w){
+    lpDi = w;
+    var lp = inLingua(w).lp;
+    lpK.textContent = lp.kicker;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
+    lpS.textContent = lp.sub; lpB.textContent = lp.cta;
+    lpEl.classList.toggle('-chiaro', !!w.chiaro);
+    lpEl.classList.toggle('-forte', !!w.scrimForte);
+    if (w.chiaro) lpEl.style.removeProperty('--lpc');
+    else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
+    /* Un tween ucciso non arriva all'onComplete: l'altezza bloccata va tolta
+       qui, se no la card nuova eredita quella del titolo di Contatto. */
+    if (lpTw){ lpTw.kill(); lpTw = null; lpEl.querySelector('.lp-h').style.minHeight = ''; }
+  }
+  /* «Contatto»: il titolo si decifra a ogni arrivo, riga per riga — due righe
+     fisse, cosi' i caratteri a caso non rimandano a capo il testo. Stessi
+     parametri di js/headings.js. */
+  function lpDecifra(){
+    if (!lpDi || !lpDi.scramble || !WC.motionOk || !window.ScrambleTextPlugin) return;
+    /* Un tween lasciato a meta' (la card e' scivolata via e tornata) avrebbe
+       lasciato lettere a caso: '{original}' le prenderebbe per buone. Si
+       ferma e si rimette il testo vero PRIMA di ripartire; l'altezza resta
+       bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
+    var hEl = lpEl.querySelector('.lp-h');
+    if (lpTw){ lpTw.kill(); lpTw = null; hEl.style.minHeight = ''; }
+    var lp = inLingua(lpDi).lp;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
+    hEl.style.minHeight = hEl.offsetHeight + 'px';
+    lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
+      scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
+  }
+  var lpFermo = false;
+
+  /* CAMBIO DI LINGUA DAL VIVO (IT/EN nella barra): il DOM fisso lo traduce
+     `atelierLingua`; qui si ridisegna quello che nasce dai record — i nomi
+     dei fermi, la didascalia (senza rifare lo scambio: la card e' la
+     stessa), l'elenco sulla tela e la copy della card davanti. Se la copy e'
+     gia' in vista e la card decifra («Contatto»), lo scramble riparte sul
+     testo nuovo. */
+  document.addEventListener('atelier:lingua', function(){
+    WORLDS.forEach(function(w){
+      if (w.dot) w.dot.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
+    });
+    if (hot){ fNameEl.textContent = inLingua(hot).nome; fSubEl.textContent = inLingua(hot).sett; }
+    idxDisegna();
+    if (lpDi){ lpRiempi(lpDi); if (lpFermo) lpDecifra(); }
+  });
+  function lpFrame(){
+    var w = hot;
+    var ok = DECK_ON && deckCtl && stage === 'mappa' && w && w.mesh && w.lp;
+    var frac = Math.abs(spin - Math.round(spin));
+    var fermo = ok && frac < 0.15 && !dragging;
+    if (ok && lpDi !== w) lpRiempi(w);
+    if (fermo){
+      var r = deckCtl ? deckCtl.rect(w.mesh) : null;
+      if (r){
+        lpEl.style.left = r.x + 'px'; lpEl.style.top = r.y + 'px';
+        lpEl.style.width = r.w + 'px'; lpEl.style.height = r.h + 'px';
+        lpEl.style.setProperty('--raggio', Math.round(r.w * 0.035) + 'px');
+        /* Un quarto piu' piccola (Nike, round 2: «le scritte dentro le card
+           falle piu' piccole»): la base scende a 3/4 e con lei, in `em`,
+           titolo, sottotitolo, kicker e bottone. I minimi da 11px del testo
+           che serve (kicker, bottone, sottotitolo) restano nel CSS. */
+        lpEl.style.setProperty('--lpfs', (Math.max(12, Math.min(22, r.w / 44)) * 0.75).toFixed(1) + 'px');
+        lpEl.classList.toggle('-stretta', r.w < 420);
+      }
+    }
+    lpEl.classList.toggle('-on', !!fermo);
+    if (fermo && !lpFermo) lpDecifra();
+    lpFermo = !!fermo;
+  }
+
+  /* ======================================================================
+     5. PUNTATORE, MESSA A FUOCO, ENTRATA E USCITA
+     ====================================================================== */
+  /* ══════════════════════════════════════════════════════════════════════
+     GLI STADI. `hero` → `arrivo` → `mappa`. Non sono scene diverse: è lo
+     stesso frame, con tre numeri che si muovono.
+     ══════════════════════════════════════════════════════════════════════ */
+  var stage = 'hero';
+  var travel = 0, speed = 1;      // quanto scorre il tunnel, e a che velocità
+  var assign = 0;                 // 0 = sfila, 1 = tutti a destinazione
+  var cardsIn = 0;                // i portali traspaiono dentro agli ammassi
+  var spokeIn = 0;                // i raggi si disegnano per ultimi
+  var arriveT = 0;
+
+  function entra(){
+    if (stage !== 'hero') { skip(); return; }
+    stage = 'arrivo'; arriveT = performance.now();
+    document.getElementById('hero').classList.add('-off');
+    setTimeout(function(){ var h=document.getElementById('hero'); if(h) h.style.display='none'; }, 600);
+  }
+  // Alla terza volta la meraviglia è un pedaggio: un secondo clic salta in fondo.
+  function skip(){
+    if (stage !== 'arrivo') return;
+    speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; stage = 'mappa';
+  }
+  document.getElementById('go').addEventListener('click', function(e){ e.stopPropagation(); entra(); });
+
+  var ray = new THREE.Raycaster();
+  var ptr = new THREE.Vector2(-2,-2);
+  var mx=0, my=0, tmx=0, tmy=0;
+  /* CHI E' A FUOCO NON LO DECIDE PIU' IL PUNTATORE, LO DECIDE LA GIOSTRA.
+     Nella costellazione i portali erano fermi e si sceglieva guardandoli; qui
+     c'e' sempre e solo un mondo davanti, ed e' quello. Il puntatore resta per
+     una cosa sola: sapere su quale lastra si e' cliccato. */
+  var hot = null;                 // il mondo davanti
+  var overCard = null;            // la lastra sotto al puntatore, se c'e'
+  function pick(){
+    ray.setFromCamera(ptr, camera);
+    var h = ray.intersectObjects(cards.children, false);
+    return h.length ? h[0].object.userData.world : null;
+  }
+  var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
+  var tintaElica = null;           // la card di cui l'elica ha preso il colore
+
+  /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
+     fuoco era il raycast, e il primo fotogramma col mouse fermo altrove
+     spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
+     davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
+  window.addEventListener('pointermove', function(e){
+    var px = (e.clientX/window.innerWidth)*2-1, py = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(px, -py);
+    /* Sopra l'anteprima viva la parallasse si ferma: la camera che scivola
+       sotto la mano sposterebbe la card mentre la si sta usando. `ptr` invece
+       si aggiorna lo stesso — serve a sapere su cosa si clicca. */
+    if (inPreview(e)) return;
+    tmx = px; tmy = py;
+  }, {passive:true});
+
+  window.addEventListener('click', function(e){
+    /* Un clic sul menu (il suo fondo compreso) non e' un clic sulla scena. */
+    if (inNav(e)) return;
+    if (stage === 'hero'){ entra(); return; }
+    if (stage === 'arrivo'){ skip(); return; }
+    /* Il clic dentro l'anteprima viva e' dell'effetto: il mazzo non lo vede. */
+    if (inPreview(e)) return;
+    /* Un trascinamento finisce sempre con un clic: senza questa guardia
+       girare la giostra farebbe entrare nel mondo su cui si e' lasciato. */
+    if (dragMoved > 8){ dragMoved = 0; return; }
+    /* Si conta il colpo QUI e non nel fotogramma: il clic arriva subito dopo
+       il rilascio, prima che il ciclo di disegno abbia rifatto il raycast, e
+       con un tocco secco il risultato del fotogramma precedente e' vecchio. */
+    var w = pick();
+    /* La card davanti non si apre piu' (2026-09-24): da congelata un clic su
+       di lei non fa niente, da viva lo prende l'anteprima. */
+    if (w){ if (w !== hot) portaDavanti(w.idx); return; }
+    /* `r` e' l'indice della CARD cliccata nell'elenco (Task 3): si porta
+       davanti quella card, `portaDavanti` la anima come per i fermi — non
+       salta. */
+    var r = pickRiga();
+    if (r >= 0) portaDavanti(r);
+  });
+
+  /* Dove sta la lastra davanti, e quanto lontano bisogna stare per vederla
+     intera. Il campo visivo di three e' VERTICALE: su un telefono in piedi
+     l'apertura orizzontale e' meno di meta' di quella di un portatile, e con
+     una distanza fissa la card davanti usciva dallo schermo da tutti e due i
+     lati. La distanza quindi non e' un numero, e' un conto: quello che serve
+     perche' la larghezza della lastra piu' un margine ci stia. Sul desktop il
+     conto da' meno di 4.35 e vince il valore di partenza, quindi la
+     composizione tarata a mano non si muove di un pixel. */
+  var ZFRONT = -RING.R;                 // la lastra davanti sta a z = -R
+  var MEZZOFOV = Math.tan(66*Math.PI/180/2);
+
+  /* Task 3 — SU RITRATTO SI STRINGE IL PASSO DELL'ELICA.
+     Il campo visivo di three è verticale: su un telefono in piedi l'apertura
+     ORIZZONTALE è meno di metà di quella del desktop, e le card sparse di lato
+     (A·sin(phase)) sbordano. Come resize() stringe la giostra nella home, qui
+     si stringono apertura (A) e salita (climb) — R e turns restano — così in
+     quadro ne restano 3–4 accumulate verso il fuga invece di uscire ai lati.
+     I numeri base sono quelli tarati in js/effetti-deck.js; qui si scalano. */
+  var HELIX_BASE = null;
+  function helixTune(){
+    if (!HELIX_BASE) HELIX_BASE = {
+      A:window.__HELIX_TUNE.A, R:window.__HELIX_TUNE.R, turns:window.__HELIX_TUNE.turns,
+      climb:window.__HELIX_TUNE.climb, yTop:window.__HELIX_TUNE.yTop
+    };
+    var b = HELIX_BASE, t = window.__HELIX_TUNE;
+    var portrait = (window.innerWidth / window.innerHeight) < 1;
+    t.A     = b.A     * (portrait ? 0.66 : 1);
+    t.climb = b.climb * (portrait ? 0.82 : 1);
+    t.yTop  = b.yTop  * (portrait ? 0.90 : 1);
+    t.R     = b.R;
+    t.turns = b.turns;
+  }
+
+  function resize(){
+    var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
+    renderer.setSize(w,h,false);
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+    helixTune();
+    /* Il campo visivo di three e' VERTICALE: su un telefono in piedi
+       l'apertura orizzontale e' meno di meta' di quella di un portatile. La
+       camera al centro dell'anello arretra un filo verso +z su schermo
+       stretto perche' la lastra davanti ci stia intera coi suoi margini; sul
+       desktop il conto da' meno di zero e la camera resta sul perno. */
+    var need = (CW*0.5 + (camera.aspect < 1 ? 0.22 : 0.30)) / (MEZZOFOV*camera.aspect);
+    /* Task 3 — la lastra davanti non sta più a z=−R (anello) ma a z=−R+A
+       (elica: il punto più vicino della spirale). La camera arretra quel tanto
+       che serve perché la card ci stia coi margini: distanza = CAM0.z + (R−A).
+       Su ritratto `need` cresce (FOV orizzontale stretto) e la camera arretra
+       parecchio; su desktop il conto è ~0 e resta sul perno. */
+    var hz = window.__HELIX_TUNE, front = hz.R - hz.A;
+    CAM0.z = Math.max(0.001, need - front);
+    DREF = front + CAM0.z;              // distanza camera → lastra davanti
+    /* L'elenco «CHE COSA CERCHI?» resta a lato, ma SOPRA il pelo dell'acqua
+       (y positivo) perche' non anneghi nella pozza; su telefono va sotto le
+       lastre e ingrandito. Rifinitura nella milestone della pozza. */
+    /* Su desktop l'elenco sta a SINISTRA, sopra il pelo dell'acqua, girato
+       verso il centro cosi' la camera-al-perno lo legge di faccia invece che
+       di taglio; resta in `bg`, quindi si specchia nell'acqua. Su telefono va
+       IN ALTO (sotto ci sarebbe la pozza) e di faccia. */
+    if (camera.aspect < 1){
+      /* SU RITRATTO L'ELENCO STA A UNA DISTANZA FISSA DALLA CAMERA (Task 9 —
+         rifinitura mobile). Nella home la camera è ferma sul perno e un `z`
+         assoluto bastava; qui no: `CAM0.z` cresce con lo schermo stretto (la
+         camera arretra perché la card davanti ci stia intera), e un elenco
+         lasciato a z=−3.05 finiva due unità più lontano di quanto fosse
+         disegnato — minuscolo, illeggibile, e addosso all'elica. Ancorandolo a
+         `CAM0.z − DIST` la distanza dall'occhio è sempre quella, quindi la
+         misura a schermo non dipende più da quanto la camera è arretrata.
+         Sale anche di quota (1.78 → 2.08): sotto ci passa l'elica, e il
+         titolo restava mangiato dai punti. */
+      /* 2026-09-24 (Task 3): a sette righe l'elenco è più alto (IH 540→760) e
+         non c'è più, in ritratto, una fascia libera abbastanza alta da
+         contenerlo intero senza toccare la vicina sopra o sotto — lo spazio
+         fra la barra di navigazione e la prima vicina è ~142px, e sotto
+         0.50 di scala il testo non si legge più. Resta comunque posizionato
+         (per continuità con `indexRowPt`/`pickRiga`, usati solo su desktop
+         dai test), ma `frame()` lo tiene a opacità zero in ritratto: vedi
+         `idxT` più sotto. */
+      idxMesh.position.set(0, 2.35, CAM0.z - 2.55); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.50);
+    } else {
+      /* SU DESKTOP L'ELENCO STA A SINISTRA (Task 3): la lastra davanti
+         riempie il centro dello schermo (x≈400-1040) per ogni posto — solo
+         lo spigolo destro dell'elenco conta, deve restare a sinistra di
+         quella soglia con un margine reale, non al pixel. A sette righe e
+         a scala 0.95 l'elenco è largo ~560px: spostarlo tutto a sinistra
+         del bordo lo spingeva quasi fuori schermo (solo l'ultima parola del
+         titolo restava leggibile). Sceso a scala 0.60 e a x=-3.18 lo spigolo
+         destro sta a x≈365 (le vicine sopra/sotto stanno molto più a destra,
+         x≈570-870, e non lo toccano mai) mentre il titolo e le sette righe
+         restano interi e leggibili sul lato sinistro. */
+      idxMesh.position.set(-3.18, 0.55, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.60);
+    }
+    rt.setSize(Math.round(w*pr), Math.round(h*pr));
+    RES.set(Math.round(w*pr), Math.round(h*pr));
+    fogMat.uniforms.uAspect.value = w/h;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var proj = new THREE.Vector3();
+  var labelsEl = document.getElementById('labels');
+  var labelCam = document.getElementById('labelCam');
+  var lastPersp = -1;
+  /* I numeri della matrice vanno scritti SENZA notazione esponenziale.
+     `+v.toFixed(6)` torna a essere un numero, e JavaScript stampa i valori
+     molto piccoli come `4e-06`: in CSS non è un numero valido, quindi il
+     browser scarta l'INTERA dichiarazione `transform` — in silenzio, senza un
+     errore in console. Il risultato era la trasformata della camera che non
+     veniva applicata per niente e le scritte che sparivano.
+     Qui esce sempre una stringa in notazione decimale, e sotto la soglia si
+     scrive zero. */
+  function n(v){
+    if (!isFinite(v) || Math.abs(v) < 1e-5) return '0';
+    return v.toFixed(5);
+  }
+  function camMatrix(m){
+    var e = m.elements;
+    return 'matrix3d(' + [n(e[0]),n(-e[1]),n(e[2]),n(e[3]),
+                          n(e[4]),n(-e[5]),n(e[6]),n(e[7]),
+                          n(e[8]),n(-e[9]),n(e[10]),n(e[11]),
+                          n(e[12]),n(-e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  /* IL CSS3D LAVORA IN PIXEL, LA SCENA IN UNITÀ — E I DUE LATI DEVONO
+     ANNULLARSI.
+     Il layer DOM tratta un'unità di mondo come UN PIXEL. Con card larghe 1.3
+     unità le scritte collassano in due pixel al centro e spariscono; e se si
+     corregge solo da una parte, escono specchiate e fuori posto (provato).
+     La conversione va fatta DUE VOLTE, in versi opposti: la camera viene
+     ingrandita di `ppu`, l'ancora della scritta rimpicciolita di `1/ppu`.
+     Nel prodotto il fattore sparisce, e resta solo l'effetto voluto — quanti
+     pixel di testo stanno in un'unità di mondo.
+     `ppu` è la prospettiva diviso la distanza tipica della camera dalle card:
+     così a quella profondità il testo esce grande quanto è scritto nel CSS, e
+     resta proporzionato se la finestra cambia. */
+  /* La distanza di riferimento per le scritte: quella della lastra davanti.
+     Se fosse fissa, sul telefono (dove la camera arretra) le scritte
+     arriverebbero rimpicciolite; cosi' escono sempre della misura scritta
+     nel CSS. La scrive `resize`, qui c'e' solo il primo valore. */
+  var DREF = RING.R + CAM0.z;
+  var mCam = new THREE.Matrix4(), mObj = new THREE.Matrix4(), mScale = new THREE.Matrix4();
+
+  function objMatrix(m){
+    var e = m.elements;
+    return 'translate(-50%,-50%)matrix3d(' +
+      [n(e[0]),n(e[1]),n(e[2]),n(e[3]),
+       n(-e[4]),n(-e[5]),n(-e[6]),n(-e[7]),
+       n(e[8]),n(e[9]),n(e[10]),n(e[11]),
+       n(e[12]),n(e[13]),n(e[14]),n(e[15])].join(',') + ')';
+  }
+  var t0 = performance.now(), tPrev = t0;
+  function sstep(x){ x = x < 0 ? 0 : (x > 1 ? 1 : x); return x*x*(3-2*x); }
+
+  /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Vive in js/effetti-deck.js
+     (window.EffettiController): gli si passano la STESSA camera e lo STESSO
+     renderer dello stage — così proietta il rettangolo della card con la
+     matrice con cui la card è disegnata — più `#stage-live` e la misura del
+     piano-card (CW×CH). `effects` è l'elenco degli effetti pilotabili — Task 5
+     `saucer`, Task 6 `vesper`/`orologio`/`altitude` (tutti su `WC.effects`,
+     popolato dai rispettivi js/<modulo>.js caricati qui sotto PRIMA di questo
+     inline) — Task 7 aggiunge `warp`/`lithos`; resta poster solo `sneaker`
+     (nessuna sezione statica per lui in questa sotto-costellazione). La
+     soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
+  var HELIX_EL   = document.getElementById('helixStage');
+
+  /* LE LASTRE DAVANTI ALL'ELICA LA COPRONO — SEMPRE, NON SOLO DA FERME.
+     L'elica vive su un canvas suo, sopra allo stage, quindi di suo passa
+     sopra a tutto. Prima si bucava la sua maschera con un rettangolo dritto,
+     e solo a card frontale: appena la lastra si girava il buco si chiudeva e
+     il DNA le scorreva sopra, facendola sembrare DIETRO anche se stava davanti.
+     Qui il buco ha la sagoma vera della lastra (angoli smussati compresi),
+     proiettata con la stessa camera che la disegna, a ogni fotogramma e a
+     ogni inclinazione. Si buca solo per le lastre piu' vicine alla camera
+     dell'asse dell'elica: quelle dietro l'asse devono restare coperte dal DNA,
+     ed e' proprio quel davanti/dietro a dare la profondita'. */
+  var BUCO_PTS = (function(){
+    var r = CW * 0.035, hw = CW/2 - r, hh = CH/2 - r, pts = [], k, a;
+    var centri = [[hw,hh,0],[-hw,hh,1],[-hw,-hh,2],[hw,-hh,3]];
+    centri.forEach(function(c){
+      for (k = 0; k <= 5; k++){
+        a = (c[2] + k/5) * Math.PI/2;
+        pts.push([c[0] + Math.cos(a)*r, c[1] + Math.sin(a)*r]);
+      }
+    });
+    return pts;
+  })();
+  var bucoV = new THREE.Vector3(), bucoKey = null;
+
+  function bucoElica(spegni){
+    if (!HELIX_EL) return;
+    var el = renderer.domElement;
+    var W = el.clientWidth || window.innerWidth, H = el.clientHeight || window.innerHeight;
+    var paths = [];
+    if (!spegni){
+      var asseZ = -((window.__HELIX_TUNE && window.__HELIX_TUNE.R) || 4.5);
+      /* Durante l'ingresso (`body.-entra`) l'asse scivola di 42px: il buco va
+         spostato di quanto e' spostato lui, se no resta sfasato sulla card. */
+      var dy = document.body.classList.contains('-entra') ? HELIX_EL.getBoundingClientRect().top : 0;
+      camera.updateMatrixWorld();
+      WORLDS.forEach(function(w){
+        if (!w.mesh || w.uni.uReveal.value < 0.3) return;
+        if (w.mesh.position.z <= asseZ) return;
+        w.mesh.updateWorldMatrix(true, false);
+        var d = '';
+        /* SENSO OPPOSTO AL RETTANGOLO: BUCO_PTS, proiettato sullo schermo (y in
+           giu'), gira al contrario del rettangolo `M0 0 H W V H H0 Z`, quindi
+           con `nonzero` dentro la sagoma il conto fa zero e l'elica si taglia.
+           Due sagome sovrapposte li' ridipingerebbero (−1): non succede perche'
+           le card non si toccano piu' (vedi deckScale). */
+        for (var i = 0; i < BUCO_PTS.length; i++){
+          bucoV.set(BUCO_PTS[i][0], BUCO_PTS[i][1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
+          d += (d ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
+               Math.round((1-(bucoV.y*0.5+0.5))*H - dy);
+        }
+        paths.push(d + 'Z');
+      });
+    }
+    var key = paths.length ? W + 'x' + H + paths.join('') : '';
+    if (key === bucoKey) return;
+    bucoKey = key;
+    if (!key){
+      HELIX_EL.classList.remove('-buco');
+      HELIX_EL.style.removeProperty('--buco');
+      return;
+    }
+    HELIX_EL.style.setProperty('--buco',
+      'path(nonzero, "M0 0H' + W + 'V' + H + 'H0Z' + paths.join('') + '")');
+    HELIX_EL.classList.add('-buco');
+  }
+  var SETTLE_MS = 250;
+  var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
+    ? window.EffettiController.create({
+        THREE: THREE, camera: camera, renderer: renderer,
+        stageLive: STAGE_LIVE, effects: (WC.effects || {}),
+        cardW: CW, cardH: CH, settleMs: SETTLE_MS
+      })
+    : null;
+
+  function frame(){
+    requestAnimationFrame(frame);
+    var now = performance.now();
+    var t = (now-t0)/1000;
+    var dt = Math.min(0.05, (now-tPrev)/1000); tPrev = now;
+
+    /* La coreografia. Cinque numeri, nessun taglio: il tunnel rallenta, le
+       particelle raggiungono la destinazione che avevano gia', i portali
+       traspaiono dentro agli ammassi che si sono formati, e i raggi si
+       disegnano per ultimi. Chi torna una seconda volta salta con un clic. */
+    if (stage === 'arrivo'){
+      var e = now - arriveT;
+      speed   = 1 - sstep(e/900);
+      assign  = sstep((e-550)/1250);
+      cardsIn = sstep((e-1250)/800);
+      spokeIn = sstep((e-1800)/700);
+      if (e > 2500) stage = 'mappa';
+    }
+    travel += speed * dt * 5.6;
+
+    /* LA FILA SCORRE — SULL'ACCUMULATORE SENZA FONDO (Task 4).
+       `spinT` non è più letto dallo scroll della pagina (Task 3): lo muovono
+       direttamente rotellina/trascino/frecce/click (vedi `spingi`/
+       `portaDavanti` più sopra), e non ha né un minimo né un massimo — vedi
+       il commento sulla sezione 4.
+       Lo smorzamento resta SOLO se il moto è consentito: chi ha chiesto
+       reduced-motion non deve vedere il mazzo scivolare da un posto
+       all'altro, lo vede SCATTARE — `spin` insegue `spinT` di scatto, in un
+       solo fotogramma, invece che in ~130 ms di inseguimento esponenziale
+       (1/7.5s). È la stessa distinzione che dna.js fa da sé in
+       `reducedStandalone` (un fotogramma esplicito, mai un rincorrersi nel
+       tempo): qui è il MEDESIMO `spin` che pilota anche l'elica (vedi
+       `window.__effettiHelixScroll` più sotto), quindi lo scatto non è solo
+       delle card — è anche il modo in cui l'elica smette di "girare da
+       sola" quando il moto non è gradito. */
+    /* LO SCATTO SUL FERMO (fix round 1 — review Task 5).
+       Il commento sul coefficiente della rotellina, qui sopra, spiegava perché
+       la card originaria NON avesse uno scatto: «la card dove il gesto ti
+       lascia è quella buona». Ma il gate di pieno-fuoco del controller (più
+       sotto, Task 5) richiede `spin` intero — e uno scorrimento libero
+       (rotellina/trascino) lascia `spin` frazionario per sempre, perché non
+       c'era nulla a riportarlo su un fermo. Frecce e fermi/elenco (`STEP=1`,
+       `portaDavanti`) arrivano già interi: solo la rotellina/il trascino ne
+       restavano fuori. Si prende in prestito ESATTAMENTE il meccanismo della
+       home (`index.html` — «lo scatto sul fermo», sezione 4 del suo frame):
+       dopo `SETTLE_MS` di silenzio (la stessa soglia del gate, sotto) e senza
+       trascino in corso, si ammorbidisce **`spinT`** — il bersaglio che `spin`
+       insegue subito dopo, qui sotto, con lo smorzamento di Task 3/4 (mai
+       `spin` stesso, per non spezzare quell'inseguimento) — verso l'intero più
+       vicino. Compatibile con l'accumulatore infinito di Task 4 senza alcun
+       clamp: `spinT` può valere un milione, `Math.round` di un numero enorme
+       resta un numero enorme — nessun avvolgimento da gestire qui, come già
+       per `wrapN` sulle card. */
+    if (toccato && !dragging && now - lastInput > SETTLE_MS){
+    /* PIÙ MORBIDO SUL FERMO (richiesta utente: «a volte, mentre si scorre,
+       le card passano da un'immagine all'altra in modo scattante»).
+       Il colpevole era qui: fermato il gesto, il bersaglio veniva tirato
+       sull'intero più vicino a `dt*7` — circa 140 ms — e se la rotellina
+       lasciava la fila a metà strada quel richiamo si vedeva come uno
+       strappo, non come un assestamento. A `dt*3` il richiamo dura il doppio
+       e lo smorzamento di `spin`, che è più svelto, ci arriva sopra: la fila
+       si POSA sul fermo invece di scattarci. */
+      var det = Math.round(spinT);
+      spinT += (det - spinT)*Math.min(1, dt*3);
+    }
+
+    if (WC.motionOk){
+      spin += (spinT - spin)*Math.min(1, dt*7.5);
+    } else if (spin !== spinT){
+      spin = spinT;
+      /* dna.js, in reduced-motion standalone, non tiene un rAF che gira da
+         solo: ridisegna un fotogramma alla volta quando riceve un evento
+         'scroll' (vedi il suo `onScroll`). Qui non c'è nessuno scroll nativo
+         a farlo scattare — il mazzo lo muovono i click/le frecce, non la
+         pagina — quindi lo si sveglia a mano, DOPO che `spin` ha già preso
+         il valore nuovo (mai prima: dna.js leggerebbe ancora il vecchio). */
+      if (typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('scroll'));
+    }
+
+    /* Ogni lastra ripresa e rimessa al suo posto nella fila. `u` — la
+       distanza dal posto davanti — e' il numero da cui discende tutto:
+       dove sta, quanto e' grande, quanto e' girata, quanto si vede.
+       Dietro DECK_ON=false non c'e' nessuna mesh da riposizionare — questo
+       loop tocca `w.mesh`/`w.uni`, che esistono solo quando il mazzo (Task
+       1: sezione 3, sopra) e' stato costruito. */
+    if (DECK_ON) WORLDS.forEach(function(w, i){
+      var u = deckU(i, spin);
+      w.u = u;
+      /* Chi e' piu' vicino alla camera si disegna per ultimo. Senza, three
+         ordina i trasparenti per distanza dal CENTRO, e con lastre inclinate
+         e di scala diversa l'ordine a volte si inverte per un istante. */
+      w.mesh.renderOrder = Math.round(-Math.abs(u) * 100);
+      deckPlace(u, w.mesh.position);
+      w.mesh.rotation.set(0, deckYaw(u), deckRoll(u));
+      w.mesh.scale.setScalar(deckScale(u));
+      w.fwd.set(Math.sin(deckYaw(u)), 0, Math.cos(deckYaw(u)));
+      w.uni.uReveal.value = cardsIn * deckFade(u);
+      /* La scritta si stacca dalla lastra lungo la sua normale — e' quella
+         parallasse a dare la profondita' — ma solo su chi e' davanti: di
+         fianco la normale punta di traverso e la scritta finirebbe lontana
+         dalla propria lastra. */
+      w.liftNow = w.lift * Math.exp(-u*u/1.6) * w.mesh.scale.x;
+      w.anchorObj.position.z = w.lift * Math.exp(-u*u/1.6);
+    });
+
+    mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
+
+    // a fuoco c'e' chi e' davanti, e basta — ma solo col mazzo acceso
+    if (DECK_ON && stage === 'mappa'){
+      var nw = WORLDS[frontIdx()];
+      if (nw !== hot){
+        hot = nw;
+        WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
+        aggiornaFocus(hot);
+        idxDisegna();
+      }
+      /* L'ELICA PRENDE IL COLORE DELLA CARD (Nike: «quando cambia la card
+         davanti, la pagina prende il suo colore»). La tavolozza `dna` dove
+         c'e' (Nebulosa, Genesi), se no il colore della card — il bianco di
+         Anatomia compreso, cosi' com'e'. La dissolvenza (0.8 s) e' di dna.js.
+         Fuori dal blocco qui sopra, con un suo ricordo (`tintaElica`): alla
+         prima card l'elica puo' non essere ancora montata (WC.helix arriva
+         con l'init di dna.js), e quella chiamata andrebbe persa. */
+      if (hot && hot !== tintaElica && WC.helix && WC.helix.setTint){
+        tintaElica = hot;
+        WC.helix.setTint(hot.dna || hot.col);
+      }
+      if (!mobile && !dragging){
+        overCard = pick();
+        var r = overCard ? -1 : pickRiga();
+        if (r !== idxSopra){ idxSopra = r; idxDisegna(); }
+        /* La mano solo dove un clic fa qualcosa: una card di fianco o una riga
+           dell'elenco. Sulla card davanti no — congelata non risponde, e da
+           viva il cursore lo decide l'effetto. */
+        document.body.style.cursor = ((overCard && overCard !== hot) || r >= 0) ? 'pointer' : '';
+      }
+    }
+
+    /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
+       vicini si muovono più dei lontani senza doverlo scrivere da nessuna
+       parte. */
+    /* La camera sta al centro dell'anello e guarda verso la lastra davanti
+       (0, lookY, -R). Il puntatore la sposta appena — la parallasse viene da
+       se'. */
+    var tx = mx*0.34, ty = RING.camH - my*0.18, tz = CAM0.z;
+    var look = new THREE.Vector3(0, RING.lookY, -RING.R);
+    camera.position.set(tx, ty, tz);
+    camera.lookAt(look);
+
+    if (DECK_ON) WORLDS.forEach(function(w){
+      var isHot = (w === hot);
+      var u = w.uni;
+      u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
+      /* Chi non e' davanti arretra, ma non troppo: devono restare tutte
+         leggibili e raggiungibili, e' la ragione per cui la fila ha
+         sostituito l'anello. */
+      var dimT = isHot ? 1 : 0.80;
+      u.uDim.value += (dimT - u.uDim.value)*0.10;
+    });
+
+    // la nebbia prende il colore del mondo guardato (nessuno, finche' il mazzo e' spento)
+    var target = hot;
+    var ts = target ? 1 : 0;
+    tintStr += (ts - tintStr)*0.08;
+    /* Il colore passa per sfumatura, non di scatto: prima la nebbia saltava
+       al colore nuovo nel fotogramma in cui cambiava la card (col ciano di
+       tutti i cluster non si notava; con arancio→ciano→bianco si'). */
+    if (target){
+      tintCol.x += (target.col[0] - tintCol.x)*0.06;
+      tintCol.y += (target.col[1] - tintCol.y)*0.06;
+      tintCol.z += (target.col[2] - tintCol.z)*0.06;
+    }
+    fogMat.uniforms.uTint.value.copy(tintCol);
+    fogMat.uniforms.uTintStr.value = tintStr;
+    dustMat.uniforms.uTint.value.copy(tintCol);
+    dustMat.uniforms.uTintStr.value = tintStr;
+    document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*1 : 0);
+    focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
+
+    /* L'elenco compare quando la fila si e' composta e si ritira entrando
+       in un mondo: e' un attrezzo della mappa, non della scena — e la mappa
+       non c'e' finche' DECK_ON e' false. In ritratto resta spento (Task 3):
+       a sette righe non c'e' una fascia libera che lo contenga intero senza
+       toccare una vicina (vedi il commento in resize()). */
+    var idxT = (DECK_ON && stage === 'mappa' && camera.aspect >= 1) ? spokeIn*0.92 : 0;
+    idxMat.opacity += (idxT - idxMat.opacity)*0.10;
+
+    /* IL TEMPO DELL'AMBIENTE (Task 9 — rifinitura reduced-motion).
+       `uTime` non muove le card: muove il FONDO — il pulviscolo che va alla
+       deriva e brilla, e il rumore della nebbia. È l'ultimo «giro continuo»
+       rimasto in scena quando il moto non è gradito: il mazzo scatta già
+       (`spin = spinT`), l'elica è ferma (dna.js in reduced standalone), gli
+       effetti non si accendono nemmeno (ogni js/<modulo>.js esce su
+       `!ctx.motionOk`) — ma questi due shader continuavano ad andare, perché
+       leggono l'orologio, non il flag. Qui l'orologio si ferma: un fotogramma
+       fisso, ancora pieno di pulviscolo, che non si muove più da solo. Il
+       resto del frame gira lo stesso (serve a rispondere ai click).
+       Il vincolo del piano — «reduced-motion deve raggiungere anche i loop
+       canvas, non basta il flag di gsap» — è esattamente questo. */
+    var tAmb = WC.motionOk ? t : 0;
+    fogMat.uniforms.uTime.value = tAmb;
+    var du = dustMat.uniforms;
+    du.uTime.value = tAmb; du.uTravel.value = travel; du.uAssign.value = assign;
+    du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
+
+    /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Si sveglia l'effetto della card
+       davanti SOLO a pieno fuoco: ferma da ~250ms (spinT raggiunto e nessun
+       gesto in corso da SETTLE_MS) e centrata (frazione di `spin` presso lo zero
+       → face≈1). Mentre si scorre nulla è sveglio
+       e tutte le card mostrano il poster. Un solo effetto per volta lo garantisce
+       il controller stesso (freeze del precedente prima del wake del nuovo). */
+    if (deckCtl){
+      if (DECK_ON && stage === 'mappa'){
+        var _frac = Math.abs(spin - Math.round(spin));
+        var _settled = !dragging && Math.abs(spinT - spin) < 0.02 && (now - lastInput) > SETTLE_MS;
+        var _full = _settled && _frac < 0.045;   // face≈1
+        var _hw = WORLDS[frontIdx()];
+        deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
+        /* IL BUCO PER L'ELICA. Frontale entro ~0.10 di giro: da lì in poi il
+           rettangolo proiettato è la lastra, e il DNA si ferma sul bordo. */
+        bucoElica();
+      } else {
+        deckCtl.tick(now, null, null, false);
+        bucoElica(true);
+      }
+    }
+    lpFrame();
+
+    /* --- UN SOLO PASSAGGIO (Task 1) ---
+       Qui c'erano tre passate: (A) il RIFLESSO, camera specchiata rispetto
+       al pelo dell'acqua → `reflectRT`, con bg + lastre piatte; (B) il
+       PIATTO → `rt`, bg + lastre piatte SENZA acqua, la sorgente da cui il
+       vetro rifrange; (C) il FINALE → schermo, bg + acqua + lastre che
+       rifrangono. La pozza (acqua, riflesso, onde, scia) e' tolta di netto
+       (sezione 3.5, sopra); il mazzo che il passaggio (B) doveva nutrire non
+       si costruisce finche' DECK_ON e' false. Resta un solo render dritto a
+       schermo, solo `bg` — nebbia e pulviscolo, niente altro. Il mazzo (e la
+       sua pozza di vetro, non quella d'acqua) tornano nei prossimi task,
+       dietro allo stesso flag. */
+    renderer.setRenderTarget(null);
+    renderer.clear();
+    renderer.render(bg, camera);
+    if (DECK_ON) renderer.render(scene, camera);
+  }
+  /* Task 3 — IL DISCO PARTE GIÀ COMPOSTO.
+     La coreografia atrio→tunnel→mappa (con il giro d'invito) era della giostra;
+     qui l'elica è l'asse sempre vivo e le card la cavalcano da subito, guidate
+     dallo scroll globale. Si salta dritti a 'mappa' — così `cardsIn=1` rivela
+     le card e il fuoco si accende — e si nasconde l'atrio, che parlava dei 9
+     mondi e coprirebbe la scena. */
+  if (DECK_ON){
+    stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
+    var heroEl = document.getElementById('hero');
+    if (heroEl){ heroEl.classList.add('-off'); heroEl.style.display = 'none'; }
+  }
+
+  requestAnimationFrame(frame);
+
+  /* LA SONDA DELLA VERIFICA (scripts/verify-capitoli.cjs). Solo letture e due
+     comandi (portare davanti una card, fermare il mazzo a meta' giro): niente
+     che la pagina usi da se'. */
+  var sondaV = new THREE.Vector3();
+  function sondaQuad(mesh, w2, h2){
+    var el = renderer.domElement, W = el.clientWidth, H = el.clientHeight;
+    mesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+    return [[-w2, h2], [w2, h2], [w2, -h2], [-w2, -h2]].map(function(p){
+      sondaV.set(p[0], p[1], 0).applyMatrix4(mesh.matrixWorld).project(camera);
+      return [(sondaV.x * 0.5 + 0.5) * W, (1 - (sondaV.y * 0.5 + 0.5)) * H];
+    });
+  }
+  function sondaRect(els){
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    els.forEach(function(e){
+      if (!e) return;
+      var r = e.getBoundingClientRect();
+      if (r.width < 1 || getComputedStyle(e).opacity === '0') return;
+      x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top);
+      x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+    });
+    return x0 === Infinity ? { x: -10, y: -10, w: 1, h: 1 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  window.__capitoli = {
+    cards: function(){
+      return WORLDS.map(function(w){
+        return { idx: w.idx, id: w.id, u: w.u, reveal: w.uni.uReveal.value, quad: sondaQuad(w.mesh, CW/2, CH/2) };
+      });
+    },
+    index: function(){ return { quad: sondaQuad(idxMesh, idxMesh.geometry.parameters.width/2, idxMesh.geometry.parameters.height/2), opacity: idxMat.opacity }; },
+    /* Altezza a schermo (px CSS) del testo di una riga: proietta il bordo
+       superiore e inferiore del glifo (centro riga ± FS/2 in px di canvas)
+       con la stessa proiezione di `indexRowPt`, e ne misura la distanza sullo
+       schermo — usato per verificare "quanto e' grande" l'elenco, non solo
+       "dove sta". */
+    rowHeight: function(k, FS){
+      var w2 = idxMesh.geometry.parameters.width/2, h2 = idxMesh.geometry.parameters.height/2;
+      var rowY = IROW0 + k*IROWH;
+      var vTop = h2 - (2*h2)*((rowY - FS/2)/IH);
+      var vBot = h2 - (2*h2)*((rowY + FS/2)/IH);
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      var el = renderer.domElement;
+      var a = new THREE.Vector3(0, vTop, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var b = new THREE.Vector3(0, vBot, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var ay = (1 - (a.y*0.5+0.5))*el.clientHeight, by = (1 - (b.y*0.5+0.5))*el.clientHeight;
+      return Math.abs(by - ay);
+    },
+    indexRowPt: function(k, fx){
+      var v = 1.00 - 2.00 * ((IROW0 + k * IROWH) / IH);   // da uv a coordinate locali del piano
+      var x = -1.45 + 2.90 * fx;
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      sondaV.set(x, v, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var el = renderer.domElement;
+      return [(sondaV.x * 0.5 + 0.5) * el.clientWidth, (1 - (sondaV.y * 0.5 + 0.5)) * el.clientHeight];
+    },
+    /* La didascalia si misura sulle scritte che la compongono, non sulla
+       scatola di #focus: quella e' larga il 92% dello schermo (serve per
+       andare a capo su telefono) e contava come «didascalia» anche l'aria vuota
+       ai lati, dove ora sta #torna. */
+    caption: function(){ return sondaRect([].slice.call(document.getElementById('focus').children)); },
+    /* Il suggerimento a parte: sul telefono sta in basso a destra, accanto a
+       #torna, e unito alla didascalia ne farebbe una scatola che copre anche
+       l'angolo di #torna. */
+    extra: function(){ return { hint: sondaRect([document.getElementById('hint')]),
+      torna: sondaRect([document.getElementById('torna')]), preventivo: sondaRect([document.getElementById('preventivo')]) }; },
+    nav: function(){ return sondaRect([document.getElementById('nav')]); },
+    goTo: function(i){ portaDavanti(i); },
+    setSpin: function(v){ spin = spinT = v; lastInput = performance.now() + 1e7; dragging = false; },
+    spin: function(){ return spin; },
+    front: function(){ return frontIdx(); },
+    awake: function(){ return deckCtl ? deckCtl.awake() : null; }
+  };
+
+})();
+</script>
+
+<script>
+/* LA RISALITA DELL'ASSE — quel che resta dell'ingresso, senza sipario.
+ * Il velo col marchio è stato tolto (vedi la nota nel foglio di stile): al suo
+ * posto un gesto solo, e breve. `-entra` parte messo, e si toglie al secondo
+ * fotogramma — il tempo che il browser registri lo stato di partenza — così
+ * l'elica sale una volta sola invece di comparire di colpo. Con moto ridotto
+ * non si mette affatto. */
+(function(){
+  var ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.add('-aperto');
+  if (ridotto) return;
+  document.body.classList.add('-entra');
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ document.body.classList.remove('-entra'); });
+  });
+})();
+</script>
+</body>
+</html>

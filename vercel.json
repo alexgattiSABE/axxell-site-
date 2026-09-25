@@ -1,4 +1,22 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/atelier/capitoli/:effetto",
+      "destination": "/atelier/capitoli-legacy"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/website-creation",
+      "destination": "/atelier",
+      "permanent": true
+    },
+    {
+      "source": "/website-creation/:path*",
+      "destination": "/atelier/:path*",
+      "permanent": true
+    }
+  ]
 }

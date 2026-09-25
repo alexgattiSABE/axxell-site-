@@ -1,0 +1,873 @@
+/* Stili dei 9 capitoli. Ogni task aggiunge il proprio blocco in fondo. */
+
+/* ---- CAP 00 — LOADER ---- */
+.wc-loader{position:fixed;inset:0;z-index:10000;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;}
+.wc-loader.done{pointer-events:none;}
+.wc-loader-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* Il sipario è position:absolute: senza uno stacking esplicito qui, gli elementi
+   posizionati dipingono sempre sopra il flow statico, a prescindere dall'ordine
+   nel markup — il sipario coprirebbe contatore e logo per l'intera animazione. */
+.wc-loader-vapour{display:block;}
+.wc-curtain{position:absolute;left:0;right:0;height:50%;background:var(--bg);}
+.wc-curtain-t{top:0;}
+.wc-curtain-b{bottom:0;}
+/* la pagina non scrolla finché il loader è aperto */
+body.wc-locked{overflow:hidden;}
+
+/* ---- CAP 01 — HERO TUNNEL ---- */
+/* Alta 380svh: la sezione non si legge, si attraversa. 100 per leggere la
+   copy, il resto è la corsa nel tubo. */
+.wc-hero{padding:0;height:380svh;}
+.wc-hero-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+/* Il fondo del pass finale della scene sorgente, in CSS: il canvas resta
+   trasparente e la copy non ha un rettangolo opaco sotto. */
+/* Il fondo e le fiamme d'angolo del pass finale della scene, in CSS. I colori
+   sono quelli ORIGINALI del CONFIG di GetLayers: fondo #0a0524, fiamme ciano
+   #2bf0ff e viola #7a3cff. */
+.wc-hero-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(45% 45% at 50% 50%, rgba(43,240,255,.14), transparent 72%),
+    radial-gradient(75% 55% at 12% 108%, rgba(122,60,255,.16), transparent 72%),
+    radial-gradient(75% 55% at 88% 108%, rgba(43,240,255,.08), transparent 72%),
+    #0a0524;}
+.wc-tunnel{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* La copy sta sopra una parete di particelle in movimento: senza un velo il
+   lead e il pulsante scendono sotto il contrasto leggibile. Il velo se ne va
+   insieme alla copy (--scrim lo guida lo stesso codice della coreografia),
+   così la bocca del tunnel resta pulita appena la copy è volata via. */
+.wc-hero-pin::after{content:'';position:absolute;inset:0;z-index:1;
+  pointer-events:none;opacity:var(--scrim,1);
+  background:radial-gradient(46% 40% at 50% 50%, rgba(6,6,9,.78), rgba(6,6,9,.42) 58%, transparent 80%);}
+/* La prospettiva sta qui e il punto di fuga è il centro dello schermo, cioè
+   la bocca del tunnel: è lì che le parole devono convergere. */
+.wc-hero-content{position:relative;z-index:2;max-width:64ch;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.6rem;
+  perspective:1100px;perspective-origin:50% 50%;}
+.wc-fly{will-change:transform,opacity;}
+.wc-fly .lead{margin-inline:auto;}
+.wc-hero-title{transform-style:preserve-3d;}
+.wc-hero-title .w{will-change:transform,opacity;}
+.wc-hero-title .w{display:inline-block;overflow:hidden;vertical-align:bottom;}
+.wc-hero-title .wi{display:inline-block;will-change:transform;}
+/* Righe dei titoli di sezione (js/headings.js). SplitText clona ogni riga in
+   un involucro `-mask` con overflow:clip: gli h2 hanno line-height 1.05, che
+   taglia le discendenti (la "p" di "profondità") e gli accenti alti. Il padding
+   allarga la finestra di ritaglio, il margine negativo lo toglie dal flusso —
+   senza, ogni riga guadagnerebbe spazio e il titolo si aprirebbe. */
+.wcline{will-change:transform;}
+.wcline-mask{padding-bottom:.14em;margin-bottom:-.14em;
+  padding-top:.06em;margin-top:-.06em;}
+/* Non è più un'ancora ma un pulsante: non porta da qualche parte, entra. */
+.wc-magnet{align-self:center;display:inline-flex;align-items:center;
+  padding:.9rem 1.6rem;border:1px solid var(--cyan);border-radius:2px;
+  background:none;font-family:inherit;cursor:pointer;
+  color:var(--cyan);text-decoration:none;font-size:.9rem;font-weight:500;
+  will-change:transform;}
+.wc-magnet:hover{color:var(--white);}
+.wc-scroll-cue{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);
+  z-index:2;width:1px;height:56px;background:var(--border2);overflow:hidden;}
+.wc-scroll-cue span{position:absolute;top:0;left:0;width:100%;height:40%;
+  background:var(--cyan);}
+
+/* Senza motion il tunnel non esiste: la sezione torna a essere alta quanto
+   basta a leggerla, invece di lasciare tre schermate vuote da scorrere. */
+.wc-hero.-static{height:auto;min-height:100svh;}
+.wc-hero.-static .wc-hero-pin{height:auto;min-height:100svh;}
+.wc-hero.-static .wc-tunnel{display:none;}
+.wc-hero.-static .wc-scroll-cue{display:none;}
+
+/* ---- HELION — IL VOLO CONTINUA ----
+   Sta fra il tunnel e il manifesto. Tre schermate di scroll: una per uscire
+   dal tubo alla velocità con cui il capitolo prima ha chiuso, due per
+   rallentare dentro il campo di stelle. Sotto le tre, la decelerazione è
+   troppo brusca per leggersi come tale. */
+/* Nove schermate: tre forme e due riordini, e ognuno dei cinque tratti ha
+   bisogno del suo respiro. Comprimendoli si sovrappongono, e sovrapposti non
+   se ne legge nessuno. */
+/* 780svh e non più 900: si e' accorciata SOLO la decelerazione iniziale, da
+   208 a 90svh di corsa. Tutte le fasi successive valgono ancora gli stessi svh
+   di prima — le frazioni in js/warp.js sono state ricalcolate su questa nuova
+   altezza, non lasciate dov'erano. Chi tocca questo numero rifaccia il conto. */
+.wc-warp{padding:0;height:780svh;}
+.wc-warp-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:flex-end;
+  padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
+/* NON nero pieno, ed è la seconda metà della saldatura. Il capitolo prima
+   chiude su un blu-viola profondo — la parete del tubo vista da dentro — e
+   aprire qui sul nero assoluto faceva uno scalino di tono proprio sulla
+   giuntura: si vedeva il confine fra due scene anche col movimento che
+   combaciava. Il fondo riparte da quel viola e si spegne verso il centro, dove
+   c'è il punto di fuga.
+   Resta comunque scurissimo: strisce e stelle sono additive, quindi ogni
+   grammo di luce che ci mette il fondo lo pagano loro in contrasto. */
+.wc-warp-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(58% 46% at 50% 46%, rgba(58,92,255,.11), transparent 70%),
+    radial-gradient(80% 70% at 18% 96%, rgba(110,32,255,.16), transparent 72%),
+    radial-gradient(70% 60% at 88% 4%, rgba(24,10,58,.55), transparent 74%),
+    #05040E;}
+#wcWarpCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* Le due didascalie stanno NELLO STESSO posto, sovrapposte: è la stessa scena
+   che cambia forma, quindi il testo si sostituisce sul posto invece di
+   scorrere via. Assolute, se no il flex del pin le metterebbe in fila. */
+.wc-warp-copy{position:absolute;z-index:2;max-width:34ch;
+  left:clamp(1.5rem,5vw,4rem); bottom:clamp(3rem,8vh,6rem);
+  display:flex;flex-direction:column;gap:.9rem;
+  will-change:opacity;}
+/* Nessuna transizione CSS: l'opacità la scrive lo scroll fotogramma per
+   fotogramma. Una transizione ci litigherebbe, aggiungendo un ritardo a un
+   valore che è già continuo. */
+#wcWarpCopyB,#wcWarpCopyC{opacity:0;}
+.wc-warp .eyebrow{color:var(--cyan);}
+/* Senza WebGL la sezione non ha nulla da mostrare: si accorcia a una schermata
+   invece di lasciare tre schermate di nero. */
+.wc-warp.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-warp.-static .wc-warp-pin{height:auto;padding:0;overflow:visible;}
+.wc-warp.-static #wcWarpCanvas{display:none;}
+
+/* ---- CAP 02 — MANIFESTO ----
+   260svh, e la schermata dentro sta FERMA: il pin la tiene inchiodata e i
+   160svh di corsa diventano il tempo del capitolo. Non è una sosta imposta —
+   in quei 160svh il testo si accende parola per parola, l'elica stringe le
+   spire e le parole scendono in spirale. Chi scorre non aspetta: guida.
+   Era `min-height:100svh` senza pin, e allora la sezione passava e basta. */
+.wc-manifesto{padding:0;height:260svh;position:relative;}
+.wc-manifesto-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;gap:2.5rem;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+/* Qui c'erano il poster di sfondo, il suo velo di contrasto e la deriva lenta
+   che lo animava. Tolti tutti e tre: prima di questa sezione ora c'è una scena
+   3D vera, e un'immagine ferma subito dopo si leggeva come un passo indietro.
+   Senza sfondo non serve più nemmeno il velo — il testo è bianco su nero. */
+.wc-manifesto-text{font-size:clamp(1.5rem,3.4vw,2.8rem);line-height:1.35;
+  font-weight:500;letter-spacing:-.015em;max-width:22ch;}
+/* Lo stato di riposo è ancora GRIGIO E VISIBILE, non trasparente, e non è una
+   dimenticanza: l'invisibilità la mette js/manifesto.js con `fromTo` appena
+   parte. Se quel modulo non parte — niente GSAP, uno script che non scende —
+   con `opacity:0` scritto qui il manifesto sarebbe una schermata vuota, cioè
+   il testo più importante del capitolo perso per un file mancante. Così invece
+   resta leggibile. */
+.wc-manifesto-text .wi{color:var(--dim);transition:none;}
+/* L'elica sta DIETRO il testo (z-index 0 contro il resto in 1) e non prende
+   eventi: il cursore "read" della sezione deve continuare a valere sul testo.
+   Il testo è largo 22ch, quindi la metà destra è libera ed è lì che l'elica
+   sta: nessun velo di contrasto, perché non le passa sotto niente da leggere. */
+.wc-dna{position:absolute;inset:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;}
+
+/* LE PAROLE IN SPIRALE, in due strati attorno al canvas.
+   Il contenitore non porta z-index: se lo portasse aprirebbe un contesto di
+   impilamento e i due strati finirebbero tutti e due dallo stesso lato del
+   canvas — che è esattamente la cosa da evitare. 0 dietro, 1 il canvas, 2
+   davanti, 3 il testo. */
+.wc-dna-orbit{position:absolute;inset:0;pointer-events:none;}
+.wc-dna-layer{position:absolute;inset:0;pointer-events:none;}
+.wc-dna-layer.-back{z-index:0;}
+.wc-dna-layer.-front{z-index:2;}
+.wc-dna-word{position:absolute;top:0;left:0;white-space:nowrap;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;
+  color:var(--white);will-change:transform,opacity;}
+/* La copia di dietro è sfocata e spenta: non è un effetto, è quello che dice
+   all'occhio da che parte dell'elica sta passando. */
+/* LO SFALDAMENTO — qui c'era la curva composta in CSS con `--bend`, `--k` e
+   `--r`: una parabola per parola, una sola custom property a fotogramma.
+   Non basta più. Adesso ogni LETTERA ha una vita sua — parte in un istante
+   diverso dalle altre, curva all'indietro e sale per conto proprio — e una
+   formula sola condivisa da tutte le lettere non può descrivere quattordici
+   partenze sfasate. La transform e l'opacità di ogni lettera le scrive
+   js/dna.js (funzione `letters`), e solo per le parole che in quel fotogramma
+   si stanno sfaldando: le altre non vengono toccate.
+   Qui resta il minimo che serve perché una transform abbia effetto. */
+.wc-dna-ch{display:inline-block;will-change:transform,opacity;}
+/* La copia dietro è sfocata e spenta: non è un effetto, è quello che dice
+   all'occhio da che parte dell'elica sta passando. */
+/* La copia dietro NON forza più il colore: adesso ogni parola porta il suo,
+   preso dalla scala dell'elica (js/dna.js, WORD_COLORS). Restare a
+   `var(--muted)` avrebbe cancellato proprio la cosa che si vuole vedere.
+   Dietro si distingue lo stesso — è sfocata e smorzata — ma con la sua tinta. */
+.wc-dna-layer.-back .wc-dna-word{filter:blur(1.5px) brightness(.55) saturate(.8);}
+/* Senza WebGL le parole sono una lista ferma: niente da sfaldare. */
+.wc-dna-orbit.-static .wc-dna-ch{transform:none!important;opacity:1!important;}
+.wc-manifesto-pin > .eyebrow,
+.wc-manifesto-pin > .wc-manifesto-text{position:relative;z-index:3;}
+
+/* Senza WebGL le parole smettono di orbitare e diventano una riga di termini
+   sotto il manifesto: è il solo punto in cui il capitolo elenca di cosa è
+   fatto, e perderlo insieme all'animazione sarebbe perdere del contenuto. */
+.wc-dna-orbit.-static{position:relative;z-index:3;display:flex;flex-wrap:wrap;
+  gap:.8rem 1.6rem;margin-top:.6rem;}
+.wc-dna-orbit.-static .wc-dna-word{position:static;transform:none;opacity:1;
+  color:var(--muted);filter:none;}
+
+/* Sotto i 900 px le parole spariscono. Non è una resa: l'orbita gira attorno
+   all'elica, che sta a ~220 px dal centro, e su una finestra stretta quel giro
+   entra nella colonna del testo. Il capitolo è prima di tutto un manifesto da
+   leggere, e delle parole che ci passano sopra lo rendono illeggibile per
+   guadagnare una decorazione. Il canvas resta. */
+@media (max-width:900px){
+  .wc-dna-orbit:not(.-static){display:none;}
+}
+
+/* ---- CAP 03 — IL FLUIDO ----
+   Era 520svh con la colonna di vetro, che aveva 4,2 schermate in cui scendere.
+   Resta una schermata sola: il fluido non ha una coreografia di scroll, ha uno
+   splash che parte quando arrivi e poi il cursore. Dare scroll a una scena che
+   non se ne fa niente vuol dire chiedere di scendere davanti a un fermo
+   immagine.
+   AGGIORNATO: adesso 420svh e la schermata inchiodata. Il capitolo ha una
+   sequenza, e i 320svh di corsa sono il suo tempo — si guarda il fluido,
+   partono i fuochi, testo e inchiostro se ne vanno, resta il nero, e alla fine
+   compare l'invito. Le quote stanno in js/fluid.js, blocco `SEQ`.
+   Erano 300svh: l'invito arrivava e un attimo dopo eri già nel capitolo dopo,
+   senza spazio per muovere il cursore — che è la cosa che la scritta chiede.
+   Le 120svh in più sono tutte coda, dopo l'invito.
+   Impaginazione presa dall'hero di flowstate: colonna al centro, testo
+   centrato, riga di chiusura appoggiata in basso. */
+/* 620svh e non più 420: la finestra dei fuochi si è allargata da un quinto
+   della corsa a quasi metà, e serviva scroll vero sotto — se no trenta salve
+   in 84svh sarebbero state più fitte delle quattordici di prima.
+   AGGIORNATO a 960svh, in due passaggi e sempre con lo stesso criterio: tutto
+   quello che viene PRIMA dell'invito continua a durare gli stessi svh di
+   quando la sezione era 620 (i fuochi restano a ~8svh l'uno dall'altro), e
+   ogni svh aggiunto finisce nella coda. Oggi la coda vale:
+     invito → consegna   ~260svh   (era 42, poi 150)
+     consegna → fine     ~130svh   di nero dopo che la frase se n'è andata,
+                                   prima che il capitolo si sganci — se no la
+                                   sezione dopo saliva a coprire mentre l'ultima
+                                   riga era ancora a schermo.
+   Le quote stanno in js/fluid.js (`SEQ`) e sono frazioni di QUESTA corsa: chi
+   tocca l'altezza le rifà col conto scritto lì. */
+/* 760svh e non più 960. Si sono accorciate DUE cose, e solo quelle: l'attesa
+   prima dell'invito (427 -> 290svh) e la coda dopo la consegna (99 -> 36svh).
+   Il vuoto fra le due frasi resta di 259svh, perché è il tempo in cui si fa la
+   cosa che l'invito chiede — quello non è riempitivo.
+   ⚠️ Le quote in js/fluid.js sono FRAZIONI di questa altezza: chi la cambia le
+   rifaccia, o si spostano tutte insieme. */
+.wc-spine{padding:0;height:760svh;}
+.wc-spine-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:var(--nav-h) clamp(1.5rem,5vw,4rem) clamp(3rem,7vh,5rem);}
+/* Il fondo della pagina, e basta. Qui c'era il teal #0A1414 della stanza in cui
+   stava la colonna di vetro: senza la colonna era solo una banda verdastra in
+   mezzo a un sito nero, cioè una giuntura visibile invece di una sezione
+   vuota. */
+.wc-spine-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:var(--bg);}
+#wcSpineCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* Lo splash di fluido è confinato a questo capitolo: non è un fondo di pagina.
+   In `screen` non può scurire: dove il capitolo è nero non fa nulla.
+   Opacità piena (era .9): il fluido qui non vela più una colonna di vetro
+   illuminata, è l'unica cosa in quadro. */
+.wc-fluid{position:absolute;inset:0;width:100%;height:100%;z-index:2;
+  pointer-events:none;mix-blend-mode:screen;}
+@media (prefers-reduced-motion:reduce){.wc-fluid{display:none;}}
+
+/* VELO RADIALE sopra il fluido — è di flowstate, non un'aggiunta: nel sorgente
+   sta nell'hero come `<div aria-hidden>` sopra il canvas, e senza di lui il
+   fluido a piena forza è una parete di inchiostro saturo che brucia a bianco.
+   Verificato a schermo prima di aggiungerlo, non dedotto.
+   Colori, forma e quote sono i suoi (`--raw-color-scrim*`, 4/5/12).
+   UNO scostamento, dichiarato: nel file il centro è .68 e il token si chiama
+   `--raw-color-scrim-strong`, commentato «center — behind hero text». Qui non
+   c'è nessun testo dietro cui stare: il capitolo è vuoto e il nastro d'inchiostro
+   è l'unica cosa in quadro, quindi lo stop forte è caduto e resta il .46 di
+   mezzo. È applicare l'intenzione del file, non scavalcarla — la vignettatura
+   che dà profondità al campo resta tutta. */
+.wc-spine-pin::after{content:'';position:absolute;inset:0;z-index:3;
+  pointer-events:none;
+  background:radial-gradient(115% 95% at 50% 46%,
+    rgba(4,5,12,.46) 0%, rgba(4,5,12,.46) 52%, rgba(4,5,12,.12) 100%);}
+@media (prefers-reduced-motion:reduce){.wc-spine-pin::after{display:none;}}
+/* z-index 4: SOPRA il velo radiale (3), non sotto. Il velo serve al fluido, non
+   al testo — passandogli sotto, la copy prenderebbe il 46% di nero al centro
+   proprio dove è più fitta. */
+/* 52rem è la larghezza della colonna dell'hero di flowstate. In `ch` non si può
+   scrivere: `ch` si misura sul font-size di CHI la porta, e qui dentro c'è un
+   h2 grande tre volte il testo — a 46ch il titolo andava a capo da solo in
+   mezzo alla riga, sopra il <br> voluto. */
+.wc-spine-copy{position:relative;z-index:4;max-width:min(52rem,92vw);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+/* L'occhiello diventa la pillola dell'hero di flowstate: bordo tenue, fondo di
+   vetro, sfocatura dietro. Non è decorazione — è quello che lo stacca dal
+   fluido, che sotto si muove e altrimenti se lo mangia. */
+.wc-spine .eyebrow{color:var(--iris);align-self:center;
+  display:inline-flex;align-items:center;
+  padding:.42rem .9rem;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+/* Il titolo prende tutta la colonna: gli a capo li decide il <br> nel markup,
+   non il browser. Il sottotitolo invece si stringe — una riga lunga il doppio
+   del titolo si legge peggio, anche se lo spazio c'è. */
+.wc-spine-copy h2{max-width:none;}
+.wc-spine-copy .lead{max-width:46ch;}
+/* La riga di chiusura, appoggiata in basso come il copyright di flowstate. */
+.wc-spine-foot{position:absolute;left:0;right:0;bottom:clamp(1.2rem,3vh,2rem);
+  z-index:4;margin:0;text-align:center;
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;color:var(--dim);}
+
+/* L'INVITO, in fondo alla sequenza. Parte invisibile e ci resta finché non
+   arriva il suo momento: l'opacità la scrive js/fluid.js sullo scroll. Se il
+   modulo non parte (reduced-motion, niente WebGL) non la scrive nessuno e
+   l'invito non compare mai — che è giusto, perché senza fluido non c'è niente
+   da muovere. */
+.wc-spine-invite{position:absolute;left:0;right:0;top:50%;z-index:5;
+  margin:0;translate:0 -50%;text-align:center;opacity:0;
+  font-size:clamp(1.6rem,4vw,3rem);font-weight:500;letter-spacing:-.01em;
+  color:var(--white);pointer-events:none;}
+/* La frase di consegna. Era più piccola e più spenta dell'invito — "una riga
+   che si legge, non un invito a fare qualcosa". Su richiesta adesso è la STESSA
+   COSA: stesso corpo, stesso peso, stesso bianco. Le due righe si danno il
+   cambio nello stesso punto dello schermo, e con due misure diverse il cambio
+   si leggeva come un cambio di voce; con la stessa, come una frase che
+   continua. Resta solo `line-height`, perché questa va su due righe e l'altra
+   su una. */
+.wc-spine-next{position:absolute;left:0;right:0;top:50%;z-index:5;
+  margin:0;translate:0 -50%;text-align:center;opacity:0;
+  padding:0 clamp(1.5rem,5vw,4rem);line-height:1.28;
+  font-size:clamp(1.6rem,4vw,3rem);font-weight:500;
+  letter-spacing:-.01em;color:var(--white);pointer-events:none;}
+/* Qui c'era la regola che teneva la copy fuori schermo: il capitolo era vuoto e
+   il testo restava nel DOM solo per i lettori di schermo. Adesso il capitolo ha
+   di nuovo un contenuto suo, e il debito è saldato. */
+
+/* Senza WebGL (o con reduced-motion) il capitolo non è alto una schermata: non
+   c'è più niente da guardare mentre si sta fermi, resta il testo. La riga di
+   chiusura smette di essere appoggiata in basso e torna in fila con le altre —
+   in un blocco alto quanto il suo contenuto, «in basso» non vuol dire niente. */
+.wc-spine.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-spine.-static .wc-spine-pin{height:auto;padding:0;overflow:visible;gap:1.6rem;}
+.wc-spine.-static #wcSpineCanvas{display:none;}
+.wc-spine.-static .wc-spine-foot{position:static;}
+/* Senza scena il fondo non vela più niente: resterebbe solo come rettangolo
+   nero, perché il pin non è più alto quanto lo schermo. */
+.wc-spine.-static .wc-spine-pin::before{display:none;}
+/* Senza fluido non c'è nessuna sequenza a guidare le opacità: l'invito e la
+   consegna resterebbero a zero, cioè invisibili ma ingombranti (sono in
+   `position:absolute` sopra la copy). Si tolgono di mezzo. */
+.wc-spine.-static .wc-spine-invite,
+.wc-spine.-static .wc-spine-next{display:none;}
+/* Fuori dalla scena la frase che descrive il movimento non è più vera. */
+.-static .wc-only-motion{display:none;}
+
+@media (max-width:900px){
+  /* Niente `align-items:flex-start` qui: adesso la colonna è verticale, e su
+     quell'asse `flex-start` vuol dire "a sinistra" — spaccherebbe il centrato.
+     Resta solo lo stacco dalla barra di navigazione. */
+  .wc-spine-pin{justify-content:flex-start;padding-top:calc(var(--nav-h) + 4rem);}
+  .wc-spine-copy{max-width:none;}
+  .wc-spine-copy h2,
+  .wc-spine-copy .lead{max-width:none;}
+  .wc-spine-foot{font-size:.62rem;letter-spacing:.1em;}
+}
+
+/* ---- LUMINOUS SAUCER ----
+   Due schermate e mezza: una per arrivarci e accendere il raggio, il resto per
+   restare. Erano tre quando lo scroll portava avanti anche la camera; quella
+   carrellata è stata tolta (tagliava il disco in cima e mandava il prato sotto
+   l'inquadratura), e con lei è caduta la schermata che le serviva.
+   Il fondo lo disegna lo shader del cielo, non questo — qui c'è solo il colore
+   che si vede prima del primo fotogramma. */
+.wc-saucer{padding:0;height:240svh;}
+.wc-saucer-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:flex-end;
+  padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
+.wc-saucer-pin::before{content:'';position:absolute;inset:0;z-index:0;
+  background:#010301;}
+#wcSaucerCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+/* Velo A SINISTRA, non in basso.
+   Prima era una banda orizzontale alta il 52% che arrivava al 95% di nero sul
+   fondo del quadro. Solo che il fondo del quadro è dove sta il prato acceso —
+   la cosa che la sezione dice di mostrare — e il velo se lo mangiava per intero:
+   è metà della ragione per cui l'erba non si vedeva (l'altra metà stava nello
+   shader, vedi js/saucer.js).
+   La copy però un fondo lo vuole, e sta a sinistra: il velo si è girato di 90°.
+   Copre la colonna del testo e lascia scoperti il raggio, la pozza e il prato. */
+.wc-saucer-pin::after{content:'';position:absolute;inset:0;
+  z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(1,6,3,.92),rgba(1,6,3,.74) 30%,rgba(1,6,3,.28) 48%,transparent 62%);}
+.wc-saucer-copy{position:relative;z-index:2;max-width:40ch;
+  display:flex;flex-direction:column;gap:.9rem;}
+.wc-saucer .eyebrow{color:#4DFFAB;}
+.wc-saucer.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-saucer.-static .wc-saucer-pin{height:auto;padding:0;overflow:visible;}
+.wc-saucer.-static #wcSaucerCanvas{display:none;}
+
+/* Qui c'era il CSS del carosello (.wc-carousel/.wc-track/.wc-tile): otto
+   tessere con gradienti al posto delle immagini. Rimosso con la sezione,
+   commit d80a4ca. */
+
+/* ---- CAP 04 — VESPER, la sfera che si tocca ----
+   Alta 340svh: la coreografia ha tre tempi in fila (si raduna, si apre il foro,
+   si sfalda) e comprimerli fa sovrapporre letture che devono restare distinte.
+   La copy sta a sinistra e in mezzo all'altezza, non in basso come nell'ufo:
+   qui il soggetto è centrato e coprirlo dal basso lo taglierebbe a metà. */
+/* 400svh e non più 340: il capitolo non è più la sola sfera. L'orologio della
+   scena sorgente vale 0→4 e gira su tre tracce di scroll alte una schermata
+   (0→1, poi 1→3 a velocità doppia, poi 3→4): 300svh di corsa più i 100svh del
+   pin. L'uscita del cervello non sta qui dentro — vive nei 100svh dopo, mentre
+   il pin si sgancia e il capitolo dopo sale a coprire (vedi `stOutro` in
+   js/vesper.js). Cambiando questa altezza cambia la DURATA degli atti, non il
+   loro ordine. */
+.wc-vesper{padding:0;height:400svh;}
+.wc-vesper-pin{height:100svh;position:relative;overflow:hidden;
+  display:flex;align-items:center;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+#wcVesperCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+/* Nessun velo dietro la copy: la sfera sta al centro e il testo a sinistra, e
+   un velo su un fondo già nero servirebbe solo a sporcarlo. */
+.wc-vesper-copy{position:relative;z-index:1;max-width:34ch;
+  display:flex;flex-direction:column;gap:.9rem;}
+.wc-vesper .eyebrow{color:#52FFA5;}
+.wc-vesper.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-vesper.-static .wc-vesper-pin{height:auto;padding:0;overflow:visible;}
+.wc-vesper.-static #wcVesperCanvas{display:none;}
+
+/* ---- MODELLO INTERATTIVO (id cap05, ora "// 04" a schermo) ---- */
+/* Il modello non sta più in metà di una card: prende tutta la sezione e sta
+   al centro. La copy gli passa davanti in basso, su un velo. */
+.wc-robot{padding:0;}
+/* `isolation:isolate`: senza, il `mix-blend-mode` della scena qui sotto va a
+   cercarsi lo sfondo fuori dalla card e il circuito non entra nel calcolo —
+   è il motivo per cui al primo tentativo il rame non si vedeva. Con
+   l'isolamento la fusione avviene ESATTAMENTE contro il contenuto della card:
+   il fondo scuro e, sopra, il canvas del circuito. */
+.wc-robot-card{position:relative;overflow:hidden;isolation:isolate;
+  background:var(--bg);min-height:100svh;
+  display:flex;align-items:flex-end;}
+/* Qui c'era un faro che seguiva il cursore. Con la scena a tutta sezione
+   restava sotto al canvas di Spline e non si vedeva più: tolto, non nascosto. */
+.wc-robot-copy{position:relative;z-index:2;
+  padding:clamp(1.6rem,4vw,3.4rem) clamp(1.5rem,5vw,4rem) clamp(2.4rem,6vh,4rem);
+  max-width:46ch;display:flex;flex-direction:column;gap:1.1rem;}
+/* Il riquadro sborda SOLO in orizzontale, e la card lo ritaglia
+   (`overflow:hidden` qui sopra). Il numero è quello: −60% per lato.
+
+   Perché in orizzontale e non in tutte e due le direzioni. La scena Spline
+   inquadra in base alla LARGHEZZA del riquadro, non all'altezza — verificato,
+   non dedotto: stringendo il riquadro (riquadro alto, aspect 0.94) la scena
+   zooma DENTRO e resta solo la testa; allargandolo (aspect 3.52) zooma
+   indietro e compaiono braccia intere, bacino e attacco delle gambe.
+   Da cui la regola d'uso: questo numero è una manopola di ZOOM al contrario.
+   Più negativo = più corpo in quadro e robot più piccolo. Meno negativo o
+   zero = più vicino.
+
+   E NON si fa con `transform:scale`: quello stira il fotogramma già disegnato,
+   e il modello verrebbe sfocato. Qui è il riquadro di disegno a cambiare, e il
+   canvas è grande davvero — la nitidezza resta. */
+/* `mix-blend-mode:screen` sulla scena: il canvas di Spline è OPACO, e sotto di
+   lui il circuito (js/cursorfx.js, z 0) non si vedrebbe mai. Con lo screen il
+   suo fondo scuro non aggiunge niente e lascia passare il rame, mentre il
+   robot — che è chiaro e illuminato — resta disegnato sopra. È così che il
+   circuito sta DIETRO al modello invece che davanti.
+   `brightness`: il modello è cupo, e la richiesta era schiarire il robot e
+   non la sezione. Sta qui e non su .wc-robot, così tocca solo lui. */
+/* `lighten` e non `screen`. Il canvas di Spline è OPACO: sotto di lui il
+   circuito (js/cursorfx.js, z 0) non si vedrebbe mai, e serve una fusione che
+   lo lasci passare. Fra le due:
+     screen   schiarisce TUTTO — anche il robot, che si slava, e il fondo
+              scuro della scena che smette di essere scuro;
+     lighten  prende il più chiaro fra i due. Dove c'è il robot il robot è
+              più chiaro delle tracce e resta identico, pixel per pixel; dove
+              c'è il suo fondo scuro passa il rame.
+   È esattamente "il circuito sta dietro": il modello non viene toccato, il
+   buio attorno a lui diventa scheda. */
+.wc-robot-stage{position:absolute;inset:0 -60%;z-index:1;
+  mix-blend-mode:lighten;filter:brightness(1.28) contrast(1.03);}
+/* ---- IL BUCO ATTORNO AL ROBOT ----
+   `lighten` da solo NON basta a mettere il circuito dietro, ed è il motivo per
+   cui prima si vedeva passargli davanti: lighten sceglie il più chiaro CANALE
+   PER CANALE, e questo robot è nero — carbonio, quasi zero su tutti e tre i
+   canali su gran parte del corpo. Una traccia ciano accesa lì è più chiara del
+   modello, quindi vince, e si legge come una riga disegnata SOPRA di lui.
+   Verificato a schermo: le tracce attraversavano torace e gambe.
+
+   Non c'è modo di far occludere il rame dal modello — il canvas di Spline è
+   opaco e la sua silhouette non la conosciamo. Quindi il rame non ci arriva
+   proprio: il canvas del circuito è mascherato con un'ellisse morbida al
+   centro, dove il modello sta sempre (è centrato in orizzontale e prende tutta
+   l'altezza). Dentro l'ellisse la maschera è trasparente e non si disegna
+   niente; il bordo sfuma su ~26 punti, così le tracce non si tagliano di netto
+   ma si spengono avvicinandosi — che è come si comporta uno sfondo dietro un
+   oggetto in primo piano.
+
+   La maschera sta sul `.wc-fx` DENTRO la card del robot e non su tutti: gli
+   altri capitoli hanno effetti che devono coprire tutto il riquadro. */
+.wc-robot-card > .wc-fx{
+  -webkit-mask-image:radial-gradient(26% 52% at 50% 56%,
+    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);
+  mask-image:radial-gradient(26% 52% at 50% 56%,
+    rgba(0,0,0,0) 0%, rgba(0,0,0,0) 46%, #000 100%);}
+@media (max-width:900px){
+  /* Su schermo stretto il modello è inquadrato più largo (vedi lo sbordo a
+     −150% qui sotto): il buco lo segue, se no il rame gli torna addosso. */
+  .wc-robot-card > .wc-fx{
+    -webkit-mask-image:radial-gradient(38% 48% at 50% 52%,
+      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);
+    mask-image:radial-gradient(38% 48% at 50% 52%,
+      rgba(0,0,0,0) 0%, rgba(0,0,0,0) 44%, #000 100%);}
+}
+.wc-robot-stage spline-viewer{width:100%;height:100%;display:block;}
+/* Velo in basso: la copy sta sopra al modello, non di fianco. */
+/* Il velo arrivava a .92 di nero su un 60% di altezza: la parte bassa del
+   robot ci finiva dentro ed era la zona più scura della pagina. Sceso a .70 su
+   un 52%, con la salita spostata più in basso — il testo resta leggibile, le
+   gambe del modello si vedono. */
+.wc-robot-card::after{content:'';position:absolute;left:0;right:0;bottom:0;
+  height:52%;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(6,6,9,.34) 52%,rgba(6,6,9,.70));}
+.wc-robot-note{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);}
+.wc-robot-hint{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:.68rem;
+  letter-spacing:.16em;color:var(--dim);}
+@media (max-width:900px){
+  /* Su schermo stretto il modello resta a tutta sezione: cambia solo quanto
+     velo serve, perché la copy occupa più altezza. */
+  .wc-robot-copy{max-width:none;}
+  .wc-robot-card::after{height:64%;
+    background:linear-gradient(180deg,transparent,rgba(6,6,9,.62) 38%,rgba(6,6,9,.94));}
+  /* Uno schermo di telefono è già stretto di suo, e stretto per questa scena
+     vuol dire zoom in faccia. Serve molto più sbordo che su desktop solo per
+     tornare a un'inquadratura simile: −150% porta un riquadro da 390 px a
+     circa 1560, cioè aspect ~2 invece di 0,5.
+     ⚠️ Numero ragionato sulla regola verificata a schermo largo, NON provato
+     su un viewport stretto reale: da controllare al primo giro su telefono. */
+  .wc-robot-stage{inset:0 -150%;}
+}
+
+/* ---- LITHOS — IL FARO CHE SCOPRE ----
+   Una schermata sola: non c'è niente da percorrere, c'è una cosa da muovere. */
+/* La copy sta IN ALTO A SINISTRA, non più in fondo: appoggiata al bordo
+   basso copriva la fascia in cui il faro lavora di più, e per leggere il testo
+   si perdeva l'effetto. In alto a sinistra c'è spazio in entrambe le
+   fotografie, e il velo può alleggerirsi (sotto). */
+.wc-lithos{position:relative;height:100svh;overflow:hidden;
+  display:flex;align-items:flex-start;
+  padding:calc(var(--nav-h) + clamp(1.5rem,5vh,3rem)) clamp(1.5rem,5vw,4rem) 0;
+  --lx:50%; --ly:50%; --lr:260px;}
+.wc-lithos-base,.wc-lithos-reveal{position:absolute;inset:0;
+  background-position:center;background-size:cover;background-repeat:no-repeat;}
+/* Le due fotografie di partenza sono cupe: schiarite in `filter`, non
+   rifacendo gli asset — così il rapporto fra le due (che è l'effetto) resta
+   quello, e il numero si ritocca da una riga sola. */
+.wc-lithos-base,.wc-lithos-reveal{filter:brightness(1.42) contrast(1.04);}
+.wc-lithos-base{z-index:0;background-image:url('../assets/lithos0.webp');}
+/* QUI sta tutto l'effetto, e non serve una riga di JavaScript per fotogramma.
+   La seconda immagine è mascherata da un gradiente radiale il cui CENTRO è una
+   custom property: lo script muove due numeri, il resto lo compone la GPU.
+   La specifica di partenza ridisegnava lo stesso gradiente dentro un canvas a
+   ogni render — stesso risultato, molto più lavoro.
+   Il nero pieno fino al 42% tiene il centro del faro completamente scoperto:
+   sfumando da subito, la seconda immagine non si vede mai per intero e
+   l'effetto sembra sporco invece che netto. */
+.wc-lithos-reveal{z-index:1;background-image:url('../assets/lithos1.webp');
+  -webkit-mask-image:radial-gradient(circle var(--lr) at var(--lx) var(--ly),
+    #000 0%, #000 42%, rgba(0,0,0,.55) 70%, transparent 100%);
+  mask-image:radial-gradient(circle var(--lr) at var(--lx) var(--ly),
+    #000 0%, #000 42%, rgba(0,0,0,.55) 70%, transparent 100%);}
+/* Velo: la copy sta sopra due fotografie, e sotto il faro la zona diventa
+   chiara — senza velo il testo ci sparisce dentro proprio quando ci passi. */
+/* Il velo era una discesa al nero verso il basso, tarata su una copy appoggiata
+   in fondo: teneva l'immagine scura proprio dove il faro deve mostrarla. Ora è
+   il contrario — una fascia scura solo in cima, dove sta il testo, e da metà in
+   giù le due fotografie restano com'erano. */
+.wc-lithos::after{content:'';position:absolute;inset:0;z-index:2;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,6,9,.86) 0%,rgba(6,6,9,.55) 26%,rgba(6,6,9,.12) 52%,rgba(6,6,9,.28));}
+.wc-lithos-copy{position:relative;z-index:3;max-width:44ch;
+  display:flex;flex-direction:column;gap:1rem;}
+/* L'unico corsivo serif della pagina, e viene dalla specifica: un accento di
+   display contro il grottesco di tutto il resto. */
+.wc-serif{font-family:'Playfair Display',Georgia,serif;font-style:italic;
+  font-weight:400;letter-spacing:-.02em;}
+@media (prefers-reduced-motion:reduce){
+  /* Il faro non insegue più nulla: resta al centro, e le due immagini si
+     leggono comunque. */
+  .wc-lithos-reveal{--lx:50%;--ly:45%;}
+}
+
+/* ---- SNEAKER — SFONDO VIDEO ---- */
+.wc-sneaker{position:relative;height:100svh;overflow:hidden;
+  display:flex;align-items:flex-end;
+  padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
+/* `object-fit:cover` e non una larghezza al 100%: il video è 4:3, la sezione è
+   quasi sempre più larga che alta, e senza il ritaglio resterebbero due bande
+   nere ai lati. */
+.wc-sneaker-video{position:absolute;inset:0;z-index:0;
+  width:100%;height:100%;object-fit:cover;}
+/* Velo: la copy sta sopra un video che cambia da solo, quindi il contrasto
+   sotto al testo non è mai garantito da nessun fotogramma in particolare. */
+.wc-sneaker::after{content:'';position:absolute;inset:0;z-index:1;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,6,9,.30) 0 34%,rgba(6,6,9,.74) 64%,rgba(6,6,9,.95));}
+.wc-sneaker-copy{position:relative;z-index:2;max-width:46ch;
+  display:flex;flex-direction:column;gap:.9rem;}
+.wc-sneaker .eyebrow{color:var(--cyan);}
+/* Con reduced-motion il video non parte mai: resta il poster, che il tag
+   mostra da sé. Nessuna regola serve — sta qui scritto perché non sembri una
+   dimenticanza. */
+
+/* ---- CAP 06 — RIMOSSO ----
+   La sezione (`.wc-part`) e le sue regole stavano qui. Tolte insieme al
+   capitolo: la scena era già migrata dentro capWarp come terza forma e quel
+   che restava era un guscio con la sola copy. `js/particles.js` è ancora sul
+   disco — chi lo riaccende si riprenda queste regole dalla storia di git. */
+
+/* ---- CAP 07 — PROCESSO ORIZZONTALE ---- */
+.wc-process{padding:0;height:340svh;}
+.wc-process-pin{height:100svh;display:flex;flex-direction:column;
+  justify-content:center;gap:2.5rem;overflow:hidden;
+  padding:0 clamp(1.5rem,5vw,4rem);}
+.wc-process-head{display:flex;flex-direction:column;gap:.8rem;}
+.wc-progress{width:min(320px,60vw);height:1px;background:var(--border2);position:relative;}
+.wc-progress span{position:absolute;inset:0;width:0%;background:var(--cyan);display:block;}
+.wc-process-row{display:flex;gap:2rem;will-change:transform;}
+.wc-step{flex:0 0 min(78vw,460px);border-left:1px solid var(--border2);
+  padding-left:1.5rem;display:flex;flex-direction:column;gap:.7rem;}
+.wc-step-n{font-family:var(--mono);font-size:.72rem;color:var(--cyan);letter-spacing:.14em;}
+.wc-step h3{font-size:1.6rem;font-weight:600;}
+.wc-step p{color:var(--muted);}
+/* Sotto i 900px il pin si disattiva (vedi horizontal.js): la fila
+   diventa una colonna leggibile senza scroll orizzontale. */
+@media (max-width:899px){
+  .wc-process{height:auto;}
+  .wc-process-pin{height:auto;padding-top:5rem;padding-bottom:5rem;}
+  .wc-process-row{flex-direction:column;transform:none!important;}
+  .wc-step{flex:0 0 auto;}
+}
+
+/* ---- CAP 08 — CTA + FORM ---- */
+.wc-cta{display:flex;flex-direction:column;gap:1.4rem;min-height:90svh;
+  justify-content:center;}
+.wc-form{margin-top:2rem;display:flex;flex-direction:column;gap:1.6rem;
+  max-width:34rem;width:100%;}
+.wc-field{position:relative;}
+.wc-field input,.wc-field textarea{width:100%;background:transparent;
+  border:0;border-bottom:1px solid var(--border2);color:var(--white);
+  font-family:var(--font);font-size:1rem;padding:.9rem 0 .5rem;resize:vertical;}
+.wc-field input:focus,.wc-field textarea:focus{outline:none;border-color:var(--cyan);}
+.wc-field label{position:absolute;left:0;top:.9rem;color:var(--dim);
+  font-size:1rem;pointer-events:none;
+  transition:transform .25s ease,font-size .25s ease,color .25s ease;
+  transform-origin:left top;}
+.wc-field input:focus + label,.wc-field input:not(:placeholder-shown) + label,
+.wc-field textarea:focus + label,.wc-field textarea:not(:placeholder-shown) + label{
+  transform:translateY(-1.35rem) scale(.75);color:var(--cyan);}
+.wc-submit{align-self:flex-start;background:var(--cyan);color:#060609;
+  border:0;border-radius:2px;padding:.9rem 2rem;font-family:var(--font);
+  font-weight:600;font-size:.92rem;cursor:pointer;}
+.wc-submit[disabled]{opacity:.5;cursor:progress;}
+.wc-form-err{color:#ff5c5c;font-size:.85rem;}
+.wc-form-ok{margin-top:2rem;display:flex;align-items:center;gap:1rem;
+  color:var(--green);}
+.wc-form-ok-lottie{width:56px;height:56px;flex:0 0 56px;}
+/* Il campo in focus non deve perdere l'anello: il :focus qui sopra toglie
+   l'outline, quindi il segnale per chi naviga da tastiera lo rimette la
+   regola globale di base.css. Questa lo ripristina esplicitamente perche'
+   la specificita' del selettore qui sopra la batteva. */
+.wc-field input:focus-visible,.wc-field textarea:focus-visible{
+  outline:2px solid var(--cyan);outline-offset:3px;}
+
+/* Rotta verso i contatti sempre raggiungibile: il pulsante dell'hero ora
+   entra nel tunnel e non porta piu' ai contatti. */
+.nav-cta{color:var(--cyan);border:1px solid var(--border2);border-radius:2px;
+  padding:.55rem .9rem;}
+.nav-cta:hover{border-color:var(--cyan);}
+
+/* Senza pin la sezione non ha niente da far scorrere: alta 340svh sarebbe
+   scroll morto. Vale per reduced-motion su viewport larga, dove la media
+   query dei 900px non scatta (vedi horizontal.js). */
+.wc-process.-static{height:auto;}
+.wc-process.-static .wc-process-pin{height:auto;overflow:visible;
+  padding-top:5rem;padding-bottom:5rem;}
+.wc-process.-static .wc-process-row{flex-direction:column;transform:none!important;}
+.wc-process.-static .wc-step{flex:0 0 auto;}
+
+/* ---- EFFETTI DI CURSORE PER CAPITOLO (js/cursorfx.js) ----
+   Un solo strato per tutti: canvas o velo, sopra il capitolo e trasparente ai
+   click. Sta a 40, cioè sopra le scene (0-2) e sopra la copy (3-5): sono
+   effetti che seguono il puntatore, e il puntatore passa sopra tutto.
+   Ogni sezione che ne vuole uno lo dichiara con `data-cursor-fx` sul proprio
+   elemento ospite — vedi index.html. */
+.wc-fx{position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:40;transition:opacity .35s ease;}
+/* Fuori dalla finestra dichiarata con `data-cursor-fx-range`: il loop è già
+   fermo, questo toglie di mezzo l'ultimo fotogramma rimasto sul canvas. */
+.-fx-off .wc-fx,.-fx-off .wc-fx-flame{opacity:0;}
+
+/* La torcia non è un canvas: è un velo con un gradiente radiale che si
+   ridisegna a ogni frame. Il nero di partenza è quello che si vede nel
+   fotogramma prima che il gradiente arrivi. */
+.wc-fx-torch{background:rgba(0,0,0,.85);border-radius:inherit;}
+/* La fiammella al centro del cono. Parte invisibile: la accende js/cursorfx.js
+   quando il puntatore entra, se no resterebbe un puntino nell'angolo. */
+.wc-fx-flame{position:absolute;z-index:41;pointer-events:none;opacity:0;
+  width:9px;height:9px;border-radius:50%;background:#ffb347;
+  box-shadow:0 0 14px 5px rgba(255,140,20,.65);
+  transform:translate(-50%,-50%);will-change:left,top,transform;}
+
+/* Le parole attratte dal puntatore. `will-change` perché la transform la
+   riscrive il JS a ogni frame; `inline-block` perché su uno span in linea la
+   transform non ha effetto. */
+[data-magnetic]{display:inline-block;will-change:transform;}
+
+/* Reduced-motion: il modulo non parte nemmeno, ma se un velo fosse già stato
+   montato prima del cambio di preferenza resterebbe un rettangolo nero. */
+@media (prefers-reduced-motion:reduce){
+  .wc-fx,.wc-fx-flame{display:none;}
+}
+
+/* ---- OROLOGIO — SI SMONTA SE SCORRI (js/orologio.js) ----
+
+   L'UNICO CAPITOLO SU FONDO CHIARO, e per questo l'inchiostro qui è scuro e
+   non c'è ciano: su bianco non avrebbe contrasto e, a schermata intera,
+   sarebbe l'unica macchia fredda su tutta la parete.
+
+   LA COMPOSIZIONE È IL PUNTO. L'orologio sta nel terzo centrale — è stato
+   generato apposta così, e le sorgenti sono state ricentrate col pixel prima
+   di girare il filmato — e le due colonne laterali sono vuote PER LE FRASI.
+   Per questo il canvas disegna in `contain` e non in `cover`: un ritaglio su
+   finestra stretta si mangerebbe le colonne insieme ai bordi dell'oggetto.
+   Chi cambia queste larghezze rompe l'accordo fra immagine e testo. */
+/* 480svh perché la corsa va percorsa DUE volte: scendendo l'orologio si apre
+   fino a metà sezione e da lì si richiude (vedi il triangolo in
+   js/orologio.js). 380svh di corsa ÷ 2 rami ÷ 80 fotogrammi = 2,4 svh per
+   fotogramma, che è dentro il bersaglio di scripts/pack-orologio.md. */
+.wc-orologio{height:480svh;padding:0;background:#fff;}
+.wc-orologio-pin{height:100svh;position:relative;overflow:hidden;background:#fff;}
+.wc-oro-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+/* ---- LE FRASI ----
+   Le finestre temporali stanno nel markup (`data-in`/`data-out`, in frazioni
+   della corsa) e non qui: spostare una frase nel tempo non deve voler dire
+   toccare il CSS, e viceversa. Qui si decide solo DOVE. */
+.wc-oro-say{position:absolute;opacity:0;z-index:2;
+  display:flex;flex-direction:column;gap:.7rem;
+  color:#0b0b12;text-wrap:balance;}
+.wc-oro-say[data-side="l"]{left:5%;width:25%;}
+.wc-oro-say[data-side="r"]{right:5%;width:25%;text-align:right;align-items:flex-end;}
+.wc-oro-say[data-y="alto"]{top:18%;}
+.wc-oro-say[data-y="mezzo"]{top:50%;transform:translateY(-50%);}
+.wc-oro-say[data-y="basso"]{bottom:18%;}
+/* L'occhiello non è ciano: qui sarebbe l'unica macchia fredda su una parete
+   bianca a tutto schermo. Resta il mono, in inchiostro tenue. */
+.wc-oro-say .eyebrow{color:rgba(11,11,18,.52);}
+.wc-oro-say h2{color:#0b0b12;font-size:clamp(1.4rem,2.6vw,2.6rem);line-height:1.04;}
+/* Il corsivo serif è quello del cap. Lithos, l'unico della pagina: un accento
+   di display contro il grottesco. */
+.wc-oro-say h2 .wc-serif{font-size:1.12em;}
+.wc-oro-say p{font-family:var(--mono);font-size:clamp(.7rem,.95vw,.92rem);
+  line-height:1.6;color:rgba(11,11,18,.74);letter-spacing:.01em;}
+
+/* Su viewport strette le colonne laterali non esistono più: l'orologio, per
+   restare leggibile, prende tutta la larghezza. Le frasi escono da lì e vanno
+   nella fascia bassa, sopra un velo chiaro — una alla volta, nello stesso
+   ordine e con lo stesso scrub. Cambia dove stanno, non quando. */
+@media (max-width:899px){
+  .wc-orologio-pin::after{content:'';position:absolute;inset:0;z-index:1;
+    pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,0) 46%,rgba(255,255,255,.92) 76%,#fff);}
+  .wc-oro-say,
+  .wc-oro-say[data-side="l"],
+  .wc-oro-say[data-side="r"]{left:clamp(1rem,5vw,3rem);right:clamp(1rem,5vw,3rem);
+    width:auto;top:auto;bottom:clamp(1.5rem,5vh,3rem);transform:none;
+    text-align:left;align-items:flex-start;}
+  .wc-oro-say h2{font-size:clamp(1.3rem,6vw,2rem);}
+}
+
+/* Senza movimento non si scarica un fotogramma: resta il poster e le frasi
+   diventano una colonna sotto, in ordine. È l'unico modo in cui il capitolo
+   continua a dire qualcosa quando non gli si concede di animarsi. */
+.wc-orologio.-static{height:auto;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+.wc-orologio.-static .wc-orologio-pin{height:auto;overflow:visible;}
+.wc-orologio.-static .wc-orologio-pin::after{display:none;}
+.wc-orologio.-static .wc-oro-canvas{display:none;}
+.wc-orologio.-static .wc-oro-poster{display:block;width:100%;max-width:60rem;
+  margin:0 auto 2rem;height:auto;}
+.wc-orologio.-static .wc-oro-say,
+.wc-orologio.-static .wc-oro-say[data-side="l"],
+.wc-orologio.-static .wc-oro-say[data-side="r"]{position:static;opacity:1;
+  width:100%;left:auto;right:auto;transform:none;margin-bottom:1.6rem;
+  text-align:left;align-items:flex-start;}
+.wc-oro-poster{display:none;}
+
+/* ---- ALTITUDE — IL FONDO CHE SI PIEGA (js/altitude.js) ----
+
+   Due livelli sovrapposti, e il video sotto NON è una scorta: è la sorgente
+   della texture che il canvas campiona, e resta visibile finché il primo
+   fotogramma non è salito sulla GPU. Sopra ci va il canvas, che disegna il
+   video *e* l'inchiostro — la piega campiona il fotogramma a `uv + velocità`,
+   e un livello DOM separato non è campionabile da uno shader.
+
+   Nessun pin: il capitolo si gioca col cursore, e per farlo serve stare
+   fermi. Una schermata sola, senza corsa di scroll da consumare. */
+.wc-alt{position:relative;height:100svh;overflow:hidden;padding:0;
+  display:flex;align-items:flex-end;background:#05060b;}
+.wc-alt-video,.wc-alt-canvas{position:absolute;inset:0;width:100%;height:100%;}
+.wc-alt-video{object-fit:cover;z-index:0;}
+.wc-alt-canvas{z-index:1;}
+/* Velo: la copy sta su un cielo che cambia di continuo e che il cursore
+   rimescola, quindi sotto al testo il contrasto non è garantito da nessun
+   fotogramma in particolare. */
+.wc-alt::after{content:'';position:absolute;inset:0;z-index:2;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,6,11,.15) 0 40%,rgba(5,6,11,.72) 72%,rgba(5,6,11,.95));}
+.wc-alt-copy{position:relative;z-index:3;max-width:52ch;
+  display:flex;flex-direction:column;gap:1rem;
+  padding:0 clamp(1.5rem,5vw,4rem) clamp(3rem,8vh,6rem);}
+.wc-alt-foot{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;
+  color:var(--dim);}
+
+/* Su telefono la simulazione non parte (`-plain`): niente puntatore da
+   seguire e venti passaggi di pressione per fotogramma da non pagare. Il
+   canvas sparisce e resta il video, che è comunque metà della scena. */
+.wc-alt.-plain .wc-alt-canvas{display:none;}
+
+/* Reduced-motion: resta il poster, che il tag mostra da sé. */
+.wc-alt.-static .wc-alt-canvas{display:none;}
+.wc-alt.-static .wc-alt-video{display:none;}
+/* I PERCORSI DEL CSS PARTONO DAL FOGLIO, NON DALLA PAGINA.
+   `url(assets/…)` da qui puntava a /atelier/css/assets/… — due 404 silenziosi
+   (si vedevano solo con prefers-reduced-motion, che è l'unico caso in cui
+   questi fondi statici servono: niente video, resta il fotogramma). Il `<base
+   href="/atelier/">` della pagina non vale per il CSS. */
+.wc-alt.-static{background:#05060b url(../assets/starry-poster.webp) center/cover no-repeat;}
+
+/* ---- L'OFFERTA — l'ultima sezione (js/offer.js) ----
+   Nessun velo e nessun riquadro dietro al testo, ed è una scelta: nel filmato
+   il centro dell'inquadratura resta NERO per tutti i 6,4 s del loop — le due
+   formazioni di vetro stanno ai lati e non ci entrano mai. Il contrasto è già
+   nel fondo, e un velo sopra avrebbe spento il vetro senza servire a niente.
+   Il testo sta esattamente in quel vuoto: max-width stretta e centrato. */
+.wc-offer{position:relative;height:100svh;overflow:hidden;padding:0;
+  display:flex;align-items:center;justify-content:center;background:#05050a;}
+.wc-offer-video{position:absolute;inset:0;z-index:0;
+  width:100%;height:100%;object-fit:cover;}
+.wc-offer-copy{position:relative;z-index:2;
+  width:min(46ch,72%);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1.15rem;}
+.wc-offer-copy .lead{max-width:44ch;}
+.wc-offer-cta{margin-top:.9rem;display:inline-block;
+  padding:.85rem 1.7rem;border:1px solid var(--border2);border-radius:2px;
+  font-family:var(--mono);font-size:.74rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--white);text-decoration:none;
+  background:rgba(6,6,9,.35);backdrop-filter:blur(6px);
+  transition:border-color .3s ease,color .3s ease,background .3s ease;}
+.wc-offer-cta:hover{border-color:var(--cyan);color:var(--cyan);
+  background:rgba(0,212,255,.07);}
+
+/* Su viewport strette il ritaglio `cover` avvicina le due formazioni e il
+   vuoto centrale si stringe: il testo si stringe con lui, e sotto arriva un
+   velo — lì il fondo dietro le parole non è più garantito nero. */
+@media (max-width:760px){
+  .wc-offer::after{content:'';position:absolute;inset:0;z-index:1;
+    pointer-events:none;background:rgba(5,5,10,.55);}
+  .wc-offer-copy{width:86%;}
+}
+
+/* Reduced-motion: resta il poster, che il tag mostra da sé. */
+.wc-offer.-static .wc-offer-video{display:none;}
+.wc-offer.-static{background:#05050a url(../assets/glass-poster.webp) center/cover no-repeat;}
