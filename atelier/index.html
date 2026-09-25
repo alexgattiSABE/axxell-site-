@@ -319,7 +319,7 @@
     <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
   </ul>
   <div class="nav-right">
-    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <a href="/atelier/parliamone" class="nav-cta" id="navPreventivo" data-t="preventivo">Preventivo gratuito</a>
     <div class="lang-sw">
       <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
     </div>
@@ -1456,8 +1456,18 @@
       fSubEl  = document.getElementById('fSub'),
       fNumEl  = document.getElementById('fNum');
   document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
+  /* «Preventivo gratuito» nell'Atelier porta al preventivo SITI (Nike), col
+     mondo davanti gia' scelto come riferimento di stile. */
+  function aggiornaPreventivo(w){
+    var a = document.getElementById('navPreventivo'); if (!a) return;
+    var q = [];
+    if (w && !w.vuoto) q.push('da=' + w.id);
+    if (typeof LINGUA === 'string' && LINGUA === 'en') q.push('lang=en');
+    a.setAttribute('href', '/atelier/parliamone' + (q.length ? '?' + q.join('&') : ''));
+  }
   function aggiornaFocus(w){
     if (!w) return;
+    aggiornaPreventivo(w);
     fNameEl.textContent = w.nome;
     fNameEl.classList.toggle('-void', !!w.vuoto);
     fSubEl.textContent = w.sett;
@@ -1536,6 +1546,7 @@
       a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
     });
     ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
+    aggiornaPreventivo(hot);
     if (hot) aggiornaFocus(hot);
     idxDisegna();
     try {
