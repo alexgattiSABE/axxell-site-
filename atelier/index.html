@@ -1695,7 +1695,10 @@
       /* due fotogrammi: se l'anello e' appena scattato su di lui, la lastra
          deve essere gia' al suo posto quando se ne misurano gli angoli */
       requestAnimationFrame(function(){ requestAnimationFrame(function(){
-        apriFinestra(w, function(){ location.href = w.page; });
+        /* «Il tuo» porta al preventivo siti, che parla anche inglese: la lingua
+           viaggia con lui (senza `da`, come vuole Nike). */
+        var dest = w.page + (w.id === 'il-tuo' && LINGUA === 'en' ? '?lang=en' : '');
+        apriFinestra(w, function(){ location.href = dest; });
       }); });
       return;
     }
