@@ -117,9 +117,11 @@ WC.robotOcchi = (function () {
       }
     },
     espressioni: {
-      // Nike (2026-09-25): «cambio occhi ogni 4 secondi». Misurati da
-      // un'espressione all'INIZIO della successiva (vedi fine()).
-      ogni: [4, 4],
+      // Nike (2026-09-25): «cambio occhi ogni 4 secondi», poi «abbassa a
+      // 3s». Misurati da un'espressione all'INIZIO della successiva (vedi
+      // fine()); la scansione, che dura 2,5 s, lascia comunque mezzo secondo
+      // di occhi normali prima della prossima.
+      ogni: [3, 3],
       // Il cambio di forma avviene DIETRO un battito: chiudi → cambia →
       // apri. `chiuso` è quanto resta chiuso mentre cambia.
       chiudi: 0.07, chiuso: 0.08, apri: 0.09,
@@ -136,14 +138,18 @@ WC.robotOcchi = (function () {
       scansione:  { resta: 2.0, altezza: 24, base: 0.8, picco: 1.6, larghezzaLuce: 26, passate: 2 },
       concentrato: { resta: 1.2, larga: 48, alta: 26 },
       // Occhi a X (Nike, 2026-09-25): due diagonali incrociate per occhio.
-      croce:      { resta: 1.5, larga: 36, alta: 30, spessore: 8.5 }
+      croce:      { resta: 1.5, larga: 36, alta: 30, spessore: 8.5 },
+      // Occhi «- -» (Nike, 2026-09-25): un trattino orizzontale per occhio,
+      // una sola riga di LED all'altezza dell'occhio — non quella più bassa
+      // dove si chiude il battito, se no sembrerebbe un battito lungo.
+      trattini:   { resta: 1.5, larga: 40, spessore: 5 }
     },
     // prefers-reduced-motion: solo qualche battito, lento. Niente sguardi,
     // niente espressioni.
     ridotto: { ogni: [6, 10], chiudi: 0.18, chiuso: 0.12, apri: 0.2 }
   };
 
-  var NOMI = ['occhiolino', 'stupore', 'felice', 'scansione', 'concentrato', 'croce'];
+  var NOMI = ['occhiolino', 'stupore', 'felice', 'scansione', 'concentrato', 'croce', 'trattini'];
 
   // ---------------------------------------------------------------------
   // Utilità
@@ -229,6 +235,16 @@ WC.robotOcchi = (function () {
       return Math.min(dSegmento(x, y, -w, -h, w, h), dSegmento(x, y, -w, h, w, -h)) - s;
     } };
   }
+  // Trattino: un segmento orizzontale sulla riga di LED appena sopra il
+  // centro dell'occhio (il centro cade fra due righe: su una riga sola il
+  // trattino è netto, a cavallo di due sarebbe due righe accese a metà).
+  function formaTrattino(o, E) {
+    var G = CONFIG.griglia, w = E.larga, s = E.spessore;
+    var dy = G.y0 + Math.floor((o.y - G.y0) / G.passoRiga) * G.passoRiga - o.y;
+    return { cx: o.x, cy: o.y, hw: w + s, hh: Math.abs(dy) + s, d: function (x, y) {
+      return dSegmento(x, y, -w, dy, w, dy) - s;
+    } };
+  }
   function formaScansione(A, B, E) {
     var hw = (B.x - A.x) / 2 + (A.a + B.a) / 2, hh = E.altezza;
     return { cx: (A.x + B.x) / 2, cy: (A.y + B.y) / 2, hw: hw, hh: hh, d: function (x, y) { return dScatola(x, y, hw, hh); } };
@@ -242,6 +258,7 @@ WC.robotOcchi = (function () {
     else if (V.look === 'felice') out = [formaFelice(O[0], E.felice), formaFelice(O[1], E.felice)];
     else if (V.look === 'concentrato') out = [formaConcentrato(O[0], E.concentrato, 1), formaConcentrato(O[1], E.concentrato, -1)];
     else if (V.look === 'croce') out = [formaCroce(O[0], E.croce), formaCroce(O[1], E.croce)];
+    else if (V.look === 'trattini') out = [formaTrattino(O[0], E.trattini), formaTrattino(O[1], E.trattini)];
     else if (V.look === 'scansione') {
       var sc = formaScansione(O[0], O[1], E.scansione), P = E.scansione, lx = V.luceX;
       sc.luce = function (x) { var u = (x - lx) / P.larghezzaLuce; return P.base + (P.picco - P.base) * Math.exp(-u * u); };
@@ -471,7 +488,7 @@ WC.robotOcchi = (function () {
     // false = ciclo normale; true = fermi a riposo; un numero = azione
     // congelata a quel secondo (per i test: vedi forza()).
     fermo: false,
-    prossimo: { battito: 1.5, sguardo: 5, espressione: 4 },
+    prossimo: { battito: 1.5, sguardo: 5, espressione: 3 },
     ultima: null
   };
 
@@ -590,7 +607,7 @@ WC.robotOcchi = (function () {
     if (az.nome === 'battito') P.battito = S.t + rnd(ridotto() ? CONFIG.ridotto.ogni : CONFIG.battito.ogni);
     else if (az.nome.indexOf('sguardo') === 0) P.sguardo = S.t + rnd(CONFIG.sguardo.ogni);
     else {
-      // Dall'INIZIO di questa: «ogni 4 secondi» è il ritmo delle espressioni,
+      // Dall'INIZIO di questa: «ogni 3 secondi» è il ritmo delle espressioni,
       // non la pausa fra la fine di una e l'inizio dell'altra.
       P.espressione = az.t0 + rnd(CONFIG.espressioni.ogni);
       // Un'espressione ha già battuto le palpebre: il battito normale
@@ -598,7 +615,9 @@ WC.robotOcchi = (function () {
       P.battito = Math.max(P.battito, S.t + rnd([1.5, 3]));
     }
     // Chi è scaduto durante l'azione non parte a ruota: prima una pausa.
-    ['battito', 'sguardo', 'espressione'].forEach(function (k) {
+    // Non le espressioni, che hanno un ritmo fisso (una ogni 3 s): spostarle
+    // qui le faceva arrivare anche un secondo dopo.
+    ['battito', 'sguardo'].forEach(function (k) {
       if (P[k] < S.t + 0.5) P[k] = S.t + 0.5 + Math.random() * 0.7;
     });
   }
@@ -613,8 +632,12 @@ WC.robotOcchi = (function () {
       var scelte = NOMI.filter(function (n) { return n !== S.ultima; });
       S.ultima = scelte[(Math.random() * scelte.length) | 0];
       avvia(azEspressione(S.ultima));
-    } else if (S.t >= P.battito) avvia(azBattito(lento));
-    else if (!lento && S.t >= P.sguardo) avvia(azSguardo());
+    // Il ritmo delle espressioni viene prima: un battito o uno sguardo parte
+    // solo se finisce prima della prossima espressione (uno sguardo dura fino
+    // a 2,5 s: partito un attimo prima, faceva slittare l'espressione di
+    // qualche secondo e il «ogni 3 secondi» diventava ogni 5 o 6).
+    } else if (S.t >= P.battito && (lento || S.t + 0.3 < P.espressione)) avvia(azBattito(lento));
+    else if (!lento && S.t >= P.sguardo && S.t + 2.5 < P.espressione) avvia(azSguardo());
   }
 
   // ---------------------------------------------------------------------
