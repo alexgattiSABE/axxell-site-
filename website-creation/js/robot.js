@@ -615,8 +615,61 @@ WC.register('robot', function(ctx){
        telefono si scaldava e rallentava sempre di piu'. Qui la risoluzione
        scende a 1,5x e l'ombra si rifa' al massimo quattro volte al secondo. */
     var TELEFONO = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
-    var renderer = new THREE.WebGLRenderer({ antialias: !TELEFONO, alpha: true });
-    renderer.setPixelRatio(Math.min(TELEFONO ? 1.5 : 2, window.devicePixelRatio || 1));
+    /* 2026-09-25 — Nike: «a livello grafico la qualità è bassa su tel». Con
+       la risoluzione fissa a 1,5x (su uno schermo 3x: un pixel su due) e
+       senza bordi ammorbiditi il robot si vedeva sgranato. Adesso sul
+       telefono si parte dalla risoluzione piena (fino a 2x) coi bordi
+       ammorbiditi, e la risoluzione la decide il telefono stesso: se non
+       regge i fotogrammi scende a passi di 0,25 fino a 1,25x, se ha margine
+       risale (vedi `adattaRisoluzione`, chiamata da tick()). Le ombre restano
+       quelle di prima: al massimo quattro volte al secondo. */
+    var PR_MAX = Math.min(2, window.devicePixelRatio || 1);
+    var PR_MIN = Math.min(PR_MAX, 1.25);
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(PR_MAX);
+    var qualita = { da: 0, fotogrammi: 0, avvio: 0, tetto: PR_MAX, ultimo: 0, ultimoSu: false, prova: null, fermo: false };
+    // Una finestra di 1,5 s alla volta: sotto i 48 fotogrammi al secondo si
+    // scende di un passo, sopra i 58 si sale — ma solo fino al `tetto`, che
+    // si abbassa se una salita ha appena fatto scendere il ritmo (niente
+    // altalena fra due livelli). Si misura solo con la sezione in vista e
+    // dopo i primi 2,5 s dal primo fotogramma, che sono lenti per conto loro
+    // (compilazione degli shader, texture che arrivano).
+    // E se scendere NON serve? Un iPhone col risparmio energetico tiene i
+    // fotogrammi a 30 qualunque cosa si disegni: abbassare la risoluzione lì
+    // peggiora l'immagine e basta. Quindi ogni discesa è una PROVA: se la
+    // finestra dopo non va almeno il 10% più veloce, si torna alla
+    // risoluzione di prima e si smette di adattare.
+    function adattaRisoluzione(now) {
+      if (!TELEFONO || qualita.fermo || !sectionVisible || document.hidden) { qualita.da = 0; return; }
+      if (!qualita.avvio) { qualita.avvio = now; return; }
+      if (now - qualita.avvio < 2500) return;
+      if (!qualita.da) { qualita.da = now; qualita.fotogrammi = 0; return; }
+      qualita.fotogrammi++;
+      var trascorso = now - qualita.da;
+      if (trascorso < 1500) return;
+      var fps = qualita.fotogrammi * 1000 / trascorso;
+      qualita.da = now; qualita.fotogrammi = 0;
+      var pr = renderer.getPixelRatio(), nuovo = pr;
+      if (qualita.prova) {
+        var p0 = qualita.prova; qualita.prova = null;
+        if (fps < p0.fps * 1.1) { qualita.fermo = true; qualita.tetto = p0.pr; nuovo = p0.pr; }
+      }
+      if (qualita.fermo) {
+        // (la risoluzione di prima, e niente più prove)
+      } else if (fps < 48 && pr > PR_MIN) {
+        qualita.prova = { pr: pr, fps: fps };
+        if (qualita.ultimoSu && now - qualita.ultimo < 6000) qualita.tetto = pr - 0.25;
+        nuovo = Math.max(PR_MIN, pr - 0.25);
+      } else if (fps > 58 && pr < qualita.tetto && now - qualita.ultimo > 4000) {
+        nuovo = Math.min(qualita.tetto, pr + 0.25);
+      }
+      if (nuovo === pr) return;
+      qualita.ultimoSu = nuovo > pr; qualita.ultimo = now;
+      renderer.setPixelRatio(nuovo);
+      fit();
+      renderer.shadowMap.needsUpdate = true;
+      if (window.__robot) window.__robot.qualita = { pr: nuovo, fps: Math.round(fps), tetto: qualita.tetto, fermo: qualita.fermo };
+    }
     var ombraUltima = 0;
     // Nessuna codifica in uscita e nessun tone mapping: r128 lascia
     // `outputEncoding` su LinearEncoding e va bene così. Tutti i materiali di
@@ -1913,6 +1966,7 @@ WC.register('robot', function(ctx){
         var robot = window.__robot;
         var now = (window.performance && performance.now) ? performance.now() : Date.now();
         var dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+        adattaRisoluzione(now);
         // Task C4 — il respiro, PRIMA di tutto il resto: la mira della testa
         // legge la matrice del suo genitore (che adesso è il busto) e il
         // raycast lavora sulle mesh che il busto porta con sé.
