@@ -355,6 +355,7 @@ async function helixPixels(p, file){
                    h: document.querySelector('#lp .lp-h').textContent.replace(/\s/g, ''),
                    torna: document.getElementById('torna').getAttribute('href'),
                    mondo: document.getElementById('preventivo').getAttribute('href'),
+                   cta: [...document.querySelectorAll('#navPreventivo')].map(a => a.getAttribute('href')),
                    dot: window.EFFETTI[4].dot.getAttribute('aria-label'),
                    it: { nome: e.nome, sett: e.sett, h: e.lp.h.join('').replace(/\s/g, ''), hint: mob ? T.it.hintM : T.it.hint, title: T.it.titolo },
                    en: { nome: e.en.nome, sett: e.en.sett, h: e.en.lp.h.join('').replace(/\s/g, ''), hint: mob ? T.en.hintM : T.en.hint, title: T.en.titolo } };
@@ -369,6 +370,10 @@ async function helixPixels(p, file){
         if (s.title !== s.en.title) fail(`${quando}: title "${s.title}"`);
         if (!/lang=en/.test(s.torna) || !/lang=en/.test(s.mondo)) fail(`${quando}: fixed links without ?lang=en: ${s.torna} ${s.mondo}`);
         if (!s.dot.startsWith(s.en.nome)) fail(`${quando}: dot label "${s.dot}"`);
+        // il preventivo: «Il tuo mondo» e il «Free quote» del menu portano al modulo dei siti
+        const Q_EN = '/atelier/parliamone?da=effetti-speciali&lang=en';
+        if (s.mondo !== Q_EN) fail(`${quando}: «Il tuo mondo» goes to ${s.mondo}`);
+        if (!s.cta.length || s.cta.some(h => h !== Q_EN)) fail(`${quando}: nav quote goes to ${s.cta.join(' ')}`);
       };
       const clicca = async id => {
         const vis = await p.evaluate(id => !!document.getElementById(id).getClientRects().length, id);
@@ -385,6 +390,9 @@ async function helixPixels(p, file){
       if (b2.h !== b2.it.h) fail('after IT: headline "' + b2.h + '"');
       if (b2.title !== b2.it.title) fail('after IT: title "' + b2.title + '"');
       if (/lang=en/.test(b2.torna) || /lang=en/.test(b2.mondo)) fail('after IT: fixed links still carry ?lang=en');
+      const Q_IT = '/atelier/parliamone?da=effetti-speciali';
+      if (b2.mondo !== Q_IT) fail('after IT: «Il tuo mondo» goes to ' + b2.mondo);
+      if (!b2.cta.length || b2.cta.some(h => h !== Q_IT)) fail('after IT: nav quote goes to ' + b2.cta.join(' '));
       if (/lang=en/.test(p.url())) fail('after IT: URL still says ?lang=en');
       await p.screenshot({ path: OUT + `/lingua-it${mobile ? '-m' : ''}.png` });
       await clicca('lang-en');
