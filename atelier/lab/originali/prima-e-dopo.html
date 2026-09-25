@@ -10,7 +10,7 @@
   AERRA — portable single-file port of getlayers-projects/aerra (Next 16.2 + three 0.185).
 
   Everything the project does, in one plain HTML file: no build step, no framework, no bundler.
-  three.js is the only external code (import map → unpkg) and it drives one small 3D mark; the
+  three.js is the only library (import map → /vendor, self-hosted) and it drives one small 3D mark; the
   spring solver, the word-split reveal, the scroll scrubbing, the pixel-reveal shader and the
   turntable are all written here.
 
@@ -41,8 +41,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.185.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/"
+    "three": "/vendor/three.module.js",
+    "three/addons/": "/vendor/jsm/"
   }
 }
 </script>
@@ -1997,7 +1997,7 @@ void main() {
     if (!entry.isIntersecting || mounted) return;
     mounted = true;   // proximity decides when to MOUNT, and nothing decides
     gate.disconnect(); // when to unmount
-    boot().catch((error) => showAssetBanner("https://unpkg.com/three@0.185.0", error));
+    boot().catch((error) => showAssetBanner("/vendor/three.module.js", error));
   }, { rootMargin: PRELOAD_MARGIN });
   gate.observe(host);
 
@@ -2076,7 +2076,7 @@ void main() {
     let loaded = false, primed = false, modelHeight = 0;
 
     const draco = new DRACOLoader();
-    draco.setDecoderPath("https://unpkg.com/three@0.185.0/examples/jsm/libs/draco/gltf/");
+    draco.setDecoderPath("/vendor/draco/gltf/");
     const loader = new GLTFLoader();
     loader.setDRACOLoader(draco);
 

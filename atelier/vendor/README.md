@@ -5,7 +5,7 @@ messi qui così come sono.
 
 ## Perché non stanno su un CDN
 
-Prima arrivavano da `cdn.jsdelivr.net` e `cdnjs.cloudflare.com`. Con jsdelivr
+Prima arrivavano dai CDN di jsDelivr e di Cloudflare. Con jsDelivr
 irraggiungibile la pagina non degradava: restava **nera**. GSAP non si
 definisce, il velo del loader non si toglie mai, e sotto non c'è niente da
 vedere — verificato bloccando il dominio e ricaricando. Un portfolio che
@@ -23,16 +23,16 @@ sono **gli stessi byte** che serviva il CDN, non una versione diversa.
 
 | file | versione | origine |
 |---|---|---|
-| `gsap.min.js` | GSAP 3.13.0 | `cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js` |
+| `gsap.min.js` | GSAP 3.13.0 | npm `gsap@3.13.0/dist/gsap.min.js` (via jsDelivr) |
 | `ScrollTrigger.min.js` | GSAP 3.13.0 | idem, `/dist/ScrollTrigger.min.js` |
 | `SplitText.min.js` | GSAP 3.13.0 | idem, `/dist/SplitText.min.js` |
 | `CustomEase.min.js` | GSAP 3.13.0 | idem, `/dist/CustomEase.min.js` |
 | `Flip.min.js` | GSAP 3.13.0 | idem, `/dist/Flip.min.js` |
 | `ScrambleTextPlugin.min.js` | GSAP 3.13.0 | idem, `/dist/ScrambleTextPlugin.min.js` |
-| `lenis.min.js` | Lenis 1.1.20 | `cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js` |
-| `three.min.js` | three.js r128 | `cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js` |
-| `lottie_light.min.js` | lottie-web 5.12.2 | `cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js` |
-| `email.min.js` | @emailjs/browser 4.4.1 | `cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js` |
+| `lenis.min.js` | Lenis 1.1.20 | npm `lenis@1.1.20/dist/lenis.min.js` (via jsDelivr) |
+| `three.min.js` | three.js r128 | `three.js/r128/three.min.js` (via Cloudflare CDN) |
+| `lottie_light.min.js` | lottie-web 5.12.2 | `lottie-web/5.12.2/lottie_light.min.js` (via Cloudflare CDN) |
+| `email.min.js` | @emailjs/browser 4.4.1 | npm `@emailjs/browser@4.4.1/dist/email.min.js` (via jsDelivr) |
 
 `three.min.js` serve solo a `index.html` (capitoli 3D). `lottie_light.min.js` e
 `email.min.js` solo a `parliamone.html` (spunta di conferma e invio del form).

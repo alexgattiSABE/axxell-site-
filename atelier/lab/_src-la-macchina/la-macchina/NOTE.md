@@ -16,7 +16,7 @@ Dipendenze della scena, da procurare in locale (niente CDN, come il resto del si
 three (una versione che abbia ANCORA `WebGL1Renderer` e `sRGBEncoding`, quindi
 r128–r151) e i suoi addon: EffectComposer, RenderPass, UnrealBloomPass,
 ShaderPass, GammaCorrectionShader, CopyShader, GLTFLoader, DRACOLoader,
-OrbitControls. Più il decoder DRACO, che nell'originale arriva da gstatic.
+OrbitControls. Più il decoder DRACO, che nell'originale arriva dai server di Google.
 
 Media (da scaricare, non in contesto): public/assets/planet.glb,
 planet-lights.glb, planet-clouds.png.

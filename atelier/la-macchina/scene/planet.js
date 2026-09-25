@@ -8,7 +8,7 @@
      1. gli asset erano assoluti (`/assets/...`), qui sono relativi — la pagina
         dichiara `<base href="/atelier/la-macchina/">`, quindi
         risolvono giusti anche entrando dall'indirizzo senza barra finale;
-     2. il decoder DRACO arrivava da gstatic. Sta in casa, come tutto il resto
+     2. il decoder DRACO arrivava dai server di Google. Sta in casa, come tutto il resto
         del sito: nessun terzo vede l'IP di chi visita.
 
    Serve three r150: la scena usa `WebGL1Renderer` e `sRGBEncoding`, che nelle

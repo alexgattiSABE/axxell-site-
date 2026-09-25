@@ -26,7 +26,10 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://axxell.ai/atelier/assets/og.png">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<!-- Font in casa (atelier/fonts/), come /fonts/fonts.css del sito madre: nessuna richiesta a Google. -->
+<link href="/atelier/fonts/space-grotesk.css" rel="stylesheet">
+<link href="/atelier/fonts/dm-mono.css" rel="stylesheet">
+<link href="/atelier/fonts/playfair-display.css" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css?v=20260824a">
 <link rel="stylesheet" href="css/sections.css?v=20260824a">
 </head>
@@ -564,7 +567,7 @@
 </footer>
 
 <!-- LE LIBRERIE STANNO QUI DENTRO, NON PIU' SU UN CDN.
-     Prima arrivavano da cdn.jsdelivr.net e cdnjs.cloudflare.com. Con jsdelivr
+     Prima arrivavano dai CDN di jsDelivr e di Cloudflare. Con jsDelivr
      irraggiungibile — una rete aziendale che filtra i CDN, un blocker
      aggressivo, un disservizio — la pagina non degradava: restava NERA.
      `ReferenceError: gsap is not defined`, il velo del loader non si toglieva

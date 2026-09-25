@@ -6,9 +6,8 @@
 <title>AI Studio — Prompts that think ahead</title>
 <meta name="description" content="Superconscious — a neural engine that turns intent into action. A cinematic scroll-driven AI showreel: mesh-gradient hero, product carousel, particle sphere, portfolio rail, and a chrome brand-star finale.">
 <meta name="theme-color" content="#000000">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- Copia di lavoro: font e librerie serviti in casa (nessuna richiesta a Google o a un CDN). -->
+<link href="/atelier/fonts/zen-kaku-gothic-new.css" rel="stylesheet">
 <style>
 /* ============================================================
    AI STUDIO — portable single-file rebuild of the Showreel
@@ -416,9 +415,9 @@ main{position:relative;z-index:2}
 
 <script type="importmap">
 { "imports": {
-  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-  "lenis": "https://unpkg.com/lenis@1.3.19/dist/lenis.mjs"
+  "three": "/atelier/vendor/three-160/build/three.module.js",
+  "three/addons/": "/atelier/vendor/three-160/jsm/",
+  "lenis": "/atelier/vendor/lenis-1.3.19/lenis.mjs"
 } }
 </script>
 <script type="module">
@@ -1013,7 +1012,7 @@ function b64ToArrayBuffer(dataUri){
 }
 const gltfLoader=new GLTFLoader()
 const dracoLoader=new DRACOLoader()
-dracoLoader.setDecoderPath("https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/")
+dracoLoader.setDecoderPath("/atelier/vendor/three-160/draco/")
 gltfLoader.setDRACOLoader(dracoLoader)
 try {
   gltfLoader.parse(b64ToArrayBuffer(ASSETS.glb), "", (gltf)=>{
