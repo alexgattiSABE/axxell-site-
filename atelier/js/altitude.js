@@ -676,8 +676,21 @@ function mountAltitude(ctx, cfg){
    * (esterno, ~340×212 px CSS) a 2 la tela resta sotto i 0,3 megapixel, e il
    * costo che sale e' solo la passata finale: il solutore gira su SIM/DYE, che
    * non dipendono dal dpr. A 1.5 su uno schermo a 3× il cielo usciva impastato. */
-  var tettoDpr = (external && mobile) ? 2 : 1.5;
-  function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, tettoDpr)); }
+  /* 2026-09-25 («la qualità è bassa su tel», Nike): anche 2 su un iPhone (dpr
+   * 3) lasciava la tela ingrandita del 50% dal browser, e il video di fondo —
+   * 1280 px, piu' della card — ne usciva sfocato. Ora il dpr vero, fino a 3,
+   * con un tetto di pixel (TETTO_PX): nella card sono ~0,65 megapixel. */
+  var tettoDpr = (external && mobile) ? 3 : 1.5;
+  var TETTO_PX = 2.5e6;
+  function dprTela(){
+    var d = Math.min(window.devicePixelRatio || 1, tettoDpr);
+    if (external){
+      var a = Math.max(1, canvas.clientWidth * canvas.clientHeight);
+      d = Math.min(d, Math.max(1, Math.sqrt(TETTO_PX / a)));
+    }
+    return d;
+  }
+  function scaleByPixelRatio(v){ return Math.floor(v * dprTela()); }
 
   function resizeCanvas(){
     var w = scaleByPixelRatio(canvas.clientWidth);
