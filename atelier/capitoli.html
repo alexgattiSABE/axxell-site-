@@ -89,6 +89,20 @@
      perche' un dito che striscia sull'anteprima muova l'effetto, non la pagina. */
   #stage-live.-viva{opacity:1;pointer-events:auto;touch-action:none}
   #stage-live canvas{display:block;width:100%;height:100%}
+  /* IL BORDO CHE SFUMA (vedi `orlo()` in js/effetti-deck.js). Appena sveglia
+     la tela viva lascia trasparente una fascia larga `--orlo` lungo i quattro
+     lati — in gradiente, da vuoto sul filo a pieno verso l'interno — e ci si
+     vede sotto il bordo luminoso del vetro, disegnato dallo shader. Il
+     controller stringe la fascia fino a zero in ~0.8 s e poi toglie la classe.
+     Due gradienti incrociati (uno per asse) intersecati: gli angoli tondi li
+     taglia gia' `border-radius`. */
+  #stage-live.-orlo{
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+                       linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    -webkit-mask-composite:source-in;
+    mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+               linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    mask-composite:intersect}
 
   /* LA PAGINA DENTRO LA CARD (2026-09-24, richiesta di Nike: «a tutte aggiungi
      scritte come se fossero landing page»). Livello suo, FUORI da #stage-live:
@@ -670,7 +684,7 @@
 <!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
-<script src="js/effetti-deck.js?v=20260924e"></script>
+<script src="js/effetti-deck.js?v=20260925a"></script>
 <!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato

@@ -203,6 +203,18 @@
     var corners = [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
     var awakeId = null;               // modulo dell'effetto sveglio, o null
     var lastW = 0, lastH = 0;
+    /* IL BORDO DELLA LASTRA SI SPEGNE PIANO (Nike: «il bordo luminoso della
+       card anziché sparire di botto quando la card è frontale, si attenui
+       gradualmente»). Il filo di luce lo disegna lo shader del vetro, SOTTO
+       `#stage-live`: la tela viva è opaca, e con la sua dissolvenza di .26 s
+       lo copriva tutto in tre o quattro fotogrammi. Qui la tela viva lascia
+       scoperta una fascia lungo il bordo (una maschera, vedi `.-orlo` nel CSS
+       di capitoli.html) larga quanto lo smusso del vetro, e la stringe fino a
+       zero in ORLO_MS: il bordo vero, quello di WebGL, sfuma sotto l'effetto
+       invece di essere coperto di colpo. Nessun bordo finto da intonare. */
+    var ORLO_MS = 800;
+    var ORLO_FASCIA = 0.08;           // lo smusso (uBev 0.16) in frazione dell'ALTEZZA della lastra
+    var orloT0 = 0;                   // quando e' partito lo spegnimento; 0 = finito
 
     function helix(){ return root.WC && root.WC.helix; }
 
@@ -251,6 +263,7 @@
          shader del vetro, così la tela viva non è un rettangolo appiccicato
          sopra a un vetro smussato. */
       stageLive.style.setProperty('--raggio', Math.round(w * 0.035) + 'px');
+      orlo(h);
       // Ridimensiona la tela dell'effetto solo quando il riquadro cambia misura
       // (a ogni frame è sprecato): al primo posizionamento e a ogni resize.
       if (Math.abs(w - lastW) > 1 || Math.abs(h - lastH) > 1){
@@ -259,6 +272,18 @@
         if (api && api.resize) api.resize();
       }
     }
+
+    /* La fascia scoperta: piena allo sveglio, zero dopo ORLO_MS, con un
+       ease-in-out perche' non parta e non si fermi a scatti. Finita, la
+       maschera si toglie del tutto (non costa niente a una tela che resta). */
+    function orlo(h){
+      if (!orloT0) return;
+      var k = Math.min(1, (now() - orloT0) / ORLO_MS);
+      k = k * k * (3 - 2 * k);
+      if (k >= 1){ orloT0 = 0; stageLive.classList.remove('-orlo'); return; }
+      stageLive.style.setProperty('--orlo', (h * ORLO_FASCIA * (1 - k)).toFixed(1) + 'px');
+    }
+    function now(){ return (root.performance && root.performance.now) ? root.performance.now() : Date.now(); }
 
     /* UNA CARD, IL SUO EFFETTO — E NIENT'ALTRO.
        Ogni modulo tiene in vita il proprio host dentro `#stage-live` anche da
@@ -282,6 +307,7 @@
       stageLive.hidden = false;
       lastW = lastH = 0;              // forza un resize al primo place()
       awakeId = record.modulo;
+      orloT0 = now(); stageLive.classList.add('-orlo');
       place(mesh);                    // posiziona PRIMA che l'effetto misuri
       api.start(stageLive);
       soloQuestoSiVede();
@@ -306,6 +332,7 @@
          scatto visto al contrario. `hidden` arriva a dissolvenza finita — e
          solo se nel frattempo non si è svegliato qualcun altro. */
       stageLive.classList.remove('-viva');
+      orloT0 = 0; stageLive.classList.remove('-orlo');
       if (api && api.stop) api.stop();
       awakeId = null;
       setTimeout(function(){ if (!awakeId) stageLive.hidden = true; }, 280);
