@@ -141,6 +141,24 @@ nav::before{
 .lang-sw button.on{color:var(--cyan);}
 .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem;}
 .mobile-dropdown a.on{color:var(--cyan);}
+/* ATELIER — il nome si tinge da solo, come il titolo del pannello Axxell
+   Calendar: un gradiente largo il triplo del testo, ritagliato sulle lettere,
+   che scorre avanti e indietro in dodici secondi. Il primo colore torna in
+   fondo alla lista cosi' il giro si richiude senza stacco.
+   Sta su un id (e non su una classe) apposta: `.nav-links a:hover` riscrive
+   `background`, e senza la specificita' dell'id il gradiente sparirebbe
+   proprio mentre ci passi sopra. */
+@keyframes atelierShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+#n-wc,.mobile-dropdown a.-atelier{
+  background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+  background-size:300% 100%;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:atelierShift 12s ease-in-out infinite;}
+/* Senza movimento resta il gradiente, fermo sul primo tratto: il nome e'
+   comunque colorato, non e' un buco nel menu. */
+@media (prefers-reduced-motion:reduce){
+  #n-wc,.mobile-dropdown a.-atelier{animation:none;background-position:0% 50%;}}
 .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;
   border:1px solid var(--cyan);color:var(--cyan);
   font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
@@ -1694,6 +1712,7 @@ overflow-y:auto;
   <div class="mobile-dropdown" id="mobileDropdown">
     <a href="#" onclick="return go('sabe')">SABE</a>
     <a href="#" onclick="return go('atlas')">ATLAS</a>
+    <a href="/atelier" class="-atelier">Atelier</a>
     <a href="#" onclick="return go('servizi')">Servizi</a>
     <a href="#" onclick="return go('visione')">Visione</a>
   </div>
@@ -1703,6 +1722,7 @@ overflow-y:auto;
   <ul class="nav-links">
     <li><a href="/sabe" onclick="return go('sabe')"    id="n-sabe">Sabe</a></li>
     <li><a href="/atlas" onclick="return go('atlas')"   id="n-atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc">Atelier</a></li>
     <li><a href="#" onclick="return go('servizi')" id="n-servizi">Servizi</a></li>
     <li><a href="#" onclick="return go('visione')" id="n-visione">Visione</a></li>
   </ul>
