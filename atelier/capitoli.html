@@ -502,7 +502,7 @@
 <script>
 /* ITALIANO / INGLESE — tutta la pagina, non piu' solo il menu (Nike: «la
    traduzione in inglese non traduce tutto. traduci tutte le scritte
-   possibili»). Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non
+   possibili»). Come nel sito la lingua vive nell'URL (?lang=it|en, sempre esplicita); se l'URL non
    la dice vale quella della pagina da cui si arriva, poi quella del browser.
    UN SOLO DIZIONARIO, in due metà:
      · TESTI (qui sotto) — le scritte della PAGINA: menu (`data-t`), titolo e
@@ -569,20 +569,20 @@
     document.querySelectorAll('#nav [data-sito]').forEach(function(a){
       var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
       if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
-      a.setAttribute('href', d + (en ? '?lang=en' : '') + h);
+      a.setAttribute('href', d + '?lang=' + l + h);
     });
     /* I due link fissi si portano dietro la lingua anche loro: la mappa
        dell'atelier e il modulo del preventivo si aprono in inglese. */
     var torna = document.getElementById('torna');
     if (torna){
       torna.setAttribute('aria-label', T.torna);
-      torna.setAttribute('href', '/atelier?da=effetti-speciali' + (en ? '&lang=en' : ''));
+      torna.setAttribute('href', '/atelier?da=effetti-speciali&lang=' + l);
       var tt = torna.querySelector('.t-testo'); if (tt) tt.textContent = T.torna;
     }
     var pv = document.getElementById('preventivo');
     if (pv){
       pv.setAttribute('aria-label', T.mondoAria);
-      pv.setAttribute('href', '/atelier/parliamone' + (en ? '?lang=en' : ''));
+      pv.setAttribute('href', '/atelier/parliamone?lang=' + l);
       var pt = pv.querySelector('.pv-t'); if (pt) pt.textContent = T.mondo;
     }
     /* L'atrio, il suggerimento in basso, l'etichetta dei fermi. */
@@ -598,7 +598,7 @@
     ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
     try {
       var u = new URL(location.href);
-      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      u.searchParams.set('lang', l);
       history.replaceState(history.state, '', u);
     } catch(e){}
     /* Il resto lo disegna il mazzo (didascalia, fermi, elenco, copy). */
