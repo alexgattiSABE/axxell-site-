@@ -1933,5 +1933,18 @@ onFrame((dt, now) => {
 </style>
 <a id="torna" href="/atelier?da=il-viaggio">&larr; Torna alla mappa</a>
 <span id="demo">// mondo dimostrativo — Axxell</span>
+<script>
+/* LA LINGUA TORNA ALLA MAPPA. Questo sito d'esempio resta in italiano, ma
+   l'Atelier no: chi e' arrivato con ?lang=it|en ci torna nella stessa lingua
+   (la lingua vive solo nell'indirizzo, niente salvato nel browser). */
+(function(){try{
+  var l=new URLSearchParams(location.search).get('lang');
+  if(l!=='it'&&l!=='en'){var r=document.referrer?new URL(document.referrer):null;l=(r&&r.origin===location.origin)?r.searchParams.get('lang'):null;}
+  if(l!=='it'&&l!=='en')return;
+  var a=document.getElementById('torna');
+  if(a){var u=new URL(a.getAttribute('href'),location.origin);u.searchParams.set('lang',l);a.setAttribute('href',u.pathname+u.search+u.hash);if(l==='en')a.textContent='\u2190 Back to the map';}
+  var d=document.getElementById('demo');if(d&&l==='en')d.textContent='// demo world \u2014 Axxell';
+}catch(e){}})();
+</script>
 </body>
 </html>
