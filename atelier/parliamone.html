@@ -309,7 +309,7 @@
   <div class="ok" id="ok" hidden tabindex="-1">
     <h2 data-t="okH">Grazie, abbiamo ricevuto tutto.</h2>
     <p data-t="okP">Ti rispondiamo entro un giorno lavorativo con un preventivo o qualche domanda in più. Nel frattempo puoi tornare a guardare i mondi dell'Atelier.</p>
-    <p style="margin-top:1rem"><a href="/atelier?da=il-tuo" data-t="okA">← Torna all'Atelier</a></p>
+    <p style="margin-top:1rem"><a href="/atelier?da=il-tuo" id="okTorna" data-t="okA">← Torna all'Atelier</a></p>
   </div>
 </main>
 
@@ -412,12 +412,12 @@
     document.querySelectorAll('[data-sito]').forEach(function(a){
       var d = a.getAttribute('data-sito'), h = '', k = d.indexOf('#');
       if (k >= 0){ h = d.slice(k); d = d.slice(0, k); }
-      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+      a.setAttribute('href', d + '?lang=' + l + h);
     });
-    ['torna'].forEach(function(id){ var a = document.getElementById(id); if (a) a.href = '/atelier?da=il-tuo' + (l === 'en' ? '&lang=en' : ''); });
+    ['torna','okTorna'].forEach(function(id){ var a = document.getElementById(id); if (a) a.href = '/atelier?da=il-tuo&lang=' + l; });
     ['it','en'].forEach(function(x){ document.getElementById('lang-' + x).classList.toggle('on', x === l); });
     document.title = (l === 'en' ? 'Website quote' : 'Preventivo sito web') + ' | Axxell';
-    try { var u = new URL(location.href); if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l); history.replaceState(null, '', u); } catch(e){}
+    try { var u = new URL(location.href); u.searchParams.set('lang', l); history.replaceState(null, '', u); } catch(e){}   // sempre esplicita
   }
   document.getElementById('lang-it').addEventListener('click', function(){ applica('it'); });
   document.getElementById('lang-en').addEventListener('click', function(){ applica('en'); });

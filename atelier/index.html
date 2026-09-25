@@ -1470,7 +1470,7 @@
   }
 
   /* ══ ITALIANO / INGLESE ══════════════════════════════════════════════
-     Come nel sito: la lingua vive nell'URL (?lang=en), non nel browser.
+     Come nel sito: la lingua vive nell'URL (?lang=it|en, SEMPRE esplicita), non nel browser.
      Se l'URL non la dice, vale quella della pagina da cui si arriva (il
      menu del sito la porta con se'), poi quella del browser: chi non ha un
      browser italiano parte in inglese. I mondi (le pagine dei clienti
@@ -1535,14 +1535,14 @@
     document.querySelectorAll('#nav [data-sito]').forEach(function(a){
       var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
       if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
-      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+      a.setAttribute('href', d + '?lang=' + l + h);
     });
     ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
     if (hot) aggiornaFocus(hot);
     idxDisegna();
     try {
       var u = new URL(location.href);
-      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      u.searchParams.set('lang', l);   // sempre esplicita, anche «it» (contratto lingua con nico-f8)
       history.replaceState(history.state, '', u);
     } catch(e){}
     return false;
@@ -1699,7 +1699,7 @@
       requestAnimationFrame(function(){ requestAnimationFrame(function(){
         /* «Il tuo» porta al preventivo siti, che parla anche inglese: la lingua
            viaggia con lui (senza `da`, come vuole Nike). */
-        var dest = w.page + (w.id === 'il-tuo' && LINGUA === 'en' ? '?lang=en' : '');
+        var dest = w.page + '?lang=' + LINGUA;   // ogni mondo porta la lingua (e i capitoli la riportano alla mappa)
         apriFinestra(w, function(){ location.href = dest; });
       }); });
       return;
@@ -1780,7 +1780,7 @@
     hot = openW; openW = null; zoomT = 0;
     document.getElementById('hint').style.opacity = '';
     document.getElementById('nav').classList.remove('-hide');
-    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT);
+    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT + '?lang=' + LINGUA);
   }
   window.addEventListener('popstate', function(e){
     var id = worldFromPath();
@@ -2123,7 +2123,7 @@
       aggiornaFocus(back);
       var h = document.getElementById('hero');
       h.classList.add('-off'); h.style.display = 'none';
-      if (window.history && history.replaceState) history.replaceState({}, '', ROOT + (LINGUA === 'en' ? '?lang=en' : ''));
+      if (window.history && history.replaceState) history.replaceState({}, '', ROOT + '?lang=' + LINGUA);
     }
   }
 
