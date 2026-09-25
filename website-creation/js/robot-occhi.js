@@ -141,19 +141,14 @@ WC.robotOcchi = (function () {
       // Occhi «- -» (Nike, 2026-09-25): un trattino orizzontale per occhio,
       // una sola riga di LED all'altezza dell'occhio — non quella più bassa
       // dove si chiude il battito, se no sembrerebbe un battito lungo.
-      trattini:   { resta: 1.5, larga: 40, spessore: 5 },
-      // Occhi «| |» (Nike, 2026-09-25): una barra verticale per occhio, alta
-      // quattro righe come l'occhio a riposo. Spessore 9,2: i puntini della
-      // barra stanno a 4,08 px dal suo asse (vedi formaBarra), e con questo
-      // spessore sono accesi INTERI, non tagliati a metà dal bordo.
-      barre:      { resta: 1.5, alta: 21, spessore: 9.2 }
+      trattini:   { resta: 1.5, larga: 40, spessore: 5 }
     },
     // prefers-reduced-motion: solo qualche battito, lento. Niente sguardi,
     // niente espressioni.
     ridotto: { ogni: [6, 10], chiudi: 0.18, chiuso: 0.12, apri: 0.2 }
   };
 
-  var NOMI = ['occhiolino', 'stupore', 'felice', 'scansione', 'concentrato', 'croce', 'trattini', 'barre'];
+  var NOMI = ['occhiolino', 'stupore', 'felice', 'scansione', 'concentrato', 'croce', 'trattini'];
 
   // ---------------------------------------------------------------------
   // Utilità
@@ -249,19 +244,6 @@ WC.robotOcchi = (function () {
       return dSegmento(x, y, -w, dy, w, dy) - s;
     } };
   }
-  // Barra: un segmento verticale. La griglia è esagonale, e una colonna
-  // sta mezzo passo più in là a righe alterne: una barra centrata SU una
-  // colonna accenderebbe una riga sì e una no. Centrata a metà fra due
-  // mezze colonne, invece, ogni riga ha un puntino a 4,08 px dall'asse (una
-  // volta a sinistra, una a destra): una barra piena, appena zigzagata come
-  // un LED vero.
-  function formaBarra(o, E) {
-    var G = CONFIG.griglia, h = E.alta, s = E.spessore;
-    var dx = G.x0 + (Math.floor((o.x - G.x0) / G.mezzoPasso) + 0.5) * G.mezzoPasso - o.x;
-    return { cx: o.x, cy: o.y, hw: Math.abs(dx) + s, hh: h + s, d: function (x, y) {
-      return dSegmento(x, y, dx, -h, dx, h) - s;
-    } };
-  }
   function formaScansione(A, B, E) {
     var hw = (B.x - A.x) / 2 + (A.a + B.a) / 2, hh = E.altezza;
     return { cx: (A.x + B.x) / 2, cy: (A.y + B.y) / 2, hw: hw, hh: hh, d: function (x, y) { return dScatola(x, y, hw, hh); } };
@@ -276,7 +258,6 @@ WC.robotOcchi = (function () {
     else if (V.look === 'concentrato') out = [formaConcentrato(O[0], E.concentrato, 1), formaConcentrato(O[1], E.concentrato, -1)];
     else if (V.look === 'croce') out = [formaCroce(O[0], E.croce), formaCroce(O[1], E.croce)];
     else if (V.look === 'trattini') out = [formaTrattino(O[0], E.trattini), formaTrattino(O[1], E.trattini)];
-    else if (V.look === 'barre') out = [formaBarra(O[0], E.barre), formaBarra(O[1], E.barre)];
     else if (V.look === 'scansione') {
       var sc = formaScansione(O[0], O[1], E.scansione), P = E.scansione, lx = V.luceX;
       sc.luce = function (x) { var u = (x - lx) / P.larghezzaLuce; return P.base + (P.picco - P.base) * Math.exp(-u * u); };
