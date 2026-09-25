@@ -69,6 +69,9 @@ body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
    si scontra niente. */
 .wc-robot-stage.-zona{cursor:pointer;}
 
+/* Il carattere delle etichette del robot: Chakra Petch (scelta di Nike,
+   2026-09-25). */
+:root{--anat-font:'Chakra Petch',var(--font);}
 /* ---- ETICHETTE ANATOMICHE (js/anatomia.js) ----
    Linea spezzata — obliqua, poi orizzontale — e due voci: la grande sopra il
    filo, la piccola sotto. L'overlay sta a z-index 2 DENTRO la card (il
@@ -104,10 +107,9 @@ body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
    piu' un contorno di mezzo pixel del colore del testo, che ingrassa le aste
    senza sbavarle. Su bianco pieno sopra il nero e' la stessa cosa che fa un
    grassetto, e resta nitido. */
-.wc-anat-nome{display:block;font-family:var(--mono);font-size:1.35rem;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--white);font-weight:500;line-height:1.25;
-  -webkit-text-stroke:.5px currentColor;}
-.wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.18rem;font-weight:500;
+.wc-anat-nome{display:block;font-family:var(--anat-font);font-size:1.35rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--white);font-weight:600;line-height:1.25;}
+.wc-anat-descrizione{display:block;font-family:var(--anat-font);font-size:1.18rem;font-weight:500;
   letter-spacing:.01em;line-height:1.35;}
 .wc-anat.-sinistra{text-align:right;}
 /* ---- Task D8: LA SCALETTA (telefono) ----
