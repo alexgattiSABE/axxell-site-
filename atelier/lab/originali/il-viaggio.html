@@ -1,0 +1,1704 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wanderlust — Beyond Places, Into Moments</title>
+<meta name="description" content="Small-group adventure travel. Beyond places, into moments." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@500&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ===========================================================================
+   WANDERLUST — portable single-file port.
+   Ported from getlayers-projects/wanderlust (Next 16 + @react-spring/web +
+   lenis + Tailwind v4). The token system, every Figma coordinate and every
+   motion constant are transcribed verbatim; the React chrome is rewritten as
+   plain DOM, and one small spring solver stands in for @react-spring/web.
+
+   Assets are fetched from the public bucket — the SAME folder the recreation
+   prompt links (pipeline rule 4 / D-021), so prompt and portable name one
+   object rather than storing the bytes twice.
+   =========================================================================== */
+
+/* ── TIER 1 — PRIMITIVES ─────────────────────────────────────────────────── */
+:root {
+  --raw-color-white: #ffffff;
+  --raw-color-neutral-100: #ededed;
+  --raw-color-neutral-900: #171717;
+  --raw-color-neutral-950: #0a0a0a;
+
+  --raw-duration-fast: 150ms;
+  --raw-duration-normal: 250ms;
+
+  --raw-color-black: #000000;
+  --raw-color-cream-100: #ffedc3;
+  --raw-color-cream-100-alpha-40: rgb(255 237 195 / 0.4);
+  --raw-color-cream-100-alpha-50: rgb(255 237 195 / 0.5);
+  --raw-color-cream-100-alpha-80: rgb(255 237 195 / 0.8);
+  --raw-color-black-alpha-50: rgb(0 0 0 / 0.5);
+  --raw-color-black-alpha-40: rgb(0 0 0 / 0.4);
+  --raw-color-black-alpha-15: rgb(0 0 0 / 0.15);
+  --raw-color-signal-red: #ff3b30;
+  --raw-color-ink-950: #0c0c0c;
+  --raw-color-ink-950-alpha-10: rgb(12 12 12 / 0.1);
+
+  --raw-radius-xs: 0.25rem;
+
+  /* Type scale — px @1440 ÷ 16. */
+  --raw-text-display: 5.625rem;   /* 90px */
+  --raw-text-wordmark: 1.5rem;    /* 24px */
+  --raw-text-body: 0.875rem;      /* 14px */
+  --raw-text-caption: 0.75rem;    /* 12px */
+
+  /* Line-heights are ABSOLUTE (multiplier × size), not ratios. */
+  --raw-leading-title: 4.5rem;     /* 72px  = 90 × 0.8 */
+  --raw-leading-wordmark: 1.35rem; /* 21.6px = 24 × 0.9 */
+  --raw-leading-body: 0.7rem;      /* 11.2px = 14 × 0.8 */
+  --raw-leading-caption: 0.6rem;   /* 9.6px  = 12 × 0.8 */
+
+  --raw-spacing-page: 1.5rem;  /* 24px */
+  --raw-spacing-md: 0.75rem;   /* 12px */
+  --raw-spacing-sm: 0.625rem;  /* 10px */
+  --raw-spacing-xs: 0.375rem;  /* 6px */
+}
+
+/* ── TIER 2 — SEMANTIC ───────────────────────────────────────────────────── */
+:root {
+  --background: var(--raw-color-white);
+  --foreground: var(--raw-color-neutral-900);
+
+  --duration-fast: var(--raw-duration-fast);
+  --duration-normal: var(--raw-duration-normal);
+
+  --surface-cinema: var(--raw-color-black);
+  --surface-glass: var(--raw-color-ink-950-alpha-10);
+  --surface-gallery: var(--raw-color-ink-950);
+
+  --foreground-accent: var(--raw-color-cream-100);
+  --foreground-accent-muted: var(--raw-color-cream-100-alpha-40);
+  --foreground-accent-soft: var(--raw-color-cream-100-alpha-50);
+  --foreground-accent-strong: var(--raw-color-cream-100-alpha-80);
+  --foreground-ink: var(--raw-color-black);
+  --foreground-ink-muted: var(--raw-color-black-alpha-40);
+  --foreground-signal: var(--raw-color-signal-red);
+
+  --scrim-page: var(--raw-color-black-alpha-50);
+  --scrim-media: var(--raw-color-black-alpha-40);
+  --scrim-scene: var(--raw-color-black-alpha-40);
+  --scrim-cta: var(--raw-color-black-alpha-15);
+  --scrim-panel: var(--raw-color-black-alpha-50);
+
+  --rounding-media: var(--raw-radius-xs);
+
+  --typeface-display: "Instrument Serif", Georgia, serif;
+  --typeface-ui: "Inter Tight", system-ui, sans-serif;
+  --typeface-hand: "Caveat", cursive;
+
+  --size-display: var(--raw-text-display);
+  --size-wordmark: var(--raw-text-wordmark);
+  --size-body: var(--raw-text-body);
+  --size-caption: var(--raw-text-caption);
+
+  --line-title: var(--raw-leading-title);
+  --line-wordmark: var(--raw-leading-wordmark);
+  --line-body: var(--raw-leading-body);
+  --line-caption: var(--raw-leading-caption);
+
+  --gap-page: var(--raw-spacing-page);
+  --ease-entrance: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ── ADAPTIVE REM GRID ───────────────────────────────────────────────────────
+   Every layout number below is a Figma pixel at the 1440 frame, in rem against
+   a 16px root. The root scales with the viewport so the one design holds at
+   every width. Above 1440 the JS ladder takes over (coef 1 — fully
+   proportional), which is the AdaptiveGrid component in the original.
+   -------------------------------------------------------------------------- */
+html { font-size: 16px; }
+@media (max-width: 1440px) { html { font-size: 1.111111vw; } } /* 16*100/1440 */
+@media (max-width: 1024px) { html { font-size: 1.5625vw; } }   /* 16*100/1024 */
+@media (max-width: 640px)  { html { font-size: 4.444444vw; } } /* 16*100/360  */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  /* `clip`, NOT `hidden`: overflow-x:hidden turns body into a scroll container,
+     which silently breaks position:sticky on the pinned sections. */
+  overflow-x: clip;
+  font-family: var(--typeface-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+img, video { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+ul { list-style: none; margin: 0; padding: 0; }
+
+/* Every text layer in the Figma hero uses trim both / cap · alphabetic, which
+   is what lets a 0.8 line-height sit flush against the 24px page margin.
+   Progressive enhancement — elsewhere the text sits at its normal leading. */
+.text-trim { text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+
+/* dvh after vh, in this order. */
+.min-h-viewport { min-height: 100vh; min-height: 100dvh; }
+
+.display { font-family: var(--typeface-display); font-weight: 400; }
+.display .it { font-style: italic; }
+.ui { font-family: var(--typeface-ui); font-weight: 500; }
+.hand { font-family: var(--typeface-hand); font-weight: 400; }
+
+.caption {
+  font-family: var(--typeface-ui); font-weight: 500;
+  font-size: var(--size-caption); line-height: var(--line-caption);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--foreground-accent-muted);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── ASSET FAILURE BANNER ────────────────────────────────────────────────────
+   A portable whose assets fail to load must say so VISIBLY — a blank canvas
+   with a console error is how a broken portable ships unnoticed (pipeline
+   rule 4).
+   -------------------------------------------------------------------------- */
+#asset-error {
+  position: fixed; inset-inline: 0; top: 0; z-index: 9999;
+  display: none; padding: 12px 16px;
+  background: #ff3b30; color: #fff;
+  font-family: var(--typeface-ui); font-size: 13px; line-height: 1.4;
+  max-height: 40vh; overflow: auto;
+}
+#asset-error.is-visible { display: block; }
+#asset-error b { display: block; margin-bottom: 4px; }
+#asset-error code { font-family: ui-monospace, monospace; font-size: 11px; opacity: 0.9; }
+
+/* ===========================================================================
+   PRELOADER
+   =========================================================================== */
+#preloader {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--surface-cinema);
+  display: grid; place-items: center;
+  will-change: transform;
+}
+#preloader.is-lifted { pointer-events: none; }
+.preloader-inner { display: grid; place-items: center; gap: 1.5rem; }
+.preloader-word {
+  font-family: var(--typeface-display); font-size: var(--size-display);
+  line-height: 1; color: var(--foreground-accent);
+}
+.preloader-count {
+  font-family: var(--typeface-ui); font-weight: 500;
+  font-size: var(--size-caption); letter-spacing: 0.12em;
+  color: var(--foreground-accent-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   BLOCK 1 — HERO
+   Figma frame 774:254, 1440×800. Page inset 24px (1.5rem) uniform.
+   =========================================================================== */
+#hero {
+  position: relative;
+  background: var(--surface-cinema);
+  overflow: hidden;
+}
+.hero-media { position: absolute; inset: 0; }
+.hero-video { position: absolute; inset: 0; height: 100%; width: 100%; object-fit: cover; }
+.hero-still {
+  position: absolute; inset: 0; height: 100%; width: 100%; object-fit: cover;
+  pointer-events: none; opacity: 0;
+}
+.hero-veil {
+  position: absolute; inset: 0; pointer-events: none;
+  background: var(--scrim-page); opacity: 0;
+}
+/* Grain: one noise tile STEPPED between fixed offsets — grain that slides is
+   dust on the lens; grain that jumps is grain. `overlay` leaves the mid tones
+   alone and works into shadows and highlights, where film grain actually is. */
+.hero-grain {
+  position: absolute; inset: -6rem; pointer-events: none;
+  mix-blend-mode: overlay; opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.9'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  will-change: transform;
+}
+
+/* chrome — wordmark and nav are FIXED, not absolute: they are the site's own
+   chrome rather than part of the hero composition. */
+.hero-wordmark {
+  position: fixed; z-index: 50; left: var(--gap-page); top: var(--gap-page);
+  font-family: var(--typeface-display);
+  font-size: var(--size-wordmark); line-height: var(--line-wordmark);
+  color: var(--foreground-accent);
+}
+.hero-nav {
+  position: fixed; z-index: 50; left: 62.125rem; top: var(--gap-page); width: 5.75rem;
+  display: grid; gap: 0.375rem;
+}
+.hero-explore {
+  position: fixed; z-index: 50; left: 77.1875rem; top: var(--gap-page); width: 11.3125rem;
+}
+.hero-nav a, .hero-explore a { display: block; transition: color var(--duration-fast) var(--ease-entrance); }
+.hero-nav a:hover, .hero-explore a:hover { color: var(--foreground-accent); }
+
+/* the window — 500×315 at left 470, vertically centred on a centre offset so
+   it stays centred at any viewport height. */
+.hero-card-wrap {
+  position: absolute; left: 29.375rem; width: 31.25rem; height: 19.6875rem;
+  top: calc(50% - 9.84375rem);
+  will-change: transform;
+}
+.hero-card {
+  position: absolute; inset: 0; overflow: hidden;
+  border-radius: var(--rounding-media);
+}
+.hero-card-media {
+  position: absolute; inset: 0; height: 100%; width: 100%; object-fit: cover;
+}
+/* Inside the window the footage is undimmed and graded — a brighter, more
+   saturated view of the same shot. */
+.hero-card-inner { position: absolute; inset: 0; filter: brightness(1.18) saturate(1.25); }
+.hero-rec {
+  position: absolute; left: 1rem; top: 1rem; width: 0.5rem; height: 0.5rem;
+  border-radius: 9999px; background: var(--foreground-signal);
+  pointer-events: none;
+}
+.hero-caption-top, .hero-caption-bottom {
+  position: absolute; left: 29.375rem; width: 31.25rem;
+  display: flex; justify-content: space-between;
+  will-change: transform;
+}
+.hero-caption-top { top: calc(50% - 11.15625rem); }    /* 21px above the card */
+.hero-caption-bottom { top: calc(50% + 10.59375rem); } /* 12px below the card */
+
+/* display type — the two blocks mirror about the centre line (446 + 994 = 1440) */
+.hero-title-start, .hero-title-end {
+  position: absolute; top: calc(50% - 4.3125rem);
+  font-family: var(--typeface-display);
+  font-size: var(--size-display); line-height: var(--line-title);
+  color: var(--foreground-accent);
+}
+.hero-title-start { right: 62.125rem; width: 14.875rem; text-align: right; }
+.hero-title-end { left: 62.125rem; width: 21.258625rem; }
+
+.hero-destinations { position: absolute; left: 62.125rem; bottom: var(--gap-page); }
+.hero-destinations ul { display: grid; gap: 0.375rem; margin-top: 0.625rem; }
+.hero-viewmodes {
+  position: absolute; left: var(--gap-page); bottom: var(--gap-page);
+  display: flex; gap: 0.75rem;
+}
+.hero-viewmodes .is-active { color: var(--foreground-accent); }
+
+/* the two edge thumbnails — centred at left 607, bleeding off both edges */
+.hero-thumb {
+  position: absolute; left: 37.9375rem; width: 14.1875rem; overflow: hidden;
+}
+.hero-thumb::after { content: ""; position: absolute; inset: 0; background: var(--scrim-media); }
+.hero-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hero-thumb-top { top: 0; height: 8.25rem; }      /* 132px */
+.hero-thumb-bottom { bottom: 0; height: 8.3125rem; } /* 133px */
+
+/* groups fade in and rise REVEAL_TRAVEL = 1.25rem as they assemble */
+.reveal { opacity: 0; will-change: transform, opacity; }
+
+/* small screens — wordmark left, MENU right, switcher centred, display lines
+   stacked over a full-bleed card, one bottom row. */
+.hero-menu { display: none; }
+@media (max-width: 1024px) {
+  /* The small-screen arrangement is a genuinely different layout, not the
+     desktop one squeezed: wordmark left and a MENU disclosure right along the
+     top, the switcher centred between them, the display lines STACKED and
+     centred over a full-bleed card, and a single bottom row — destinations
+     left, explore right. Absolute coordinates cannot express that, so the
+     middle becomes a flow column and only the two rows stay pinned. */
+  #hero {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1.25rem;
+    padding: 7rem var(--gap-page) 8rem;
+  }
+  .hero-nav { display: none; }
+  .hero-menu {
+    display: block; position: absolute; z-index: 50;
+    right: var(--gap-page); top: var(--gap-page);
+  }
+  .hero-viewmodes {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: var(--gap-page); bottom: auto;
+  }
+  .hero-title-start, .hero-title-end {
+    position: static; left: auto; right: auto; top: auto;
+    width: 100%; text-align: center;
+    font-size: 3.25rem; line-height: 2.9rem;
+  }
+  /* the display lines sit ABOVE the card — DOM order has the card first
+     because on desktop it is the first thing to assemble. */
+  .hero-title-start { order: 1; }
+  .hero-title-end { order: 2; }
+  .hero-card-wrap { order: 3; }
+  .hero-card-wrap {
+    position: static; left: auto; top: auto;
+    /* full bleed between the page margins, never wider than the desktop card,
+       and never so tall that the stacked display lines run out of room. */
+    width: min(100vw - 3rem, 31.25rem, (100vh - 26rem) / 0.63);
+    height: auto; aspect-ratio: 500 / 315;
+  }
+  .hero-caption-top, .hero-caption-bottom { display: none; }
+  .hero-thumb { display: none; }
+
+  .hero-destinations {
+    position: absolute; left: var(--gap-page); right: auto;
+    bottom: calc(var(--gap-page) + env(safe-area-inset-bottom));
+  }
+  .hero-destinations ul { display: none; }
+  .hero-explore {
+    position: absolute; left: auto; right: var(--gap-page);
+    top: auto; bottom: calc(var(--gap-page) + env(safe-area-inset-bottom));
+    width: max-content;
+  }
+}
+@media (max-width: 640px) {
+  .hero-title-start, .hero-title-end { font-size: 2.6rem; line-height: 2.3rem; }
+  #hero { padding: 6rem var(--gap-page) 7rem; }
+}
+
+/* ===========================================================================
+   BLOCK 2 — DESTINATIONS
+   Frame 1440×687. A container-query scene: every coordinate is a cqw fraction
+   of the 1440 frame, which is why this block carries no rem type tokens.
+   #0c0c0c rather than true black, so the white polaroid paper reads as paper
+   rather than as a cut-out.
+   =========================================================================== */
+#destinations { background: var(--surface-gallery); padding: 6rem 0 7rem; overflow: hidden; }
+.dest-heading {
+  font-family: var(--typeface-display); font-size: var(--size-display);
+  line-height: var(--line-title); color: var(--foreground-accent);
+  text-align: center; margin: 0 0 3rem;
+}
+.dest-stage {
+  position: relative; width: 100%; max-width: 90rem; margin: 0 auto;
+  container-type: inline-size;
+}
+.dest-scene { position: relative; width: 100%; aspect-ratio: 1440 / 687; }
+.dest-card {
+  position: absolute; will-change: transform, filter, opacity;
+  transform-origin: 50% 50%;
+  cursor: pointer;
+}
+.dest-card img { width: 100%; height: auto; display: block; }
+.dest-sticker { position: absolute; pointer-events: none; will-change: transform, opacity; }
+.dest-sticker img { width: 100%; height: 100%; display: block; }
+
+.dest-lists {
+  position: absolute; inset: 0; display: flex; justify-content: space-between;
+  padding: 0 2.5cqw; pointer-events: none;
+}
+.dest-col { display: grid; align-content: start; gap: 0.9cqw; pointer-events: auto; }
+.dest-col li { display: flex; gap: 0.8cqw; align-items: baseline; }
+.dest-index { font-size: 0.75cqw; color: var(--foreground-accent-muted); font-variant-numeric: tabular-nums; }
+.dest-name {
+  font-family: var(--typeface-ui); font-weight: 500;
+  font-size: 0.9cqw; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--foreground-accent-muted);
+  transition: color var(--duration-fast) var(--ease-entrance);
+  cursor: pointer;
+}
+.dest-col li:hover .dest-name, .dest-col li.is-active .dest-name { color: var(--foreground-accent); }
+
+@media (hover: none) {
+  .dest-card { cursor: pointer; transition: transform var(--duration-normal) var(--ease-entrance); }
+  .dest-card:active { transform: translate3d(0, -6px, 0) scale(1.025); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dest-card { transition: none; }
+}
+@media (max-width: 1024px) {
+  .dest-heading { font-size: 3.5rem; line-height: 3rem; }
+  .dest-lists { display: none; }
+}
+
+/* ===========================================================================
+   BLOCK 3 — PHILOSOPHY
+   Frames 1653:964 / 1653:1003, 1440×800. A PINNED photographic section: the
+   backdrop pans 0% → -50% across the scrub while the headline writes itself
+   word by word.
+   =========================================================================== */
+#philosophy { position: relative; height: 300vh; background: var(--surface-cinema); }
+.phil-pin {
+  position: sticky; top: 0; height: 100vh; height: 100dvh;
+  overflow: hidden; display: grid; place-items: center;
+}
+.phil-backdrop {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; will-change: transform;
+}
+.phil-scrim { position: absolute; inset: 0; background: var(--scrim-scene); }
+.phil-content {
+  position: relative; z-index: 2; width: 100%; max-width: 90rem;
+  padding: 0 var(--gap-page); text-align: center;
+}
+.phil-title {
+  font-family: var(--typeface-display); font-size: var(--size-display);
+  line-height: var(--line-title); color: var(--foreground-accent);
+  margin: 0 auto; max-width: 46rem;
+}
+/* each word rises WORD_TRAVEL_EM = 0.28em as it arrives */
+.phil-title .w { display: inline-block; white-space: pre; opacity: 0; will-change: transform, opacity; }
+.phil-asides {
+  display: flex; justify-content: space-between; gap: 4rem;
+  margin-top: 3rem; font-size: var(--size-body);
+  /* cream at 0.5 — half, not the hero's 0.4: these sit on a busier photograph */
+  color: var(--foreground-accent-soft); line-height: 1.5;
+}
+.phil-aside { max-width: 18rem; text-align: left; }
+.phil-aside:last-child { text-align: right; }
+/* the ONE handwritten voice in the design */
+.phil-signoff {
+  font-family: var(--typeface-hand); font-size: 2rem; line-height: 1.2;
+  color: var(--foreground-accent); margin-top: 3rem;
+}
+.phil-collage {
+  position: absolute; right: 6vw; bottom: 4vh; width: 18rem;
+  transform: rotate(7deg); /* COLLAGE_TURN */
+  will-change: transform, opacity;
+}
+.phil-collage img { width: 100%; height: auto; }
+.phil-reveal { opacity: 0; will-change: transform, opacity; }
+@media (max-width: 1024px) {
+  .phil-title { font-size: 3.5rem; line-height: 3rem; }
+  .phil-asides { flex-direction: column; align-items: center; gap: 1.5rem; }
+  .phil-aside, .phil-aside:last-child { text-align: center; }
+  .phil-collage { display: none; }
+}
+
+/* ===========================================================================
+   BLOCK 4 — HOW WE TRAVEL
+   Frames 1678:1116 …, 1440×800. Four panels side by side; pointing at one
+   WIDENS it and dims the rest. Below 1024 the row becomes a vertical stack.
+   =========================================================================== */
+#travel { background: var(--surface-gallery); }
+.travel-header { text-align: center; padding: 6.5rem var(--gap-page) 3rem; }
+.travel-title {
+  font-family: var(--typeface-display); font-size: var(--size-display);
+  line-height: var(--line-title); color: var(--foreground-accent); margin: 0;
+}
+.travel-subtitle {
+  font-size: var(--size-body); color: var(--foreground-accent-muted);
+  margin-top: 1rem;
+}
+.travel-row { display: flex; height: 70vh; min-height: 34rem; }
+.travel-panel {
+  position: relative; isolation: isolate; overflow: hidden;
+  flex-grow: 1; flex-basis: 0; will-change: flex-grow;
+  cursor: pointer;
+}
+.travel-photo {
+  /* Overscanned: the photo travels MEDIA_TRAVEL inside its panel, so a
+     100%-wide image would expose the panel edge as a seam at rest.
+     max-width:none for the same reason as .plan-layer. */
+  position: absolute; top: 0; left: -8%; width: 116%; max-width: none; height: 100%;
+  object-fit: cover; will-change: transform, filter;
+}
+/* the dark end of the panel gradient */
+.travel-veil {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, var(--scrim-panel), transparent 62%);
+}
+.travel-foot {
+  position: absolute; inset-inline: var(--gap-page); bottom: 2.5rem; z-index: 2;
+  display: grid; gap: 1rem;
+}
+.travel-panel-title {
+  font-family: var(--typeface-display); font-size: 2.5rem; line-height: 1;
+  color: var(--foreground-accent); margin: 0;
+}
+.travel-body {
+  font-size: var(--size-body); line-height: 1.5;
+  /* cream at 0.8 below the desktop base: the same copy on the same photographs
+     measured 3.2–4.2 contrast on a phone, and 0.8 takes it to 5.6–8.2. */
+  color: var(--foreground-accent-strong);
+  will-change: transform, opacity;
+}
+.travel-signoff {
+  font-family: var(--typeface-hand); font-size: 1.5rem;
+  color: var(--foreground-accent);
+}
+
+@media (max-width: 1024px) {
+  .travel-title { font-size: 3.5rem; line-height: 3rem; }
+  .travel-header { padding-top: 6.5rem; padding-bottom: 3rem; }
+  .travel-row { flex-direction: column; height: auto; min-height: 0; }
+  .travel-panel {
+    height: 62dvh; min-height: 26rem; flex: none; cursor: default;
+  }
+  .travel-photo { top: -10%; height: 120%; left: 0; width: 100%; }
+  .travel-foot {
+    inset: 0; inset-inline: var(--gap-page);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2rem; text-align: center; bottom: auto;
+  }
+}
+@media (max-width: 640px) {
+  .travel-header { padding-top: 5.5rem; }
+  .travel-panel { height: 56dvh; min-height: 22rem; }
+  .travel-foot { gap: 1.5rem; }
+}
+
+/* ===========================================================================
+   BLOCK 5 — PLAN A JOURNEY (+ FOOTER)
+   Frame 1705:253, 1440×1077. The one block that reads against a BRIGHT sky
+   rather than a dark photograph — so its display type and note copy are INK,
+   not cream, under a wash of only black 0.15 (a touch, not a scrim).
+   =========================================================================== */
+#plan { position: relative; background: #cfd8dc; overflow: hidden; }
+/* The scene PINS and the footer rides up over it, so the frosted panel frosts
+   the dark foreground layer rather than bare ground — which is what lets its
+   cream copy hold. A footer on flat grey is cream on light, unreadable. */
+.plan-scene {
+  position: sticky; top: 0; height: 100vh; height: 100dvh; min-height: 42rem;
+}
+.plan-layer {
+  /* max-width:none — the global img rule would clamp this 108% overscan back
+     to 100% and leave the parallax travel showing a gap at the frame edge. */
+  position: absolute; inset: -4%; width: 108%; max-width: none; height: 108%;
+  object-fit: cover; will-change: transform;
+}
+.plan-steam {
+  position: absolute; inset: -4%; width: 108%; max-width: none; height: 108%;
+  object-fit: cover; opacity: 0.85; mix-blend-mode: screen;
+  will-change: transform, opacity;
+  filter: url(#b5-steam-wisps);
+}
+.plan-wash { position: absolute; inset: 0; background: var(--scrim-cta); }
+.plan-content {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center; align-content: center; gap: 2rem;
+  padding: 0 var(--gap-page); text-align: center;
+}
+.plan-title {
+  font-family: var(--typeface-display); font-size: var(--size-display);
+  line-height: var(--line-title); color: var(--foreground-ink); margin: 0;
+}
+.plan-note {
+  position: relative; width: 21.375rem; max-width: 80vw;
+  will-change: transform;
+  transform-origin: 51% 10%; /* NOTE_TILT.origin */
+}
+.plan-note img { width: 100%; height: auto; }
+.plan-note-copy {
+  position: absolute; inset: 0; display: grid; align-content: center;
+  padding: 2.5rem 2rem; gap: 0.4rem;
+  font-family: var(--typeface-hand); font-size: 1.5rem; line-height: 1.25;
+  color: var(--foreground-ink); text-transform: uppercase; text-align: center;
+}
+.plan-note-copy .ln { opacity: 0; will-change: opacity, transform; }
+.plan-note-aside {
+  font-family: var(--typeface-hand); font-size: 1.1rem;
+  color: var(--foreground-ink-muted); text-transform: uppercase;
+  opacity: 0;
+}
+.plan-action {
+  display: inline-flex; align-items: center; gap: 0.75rem;
+  font-family: var(--typeface-ui); font-weight: 500;
+  font-size: var(--size-body); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--foreground-ink);
+  overflow: hidden;
+}
+.plan-action img { width: 1rem; height: auto; will-change: transform; }
+
+/* footer — a frosted panel: a blur first and a fill second. */
+.plan-footer {
+  position: relative; z-index: 4;
+  margin-top: -20rem;
+  background:
+    linear-gradient(to bottom, rgb(12 12 12 / 0.35), rgb(12 12 12 / 0.78) 32%),
+    var(--surface-glass);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  color: var(--foreground-accent);
+  padding: 7rem var(--gap-page) 2rem;
+}
+.plan-footer-inner {
+  max-width: 90rem; margin: 0 auto;
+  display: grid; grid-template-columns: 1.2fr repeat(3, 1fr) 1.4fr; gap: 3rem;
+}
+.plan-footer-wordmark {
+  font-family: var(--typeface-display); font-size: var(--size-wordmark);
+  line-height: var(--line-wordmark);
+}
+.footer-col-title {
+  font-size: var(--size-caption); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--foreground-accent-muted); margin-bottom: 1rem;
+}
+.footer-col li { margin-bottom: 0.5rem; font-size: var(--size-body); }
+.footer-col a:hover { color: var(--foreground-accent); }
+.footer-news { font-size: var(--size-body); color: var(--foreground-accent-strong); }
+.footer-form { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.footer-form input {
+  flex: 1; background: transparent; border: 0; border-bottom: 1px solid var(--foreground-accent-muted);
+  padding: 0.5rem 0; color: var(--foreground-accent); font: inherit; font-size: var(--size-body);
+}
+.footer-form input::placeholder { color: var(--foreground-accent-muted); }
+.footer-form button {
+  font-size: var(--size-caption); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--foreground-accent);
+}
+.footer-social { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.footer-social img { width: 1.25rem; height: 1.25rem; }
+.plan-footer-base {
+  max-width: 90rem; margin: 3rem auto 0; padding-top: 1.5rem;
+  border-top: 1px solid var(--foreground-accent-muted);
+  font-size: var(--size-caption); color: var(--foreground-accent-muted);
+}
+@media (max-width: 1024px) {
+  .plan-title { font-size: 3.5rem; line-height: 3rem; }
+  .plan-footer-inner { grid-template-columns: 1fr 1fr; gap: 2rem; }
+}
+@media (max-width: 640px) {
+  .plan-footer-inner { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-grain { animation: none; }
+  .plan-steam { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Visible asset-failure banner. A portable whose assets fail to load must say
+     so — a blank canvas with a console error is how a broken portable ships
+     unnoticed. -->
+<div id="asset-error" role="alert" aria-live="assertive">
+  <b>Some media could not be loaded from the asset bucket.</b>
+  <span id="asset-error-list"></span>
+</div>
+
+<!-- The steam displacement filter (block 5). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="b5-steam-wisps" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.006 0.010" numOctaves="2"
+                  seed="7" stitchTiles="stitch" result="n">
+      <animate attributeName="baseFrequency" dur="28s"
+               values="0.006 0.010;0.008 0.013;0.006 0.010" repeatCount="indefinite" />
+    </feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="18"
+                       xChannelSelector="R" yChannelSelector="G" result="d" />
+    <!-- gamma-shape the alpha so the steam thins at its edges rather than
+         ending on a hard line: STEAM_ALPHA_GAMMA { exponent: 3, amplitude: 3 } -->
+    <feComponentTransfer in="d">
+      <feFuncA type="gamma" exponent="3" amplitude="3" offset="0" />
+    </feComponentTransfer>
+  </filter>
+</svg>
+
+<!-- ======================================================================
+     PRELOADER
+     ====================================================================== -->
+<div id="preloader">
+  <div class="preloader-inner">
+    <div class="preloader-word display" id="preloader-word"></div>
+    <div class="preloader-count" id="preloader-count">00</div>
+  </div>
+</div>
+
+<main>
+
+<!-- ======================================================================
+     BLOCK 1 — HERO
+     ====================================================================== -->
+<section id="hero" class="min-h-viewport" aria-label="Wanderlust">
+  <div class="hero-media">
+    <video class="hero-video" id="hero-video" muted playsinline preload="auto"
+           aria-label="Travel footage: a glacial river valley seen from the air"></video>
+    <img class="hero-still" id="hero-still" alt="" />
+    <div class="hero-veil" id="hero-veil"></div>
+    <div class="hero-grain" id="hero-grain"></div>
+  </div>
+
+  <div class="hero-wordmark display" id="hero-wordmark"></div>
+
+  <nav class="hero-nav caption reveal" id="g-nav" aria-label="Primary">
+    <a href="/journal">JOURNAL.</a>
+    <a href="/experiences">EXPERIENCES.</a>
+    <a href="/about">ABOUT.</a>
+    <a href="/contact">CONTACT.</a>
+  </nav>
+  <button class="hero-menu caption" type="button">MENU</button>
+
+  <div class="hero-explore caption reveal" id="g-explore">
+    <a href="/destinations">explore Destinations</a>
+  </div>
+
+  <div class="hero-caption-top caption reveal" id="g-captions-top">
+    <span>TRAVEL STORIES</span><span>JOURNAL</span>
+  </div>
+
+  <div class="hero-card-wrap reveal" id="g-card">
+    <div class="hero-card">
+      <div class="hero-card-inner">
+        <video class="hero-card-media" id="hero-card-video" muted playsinline preload="auto" aria-hidden="true"></video>
+        <img class="hero-card-media hero-still" id="hero-card-still" alt="" />
+      </div>
+      <span class="hero-rec" id="hero-rec" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <div class="hero-caption-bottom caption reveal" id="g-captions-bottom">
+    <span>01.</span><span>REAL JOURNEYS</span><span>42.</span>
+  </div>
+
+  <h1 class="hero-title-start text-trim reveal" id="g-title-start"></h1>
+  <div class="hero-title-end text-trim reveal" id="g-title-end"></div>
+
+  <div class="hero-destinations reveal" id="g-destinations">
+    <div class="caption">ALL DESTINATIONS</div>
+    <ul class="caption">
+      <li><a href="/destinations/iceland">Iceland</a></li>
+      <li><a href="/destinations/norway">Norway</a></li>
+      <li><a href="/destinations/japan">Japan</a></li>
+      <li><a href="/destinations/indonesia">Indonesia</a></li>
+    </ul>
+  </div>
+
+  <div class="hero-viewmodes caption reveal" id="g-viewmodes">
+    <span class="is-active">SLIDER</span><span>LIST</span>
+  </div>
+
+  <div class="hero-thumb hero-thumb-top reveal" id="g-thumbnails-top">
+    <img id="hero-thumb-a" alt="A traveller raising a camera over a glacial river valley" />
+  </div>
+  <div class="hero-thumb hero-thumb-bottom reveal" id="g-thumbnails-bottom">
+    <img id="hero-thumb-b" alt="" />
+  </div>
+</section>
+
+<!-- ======================================================================
+     BLOCK 2 — DESTINATIONS
+     ====================================================================== -->
+<section id="destinations" aria-label="Destinations worth wandering">
+  <h2 class="dest-heading display text-trim">
+    <span class="it">D</span>estinations<br />
+    <span class="it">W</span>orth <span class="it">W</span>andering
+  </h2>
+  <div class="dest-stage">
+    <div class="dest-scene" id="dest-scene"></div>
+    <div class="dest-lists">
+      <ul class="dest-col" id="dest-col-left"></ul>
+      <ul class="dest-col" id="dest-col-right"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     BLOCK 3 — PHILOSOPHY  (pinned)
+     ====================================================================== -->
+<section id="philosophy" aria-label="Go somewhere that stays with you">
+  <div class="phil-pin">
+    <img class="phil-backdrop" id="phil-backdrop"
+         alt="A glacial river braiding across a green valley, seen from the air" />
+    <div class="phil-scrim"></div>
+    <div class="phil-content">
+      <h2 class="phil-title display text-trim" id="phil-title"></h2>
+      <div class="phil-asides">
+        <p class="phil-aside phil-reveal" id="phil-aside-left">
+          We plan trips for the moments you'll still talk about years later.
+        </p>
+        <p class="phil-aside phil-reveal" id="phil-aside-right">
+          The quiet mornings, the unexpected turns, the places you almost didn't find.
+        </p>
+      </div>
+      <p class="phil-signoff hand phil-reveal" id="phil-signoff">
+        Less ticking places off a list.<br />More actually being there.
+      </p>
+    </div>
+    <figure class="phil-collage phil-reveal" id="phil-collage">
+      <img id="phil-collage-img"
+           alt="A polaroid of a traveller with her arms outstretched, taped over torn notebook pages" />
+    </figure>
+  </div>
+</section>
+
+<!-- ======================================================================
+     BLOCK 4 — HOW WE TRAVEL
+     ====================================================================== -->
+<section id="travel" aria-label="How we travel">
+  <header class="travel-header">
+    <h2 class="travel-title display text-trim">
+      <span class="it">H</span>ow <span class="it">W</span>e <span class="it">T</span>ravel
+    </h2>
+    <p class="travel-subtitle">Different trips, same intention.</p>
+  </header>
+  <div class="travel-row" id="travel-row"></div>
+</section>
+
+<!-- ======================================================================
+     BLOCK 5 — PLAN A JOURNEY (+ footer)
+     ====================================================================== -->
+<section id="plan" aria-label="Plan a journey">
+  <div class="plan-scene" id="plan-scene">
+    <img class="plan-layer" id="plan-bg" alt="A green ridge running down into cloud" style="inset:0;width:100%;height:100%" />
+    <img class="plan-layer" id="plan-far" alt="A ridge of mountains behind low cloud" />
+    <img class="plan-steam" id="plan-steam" alt="" />
+    <img class="plan-layer" id="plan-fg" alt="" />
+    <div class="plan-wash"></div>
+
+    <div class="plan-content">
+      <h2 class="plan-title display text-trim">
+        <span class="it">P</span>lan a <span class="it">J</span>ourney
+      </h2>
+
+      <figure class="plan-note" id="plan-note">
+        <img id="plan-note-img" alt="A handwritten note pinned to the view" />
+        <figcaption class="plan-note-copy">
+          <span class="ln">Tell us what you're</span>
+          <span class="ln">dreaming of. We'll shape</span>
+          <span class="ln">the journey.</span>
+        </figcaption>
+      </figure>
+      <div class="plan-note-aside" id="plan-note-aside">ready when you are</div>
+
+      <a class="plan-action" href="/plan" id="plan-action">
+        Start planning <img id="plan-arrow" alt="" />
+      </a>
+    </div>
+  </div>
+
+  <footer class="plan-footer">
+    <div class="plan-footer-inner">
+      <div>
+        <div class="plan-footer-wordmark display"><span class="it">W</span>ander<span class="it">L</span>ust</div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">DESTINATIONS</div>
+        <ul>
+          <li><a href="/destinations/iceland">Iceland</a></li>
+          <li><a href="/destinations/norway">Norway</a></li>
+          <li><a href="/destinations/japan">Japan</a></li>
+          <li><a href="/destinations/indonesia">Indonesia</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">EXPERIENCES</div>
+        <ul>
+          <li><a href="/experiences/adventure">Adventure</a></li>
+          <li><a href="/experiences/nature">Nature</a></li>
+          <li><a href="/experiences/culture">Culture</a></li>
+          <li><a href="/experiences/slow-travel">Slow Travel</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">COMPANY</div>
+        <ul>
+          <li><a href="/about">About Us</a></li>
+          <li><a href="/journal">Journal</a></li>
+          <li><a href="/testimonials">Testimonials</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-news">Stories, guides &amp; ideas for wherever you're headed next.</p>
+        <form class="footer-form" onsubmit="return false">
+          <input type="email" placeholder="Your e-mail" aria-label="Your e-mail" />
+          <button type="submit">Subscribe</button>
+        </form>
+        <div class="footer-social">
+          <a href="#" aria-label="Wanderlust on Instagram"><img id="soc-1" alt="" /></a>
+          <a href="#" aria-label="Wanderlust on Facebook"><img id="soc-2" alt="" /></a>
+          <a href="#" aria-label="Wanderlust on YouTube"><img id="soc-3" alt="" /></a>
+        </div>
+      </div>
+    </div>
+    <div class="plan-footer-base">© 2024 Wanderlust. All rights reserved.</div>
+  </footer>
+</section>
+
+</main>
+
+<script type="importmap">
+{ "imports": { "lenis": "https://unpkg.com/lenis@1.3.19/dist/lenis.mjs" } }
+</script>
+
+<script type="module">
+import Lenis from "lenis";
+
+/* ===========================================================================
+   ASSETS — the same bucket folder the recreation prompt links (D-021), so the
+   prompt and this file name ONE object rather than storing the bytes twice.
+   =========================================================================== */
+const ASSET_BASE_URL = "https://storage.getlayers.ai/assets/wanderlust-555800a518";
+const A = (p) => ASSET_BASE_URL + "/" + p.split("/").map(encodeURIComponent).join("/");
+
+/* Visible failure reporting. */
+const failed = new Set();
+const reportFailure = (url) => {
+  if (failed.has(url)) return;
+  failed.add(url);
+  const box = document.getElementById("asset-error");
+  const list = document.getElementById("asset-error-list");
+  list.innerHTML = [...failed].map((u) => `<code>${u}</code>`).join("<br />");
+  box.classList.add("is-visible");
+};
+const setImg = (el, path, opts = {}) => {
+  if (!el) return;
+  el.addEventListener("error", () => reportFailure(el.src), { once: true });
+  if (opts.lazy) el.loading = "lazy";
+  el.decoding = "async";
+  el.src = A(path);
+};
+
+/* ===========================================================================
+   MOTION PRIMITIVES
+   =========================================================================== */
+const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+/* Smoothstep — still at both ends, so no group arrives at speed and stops. */
+const smooth = (t) => { const x = clamp01(t); return x * x * (3 - 2 * x); };
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* A minimal spring solver standing in for @react-spring/web. Same semantics:
+   a = (-tension * (x - target) - friction * v). */
+class Spring {
+  constructor(value, config = { tension: 170, friction: 26 }) {
+    this.v = value; this.target = value; this.vel = 0; this.config = config;
+  }
+  set(t) { this.target = t; return this; }
+  jump(t) { this.v = this.target = t; this.vel = 0; return this; }
+  step(dt) {
+    if (prefersReduced) { this.v = this.target; this.vel = 0; return this.v; }
+    const { tension, friction } = this.config;
+    const a = -tension * (this.v - this.target) - friction * this.vel;
+    this.vel += a * dt;
+    this.v += this.vel * dt;
+    if (Math.abs(this.vel) < 0.0004 && Math.abs(this.v - this.target) < 0.0004) {
+      this.v = this.target; this.vel = 0;
+    }
+    return this.v;
+  }
+}
+
+/* One app-wide ticker — every per-frame job goes through it. */
+const jobs = new Set();
+let last = performance.now();
+const tick = (now) => {
+  const dt = Math.min(0.064, (now - last) / 1000); /* clamped: a wall clock
+     teleports anything integrated from it whenever frames drop. */
+  last = now;
+  for (const job of jobs) job(dt, now);
+  requestAnimationFrame(tick);
+};
+requestAnimationFrame(tick);
+const onFrame = (fn) => { jobs.add(fn); return () => jobs.delete(fn); };
+
+/* Scroll progress of an element, 0 at `top bottom` … 1 at `bottom top`. */
+const progressOf = (el, startAt = "top bottom", endAt = "bottom top") => {
+  const r = el.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const startY = startAt === "center center" ? r.top + r.height / 2 - vh / 2 : r.top - vh;
+  const endY = endAt === "center center" ? r.top + r.height / 2 - vh / 2 : r.bottom;
+  const span = endY - startY;
+  return span === 0 ? 0 : clamp01((0 - startY) / span);
+};
+
+/* ===========================================================================
+   ADAPTIVE GRID — above 1440 the root font-size scales up fully
+   proportionally (coef 1), so the single 1440 design holds at every desktop
+   width. Below 1440 the CSS ladder in <style> owns it.
+   =========================================================================== */
+const applyGrid = () => {
+  const w = window.innerWidth;
+  document.documentElement.style.fontSize = w > 1440 ? `${(16 * w) / 1440}px` : "";
+};
+applyGrid();
+window.addEventListener("resize", applyGrid);
+
+/* ===========================================================================
+   SMOOTH SCROLL
+   =========================================================================== */
+const lenis = new Lenis();
+onFrame((dt, now) => lenis.raf(now));
+lenis.stop(); /* the preloader holds scroll until it lifts */
+
+/* ===========================================================================
+   SEGMENTED TEXT — the leading capital of every word takes the italic cut of
+   Instrument Serif; the remainder is roman. Reused by the wordmark, the hero
+   title and every block heading.
+   =========================================================================== */
+const segmented = (segs) =>
+  segs.map((s) => (s.italic ? `<span class="it">${s.text}</span>` : `<span>${s.text}</span>`)).join("");
+
+const WORDMARK = [
+  { text: "W", italic: true }, { text: "ander" },
+  { text: "L", italic: true }, { text: "ust" },
+];
+document.getElementById("preloader-word").innerHTML = segmented(WORDMARK);
+document.getElementById("hero-wordmark").innerHTML = segmented(WORDMARK);
+document.getElementById("g-title-start").innerHTML = segmented([
+  { text: "B", italic: true }, { text: "eyond " },
+  { text: "P", italic: true }, { text: "laces" },
+]);
+document.getElementById("g-title-end").innerHTML =
+  segmented([{ text: "I", italic: true }, { text: "nto" }]) + "<br />" +
+  segmented([{ text: "M", italic: true }, { text: "oments" }]);
+
+/* ===========================================================================
+   HERO MEDIA
+   =========================================================================== */
+const heroVideo = document.getElementById("hero-video");
+const cardVideo = document.getElementById("hero-card-video");
+const VIDEO_SRC = A("hero/Hero-video.mp4");
+[heroVideo, cardVideo].forEach((v) => {
+  v.addEventListener("error", () => reportFailure(VIDEO_SRC), { once: true });
+  v.src = VIDEO_SRC;
+});
+setImg(document.getElementById("hero-still"), "hero/hero-final-frame.jpg");
+setImg(document.getElementById("hero-card-still"), "hero/hero-final-frame.jpg");
+setImg(document.getElementById("hero-thumb-a"), "hero/hero-thumb2.png");
+setImg(document.getElementById("hero-thumb-b"), "hero/hero-thumb2.png");
+
+/* ===========================================================================
+   PRELOADER
+   HOLD_MS 340 · COUNT_MS 1200 · LIFT_MS 780 · MIN_SHOW_MS 2200.
+   It waits on the hero clip having FRAMES (readyState >= 2), not on it being
+   fully downloaded.
+   =========================================================================== */
+const HOLD_MS = 340, COUNT_MS = 1200, LIFT_MS = 780, MIN_SHOW_MS = 2200;
+const preloader = document.getElementById("preloader");
+const countEl = document.getElementById("preloader-count");
+const shownAt = performance.now();
+
+let mediaReady = false;
+const markReady = () => { mediaReady = true; };
+if (heroVideo.readyState >= 2) markReady();
+heroVideo.addEventListener("loadeddata", markReady, { once: true });
+heroVideo.addEventListener("error", markReady, { once: true }); /* still lift */
+setTimeout(markReady, 9000); /* ceiling — never trap the reader behind media */
+
+let counted = false;
+const countStart = performance.now();
+const stopCount = onFrame((dt, now) => {
+  const t = clamp01((now - countStart) / COUNT_MS);
+  const shown = Math.round(smooth(t) * 100 * (mediaReady ? 1 : 0.92));
+  countEl.textContent = String(shown).padStart(2, "0");
+  if (t >= 1 && mediaReady && !counted) {
+    counted = true;
+    countEl.textContent = "100";
+    const wait = Math.max(HOLD_MS, MIN_SHOW_MS - (now - shownAt));
+    setTimeout(lift, wait);
+  }
+});
+
+function lift() {
+  stopCount();
+  preloader.classList.add("is-lifted");
+  preloader.style.transition = `transform ${LIFT_MS}ms cubic-bezier(0.2,0,0,1)`;
+  preloader.style.transform = "translateY(-100%)";
+  setTimeout(() => preloader.remove(), LIFT_MS + 60);
+  lenis.start();
+  startHero();
+}
+
+/* ===========================================================================
+   BLOCK 1 — HERO CHOREOGRAPHY
+   =========================================================================== */
+const VEIL_MS = 900;
+const VIDEO_RATE = 2;
+const ASSEMBLY_MS = 2400;
+const ASSEMBLY_LEAD_S = 0.4;     /* MEDIA seconds — halves in wall clock at 2× */
+const STILL_MS = 520;
+const STILL_LEAD_S = 1 / 30;
+const ASSEMBLY_FALLBACK_MS = 8000;
+const PHASE = { maskDuration: 0.3, uiStart: 0.3, uiStagger: 0.055, uiDuration: 0.2 };
+const MASK = { from: 0.62 };
+const REVEAL_TRAVEL = 1.25;      /* rem */
+const REC = { pulseMs: 620, dim: 0.18 };
+const GRAIN = { cycleMs: 800, steps: 8, opacity: 0.3, tile: 200, shift: 41 };
+const HERO_TUNING = { cardLerp: 0.08, brightness: 1.18, saturation: 1.25, scrimOpacity: 1, returnMs: 800 };
+
+/* The card comes FIRST and alone: the lens opens on the footage, and the
+   interface gathers around what it found. */
+const UI_ORDER = ["card", "captions", "titles", "wordmark", "nav", "explore",
+                  "destinations", "viewModes", "thumbnails"];
+const uiStart = (g) => g === "card" ? 0 : PHASE.uiStart + (UI_ORDER.indexOf(g) - 1) * PHASE.uiStagger;
+const groupDuration = (g) => g === "card" ? PHASE.maskDuration : PHASE.uiDuration;
+/* The curve lives HERE rather than on the master spring, which runs linearly —
+   that way uiStagger is a real interval in ms and every group gets the same
+   shape whether it is first or last. */
+const groupEase = (p, g) => smooth((p - uiStart(g)) / groupDuration(g));
+
+const GROUPS = {
+  card: [document.getElementById("g-card")],
+  captions: [document.getElementById("g-captions-top"), document.getElementById("g-captions-bottom")],
+  titles: [document.getElementById("g-title-start"), document.getElementById("g-title-end")],
+  wordmark: [document.getElementById("hero-wordmark")],
+  nav: [document.getElementById("g-nav")],
+  explore: [document.getElementById("g-explore")],
+  destinations: [document.getElementById("g-destinations")],
+  viewModes: [document.getElementById("g-viewmodes")],
+  thumbnails: [document.getElementById("g-thumbnails-top"), document.getElementById("g-thumbnails-bottom")],
+};
+
+const veilEl = document.getElementById("hero-veil");
+const grainEl = document.getElementById("hero-grain");
+const recEl = document.getElementById("hero-rec");
+const cardWrap = document.getElementById("g-card");
+const stillEls = [document.getElementById("hero-still"), document.getElementById("hero-card-still")];
+
+let assemblyStart = 0, assembling = false, assemblyProgress = 0;
+let stillStart = 0, stillRunning = false;
+
+function startHero() {
+  heroVideo.playbackRate = VIDEO_RATE;
+  cardVideo.playbackRate = VIDEO_RATE;
+  const p = heroVideo.play();
+  cardVideo.play().catch(() => {});
+  if (p && p.catch) p.catch(() => {});
+
+  /* The veil comes UP over the footage across the first 900ms, starting with
+     the video — the hero opens BRIGHT and settles into its own mood. */
+  const veilStart = performance.now();
+  const stopVeil = onFrame((dt, now) => {
+    const t = clamp01((now - veilStart) / VEIL_MS);
+    veilEl.style.opacity = String(smooth(t) * HERO_TUNING.scrimOpacity);
+    if (t >= 1) stopVeil();
+  });
+
+  /* The assembly runs this long after play() is called whatever the video
+     does — autoplay can be refused, a decode can stall, a tab can be
+     backgrounded, and `ended` arrives in none of those cases. The failure has
+     to land on THE INTERFACE BEING THERE. */
+  setTimeout(() => beginAssembly(), ASSEMBLY_FALLBACK_MS);
+
+  heroVideo.addEventListener("timeupdate", () => {
+    const d = heroVideo.duration;
+    if (!d || !isFinite(d)) return;
+    if (d - heroVideo.currentTime <= ASSEMBLY_LEAD_S) beginAssembly();
+    if (d - heroVideo.currentTime <= STILL_LEAD_S) beginStill();
+  });
+  heroVideo.addEventListener("ended", () => { beginAssembly(); beginStill(); });
+}
+
+function beginAssembly() {
+  if (assembling) return;
+  assembling = true;
+  assemblyStart = performance.now();
+}
+function beginStill() {
+  if (stillRunning) return;
+  stillRunning = true;
+  stillStart = performance.now();
+}
+
+/* Pointer-follow. The card and its caption rows move on ONE vector; the mask's
+   entrance scale is folded into the same single transform the ticker writes —
+   the card cannot use a CSS centring transform for that reason. */
+let pointerX = 0, pointerY = 0, followX = 0, followY = 0, pointerInside = false;
+let returnFrom = null, returnAt = 0;
+const heroEl = document.getElementById("hero");
+heroEl.addEventListener("pointermove", (e) => {
+  const r = heroEl.getBoundingClientRect();
+  pointerX = ((e.clientX - r.left) / r.width - 0.5) * 2;
+  pointerY = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  pointerInside = true; returnFrom = null;
+});
+heroEl.addEventListener("pointerleave", () => {
+  pointerInside = false;
+  returnFrom = { x: followX, y: followY };
+  returnAt = performance.now();
+});
+
+const CARD_RANGE = 26; /* px of travel at the frame edge */
+
+onFrame((dt, now) => {
+  /* assembly progress — the master runs LINEARLY */
+  if (assembling) assemblyProgress = clamp01((now - assemblyStart) / ASSEMBLY_MS);
+
+  for (const [name, els] of Object.entries(GROUPS)) {
+    const key = name === "captions" ? "captions" : name;
+    const e = assembling ? groupEase(assemblyProgress, key) : 0;
+    for (const el of els) {
+      if (name === "card") continue; /* folded into the pointer transform below */
+      el.style.opacity = String(e);
+      el.style.transform = `translateY(${(1 - e) * REVEAL_TRAVEL}rem)`;
+    }
+  }
+
+  /* the window: scales up from 0.62 — a lens opening on the footage. */
+  const maskE = assembling ? groupEase(assemblyProgress, "card") : 0;
+  const scale = lerp(MASK.from, 1, maskE);
+  cardWrap.style.opacity = String(maskE);
+
+  /* pointer lerp — HERO_TUNING.cardLerp = 0.08; lower is heavier and lags
+     further behind. */
+  if (pointerInside) {
+    followX = lerp(followX, pointerX, HERO_TUNING.cardLerp);
+    followY = lerp(followY, pointerY, HERO_TUNING.cardLerp);
+  } else if (returnFrom) {
+    const t = smooth(clamp01((now - returnAt) / HERO_TUNING.returnMs));
+    followX = lerp(returnFrom.x, 0, t);
+    followY = lerp(returnFrom.y, 0, t);
+    if (t >= 1) returnFrom = null;
+  }
+  const tx = followX * CARD_RANGE, ty = followY * CARD_RANGE;
+  cardWrap.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
+  /* the captions move on the CARD'S OWN vector */
+  for (const el of GROUPS.captions) {
+    const e = groupEase(assemblyProgress, "captions");
+    el.style.transform = `translate3d(${tx}px, ${ty + (1 - e) * 20}px, 0)`;
+  }
+
+  /* the tally lamp — pulseMs is one HALF-cycle; it never goes fully out. */
+  const phase = (now % (REC.pulseMs * 2)) / (REC.pulseMs * 2);
+  const tri = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+  recEl.style.opacity = String(lerp(REC.dim, 1, smooth(tri)));
+
+  /* grain: STEPPED between 8 fixed offsets, not smoothly drifted. */
+  if (!prefersReduced) {
+    const step = Math.floor(((now % GRAIN.cycleMs) / GRAIN.cycleMs) * GRAIN.steps);
+    const off = (step * GRAIN.shift) % GRAIN.tile;
+    grainEl.style.transform = `translate3d(${off}px, ${(off * 1.7) % GRAIN.tile}px, 0)`;
+  }
+
+  /* the still dissolve — a dissolve, not a cut: the still carries detail the
+     encode threw away, and a cut would read as the picture sharpening in one
+     tick. */
+  if (stillRunning) {
+    const t = clamp01((now - stillStart) / STILL_MS);
+    for (const el of stillEls) el.style.opacity = String(t);
+  }
+});
+
+/* ===========================================================================
+   BLOCK 2 — DESTINATIONS
+   Frame 1440×687. cx/cy are the centre of the card's INK in frame coordinates
+   and width is that ink's width — no height (it comes from the photograph's own
+   proportions, so a card can never be drawn to a shape its file does not have)
+   and no rotation (every export is already turned). `z` is paint order, 1 at
+   the bottom, and is NOT the reading order.
+   =========================================================================== */
+const FRAME_W = 1440, FRAME_H = 687;
+const DESTINATIONS = [
+  { id: "iceland",     name: "ICELAND",     file: "Block2/Iceland.png",     cx: 982.59,  cy: 370.28, w: 212.092, z: 7  },
+  { id: "norway",      name: "NORWAY",      file: "Block2/Norway.png",      cx: 311.23,  cy: 116.27, w: 177.669, z: 11 },
+  { id: "japan",       name: "JAPAN",       file: "Block2/Japan.png",       cx: 441.86,  cy: 352.08, w: 193.726, z: 15 },
+  { id: "morocco",     name: "MOROCCO",     file: "Block2/Morocco.png",     cx: 381.73,  cy: 551.64, w: 191.631, z: 16 },
+  { id: "switzerland", name: "SWITZERLAND", file: "Block2/Switzerland.png", cx: 164.38,  cy: 44.99,  w: 223.278, z: 13 },
+  { id: "italy",       name: "ITALY",       file: "Block2/Italy.png",       cx: 292.65,  cy: 406.16, w: 185.295, z: 10 },
+  { id: "france",      name: "FRANCE",      file: "Block2/France.png",      cx: 723.58,  cy: 413.78, w: 208.139, z: 4  },
+  { id: "portugal",    name: "PORTUGAL",    file: "Block2/Portugal.png",    cx: 1154.05, cy: 544.61, w: 212.092, z: 1  },
+  { id: "spain",       name: "SPAIN",       file: "Block2/Spain.png",       cx: 867.36,  cy: 398.36, w: 144.16,  z: 8  },
+  { id: "greece",      name: "GREECE",      file: "Block2/Greece.png",      cx: 1285.05, cy: 82.61,  w: 212.092, z: 14 },
+  { id: "austria",     name: "AUSTRIA",     file: "Block2/Austria.png",     cx: 1164.92, cy: 137.61, w: 211.111, z: 12 },
+  { id: "canada",      name: "CANADA",      file: "Block2/Canada.png",      cx: 802.95,  cy: 566.67, w: 182.347, z: 5  },
+  { id: "new-zealand", name: "NEW ZEALAND", file: "Block2/New Zealand.png", cx: 1381.78, cy: 137.49, w: 197.924, z: 3  },
+  { id: "australia",   name: "AUSTRALIA",   file: "Block2/Australia.png",   cx: 1065.79, cy: 471.88, w: 172.42,  z: 6  },
+  { id: "slovenia",    name: "SLOVENIA",    file: "Block2/Slovenia.png",    cx: 576.63,  cy: 452.42, w: 208.582, z: 9  },
+  { id: "istanbul",    name: "ISTANBUL",    file: "Block2/Istanbul.png",    cx: 654.54,  cy: 319.71, w: 190.046, z: 2  },
+];
+/* The three marks that belong to no country and sit above every card at rest.
+   No ink correction — each file already has exactly the ratio its box is
+   given, so the box goes to the file whole. */
+const STICKER_Z = 40;
+const STICKERS = [
+  { file: "Block2/Sticker1-art.png", cx: 364.53,  cy: 328.1594, w: 54.6133, h: 66.3188 },
+  { file: "Block2/Sticker3.png",     cx: 618.97,  cy: 347.5557, w: 40.6249, h: 47.1114 },
+  { file: "Block2/Sticker4.png",     cx: 1075.5,  cy: 338.5,    w: 35,      h: 29      },
+];
+
+const CARD_TILT = { perspective: 520, lift: 0.7, rise: 40, scale: 1.015,
+                    tiltX: 14, tiltY: 18, roll: 2.5, config: { tension: 190, friction: 26 } };
+const CARD_DIM = { rest: 0.45, stickers: 0.62, config: { tension: 150, friction: 26 } };
+const ENTRANCE = { span: 0.7, clearance: 3, drift: 6, rotate: 10 };
+const PARALLAX = { rise: 11, spread: 5.5, floor: 0.15, stickers: 0.55 };
+const GOLDEN_ANGLE = 137.508;
+
+const scene = document.getElementById("dest-scene");
+const colL = document.getElementById("dest-col-left");
+const colR = document.getElementById("dest-col-right");
+const cardStates = [];
+
+DESTINATIONS.forEach((d, i) => {
+  const el = document.createElement("div");
+  el.className = "dest-card";
+  /* every coordinate is a cqw fraction of the 1440 frame */
+  el.style.left = `${((d.cx - d.w / 2) / FRAME_W) * 100}cqw`;
+  /* cy is the centre of the ink; the card's HEIGHT comes from the photograph's
+     own proportions, so it is unknown here — the centring is folded into the
+     one transform the ticker writes, as -50% on its Y term. */
+  el.style.top = `${(d.cy / FRAME_H) * 100}%`;
+  el.style.width = `${(d.w / FRAME_W) * 100}cqw`;
+  el.style.zIndex = String(d.z);
+  const img = document.createElement("img");
+  img.alt = `A polaroid captioned ${d.name.charAt(0) + d.name.slice(1).toLowerCase()}`;
+  setImg(img, d.file, { lazy: true });
+  el.appendChild(img);
+  scene.appendChild(el);
+
+  /* entrance direction stepped by the golden angle, so no two cards arrive
+     from the same place. */
+  const angle = (i * GOLDEN_ANGLE * Math.PI) / 180;
+  cardStates.push({
+    el, data: d, index: i, angle,
+    dim: new Spring(CARD_DIM.rest, CARD_DIM.config),
+    hover: new Spring(0, CARD_TILT.config),
+    tx: new Spring(0, CARD_TILT.config),
+    ty: new Spring(0, CARD_TILT.config),
+    active: false,
+  });
+
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="dest-index">${String(i + 1).padStart(2, "0")}</span>` +
+                 `<span class="dest-name">${d.name}</span>`;
+  (i < 8 ? colL : colR).appendChild(li);
+  const enter = () => { setActive(i, true); li.classList.add("is-active"); };
+  const leave = () => { setActive(i, false); li.classList.remove("is-active"); };
+  li.addEventListener("pointerenter", enter);
+  li.addEventListener("pointerleave", leave);
+  el.addEventListener("pointerenter", enter);
+  el.addEventListener("pointerleave", leave);
+  el.addEventListener("pointermove", (e) => {
+    const r = el.getBoundingClientRect();
+    cardStates[i].tx.set(((e.clientX - r.left) / r.width - 0.5) * 2);
+    cardStates[i].ty.set(((e.clientY - r.top) / r.height - 0.5) * 2);
+  });
+});
+
+const RAISED_Z = 60; /* a raised card comes above the stickers */
+function setActive(i, on) {
+  const s = cardStates[i];
+  s.active = on;
+  s.hover.set(on ? 1 : 0);
+  s.dim.set(on ? 1 : CARD_DIM.rest);
+  if (!on) { s.tx.set(0); s.ty.set(0); }
+  s.el.style.zIndex = String(on ? RAISED_Z : s.data.z);
+}
+
+const stickerEls = STICKERS.map((s) => {
+  const el = document.createElement("div");
+  el.className = "dest-sticker";
+  el.style.left = `${((s.cx - s.w / 2) / FRAME_W) * 100}cqw`;
+  el.style.top = `${((s.cy - s.h / 2) / FRAME_H) * 100}%`;
+  el.style.width = `${(s.w / FRAME_W) * 100}cqw`;
+  el.style.height = `${(s.h / FRAME_H) * 100}%`;
+  el.style.zIndex = String(STICKER_Z);
+  const img = document.createElement("img");
+  img.alt = "";
+  setImg(img, s.file, { lazy: true });
+  el.appendChild(img);
+  scene.appendChild(el);
+  return el;
+});
+
+const destSection = document.getElementById("destinations");
+onFrame((dt) => {
+  const r = destSection.getBoundingClientRect();
+  if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
+
+  /* entrance scrubbed `top bottom` → `center center`, parallax `center center`
+     → `bottom top`. */
+  const entrance = smooth(progressOf(destSection, "top bottom", "center center"));
+  const drift = progressOf(destSection, "center center", "bottom top");
+
+  for (const s of cardStates) {
+    const dim = s.dim.step(dt);
+    const hv = s.hover.step(dt);
+    const px = s.tx.step(dt), py = s.ty.step(dt);
+
+    /* entrance: fly in from off-frame along the golden-angle direction */
+    const phase = clamp01((entrance - (s.index / cardStates.length) * (1 - ENTRANCE.span)) / ENTRANCE.span);
+    const e = smooth(phase);
+    const flyDist = (1 - e) * ENTRANCE.clearance * 100;
+    const fx = Math.cos(s.angle) * flyDist;
+    const fy = Math.sin(s.angle) * flyDist + (1 - e) * ENTRANCE.drift * 10;
+    const rot = (1 - e) * ENTRANCE.rotate * (s.index % 2 ? 1 : -1);
+
+    /* parallax: cards rise at slightly different rates as the block leaves */
+    const rate = PARALLAX.floor + (1 - PARALLAX.floor) * ((s.index % 5) / 4);
+    const rise = -drift * PARALLAX.rise * rate * 10;
+    const spread = drift * PARALLAX.spread * (s.index % 2 ? 1 : -1) * 2;
+
+    const liftY = -hv * CARD_TILT.rise * CARD_TILT.lift;
+    const sc = 1 + hv * (CARD_TILT.scale - 1);
+    const rx = -py * hv * CARD_TILT.tiltX;
+    const ry = px * hv * CARD_TILT.tiltY;
+    const roll = px * hv * CARD_TILT.roll;
+
+    s.el.style.transform =
+      `perspective(${CARD_TILT.perspective}px) ` +
+      `translate3d(${fx + spread}px, calc(-50% + ${fy + rise + liftY}px), 0) ` +
+      `rotate(${rot + roll}deg) rotateX(${rx}deg) rotateY(${ry}deg) scale(${sc})`;
+    s.el.style.filter = `brightness(${dim})`;
+    s.el.style.opacity = String(e);
+  }
+
+  const stickerRise = -drift * PARALLAX.rise * PARALLAX.stickers * 10;
+  for (const el of stickerEls) {
+    el.style.transform = `translate3d(0, ${stickerRise}px, 0)`;
+    el.style.opacity = String(smooth(entrance));
+    el.style.filter = `brightness(${CARD_DIM.stickers})`;
+  }
+});
+
+/* ===========================================================================
+   BLOCK 3 — PHILOSOPHY
+   The backdrop pans 0% → -50% across the scrub while the headline writes
+   itself word by word.
+   =========================================================================== */
+const BACKDROP_PAN = { from: 0, to: -50 };
+const HANDOVER = 0.14;
+const WORD_STAGGER = 0.03, WORD_DURATION = 0.14, WORD_TRAVEL_EM = 0.28;
+const REVEAL_STAGGER = 0.05, REVEAL_DURATION = 0.28;
+
+setImg(document.getElementById("phil-backdrop"), "Block 3/pexels-arthousestudio-4344885.jpg", { lazy: true });
+setImg(document.getElementById("phil-collage-img"), "Block 3/Collage.png", { lazy: true });
+
+/* leading capital of every word italic — G, S, T, S, W, Y */
+const PHIL_TITLE = [
+  [{ text: "G", italic: true }, { text: "o " }, { text: "S", italic: true }, { text: "omewhere " }, { text: "T", italic: true }, { text: "hat " }],
+  [{ text: "S", italic: true }, { text: "tays " }],
+  [{ text: "W", italic: true }, { text: "ith " }, { text: "Y", italic: true }, { text: "ou" }],
+];
+const philTitleEl = document.getElementById("phil-title");
+philTitleEl.innerHTML = PHIL_TITLE
+  .map((line) => line.map((s) => `<span class="w">${segmented([s])}</span>`).join(""))
+  .join("<br />");
+const philWords = [...philTitleEl.querySelectorAll(".w")];
+
+const PHIL_REVEALS = [
+  document.getElementById("phil-aside-left"),
+  document.getElementById("phil-aside-right"),
+  document.getElementById("phil-signoff"),
+  document.getElementById("phil-collage"),
+];
+const philSection = document.getElementById("philosophy");
+const philBackdrop = document.getElementById("phil-backdrop");
+
+onFrame(() => {
+  const r = philSection.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight) return;
+  const p = clamp01(-r.top / (r.height - window.innerHeight));
+
+  philBackdrop.style.transform =
+    `translateY(${lerp(BACKDROP_PAN.from, BACKDROP_PAN.to, p)}%) scale(1.6)`;
+
+  philWords.forEach((w, i) => {
+    const e = smooth((p - i * WORD_STAGGER) / WORD_DURATION);
+    w.style.opacity = String(e);
+    w.style.transform = `translateY(${(1 - e) * WORD_TRAVEL_EM}em)`;
+  });
+
+  /* the headline hands over to the rest at HANDOVER */
+  const wordsEnd = philWords.length * WORD_STAGGER + WORD_DURATION;
+  PHIL_REVEALS.forEach((el, i) => {
+    const start = wordsEnd - HANDOVER + i * REVEAL_STAGGER;
+    const e = smooth((p - start) / REVEAL_DURATION);
+    el.style.opacity = String(e);
+    const base = el.id === "phil-collage" ? "rotate(7deg) " : "";
+    el.style.transform = `${base}translateY(${(1 - e) * 1.25}rem)`;
+  });
+});
+
+/* ===========================================================================
+   BLOCK 4 — HOW WE TRAVEL
+   Pointing at a panel WIDENS it and dims the rest. Below 1024 the row becomes
+   a vertical stack and the widen is replaced by a photo parallax.
+   =========================================================================== */
+const PANEL_COUNT = 4;
+const WIDEN = { wide: 2.5, narrow: 3.4 };
+const MEDIA_TRAVEL = 101;
+const SLIDE = { tension: 130, friction: 28 };
+const HEAD_CUE = 0.55;
+const STACK_PARALLAX = 0.08;
+const NARROW_QUERY = "(max-width: 1024px)";
+
+const PANELS = [
+  { id: "small-group-trips", title: [{ text: "S", italic: true }, { text: "mall " }, { text: "G", italic: true }, { text: "roup " }, { text: "T", italic: true }, { text: "rips" }],
+    body: "We travel in small groups so everyone feels included, heard and free to be themselves.",
+    signOff: "More connection, less crowd.", bodyWidth: 390, file: "Block4/OpenedImage1.png",
+    alt: "Four travellers in bright rain jackets cheering on a mossy clifftop above a canyon" },
+  { id: "road-trips", title: [{ text: "R", italic: true }, { text: "oad " }, { text: "T", italic: true }, { text: "rips" }],
+    body: "Scenic roads, unexpected stops and the freedom to change the plan when it feels right.",
+    signOff: "The best views aren't on Google Maps.", bodyWidth: 420, file: "Block4/OpenedImage2.png",
+    alt: "A white car alone on a road across black sand, under a jagged mountain ridge" },
+  { id: "handpicked-stays", title: [{ text: "H", italic: true }, { text: "andpicked " }, { text: "S", italic: true }, { text: "tays" }],
+    body: "We choose places with soul. Local, beautiful, comfortable and run by people who care.",
+    signOff: "Stay somewhere you'll remember.", bodyWidth: 400, file: "Block4/OpenedImage3.png",
+    alt: "A traveller standing on wet rocks beside a turquoise waterfall" },
+  { id: "local-experiences", title: [{ text: "L", italic: true }, { text: "ocal " }, { text: "E", italic: true }, { text: "xperiences" }],
+    body: "We meet local people, try real food, learn the stories and see the places that don't make it to the guidebooks.",
+    signOff: "The heart of the journey.", bodyWidth: 490, file: "Block4/OpenedImage4.png",
+    alt: "Four people around a picnic table with warm mugs, snow-dusted hills behind them" },
+];
+
+const travelRow = document.getElementById("travel-row");
+const panelStates = PANELS.map((p, i) => {
+  const el = document.createElement("article");
+  el.className = "travel-panel";
+  el.innerHTML =
+    `<img class="travel-photo" alt="${p.alt}" />` +
+    `<div class="travel-veil"></div>` +
+    `<div class="travel-foot">` +
+      `<h3 class="travel-panel-title display">${segmented(p.title)}</h3>` +
+      `<p class="travel-body" style="max-width:${p.bodyWidth / 16}rem">${p.body}</p>` +
+      `<p class="travel-signoff hand">${p.signOff}</p>` +
+    `</div>`;
+  travelRow.appendChild(el);
+  setImg(el.querySelector(".travel-photo"), p.file, { lazy: true });
+
+  const st = {
+    el, data: p, index: i, photo: el.querySelector(".travel-photo"),
+    body: el.querySelector(".travel-body"),
+    open: new Spring(0, SLIDE),
+  };
+  el.addEventListener("pointerenter", () => setPanel(i, true));
+  el.addEventListener("pointerleave", () => setPanel(i, false));
+  return st;
+});
+
+let openPanel = -1;
+function setPanel(i, on) {
+  if (window.matchMedia(NARROW_QUERY).matches) return;
+  openPanel = on ? i : -1;
+  panelStates.forEach((s, j) => s.open.set(on && j === i ? 1 : 0));
+}
+
+const travelSection = document.getElementById("travel");
+onFrame((dt) => {
+  const narrow = window.matchMedia(NARROW_QUERY).matches;
+  const widen = narrow ? WIDEN.narrow : WIDEN.wide;
+
+  for (const s of panelStates) {
+    const o = s.open.step(dt);
+    if (!narrow) {
+      /* the open panel takes `widen` shares, the rest one each */
+      s.el.style.flexGrow = String(1 + o * (widen - 1));
+      /* at rest every panel is dimmed; the open one comes to full */
+      const restDim = openPanel === -1 ? 1 : lerp(0.55, 1, o);
+      s.photo.style.filter = `brightness(${restDim})`;
+      s.photo.style.transform = `translateX(${(1 - o) * MEDIA_TRAVEL * 0.12}px) scale(${1 + o * 0.04})`;
+      const cue = smooth((o - HEAD_CUE) / (1 - HEAD_CUE));
+      s.body.style.opacity = String(lerp(0.55, 1, cue));
+      s.body.style.transform = `translateY(${(1 - cue) * 0.5}rem)`;
+    } else {
+      s.el.style.flexGrow = "";
+      s.photo.style.filter = "";
+      s.body.style.opacity = "";
+      s.body.style.transform = "";
+      const r = s.el.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < window.innerHeight) {
+        const p = (window.innerHeight - r.top) / (window.innerHeight + r.height);
+        s.photo.style.transform = `translateY(${(p - 0.5) * STACK_PARALLAX * r.height * 2}px)`;
+      }
+    }
+  }
+});
+
+/* ===========================================================================
+   BLOCK 5 — PLAN A JOURNEY
+   =========================================================================== */
+const PLAN_PARALLAX = {
+  far: { x: 8, y: 5 }, steam: { x: 16, y: 10 }, foreground: { x: 28, y: 16 },
+};
+const PARALLAX_CONFIG = { tension: 90, friction: 30 };
+const STEAM_DRIFT_MS = 28000, STEAM_PULSE_MS = 25000;
+const STEAM_DRIFT = 1.5, STEAM_SCALE = 0.04, STEAM_OPACITY = 0.85;
+const WRITE_WINDOW = [0.35, 0.85];
+const WRITE_LERP = 0.055;
+const NOTE_TILT = { enter: -9, rest: 0, hover: 2.6, drop: 6, config: { tension: 120, friction: 18 } };
+const ARROW_SLIDE = { config: { tension: 240, friction: 26 } };
+const HOVER_QUERY = "(hover: hover) and (pointer: fine)";
+
+setImg(document.getElementById("plan-bg"), "Block 5/BackgroundImage.png", { lazy: true });
+setImg(document.getElementById("plan-far"), "Block 5/03_mountains_midground 1.png", { lazy: true });
+setImg(document.getElementById("plan-steam"), "Block 5/02_steam_screen_blend 1.png", { lazy: true });
+setImg(document.getElementById("plan-fg"), "Block 5/01_foreground 1.png", { lazy: true });
+setImg(document.getElementById("plan-note-img"), "Block 5/Pin.png", { lazy: true });
+setImg(document.getElementById("plan-arrow"), "Block 5/Icon1.svg");
+setImg(document.getElementById("soc-1"), "Block 5/SocialMedia1.svg", { lazy: true });
+setImg(document.getElementById("soc-2"), "Block 5/SocialMedia2.svg", { lazy: true });
+setImg(document.getElementById("soc-3"), "Block 5/SocialMedia3.png", { lazy: true });
+
+const planSection = document.getElementById("plan");
+const planScene = document.getElementById("plan-scene");
+const planFar = document.getElementById("plan-far");
+const planSteam = document.getElementById("plan-steam");
+const planFg = document.getElementById("plan-fg");
+const planNote = document.getElementById("plan-note");
+const planNoteLines = [...document.querySelectorAll(".plan-note-copy .ln")];
+const planNoteAside = document.getElementById("plan-note-aside");
+const planArrow = document.getElementById("plan-arrow");
+
+const pxS = new Spring(0, PARALLAX_CONFIG), pyS = new Spring(0, PARALLAX_CONFIG);
+const tiltS = new Spring(NOTE_TILT.enter, NOTE_TILT.config);
+const arrowS = new Spring(0, ARROW_SLIDE.config);
+let writeShown = 0;
+
+if (window.matchMedia(HOVER_QUERY).matches) {
+  planScene.addEventListener("pointermove", (e) => {
+    const r = planScene.getBoundingClientRect();
+    pxS.set(((e.clientX - r.left) / r.width - 0.5) * 2);
+    pyS.set(((e.clientY - r.top) / r.height - 0.5) * 2);
+  });
+  planScene.addEventListener("pointerleave", () => { pxS.set(0); pyS.set(0); });
+  planNote.addEventListener("pointerenter", () => tiltS.set(NOTE_TILT.hover));
+  planNote.addEventListener("pointerleave", () => tiltS.set(NOTE_TILT.rest));
+  const action = document.getElementById("plan-action");
+  action.addEventListener("pointerenter", () => arrowS.set(1));
+  action.addEventListener("pointerleave", () => arrowS.set(0));
+}
+
+onFrame((dt, now) => {
+  const r = planSection.getBoundingClientRect();
+  if (r.bottom < 0 || r.top > window.innerHeight) return;
+
+  const px = pxS.step(dt), py = pyS.step(dt);
+  const move = (el, amp) => {
+    el.style.transform = `translate3d(${-px * amp.x}px, ${-py * amp.y}px, 0)`;
+  };
+  move(planFar, PLAN_PARALLAX.far);
+  move(planFg, PLAN_PARALLAX.foreground);
+
+  /* the steam drifts and breathes on its own long loops */
+  if (!prefersReduced) {
+    const d = Math.sin((now / STEAM_DRIFT_MS) * Math.PI * 2) * STEAM_DRIFT;
+    const s = 1 + Math.sin((now / STEAM_PULSE_MS) * Math.PI * 2) * STEAM_SCALE;
+    planSteam.style.transform =
+      `translate3d(${-px * PLAN_PARALLAX.steam.x + d * 10}px, ${-py * PLAN_PARALLAX.steam.y}px, 0) scale(${s})`;
+    planSteam.style.opacity = String(STEAM_OPACITY * (0.85 + 0.15 * (0.5 + 0.5 * Math.sin(now / STEAM_PULSE_MS * Math.PI * 2))));
+  } else {
+    planSteam.style.opacity = String(STEAM_OPACITY);
+  }
+
+  /* the note writes itself across WRITE_WINDOW of the section's own scrub */
+  const p = clamp01((window.innerHeight - r.top) / (window.innerHeight + r.height));
+  const target = clamp01((p - WRITE_WINDOW[0]) / (WRITE_WINDOW[1] - WRITE_WINDOW[0]));
+  writeShown = lerp(writeShown, target, prefersReduced ? 1 : WRITE_LERP);
+
+  planNoteLines.forEach((ln, i) => {
+    const e = smooth((writeShown - i * 0.18) / 0.42);
+    ln.style.opacity = String(e);
+    ln.style.transform = `translateY(${(1 - e) * 0.4}rem)`;
+  });
+  /* the aside comes in over the last tenth of the write window */
+  planNoteAside.style.opacity = String(smooth((writeShown - 0.9) / 0.1));
+
+  /* the note tilts in from -9° and settles */
+  if (writeShown > 0.02 && tiltS.target === NOTE_TILT.enter) tiltS.set(NOTE_TILT.rest);
+  planNote.style.transform = `rotate(${tiltS.step(dt)}deg)`;
+
+  planArrow.style.transform = `translateX(${lerp(-50, 0, arrowS.step(dt))}%)`;
+});
+</script>
+</body>
+</html>

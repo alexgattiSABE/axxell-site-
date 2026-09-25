@@ -1,0 +1,247 @@
+:root{
+  --bg:#060609;--bg2:#0b0b12;--bg3:#101019;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --white:#f0f0f6;--muted:rgba(240,240,246,.72);--dim:rgba(240,240,246,.38);
+  --cyan:#00d4ff;--green:#00e8a2;
+  /* Palette del cap. 03 (colonna di vetro) e del cursore fluido. */
+  --violet:#7a20ff;--iris:#8c7cff;--fuchsia:#ff2bd6;
+  --font:'Space Grotesk',sans-serif;--mono:'DM Mono',monospace;
+  --nav-h:72px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+/* `hidden` deve vincere sempre, e per questo ha !important.
+   Il foglio del browser porta [hidden]{display:none} ma è UA: qualsiasi regola
+   d'autore lo batte, anche una a specificità più bassa. È successo davvero —
+   `.wc-form-ok{display:flex}` più in basso in sections.css teneva a schermo il
+   "Ricevuto. Ti rispondiamo entro un giorno lavorativo." del form di
+   parliamone.html PRIMA che qualcuno inviasse. Qui la regola è d'autore e
+   !important, così l'attributo nasconde davvero e la trappola non si ripete su
+   nessun altro elemento che nascondiamo da HTML o da JS. */
+[hidden]{display:none!important;}
+html{-webkit-font-smoothing:antialiased;}
+body{background:var(--bg);color:var(--white);font-family:var(--font);
+  font-size:15px;line-height:1.6;overflow-x:hidden;}
+
+/* GRANA — identica al sito madre */
+body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");}
+
+/* ---- CURSORE A STATI ----
+   ⚠️ DI QUESTI STATI OGGI NE VIENE ASSEGNATO UNO SOLO: `caret`, sul form del
+   cap. 08. Tutti gli altri capitoli dichiarano `data-cursor="hidden"` e
+   lasciano il puntatore di sistema — l'anello col punto dentro (`default`,
+   `dot`, `light`), il rombo (`orbit`), la barra di lettura (`read`) e la
+   freccia (`arrow`) sono stati tolti su richiesta. Le regole restano tutte
+   scritte, e nessuna di loro costa niente finché la classe non arriva sul
+   body: si riaccende un capitolo rimettendogli il suo `data-cursor`
+   nell'HTML, senza toccare questo file né js/cursor.js.
+   `grab`, `cross` e `invert` non erano assegnati nemmeno prima. */
+.cursor,.cursor-ring,.cursor-trail{
+  position:fixed;pointer-events:none;transform:translate(-50%,-50%);
+  mix-blend-mode:screen;
+  transition:width .35s cubic-bezier(.22,1,.36,1),
+             height .35s cubic-bezier(.22,1,.36,1),
+             border-radius .35s cubic-bezier(.22,1,.36,1),
+             background-color .35s ease, border-color .35s ease,
+             opacity .3s ease, rotate .5s cubic-bezier(.22,1,.36,1);
+}
+.cursor{width:8px;height:8px;background:var(--cyan);border-radius:50%;z-index:9999;}
+.cursor-ring{width:32px;height:32px;border:1px solid rgba(0,212,255,.4);
+  border-radius:50%;z-index:9998;display:flex;align-items:center;justify-content:center;}
+.cursor-trail{width:22px;height:22px;border:1px solid rgba(0,212,255,.18);
+  border-radius:50%;z-index:9997;opacity:0;}
+.cursor-label{font-family:var(--mono);font-size:.52rem;letter-spacing:.14em;
+  color:var(--cyan);white-space:nowrap;opacity:0;transition:opacity .3s ease;}
+
+/* --- 00 hidden: sotto il sipario --- */
+body.cur-hidden .cursor,body.cur-hidden .cursor-ring{opacity:0;}
+
+/* --- 01 default: punto + ring, la scia accesa --- */
+body.cur-default .cursor-trail{opacity:1;}
+
+/* --- 02 read: barra verticale spenta, un accento di lettura --- */
+body.cur-read .cursor{width:2px;height:26px;border-radius:1px;
+  background:rgba(240,240,246,.55);}
+body.cur-read .cursor-ring{opacity:0;}
+
+/* --- 03 orbit: rombo iris in rotazione, sulla palette della colonna --- */
+body.cur-orbit .cursor{opacity:0;}
+body.cur-orbit .cursor-ring{width:42px;height:42px;border-radius:2px;
+  border-color:var(--iris);rotate:45deg;}
+
+/* --- 04 grab: disco pieno con etichetta --- */
+body.cur-grab .cursor{opacity:0;}
+body.cur-grab .cursor-ring{width:84px;height:84px;
+  background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.75);}
+body.cur-grab .cursor-label{opacity:1;}
+
+/* --- 10 light: per un capitolo su fondo chiaro. DORMIENTE: l'unico che
+   c'era (Festina, il filmato guidato dallo scroll) è stato tolto, e con lui
+   l'unico fondo chiaro della pagina. La regola resta perché il costo è zero e
+   perché il ragionamento serve a chiunque ne rimetta uno.
+   `mix-blend-mode:screen` su bianco dà bianco: lì il cursore ciano sparisce
+   del tutto. Qui la fusione si spegne e il cursore torna a essere inchiostro
+   scuro. Il puntatore di sistema non è nascosto da nessuna parte, quindi
+   anche senza questa regola non si resterebbe al buio — ma si perderebbe
+   l'unico elemento di continuità col resto della pagina. --- */
+body.cur-light .cursor,body.cur-light .cursor-ring,body.cur-light .cursor-trail{
+  mix-blend-mode:normal;}
+body.cur-light .cursor{background:#0b0b12;}
+body.cur-light .cursor-ring{border-color:rgba(11,11,18,.34);}
+body.cur-light .cursor-trail{border-color:rgba(11,11,18,.14);}
+
+/* --- 05 cross: mirino --- */
+body.cur-cross .cursor{width:1px;height:22px;border-radius:0;}
+body.cur-cross .cursor-ring{width:22px;height:1px;border-radius:0;
+  border:0;background:var(--cyan);}
+
+/* --- 06 invert: ring largo che inverte la superficie sotto --- */
+body.cur-invert .cursor{opacity:0;}
+body.cur-invert .cursor-ring{width:110px;height:110px;
+  background:#fff;border-color:transparent;mix-blend-mode:difference;}
+body.cur-invert .cursor-label{opacity:1;color:#060609;}
+
+/* --- 07 arrow: freccia orizzontale --- */
+body.cur-arrow .cursor{opacity:0;}
+body.cur-arrow .cursor-ring{width:54px;height:1px;border:0;
+  border-radius:0;background:var(--cyan);}
+body.cur-arrow .cursor-ring::after{content:'';position:absolute;right:-1px;
+  width:9px;height:9px;border-top:1px solid var(--cyan);
+  border-right:1px solid var(--cyan);rotate:45deg;}
+
+/* --- 08 caret: I-beam sottile --- */
+body.cur-caret .cursor{width:1px;height:20px;border-radius:0;background:var(--white);}
+body.cur-caret .cursor-ring{opacity:0;}
+
+/* Reduced-motion: gli stati restano, il morphing no. */
+@media (prefers-reduced-motion:reduce){
+  .cursor,.cursor-ring,.cursor-trail,.cursor-label{transition:none;}
+  .cursor-trail{display:none;}
+}
+@media (pointer:coarse){.cursor,.cursor-ring,.cursor-trail{display:none;}}
+
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;height:var(--nav-h);
+  display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+  background:rgba(6,6,9,.9);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  will-change:transform;
+  transition:transform .42s cubic-bezier(.22,1,.36,1);}
+/* Scendendo la barra si ritira, risalendo torna — la classe la mette
+   js/nav.js. `-101%` e non `-100%`: il bordo inferiore è un pixel che a
+   traslazione esatta resterebbe a filo dello schermo su alcuni rapporti di
+   pixel, come una riga chiara sospesa in cima al nero. */
+nav.-away{transform:translateY(-101%);}
+@media (prefers-reduced-motion:reduce){
+  /* Il modulo non parte nemmeno; questa è la rete se la classe fosse già
+     appiccicata quando l'impostazione cambia a pagina aperta. */
+  nav{transition:none;}
+  nav.-away{transform:none;}
+}
+/* Il logo in nav e' il MARCHIO, non piu' la parola scritta a mano. I tracciati
+   stanno una volta sola in cima al <body> e qui si <use>-ano PIENI: a 22 px di
+   altezza un contorno spesso 1 unita' di viewBox sarebbe una poltiglia. Nel
+   footer, dove il marchio e' alto dieci volte tanto, il contorno e' invece
+   proprio il punto — stessa forma, due trattamenti opposti, e per questo `fill`
+   non sta sul gruppo condiviso ma su chi lo usa. */
+.nav-logo{display:flex;align-items:center;color:var(--white);text-decoration:none;}
+.nav-logo svg{display:block;height:22px;width:auto;fill:currentColor;}
+.nav-links{display:flex;list-style:none;gap:1.4rem;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;
+  padding:1rem .5rem;}
+.nav-links a:hover,.nav-links a.active{color:var(--cyan);}
+/* SUI TELEFONI STRETTI LA NAV NON CI STAVA.
+   Con 3rem di padding, 1.4rem di gap e il marchio a 22px il contenuto misura
+   ~434px: più largo di uno schermo da 320, 360 o 375. `space-between` non ha
+   niente da distribuire, il marchio finisce a filo di "Home" (misurati
+   entrambi a 133px, zero stacco) e "Parliamone" sfora a 385px — cioè fuori dal
+   bordo destro, e siccome il body ha overflow-x:hidden non lo si raggiungeva
+   nemmeno scorrendo: il CTA principale era tagliato a metà parola.
+   Qui il contenuto rientra: padding e gap più stretti, marchio a 18px, voci a
+   .8rem. Verificato a schermo a 320, 360, 375 e 390 px. */
+@media (max-width:560px){
+  nav{padding:0 1rem;gap:.75rem;}
+  .nav-logo svg{height:18px;}
+  .nav-links{gap:.35rem;}
+  .nav-links a{font-size:.8rem;padding:1rem .35rem;}
+}
+
+/* TIPOGRAFIA */
+.eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--cyan);}
+h1,h2{font-weight:600;line-height:1.05;letter-spacing:-.02em;}
+h1{font-size:clamp(2.6rem,7vw,5.5rem);}
+h2{font-size:clamp(1.8rem,4vw,3rem);}
+.lead{color:var(--muted);font-size:clamp(1rem,1.6vw,1.15rem);max-width:56ch;}
+
+/* ---- FOCUS ---- */
+/* La nav è fissa e alta 72px. Senza questo, il Tab porta l'elemento a filo del
+   bordo alto della finestra, cioè sotto la nav, e l'anello di focus resta
+   coperto. Vale anche per i salti ad ancora tipo href="#cap08". */
+html{scroll-padding-top:calc(var(--nav-h) + 1rem);}
+
+/* Una regola sola per tutta la pagina. L'anello è staccato dall'elemento così
+   resta leggibile anche sui bordi già ciano. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible{
+  scroll-margin-top:calc(var(--nav-h) + 1rem);
+  outline:2px solid var(--cyan);
+  outline-offset:3px;
+  border-radius:2px;
+}
+/* Il cursore custom non deve coprire l'anello di chi usa la tastiera. */
+body:has(:focus-visible) .cursor,
+body:has(:focus-visible) .cursor-ring,
+body:has(:focus-visible) .cursor-trail{opacity:0;}
+
+section{position:relative;z-index:2;padding:clamp(5rem,12vh,9rem) clamp(1.5rem,5vw,4rem);}
+
+/* FOOTER */
+footer{position:relative;z-index:2;border-top:1px solid var(--border);
+  padding:clamp(2rem,5vh,3.5rem) clamp(1.5rem,5vw,4rem) 2.5rem;
+  display:flex;flex-direction:column;gap:clamp(1.5rem,4vh,2.5rem);
+  font-size:.82rem;color:var(--dim);}
+.wc-footer-row{display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;}
+
+/* ---- AXXELL, la parola grande del footer (js/footer.js) ----
+   `display:block` sull'SVG e nessuna altezza fissa: il viewBox 300×100 fa il
+   lavoro, la parola si ridimensiona con la finestra e non serve nessuna media
+   query. `cursor:default` perché non è cliccabile: è una firma, non un link. */
+.wc-footer-word{width:100%;line-height:0;cursor:default;}
+.wc-footer-word svg{display:block;width:100%;height:auto;overflow:visible;}
+/* I tre contorni. `fill:none` su tutti e tre — vedi l'intestazione del modulo:
+   un carattere pieno mangerebbe il gradiente. Il `paint-order` mette il tratto
+   sotto, che su un contorno spesso tiene gli angoli puliti. */
+/* I tre strati sono <use> degli stessi tracciati: niente font, niente
+   dimensione del testo. Gli spessori sono in unità del viewBox (il disegno è
+   alto ~150), quindi restano proporzionati a qualunque larghezza. */
+/* Spessori in unità del viewBox e NON `non-scaling-stroke`: con quello il
+   tratto resta di N pixel a schermo ma il tratteggio continua a misurarsi in
+   unità utente, e le due scale non tornano — il contorno si disegnerebbe a
+   velocità diverse a finestre diverse. Tutto in unità utente, tutto coerente. */
+.wc-foot-t{fill:none;}
+/* 1. il contorno spento: compare solo al passaggio, e fa da fondo agli altri */
+.wc-foot-t.-base{stroke:rgba(240,240,246,.22);stroke-width:1;
+  opacity:0;transition:opacity .4s ease;}
+.wc-footer-word.-hot .wc-foot-t.-base{opacity:1;}
+/* 2. il contorno che si scrive. Il tratteggio è più lungo del perimetro della
+   parola, quindi da `dashoffset` pieno non se ne vede niente e scendendo a
+   zero la parola si disegna. 4 s, una volta sola. */
+.wc-foot-t.-draw{stroke:rgba(0,212,255,.5);stroke-width:1;
+  stroke-dasharray:2400;stroke-dashoffset:2400;}
+.wc-footer-word.-drawn .wc-foot-t.-draw{
+  transition:stroke-dashoffset 4.5s cubic-bezier(.22,1,.36,1);stroke-dashoffset:0;}
+.wc-footer-word.-still .wc-foot-t.-draw{transition:none;stroke-dashoffset:0;}
+/* 3. il gradiente, che si vede solo dentro la maschera che insegue il dito */
+.wc-foot-t.-reveal{stroke-width:1.6;}
+@media (prefers-reduced-motion:reduce){
+  .wc-foot-t.-base{opacity:1;}
+  .wc-foot-t.-draw{stroke-dashoffset:0;}
+}
+/* Su touch non c'è niente da inseguire: resta la parola in contorno, scritta. */
+@media (hover:none){
+  .wc-foot-t.-base{opacity:1;}
+  .wc-foot-t.-reveal{display:none;}
+}
+footer a{color:var(--muted);text-decoration:none;padding:.875rem 0;display:inline-block;}
+footer a:hover{color:var(--cyan);}

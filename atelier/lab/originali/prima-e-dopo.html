@@ -1,0 +1,2148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AERRA — Where the road ends and the quiet begins</title>
+<meta name="description" content="A 240 m² house on a south-facing slope, 40 minutes from the city. One owner, one view, no neighbours in sight.">
+<meta name="theme-color" content="#1a506d">
+<!--
+  AERRA — portable single-file port of getlayers-projects/aerra (Next 16.2 + three 0.185).
+
+  Everything the project does, in one plain HTML file: no build step, no framework, no bundler.
+  three.js is the only external code (import map → unpkg) and it drives one small 3D mark; the
+  spring solver, the word-split reveal, the scroll scrubbing, the pixel-reveal shader and the
+  turntable are all written here.
+
+  Assets are FETCHED from https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/ — never inlined
+  as base64 (decisions-log D-021: the bytes are published there for the recreation prompt anyway,
+  so inlining would store them twice and cost +33% for the encoding). A failed fetch raises a
+  VISIBLE banner naming the URL; see showAssetBanner().
+
+  Deviations from the project, both provably invisible (D-026):
+
+  1. THE ROOT FONT-SIZE LADDER IS ONE RULE INSTEAD OF A RULE PLUS A SCRIPT. The project sets
+     `html { font-size: 16px }`, overrides it below 1440px with `1.111111vw`, and runs an
+     AdaptiveGrid script at coef 1 above 1440px which computes `16 * innerWidth / 1440` px.
+     That expression IS 1.111111vw (16/1440 = 0.01111111), so the single unconditional
+     `html { font-size: 1.111111vw }` below is identical at every width and needs no script.
+
+  2. ONE SPRING DRIVER PER REVEAL INSTEAD OF ONE PER PROPERTY. react-spring solves each animated
+     value with the same ODE; with one shared config and one shared start time every property's
+     NORMALISED trajectory is the same curve, so a single 0→1 driver lerping all of an element's
+     properties produces the identical output. The spring constants, the presets and the delays
+     are unchanged and are what the look actually is.
+
+  What is NOT changed: the shaders (verbatim), every spring constant, every delay and stagger,
+  the clip-path curtain, the parallax anchors and their rescaled travel, the fixed −18°… (no,
+  that is another template — here: the fixed 0.2245em word gap, the 14/5rem wordmark travel, the
+  84×56 heat grid, the 0.127 height ratio and the two-turn chase).
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.185.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+/* ==========================================================================
+   FONTS — Google Sans Flex, self-hosted from the project's asset folder.
+
+   Two families, and the split is load-bearing. The UI is set in the STATIC
+   24pt instances: a static cut is drawn for one optical size and the 24pt one
+   thickens its strokes so they hold up at 24pt. The wordmark is set in the
+   VARIABLE file, which carries the `opsz` axis — browsers apply
+   `font-optical-sizing: auto` by default, so at 801px opsz lands on the axis
+   maximum and the strokes thin out to match the design. The static Thin cannot
+   do this and renders visibly heavier.  (decisions-log D-025)
+   ========================================================================== */
+@font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 100; font-display: swap;
+  src: url("https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/GoogleSansFlex_24pt-Thin.ttf") format("truetype"); }
+@font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 300; font-display: swap;
+  src: url("https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/GoogleSansFlex_24pt-Light.ttf") format("truetype"); }
+@font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/GoogleSansFlex_24pt-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Google Sans Flex"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/GoogleSansFlex_24pt-Medium.ttf") format("truetype"); }
+@font-face { font-family: "Google Sans Flex Display"; font-style: normal; font-weight: 1 1000; font-display: swap;
+  src: url("https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/GoogleSansFlex-Variable-latin.woff2") format("woff2"); }
+
+/* ==========================================================================
+   TOKENS — the project's three tiers flattened. A retint touches the first
+   block only; the roles below it are what the markup reads.
+   ========================================================================== */
+:root {
+  /* Tier 1 — primitives. The only place a literal lives. */
+  --raw-white: #ffffff;
+  --raw-white-85: rgba(255,255,255,0.85);
+  --raw-white-50: rgba(255,255,255,0.5);
+  --raw-black: #000000;
+  --raw-black-50: rgba(0,0,0,0.5);
+  --raw-black-10: rgba(0,0,0,0.1);
+  --raw-grey-100: #f4f4f4;
+  --raw-grey-150-80: rgba(243,243,243,0.8);
+
+  /* Hero sky — Figma "image 643" (1469:1300), a top-to-bottom ramp. */
+  --raw-gradient-sky: linear-gradient(to bottom,
+    rgb(26,80,109) 0%,
+    rgb(50,109,143) 21.154%,
+    rgb(84,136,161) 49.529%,
+    rgb(111,159,181) 59.513%,
+    rgb(138,182,200) 69.496%,
+    rgb(192,227,239) 89.464%);
+  /* Wordmark fill — Figma "aerra" (1476:1511), white fading out at 82.23%. */
+  --raw-gradient-wordmark: linear-gradient(to bottom,
+    rgba(255,255,255,1) 0%, rgba(255,255,255,0) 82.23%);
+
+  /* Tier 2 — semantic roles. */
+  --background: var(--raw-white);
+  --foreground: var(--raw-black);
+  --foreground-muted: var(--raw-black-50);
+  --surface-muted: var(--raw-grey-100);
+  --surface-glass: var(--raw-grey-150-80);
+  --surface-nav: var(--raw-grey-150-80);
+  --surface-panel: var(--raw-white-85);
+  --on-media: var(--raw-white);
+  --on-media-muted: var(--raw-white-50);
+  --action-primary: var(--raw-black);
+  --action-primary-foreground: var(--raw-white);
+  --action-secondary: var(--raw-white);
+  --border-subtle: var(--raw-black-10);
+  --border-field: var(--raw-black);
+  --backdrop-hero: var(--raw-gradient-sky);
+  --wordmark-fill: var(--raw-gradient-wordmark);
+
+  /* Type scale — 16 / 20 / 36 / 80 / 801.395 px in the 1440 frame. */
+  --text-body: 1rem;
+  --text-lead: 1.25rem;
+  --text-title: 2.25rem;
+  --text-display: 5rem;
+  --text-wordmark: 50.0872rem;
+
+  --leading-flat: 1;
+  --leading-body: 1.2;
+
+  --radius-control: 0.375rem;
+  --radius-button: 0.5rem;
+  --radius-card: 0.625rem;
+
+  --blur-nav: 0.625rem;
+  --blur-panel: 2.34375rem;
+
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 700ms;
+  --ease-entrance: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ==========================================================================
+   THE ADAPTIVE GRID — see the deviation note in the header comment.
+   ========================================================================== */
+html { font-size: 1.111111vw; }                             /* 16 * 100 / 1440 */
+@media (max-width: 1279px) { html { font-size: 16px; } }     /* tablet: fixed root, fluid layout */
+@media (max-width: 539px)  { html { font-size: 3.72093vw; } }/* phones re-base to 430 */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Google Sans Flex", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img, video, canvas, svg { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input { font: inherit; }
+ul, ol { list-style: none; margin: 0; padding: 0; }
+h1, h2, h3, p, figure, blockquote, dl, dd { margin: 0; }
+
+/* Figma trims every text box to the cap/alphabetic edges, so its y-positions
+   measure INK, not the line box. `text-box: trim-both cap alphabetic` says this
+   directly but is Chromium-only and — decisively — has no effect on a flex
+   container, which is what the word engine renders. Done geometrically instead,
+   measured from Google Sans Flex (ascent .9625em, descent .2875em, cap .725em). */
+.trim-flat { margin-block: -0.1125em -0.1625em; }
+.trim-body { margin-block: -0.2125em -0.2625em; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.skip {
+  position: absolute; left: -9999px; top: auto; z-index: 60;
+  border-radius: var(--radius-button); background: var(--action-primary);
+  padding: 0.75rem 1.5rem; font-size: var(--text-body); font-weight: 500;
+  color: var(--action-primary-foreground);
+}
+.skip:focus { position: fixed; left: 0.75rem; top: 0.75rem; }
+
+main { width: 100%; overflow-x: clip; }
+
+/* ==========================================================================
+   PRELOADER — a white curtain with a rounded hole cut out of it.
+   ========================================================================== */
+#curtain {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--background);
+  pointer-events: none;
+}
+#curtain.gone { display: none; }
+#counter-box {
+  position: absolute; left: 2.5rem; right: 2.5rem; bottom: 2.5rem;
+  height: 5rem; overflow: hidden;
+}
+/* `overflow: hidden` with a height of exactly one line box makes this the mask
+   the counter leaves through: it drops straight down past the bottom edge and
+   is cut off by the box rather than fading. A fade would read as the screen
+   giving up rather than the counter leaving. */
+#counter {
+  position: absolute; bottom: 0; white-space: nowrap;
+  font-size: var(--text-display); font-weight: 300; line-height: var(--leading-flat);
+  color: var(--foreground);
+}
+
+/* ==========================================================================
+   THE ASSET BANNER — a failed fetch must never be a blank canvas with a
+   console line. (D-021)
+   ========================================================================== */
+#asset-banner {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 200;
+  display: none; padding: 0.875rem 1.25rem;
+  background: #b91c1c; color: #fff;
+  font-size: 14px; line-height: 1.45; font-weight: 500;
+}
+#asset-banner.on { display: block; }
+#asset-banner code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; opacity: .9; }
+
+/* ==========================================================================
+   NAV
+   ========================================================================== */
+/* The entrance writes `--nav-y`, never `transform` — the centring translate
+   lives here and a spring that wrote the whole property would drop it, leaving
+   the bar half its own width to the right. */
+#nav {
+  position: fixed; left: 50%; top: 0.75rem; z-index: 50;
+  width: calc(100% - 1.5rem);
+  transform: translateX(-50%) translate3d(0, var(--nav-y, 0px), 0);
+}
+#nav .bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  border-radius: var(--radius-button);
+  background: var(--surface-nav);
+  -webkit-backdrop-filter: blur(var(--blur-nav));
+  backdrop-filter: blur(var(--blur-nav));
+  padding: 0.25rem;
+}
+.logo {
+  display: flex; width: 2.75rem; height: 2.75rem; flex: none;
+  align-items: center; justify-content: center;
+  border-radius: var(--radius-control); background: var(--action-secondary);
+  transition: transform var(--duration-fast) var(--ease-entrance);
+}
+.logo:hover { transform: scale(1.05); }
+.logo svg { width: 1.25rem; color: var(--foreground); }
+#nav ul { display: none; align-items: center; gap: 2rem; }
+.navlink {
+  white-space: nowrap; font-size: var(--text-body); font-weight: 300;
+  line-height: var(--leading-body); color: var(--foreground);
+  transition: opacity var(--duration-fast) var(--ease-entrance);
+}
+.navlink:hover { opacity: 0.6; }
+.navlink:focus-visible { outline: 2px solid var(--foreground); outline-offset: 4px; }
+.logo:focus-visible, .navcta:focus-visible, #burger:focus-visible {
+  outline: 2px solid var(--foreground); outline-offset: 2px;
+}
+.navcta {
+  display: none; height: 2.75rem; align-items: center; gap: 0.5rem;
+  border-radius: var(--radius-control); background: var(--action-secondary);
+  padding: 0.75rem 1.25rem;
+  transition: transform var(--duration-fast) var(--ease-entrance);
+}
+.navcta:hover { transform: scale(1.03); }
+.navcta .dot { width: 0.5rem; height: 0.5rem; flex: none; border-radius: 9999px; background: var(--foreground); }
+.navcta span:last-child {
+  white-space: nowrap; font-size: var(--text-body); font-weight: 500;
+  line-height: var(--leading-body); color: var(--foreground);
+}
+#burger {
+  display: flex; width: 2.75rem; height: 2.75rem; flex: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 0.375rem;
+  border-radius: var(--radius-control); background: var(--action-secondary);
+}
+#burger span {
+  display: block; height: 1px; width: 1.25rem; background: var(--foreground);
+  transition: transform var(--duration-fast) var(--ease-entrance);
+}
+#burger[aria-expanded="true"] span:first-child { transform: translateY(3.5px) rotate(45deg); }
+#burger[aria-expanded="true"] span:last-child  { transform: translateY(-3.5px) rotate(-45deg); }
+#nav-panel {
+  margin-top: 0.5rem; overflow: hidden;
+  border-radius: var(--radius-button); background: var(--surface-nav);
+  -webkit-backdrop-filter: blur(var(--blur-nav));
+  backdrop-filter: blur(var(--blur-nav));
+  pointer-events: none;
+}
+#nav-panel ul { display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem; }
+#nav-panel.open { pointer-events: auto; }
+
+/* ==========================================================================
+   SHARED PIECES
+   ========================================================================== */
+.eyebrow { display: flex; align-items: center; gap: 0.625rem; line-height: var(--leading-body); }
+.eyebrow .bead { width: 0.375rem; height: 0.375rem; flex: none; border-radius: 9999px; background: currentColor; }
+
+.cta {
+  position: relative; display: flex; height: 3rem; align-items: center;
+  justify-content: space-between; gap: 1.5rem; overflow: hidden;
+  border-radius: var(--radius-button); background: var(--action-primary);
+  padding: 0.25rem 0.25rem 0.25rem 1.5rem;
+  transition: transform var(--duration-normal) var(--ease-entrance);
+  width: 100%;
+}
+.cta:hover { transform: translateY(-1px); }
+.cta:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 2px; }
+.cta .label {
+  position: relative; white-space: nowrap; font-size: var(--text-body); font-weight: 500;
+  line-height: var(--leading-body); color: var(--action-primary-foreground);
+}
+/* A sheen that sweeps across the pill on hover. The shell clips it, so nothing
+   escapes the rounded corners. */
+.cta .sheen {
+  pointer-events: none; position: absolute; top: 0; bottom: 0;
+  left: -33.3333%; width: 33.3333%;
+  transform: skewX(-12deg);
+  background: rgba(255,255,255,0.2); filter: blur(4px);
+  transition: transform var(--duration-slow) var(--ease-entrance);
+}
+.cta:hover .sheen { transform: skewX(-12deg) translateX(400%); }
+.cta .tile {
+  position: relative; display: flex; width: 2.5rem; height: 2.5rem; flex: none;
+  align-items: center; justify-content: center; overflow: hidden;
+  border-radius: var(--radius-control); background: var(--action-secondary);
+}
+/* Two arrows: the first leaves to the right as the second arrives from the
+   left, so the icon reads as advancing rather than sliding back. */
+.cta .tile svg {
+  width: 1.125rem; color: var(--action-primary);
+  transition: transform var(--duration-normal) var(--ease-entrance);
+}
+.cta .tile svg:last-child { position: absolute; transform: translateX(-220%); }
+.cta:hover .tile svg:first-of-type { transform: translateX(220%); }
+.cta:hover .tile svg:last-child { transform: translateX(0); }
+
+/* The word-split engine's container is a FLEX row — this is why the text trim
+   above has to be geometric, and why `text-align` alone cannot centre one. */
+.words { display: flex; flex-wrap: wrap; }
+.words.center { justify-content: center; text-align: center; }
+.words .w { display: inline-block; will-change: transform, opacity; }
+.words.nowrap { flex-wrap: nowrap !important; }
+
+.parallax { position: absolute; inset: 0; overflow: hidden; }
+.parallax > .layer { position: absolute; left: 0; width: 100%; }
+.parallax.center > .layer      { top: -10%; bottom: -10%; }
+.parallax.start > .layer       { top: 0; bottom: 0; }
+.parallax.start-raised > .layer{ top: -20%; bottom: 0; }
+.parallax img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ==========================================================================
+   SECTIONS — mobile-first. Every desktop rule is behind `min-width: 1280px`.
+   ========================================================================== */
+section { position: relative; width: 100%; }
+
+/* Layout slots. Their MOBILE values live here, never inline: an inline style
+   beats the `min-width: 1280px` block below, and on an absolutely positioned
+   element a stray `margin-top` offsets it from its own `top`. */
+.head-slot  { margin-top: 1.5rem; }
+.sub-slot   { margin-top: 1.25rem; text-align: center; font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body); }
+.intro-slot { margin-top: 1.25rem; font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body); }
+.cta-slot   { margin-top: 2.5rem; }
+.rule       { margin-top: 2.5rem; height: 1px; width: 100%; background: var(--border-subtle); }
+.hl-1, .hl-2 { margin-top: 2.5rem; }
+#numbers .eyebrow-slot, #location .eyebrow-slot, #contact .eyebrow-slot { display: flex; justify-content: center; }
+#location .eyebrow-slot, #location .head-slot, #location .cta-slot,
+#contact  .eyebrow-slot { position: relative; z-index: 10; }
+#location .head-slot { width: 100%; }
+
+#hero {
+  display: flex; min-height: 100svh; flex-direction: column; align-items: center;
+  overflow: hidden; background-image: var(--backdrop-hero);
+  padding: 7rem 1.25rem 10rem;
+}
+#wordmark-wrap { display: none; }
+#hero h1 {
+  position: relative; z-index: 20; width: 100%; text-align: center;
+  font-size: var(--text-title); font-weight: 300; line-height: var(--leading-flat);
+  color: var(--on-media-muted);
+}
+#hero h1 .lit { color: var(--on-media); }
+#hero-sub {
+  position: relative; z-index: 20; margin-top: 1.5rem; width: 100%; max-width: 38rem;
+  text-align: center; font-size: var(--text-body); line-height: var(--leading-body);
+  color: var(--on-media);
+}
+#hero-cta { position: relative; z-index: 20; margin-top: 2rem; }
+#hero-caption {
+  position: absolute; left: 1.25rem; right: 1.25rem; bottom: 3rem; z-index: 20;
+  text-align: center; font-size: var(--text-body); line-height: var(--leading-body);
+  color: var(--on-media);
+}
+
+#about { padding: 5rem 1.25rem; }
+#about h2 { font-size: var(--text-title); font-weight: 300; line-height: var(--leading-body); }
+.hl { display: flex; flex-direction: column; align-items: flex-start; }
+.hl .plate {
+  position: relative; flex: none;
+  border-radius: var(--radius-card); background: var(--surface-muted);
+}
+.hl .plate.circle { width: 4.5rem; height: 4.5rem; }
+.hl .plate.tri    { width: 4.1875rem; height: 4.1875rem; }
+.hl .plate.circle svg { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--foreground); }
+.hl .plate.tri svg    { position: absolute; left: 0.75rem; top: 0.75rem; width: 2.6875rem; color: var(--foreground); }
+.hl .title { width: 100%; font-size: var(--text-lead); line-height: var(--leading-body); }
+.hl .body  { width: 100%; margin-top: 1rem; font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body); }
+#about figure { position: relative; margin-top: 2.5rem; aspect-ratio: 561 / 683; width: 100%; }
+#about figure .parallax { border-radius: var(--radius-card); }
+figcaption.quote {
+  position: absolute; left: 1rem; right: 1rem; bottom: 1rem;
+  border-radius: var(--radius-button); background: var(--action-secondary); padding: 1.25rem;
+}
+figcaption.quote blockquote { margin: 0; width: 100%; }
+figcaption.quote p:first-child { font-size: var(--text-lead); line-height: var(--leading-body); }
+figcaption.quote p:last-child { margin-top: 1rem; font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body); }
+figcaption.quote > svg { position: absolute; right: 1.875rem; top: 1.875rem; height: 0.875rem; width: 1.1875rem; color: var(--foreground); }
+#turntable-wrap { position: relative; margin-top: 1rem; aspect-ratio: 789 / 683; width: 100%; }
+
+/* The turntable */
+.turntable {
+  position: relative; width: 100%; height: 100%; overflow: hidden;
+  border-radius: var(--radius-card); background: var(--surface-muted);
+  touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  cursor: grab;
+}
+.turntable:active { cursor: grabbing; }
+.turntable video {
+  pointer-events: none; position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+}
+.scrubber {
+  position: absolute; left: 1.6875rem; right: 1.6875rem; bottom: 1.875rem;
+  display: flex; height: 2.1875rem; align-items: center;
+  border-radius: 9999px; background: var(--surface-glass);
+  -webkit-backdrop-filter: blur(var(--blur-nav));
+  backdrop-filter: blur(var(--blur-nav));
+  padding-inline: 1.5625rem; cursor: ew-resize;
+}
+.scrubber:focus-visible { outline: 2px solid var(--on-media); outline-offset: 2px; }
+.scrubber .track { position: relative; height: 1px; width: 100%; background: var(--on-media); }
+/* `left`, not `translateX`: a percentage translate resolves against the
+   handle's own width, not the track it is supposed to travel. */
+.scrubber .handle {
+  position: absolute; left: 0; top: 50%; display: block;
+  height: 0.6875rem; width: 2.375rem; border-radius: 9999px;
+  border: 1px solid var(--on-media); background: var(--action-primary);
+  transform: translate(-50%, -50%);
+}
+
+#numbers { padding: 5rem 1.25rem; }
+#numbers h2 { font-size: var(--text-lead); font-weight: 300; line-height: var(--leading-body); }
+#numbers dl { margin-top: 3rem; display: flex; flex-direction: column; align-items: center; gap: 2.5rem; }
+#numbers .stat { display: flex; width: 100%; flex: none; flex-direction: column; align-items: center; gap: 1rem; text-align: center; }
+#numbers dt { width: 100%; font-size: var(--text-display); font-weight: 300; line-height: var(--leading-body); }
+#numbers dd { width: 100%; font-size: var(--text-lead); line-height: var(--leading-body); }
+
+#location {
+  display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  padding: 6rem 1.25rem;
+}
+#location h2 {
+  margin-inline: auto; max-width: 40rem;
+  font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body);
+  color: var(--on-media);
+}
+#pixel-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+#audience { overflow: hidden; padding: 5rem 1.25rem; }
+#mark-host {
+  pointer-events: none; position: absolute; top: 0; bottom: 0; left: 50%;
+  z-index: 0; width: 100%; transform: translateX(-50%);
+}
+#audience .grid {
+  position: relative; z-index: 10; margin-top: 2.5rem;
+  display: grid; grid-auto-rows: auto; grid-template-columns: 1fr; gap: 0.5rem;
+}
+/* Glass rather than solid, so the mark travelling behind stays visible as it
+   passes under each card. */
+.card {
+  min-height: 15rem; border-radius: var(--radius-card);
+  background: var(--surface-glass);
+  -webkit-backdrop-filter: blur(var(--blur-nav));
+  backdrop-filter: blur(var(--blur-nav));
+  padding: 1.5rem;
+}
+/* The reveal is applied to the card's CONTENTS, never to the card or an
+   ancestor of it: a `filter` — or an `opacity` below 1 — on any ancestor
+   establishes a backdrop root, which cuts the glass off from everything painted
+   behind it. `backdrop-filter` then samples an empty backdrop, costing full GPU
+   work and rendering nothing at all. */
+.card > .inner { display: flex; height: 100%; width: 100%; flex-direction: column; align-items: flex-start; justify-content: space-between; }
+.card .idx { width: 100%; font-size: var(--text-lead); line-height: var(--leading-body); color: var(--foreground-muted); }
+.card h3 { width: 100%; font-size: var(--text-title); font-weight: 300; line-height: var(--leading-body); }
+.card .desc { width: 100%; font-size: var(--text-lead); line-height: var(--leading-body); }
+.card .head { display: flex; width: 100%; flex-direction: column; gap: 1.5rem; }
+.gap-cell { display: none; }
+
+#contact {
+  display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  padding: 6rem 1.25rem;
+}
+#contact h2 {
+  position: relative; z-index: 10; margin-top: 1.5rem; width: 100%; text-align: center;
+  font-size: var(--text-title); font-weight: 300; line-height: var(--leading-flat);
+  color: var(--on-media-muted);
+}
+#contact h2 .lit { color: var(--on-media); }
+#panel {
+  position: relative; z-index: 10; margin-top: 3rem; width: 100%;
+  border-radius: var(--radius-card); background: var(--surface-panel);
+  -webkit-backdrop-filter: blur(var(--blur-panel));
+  backdrop-filter: blur(var(--blur-panel));
+  padding: 1.5rem;
+}
+#panel .stack { display: flex; height: 100%; flex-direction: column; align-items: flex-start; gap: 2.5rem; }
+#panel p.body { width: 100%; font-size: var(--text-body); font-weight: 300; line-height: var(--leading-body); }
+#panel form { display: flex; width: 100%; flex-direction: column; gap: 1.875rem; }
+#panel .fields { display: flex; width: 100%; flex-direction: column; align-items: stretch; gap: 1.5rem; }
+.field { display: flex; flex: 1; align-items: center; border-bottom: 1px solid var(--border-field); padding-bottom: 0.75rem; }
+.field input {
+  width: 100%; background: transparent; outline: none; border: 0; padding: 0;
+  font-size: var(--text-lead); line-height: var(--leading-body); color: var(--foreground);
+}
+.field input::placeholder { color: var(--foreground); }
+.field input:focus-visible::placeholder { color: var(--foreground-muted); }
+
+/* ==========================================================================
+   TABLET (540–1279) — the stacked layout, refined.
+   ========================================================================== */
+@media (min-width: 540px) {
+  #numbers dl { flex-direction: row; align-items: flex-start; justify-content: center; gap: 1.5rem; }
+  #audience .grid { grid-template-columns: repeat(2, 1fr); }
+  #panel .fields { flex-direction: row; align-items: center; }
+}
+
+/* ==========================================================================
+   DESKTOP (≥1280) — the Figma board, 1440 wide. Every child is placed at its
+   own Figma coordinate; 1 Figma px = 0.0625rem.
+   ========================================================================== */
+@media (min-width: 1280px) {
+  #nav { width: auto; }
+  #nav .bar { justify-content: flex-start; gap: 2.5rem; }
+  #nav ul { display: flex; }
+  .navcta { display: flex; }
+  #burger, #nav-panel { display: none; }
+
+  section { padding: 0; }
+
+  /* ---- HERO — Figma 0 → 1514 ---- */
+  #hero { display: block; height: 94.625rem; padding: 0; }
+  #wordmark-wrap {
+    pointer-events: none; position: absolute; display: block; text-align: center;
+    left: -7.125rem; top: 27.9375rem; width: 104.3125rem;
+  }
+  #hero h1 {
+    position: absolute; left: 19.6875rem; top: 9.625rem; width: 50.625rem;
+    font-size: var(--text-display);
+  }
+  #hero-sub {
+    position: absolute; left: 28.4375rem; top: 21.1875rem; width: 33.125rem;
+    max-width: none; margin-top: 0; font-size: var(--text-lead);
+  }
+  #hero-cta { position: absolute; left: 38.5625rem; top: 26.6875rem; width: 12.875rem; margin-top: 0; }
+  #hero-caption {
+    left: 31.625rem; right: auto; top: 85.375rem; bottom: auto; width: 26.75rem;
+    font-size: var(--text-lead);
+  }
+
+  /* ---- ABOUT — Figma 1514 → 2849 ---- */
+  #about { height: 83.4375rem; }
+  #about .eyebrow-slot { position: absolute; left: 2.5rem; top: 6.25rem; width: 10.375rem; }
+  #about .head-slot    { position: absolute; left: 38.1875rem; top: 6.25rem; width: 49.3125rem; margin-top: 0; }
+  #about .rule         { position: absolute; left: 2.5rem; top: 22.375rem; width: 85rem; margin-top: 0; }
+  #about .hl-1         { position: absolute; left: 2.5rem; top: 26.125rem; width: 17.625rem; margin-top: 0; }
+  #about .hl-2         { position: absolute; left: 38.1875rem; top: 26.125rem; width: 14.6875rem; margin-top: 0; }
+  #about .cta-slot     { position: absolute; left: 66.75rem; top: 33.875rem; width: 20.75rem; margin-top: 0; }
+  #about figure {
+    position: absolute; left: 2.5rem; top: 40.75rem;
+    height: 42.6875rem; width: 35.0625rem; aspect-ratio: auto; margin-top: 0;
+  }
+  figcaption.quote {
+    left: 1.875rem; right: auto; bottom: 1.875rem;
+    height: 8.125rem; width: 31.375rem; padding: 1.875rem;
+  }
+  figcaption.quote blockquote { width: 22.5rem; }
+  #turntable-wrap {
+    position: absolute; left: 38.1875rem; top: 40.75rem;
+    height: 42.6875rem; width: 49.3125rem; aspect-ratio: auto; margin-top: 0;
+  }
+
+  /* ---- NUMBERS — Figma 2849 → 3421 ---- */
+  #numbers { height: 35.75rem; }
+  #numbers .eyebrow-slot { position: absolute; left: 0; right: 0; top: 6.25rem; display: flex; justify-content: center; }
+  #numbers .head-slot    { position: absolute; left: 23.125rem; top: 9.75rem; width: 43.8125rem; margin-top: 0; }
+  #numbers h2 { font-size: var(--text-title); white-space: nowrap; }
+  #numbers .sub-slot     { position: absolute; left: 33.1875rem; top: 14.375rem; width: 23.6875rem; margin-top: 0; }
+  #numbers dl {
+    position: absolute; left: 6.875rem; top: 20.25rem; width: 76.25rem;
+    margin-top: 0; flex-direction: row; gap: 0.625rem;
+  }
+  #numbers .stat { width: 25rem; gap: 1.5rem; }
+
+  /* ---- LOCATION — Figma 3421 → 4379 ---- */
+  #location { display: block; height: 59.875rem; }
+  #location .eyebrow-slot { position: absolute; left: 0; right: 0; top: 6.25rem; display: flex; justify-content: center; z-index: 10; }
+  #location .head-slot    { position: absolute; left: 5.125rem; top: 9.75rem; width: 79.8125rem; margin-top: 0; z-index: 10; }
+  #location h2 { max-width: none; font-size: var(--text-title); }
+  #location .cta-slot     { position: absolute; left: 38rem; top: 50.625rem; width: 14rem; margin-top: 0; z-index: 10; }
+
+  /* ---- AUDIENCE — Figma 4379 → 6073 ---- */
+  #audience { height: 105.875rem; }
+  /* A centred 480px column, not the full section width: the mark travels down
+     the middle and is only ~215px across, so a full-width canvas rasterises
+     roughly three times the pixels it needs — every frame, with six
+     backdrop-blurred cards sampling the result. */
+  #mark-host { width: 30rem; }
+  #audience .eyebrow-slot { position: absolute; left: 2.5rem; top: 6.25rem; width: 9.0625rem; }
+  #audience .intro-slot   { position: absolute; left: 59.5rem; top: 6.25rem; width: 27.9375rem; margin-top: 0; }
+  #audience .grid {
+    position: absolute; left: 2.5rem; top: 14.25rem; height: 85.375rem; width: 85rem;
+    margin-top: 0; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  }
+  .card { height: 100%; min-height: 0; padding: 1.875rem; }
+  /* The diagonal gaps ARE the desktop layout; in a single mobile column they
+     would just be dead space. */
+  .gap-cell { display: block; }
+
+  /* ---- CONTACT — Figma 6073 → 7199 ---- */
+  #contact { display: block; height: 70.375rem; }
+  #contact .eyebrow-slot { position: absolute; left: 0; right: 0; top: 5.625rem; display: flex; justify-content: center; z-index: 10; }
+  #contact h2 {
+    position: absolute; left: 16.125rem; top: 8.625rem; width: 57.75rem;
+    margin-top: 0; font-size: var(--text-display);
+  }
+  #panel {
+    position: absolute; left: 2.5rem; top: 46.875rem;
+    height: 21.5rem; width: 85rem; margin-top: 0; padding: 1.875rem;
+  }
+  #panel .stack { gap: 6.25rem; }
+  #panel p.body { width: 63.5625rem; font-size: var(--text-title); }
+  #panel form { width: 81.25rem; }
+  #panel .fields { flex-direction: row; align-items: center; gap: 1.875rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="asset-banner" role="alert"></div>
+
+<!-- No transform on the curtain: scaling it dragged the counter off the bottom
+     edge as it left. It stays put and a hole opens through it. -->
+<div id="curtain" aria-hidden="true">
+  <div id="counter-box"><span id="counter">0%</span></div>
+</div>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header id="nav">
+  <nav class="bar" aria-label="Primary">
+    <a class="logo" href="/" aria-label="AERRA — home">
+      <svg viewBox="0 0 120 129" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+        <path d="M28.596 81.9388C28.596 99.4431 42.8424 113.633 60.4162 113.633C77.99 113.633 92.2364 99.4431 92.2364 81.9388H107.664C107.664 107.93 86.5107 129 60.4162 129C34.3218 129 13.168 107.93 13.168 81.9388H28.596Z" fill="currentColor"/>
+        <path d="M120 59.7644L109.092 70.6293L60 21.7335L10.9081 70.6293L0 59.7644L60 0L120 59.7644Z" fill="currentColor"/>
+      </svg>
+    </a>
+    <ul>
+      <li><a class="navlink" href="#about">The house</a></li>
+      <li><a class="navlink" href="#location">Location</a></li>
+      <li><a class="navlink" href="#audience">Price</a></li>
+      <li><a class="navlink" href="#contact">Reviews</a></li>
+    </ul>
+    <a class="navcta" href="#contact"><span class="dot" aria-hidden="true"></span><span>Contact</span></a>
+    <button id="burger" type="button" aria-expanded="false" aria-controls="nav-panel" aria-label="Open menu">
+      <span></span><span></span>
+    </button>
+  </nav>
+  <div id="nav-panel" aria-hidden="true">
+    <ul>
+      <li><a class="navlink" href="#about" tabindex="-1">The house</a></li>
+      <li><a class="navlink" href="#location" tabindex="-1">Location</a></li>
+      <li><a class="navlink" href="#audience" tabindex="-1">Price</a></li>
+      <li><a class="navlink" href="#contact" tabindex="-1">Reviews</a></li>
+      <li><a href="#contact" tabindex="-1" style="display:flex;align-items:center;gap:0.5rem">
+        <span aria-hidden="true" style="width:0.5rem;height:0.5rem;flex:none;border-radius:9999px;background:var(--foreground)"></span>
+        <span style="font-size:var(--text-body);font-weight:500;line-height:var(--leading-body)">Contact</span>
+      </a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ==================================================================
+       HERO — three stacked layers: the sky ramp, the oversized wordmark,
+       then the cut-out house PNG that the wordmark passes BEHIND.
+       ================================================================== -->
+  <section id="hero" aria-labelledby="hero-heading">
+    <!-- A plain box, not a spring: the entrance lives on the letters, and
+         animating the wrapper as well would compound the two into a double
+         move. Hidden below 1280 — at phone width the wordmark is far wider than
+         the viewport and reads as stray fragments, not a word. -->
+    <div id="wordmark-wrap">
+      <span id="wordmark" role="img" aria-label="aerra"
+            class="trim-flat"
+            style="display:block;white-space:nowrap;font-family:'Google Sans Flex Display','Google Sans Flex',sans-serif;font-size:var(--text-wordmark);font-weight:100;line-height:var(--leading-flat)"></span>
+    </div>
+
+    <!-- The hero is on screen before any scrolling, so it must open on the
+         exact Figma framing: `top top` puts progress at 0 on load. -->
+    <div class="parallax start-raised"
+         data-parallax="start-raised" data-start="top top" data-end="bottom top">
+      <div class="layer">
+        <img data-asset="hero.png" alt="The AERRA house lit from within at dusk, standing alone on a rocky mountain slope." fetchpriority="high" crossorigin="anonymous">
+      </div>
+    </div>
+
+    <h1 id="hero-heading">
+      <span class="plain trim-flat">Where the road ends <span class="lit">and the quiet begins</span></span>
+      <span class="animated center trim-flat" data-words data-stagger="45" data-out="40">Where the road ends <span class="lit">and the quiet begins</span></span>
+    </h1>
+
+    <p id="hero-sub">A 240 m² house on a south-facing slope, 40 minutes from the city. One owner, one view, no neighbours in sight.</p>
+
+    <div id="hero-cta">
+      <a class="cta" href="#contact"><span class="sheen" aria-hidden="true"></span><span class="label">Book a viewing</span><span class="tile" data-arrow></span></a>
+    </div>
+
+    <p id="hero-caption">Finished and ready to live in —<br>heat, light and everything in between</p>
+  </section>
+
+  <!-- ================================================================== -->
+  <section id="about" aria-labelledby="about-heading">
+    <div class="eyebrow-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <p class="eyebrow" style="font-size:var(--text-lead)"><span class="bead" aria-hidden="true"></span>About the house</p>
+    </div>
+
+    <div class="head-slot">
+      <h2 id="about-heading" class="words trim-body" data-words data-stagger="22" data-out="28">AERA is two floors of cedar and glass, set into the slope. Floor-to-ceiling windows open the living room to the valley, and the terrace runs into the treeline. Everything is done — down to the last socket.</h2>
+    </div>
+
+    <div class="rule" data-reveal="fade" data-spring="reveal"></div>
+
+    <div class="hl-1" data-reveal="fadeUp" data-spring="reveal">
+      <div class="hl">
+        <span class="plate circle">
+          <svg viewBox="0 0 72 72" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="19.5" stroke="currentColor"/></svg>
+        </span>
+        <p class="title" style="margin-top:2rem">Move-in ready</p>
+        <p class="body trim-body">Full finish, built-in kitchen and appliances included in the price.</p>
+      </div>
+    </div>
+
+    <div class="hl-2" data-reveal="fadeUp" data-spring="reveal" data-delay="90">
+      <div class="hl">
+        <span class="plate tri">
+          <svg viewBox="0 0 43 41" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path d="M18.4688 5.25586C19.8157 2.92123 23.1843 2.92123 24.5312 5.25586L40.1064 32.251C41.4524 34.5843 39.7679 37.5 37.0742 37.5H5.92578C3.23205 37.5 1.5476 34.5843 2.89355 32.251L18.4688 5.25586Z" stroke="currentColor"/></svg>
+        </span>
+        <p class="title" style="margin-top:2.3125rem">Freehold land</p>
+        <p class="body trim-body">0.45 acres, title clear, no charges or easements.</p>
+      </div>
+    </div>
+
+    <div class="cta-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <a class="cta" href="#contact"><span class="sheen" aria-hidden="true"></span><span class="label">Book a viewing</span><span class="tile" data-arrow></span></a>
+    </div>
+
+    <figure data-reveal="fade" data-spring="reveal">
+      <div class="parallax center" data-parallax="center">
+        <div class="layer">
+          <img data-asset="about.png" alt="The house seen from the valley floor, its windows glowing against the dark treeline." crossorigin="anonymous">
+        </div>
+      </div>
+      <!-- Figma "Rectangle 1991424012" (1505:1816) — inset 30px from the
+           photograph's left and bottom edges. The blockquote is widened from
+           Figma's 282px, which only fitted the old two-word placeholder: a real
+           sentence has to clear the glyph and stay on one line. -->
+      <figcaption class="quote">
+        <blockquote>
+          <p>We stayed until it got dark.</p>
+          <p class="trim-body">The first family to view it, spring 2026</p>
+        </blockquote>
+        <svg viewBox="0 0 18.656 14.272" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path d="M18.656 1.856L15.328 6.624C16.1387 6.79467 16.8213 7.22134 17.376 7.904C17.952 8.56533 18.24 9.36533 18.24 10.304C18.24 11.4133 17.856 12.352 17.088 13.12C16.32 13.888 15.3493 14.272 14.176 14.272C13.024 14.272 12.064 13.888 11.296 13.12C10.528 12.352 10.144 11.4133 10.144 10.304C10.144 9.70667 10.2613 9.09867 10.496 8.48C10.7307 7.84 11.1893 7.008 11.872 5.984L15.904 0C15.904 0 16.8213 0.618668 18.656 1.856ZM8.512 1.856L5.184 6.624C5.99467 6.79467 6.67733 7.22134 7.232 7.904C7.808 8.56533 8.096 9.36533 8.096 10.304C8.096 11.4133 7.712 12.352 6.944 13.12C6.176 13.888 5.216 14.272 4.064 14.272C2.912 14.272 1.94133 13.888 1.152 13.12C0.384 12.352 0 11.4133 0 10.304C0 9.70667 0.117333 9.09867 0.352 8.48C0.608 7.84 1.07733 7.008 1.76 5.984L5.76 0C5.76 0 6.67733 0.618668 8.512 1.856Z" fill="currentColor"/></svg>
+      </figcaption>
+    </figure>
+
+    <div id="turntable-wrap" data-reveal="fade" data-spring="reveal" data-delay="90">
+      <div class="turntable" id="turntable">
+        <video id="turntable-video" muted playsinline preload="auto" aria-hidden="true" tabindex="-1" disablepictureinpicture crossorigin="anonymous"></video>
+        <div class="scrubber" id="scrubber" role="slider" tabindex="0"
+             aria-label="The house in 360 degrees — drag to rotate it"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="track" id="scrub-track"><span class="handle" id="scrub-handle" aria-hidden="true"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <section id="numbers" aria-labelledby="numbers-heading">
+    <div class="eyebrow-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <p class="eyebrow" style="font-size:var(--text-lead)"><span class="bead" aria-hidden="true"></span>By the numbers</p>
+    </div>
+
+    <div class="head-slot">
+      <h2 id="numbers-heading" class="words center trim-body" data-words data-stagger="35" data-out="28" data-nowrap>A light on the mountain, kept on just for you.</h2>
+    </div>
+
+    <p class="sub-slot trim-body" data-reveal="fadeUpShort" data-spring="snappy" data-delay="120">Forty minutes to the city centre, sealed road to the gate, nearest neighbour behind the hill</p>
+
+    <dl>
+      <div class="stat" data-reveal="fadeUp" data-spring="reveal" data-delay="0">
+        <dt class="trim-body" data-count="240"></dt><dd>m² of living space</dd>
+      </div>
+      <div class="stat" data-reveal="fadeUp" data-spring="reveal" data-delay="110">
+        <dt class="trim-body" data-count="3.2"></dt><dd>metre ceilings</dd>
+      </div>
+      <div class="stat" data-reveal="fadeUp" data-spring="reveal" data-delay="220">
+        <dt class="trim-body" data-count="40"></dt><dd>minutes to the city</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- ================================================================== -->
+  <section id="location" aria-labelledby="location-heading">
+    <div class="parallax center" data-parallax="center">
+      <div class="layer">
+        <img data-asset="location.png" alt="The house on its ridge at blue hour, the last building before open forest." crossorigin="anonymous">
+      </div>
+    </div>
+    <!-- Painted in by the cursor, over the photograph but under the copy.
+         Wrapped in the SAME parallax layer the photograph uses, so the two
+         drift as one rather than sliding against each other. -->
+    <div class="parallax center" data-parallax="center" style="pointer-events:none">
+      <div class="layer">
+        <canvas id="pixel-canvas" role="img" aria-label="Move the cursor to uncover the site plan"></canvas>
+      </div>
+    </div>
+
+    <div class="eyebrow-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <p class="eyebrow" style="font-size:var(--text-lead);color:var(--on-media)"><span class="bead" aria-hidden="true"></span>Location</p>
+    </div>
+
+    <div class="head-slot">
+      <h2 id="location-heading" class="words center trim-body" data-words data-stagger="18" data-out="28">The house sits last in the line — beyond it, only forest and ridge. Mains water and power, fibre broadband, and a road that gets cleared all winter. Isolation without the trade-offs: schools, shops and the motorway are fifteen minutes out.</h2>
+    </div>
+
+    <div class="cta-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <a class="cta" href="#contact"><span class="sheen" aria-hidden="true"></span><span class="label">See it on the map</span><span class="tile" data-arrow></span></a>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       AUDIENCE — `overflow: hidden` is what makes the travelling mark appear
+       from beneath the location block and disappear under the contact block:
+       its canvas fills this section, so both edges clip it.
+       ================================================================== -->
+  <section id="audience" aria-labelledby="audience-heading">
+    <div id="mark-host" role="img" aria-label="The AERRA mark, rendered in three dimensions and turning with the page"></div>
+
+    <div class="eyebrow-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <h2 id="audience-heading" class="eyebrow" style="font-size:var(--text-lead)"><span class="bead" aria-hidden="true"></span>Who this is for</h2>
+    </div>
+
+    <p class="intro-slot trim-body" data-reveal="fadeUpShort" data-spring="snappy" data-delay="100">This house isn't for everyone, and that's the point. It's for people who've already worked out how they want to live — with a view instead of a fence, quiet instead of a shared courtyard.</p>
+
+    <div class="grid">
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="0">
+        <div class="head"><p class="idx">01</p><h3 class="trim-body">A second home</h3></div>
+        <p class="desc">You want somewhere you can reach in an hour, not somewhere you pack a week for.</p>
+      </div></article>
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="110">
+        <div class="head"><p class="idx">02</p><h3 class="trim-body">Leaving the city</h3></div>
+        <p class="desc">You're ready to live here full-time without giving up anything the flat gave you.</p>
+      </div></article>
+      <div class="gap-cell" aria-hidden="true"></div>
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="220">
+        <div class="head"><p class="idx">03</p><h3 class="trim-body">Working from home</h3></div>
+        <p class="desc">You want a study facing the ridge, not a window facing the neighbour's wall.</p>
+      </div></article>
+      <div class="gap-cell" aria-hidden="true"></div>
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="330">
+        <div class="head"><p class="idx">04</p><h3 class="trim-body">Family</h3></div>
+        <p class="desc">Four bedrooms, two baths and a plot with somewhere for the kids to run.</p>
+      </div></article>
+      <div class="gap-cell" aria-hidden="true"></div>
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="440">
+        <div class="head"><p class="idx">05</p><h3 class="trim-body">An investment</h3></div>
+        <p class="desc">A liquid asset in a closed location: land freehold, house complete, offers considered.</p>
+      </div></article>
+      <article class="card"><div class="inner" data-reveal="fadeUpBlur" data-spring="soft" data-delay="550">
+        <div class="head"><p class="idx">06</p><h3 class="trim-body">Short-term letting</h3></div>
+        <p class="desc">Ready to rent out tomorrow — furnished, equipped, and reachable year-round.</p>
+      </div></article>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <section id="contact" aria-labelledby="contact-heading">
+    <div class="parallax center" data-parallax="center">
+      <div class="layer">
+        <img data-asset="contact.png" alt="Close view of the cedar-clad facade and terrace at dusk." crossorigin="anonymous">
+      </div>
+    </div>
+
+    <div class="eyebrow-slot" data-reveal="fadeUpShort" data-spring="snappy">
+      <p class="eyebrow" style="font-size:var(--text-body);color:var(--on-media)"><span class="bead" aria-hidden="true"></span>Contact</p>
+    </div>
+
+    <h2 id="contact-heading">
+      <span class="plain trim-flat">Come and see it <span class="lit">photographs undersell it</span></span>
+      <span class="animated center trim-flat" data-words data-stagger="45" data-out="40">Come and see it <span class="lit">photographs undersell it</span></span>
+    </h2>
+
+    <div id="panel" data-reveal="fadeUp" data-spring="reveal">
+      <div class="stack">
+        <p class="body trim-body">Leave your details and we'll walk you through it in person, or arrange a live video tour whenever suits. We reply the same day.</p>
+        <form id="contact-form" novalidate>
+          <div class="fields">
+            <div class="field"><label class="sr-only" for="name">Name</label><input id="name" name="name" type="text" autocomplete="name" placeholder="Name" required></div>
+            <div class="field"><label class="sr-only" for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="Phone" required></div>
+            <div class="field"><label class="sr-only" for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" placeholder="Email" required></div>
+          </div>
+          <button class="cta" type="submit"><span class="sheen" aria-hidden="true"></span><span class="label">Book a viewing</span><span class="tile" data-arrow></span></button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+/* ============================================================================
+   0. ASSETS + the visible failure banner
+   ========================================================================== */
+const ASSETS = "https://storage.getlayers.ai/assets/aerra-1ac2dea4cb/";
+const asset = (file) => ASSETS + file;
+
+const bannerNode = document.getElementById("asset-banner");
+const failed = new Set();
+/**
+ * A missing asset otherwise renders as a correct DOM over a blank canvas, with
+ * nothing but a console line to explain it. Say so on the page. (D-021)
+ */
+function showAssetBanner(url, err) {
+  if (failed.has(url)) return;
+  failed.add(url);
+  console.error("[aerra] asset failed:", url, err || "");
+  bannerNode.innerHTML =
+    "<strong>An asset could not be loaded.</strong> " +
+    [...failed].map((u) => "<code>" + u + "</code>").join(", ") +
+    " — check the bucket is reachable and that the file exists at that key.";
+  bannerNode.classList.add("on");
+}
+
+/* ============================================================================
+   1. THE SHARED TICKER
+   One app-wide rAF. Reference-counted: it starts on the first subscriber and
+   cancels when the last leaves, so an idle page costs nothing. Each subscriber
+   is throttled independently by its own framerate, read live every frame.
+   ========================================================================== */
+const subscribers = new Set();
+let rafId = null;
+function frame(time) {
+  for (const sub of [...subscribers]) {
+    if (!subscribers.has(sub)) continue;
+    if (time - sub.last <= sub.getFramerate()) continue;
+    sub.last = time;
+    try { sub.callback(time); }
+    catch (error) { console.error("[ticker] subscriber threw:", error); }
+  }
+  rafId = requestAnimationFrame(frame);
+}
+function subscribeToTicker(callback, getFramerate = () => 0) {
+  const sub = { callback, getFramerate, last: performance.now() };
+  subscribers.add(sub);
+  if (rafId === null) rafId = requestAnimationFrame(frame);
+  return () => {
+    subscribers.delete(sub);
+    if (subscribers.size === 0 && rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+  };
+}
+
+/* ============================================================================
+   2. DEVICE TIERS  (ported from the project's lib/scene/device.ts)
+   Read ONCE at construction: a device does not change tier mid-session.
+   ========================================================================== */
+const MOBILE_MAX = 768, TABLET_MAX = 1024;
+const mq = (q) => window.matchMedia(q).matches;
+const coarse = mq("(hover: none) and (pointer: coarse)");
+const TIER = (window.innerWidth < MOBILE_MAX || coarse) ? "mobile"
+           : (window.innerWidth < TABLET_MAX ? "tablet" : "desktop");
+const REDUCED = mq("(prefers-reduced-motion: reduce)");
+const conn = navigator.connection;
+const ENERGY_SAVER = Boolean(conn && conn.saveData) ||
+  (typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 2);
+/** Play the entrance, then stop drawing on a settled frame. WebGL keeps the
+    last frame on the canvas, so a frozen scene costs nothing at all. */
+const SCENE_FREEZE = REDUCED || (TIER === "mobile" && ENERGY_SAVER);
+/** A 3× phone renders NINE times the fragments of a 1× screen. */
+function clampPixelRatio(hardEdged = true) {
+  const dpr = window.devicePixelRatio || 1;
+  if (TIER === "mobile") return Math.min(dpr, hardEdged ? 1 : 0.85);
+  const ceiling = hardEdged ? (TIER === "tablet" ? 1.25 : 1.5) : 1;
+  return Math.min(Math.max(dpr, 0.75), ceiling);
+}
+/* The epsilon matters: the ticker skips while `time - last <= framerate`, so a
+   bare 1000/30 lands on the first tick past 33.3ms — about 26fps, not 30. */
+const FRAME_BUDGET = TIER === "mobile" ? 1000 / 30 - 1 : (TIER === "tablet" ? 1000 / 45 - 1 : 0);
+const ANTIALIAS = TIER !== "mobile";
+
+/* ============================================================================
+   3. THE SPRING ENGINE
+   Physical springs, not easing curves — the project's motion system.
+   One driver per element lerps every one of its properties: with a shared
+   config and a shared start time each property's normalised trajectory is the
+   same curve, so this is identical output to a spring per value.
+   ========================================================================== */
+const SPRINGS = {
+  reveal: { tension: 120, friction: 26, mass: 1 },
+  snappy: { tension: 170, friction: 24, mass: 1 },
+  soft:   { tension: 72,  friction: 30, mass: 1.1 },
+  counter:{ tension: 60,  friction: 34, mass: 1.1 },
+  count:  { tension: 90,  friction: 26, mass: 1 },
+  open:   { tension: 70,  friction: 26, mass: 1.1 },
+  drag:   { tension: 210, friction: 30, mass: 0.8 },
+  closing:{ tension: 120, friction: 26, mass: 1 },
+};
+
+class Spring {
+  constructor(config, value = 0) {
+    this.k = config.tension; this.c = config.friction; this.m = config.mass || 1;
+    this.value = value; this.target = value; this.velocity = 0; this.done = true;
+  }
+  set(v) { this.value = v; this.target = v; this.velocity = 0; this.done = true; }
+  start(v) { if (this.target === v) return; this.target = v; this.done = false; }
+  advance(dt) {
+    if (this.done) return this.value;
+    if (REDUCED) { this.set(this.target); return this.value; }        // skipAnimation
+    // Semi-implicit Euler at a fixed 1/120s substep; the frame delta is clamped
+    // so a backgrounded tab cannot explode the integration.
+    let remaining = Math.min(dt, 0.064);
+    const step = 1 / 120;
+    while (remaining > 0) {
+      const h = Math.min(step, remaining);
+      remaining -= h;
+      const a = (-this.k * (this.value - this.target) - this.c * this.velocity) / this.m;
+      this.velocity += a * h;
+      this.value += this.velocity * h;
+    }
+    if (Math.abs(this.velocity) < 0.001 && Math.abs(this.value - this.target) < 0.0001) {
+      this.value = this.target; this.velocity = 0; this.done = true;
+    }
+    return this.value;
+  }
+}
+
+/* The reveal presets, verbatim from lib/springs/reveal.ts. `filter` must
+   interpolate the NUMBER inside blur() and both ends must be written the same
+   way — `blur(0rem)`, never a bare `none`, or the value type changes mid-flight.
+   `rem` keeps the blur proportional under the adaptive grid. */
+const PRESETS = {
+  fade:        { from: { opacity: 0 },                                        to: { opacity: 1 } },
+  fadeUp:      { from: { opacity: 0, y: 32 },                                 to: { opacity: 1, y: 0 } },
+  fadeUpShort: { from: { opacity: 0, y: 16 },                                 to: { opacity: 1, y: 0 } },
+  fadeUpBlur:  { from: { opacity: 0, y: 36, blur: 0.75 },                     to: { opacity: 1, y: 0, blur: 0 } },
+};
+
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function writeStyle(node, from, to, t) {
+  let transform = "";
+  if (from.y !== undefined) transform = "translate3d(0," + lerp(from.y, to.y, t).toFixed(3) + "px,0)";
+  if (transform) node.style.transform = transform;
+  if (from.opacity !== undefined) node.style.opacity = lerp(from.opacity, to.opacity, t).toFixed(4);
+  if (from.blur !== undefined) {
+    const b = lerp(from.blur, to.blur, t);
+    node.style.filter = "blur(" + b.toFixed(4) + "rem)";
+  }
+}
+
+/** Fires once, the first time the element intersects; never plays backwards. */
+function onceInView(node, run, options) {
+  const io = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting) return;
+    io.disconnect();
+    run();
+  }, options);
+  io.observe(node);
+  return io;
+}
+
+/** A reveal: hold at `from`, then spring to `to` when the element is first seen. */
+function mountReveal(node) {
+  const preset = PRESETS[node.dataset.reveal];
+  if (!preset) return;
+  const config = SPRINGS[node.dataset.spring || "reveal"];
+  const delay = Number(node.dataset.delay || 0);
+  const spring = new Spring(config, 0);
+  writeStyle(node, preset.from, preset.to, 0);
+  let unsubscribe = null, last = 0;
+  const play = () => {
+    window.setTimeout(() => {
+      spring.start(1);
+      last = 0;
+      unsubscribe = subscribeToTicker((time) => {
+        const dt = last ? (time - last) / 1000 : 0;
+        last = time;
+        const t = spring.advance(dt);
+        writeStyle(node, preset.from, preset.to, t);
+        if (spring.done) { unsubscribe && unsubscribe(); unsubscribe = null; }
+      });
+    }, delay);
+  };
+  onceInView(node, play);
+}
+document.querySelectorAll("[data-reveal]").forEach(mountReveal);
+
+/* ============================================================================
+   4. SCROLL SCRUBBING
+   Progress is a pure function of getBoundingClientRect(): `start` and `end` are
+   "<element edge> <viewport edge>" pairs, each resolving to a scroll offset.
+   Scrubbed values are NOT springs — they track the scroll exactly.
+   ========================================================================== */
+function edgeOffset(rect, spec) {
+  const vh = window.innerHeight;
+  const [el, view] = spec.split(" ");
+  const base = el === "top" ? rect.top : el === "center" ? rect.top + rect.height / 2 : rect.bottom;
+  const shift = view === "top" ? 0 : view === "center" ? vh / 2 : vh;
+  return base - shift;
+}
+function scrollProgress(node, start, end) {
+  const rect = node.getBoundingClientRect();
+  const a = edgeOffset(rect, start);
+  const b = edgeOffset(rect, end);
+  const length = Math.abs(a - b) || 1;
+  return Math.min(Math.max(0, 1 - (a + length) / length), 1);
+}
+
+/* ============================================================================
+   5. PARALLAX
+   The OUTER element is the clip box and keeps the layout size the design asks
+   for; the INNER layer holds the image and is what scrubs. translateY
+   percentages resolve against the moving layer's OWN height, so the centred
+   variant — whose layer is 120% tall — needs its travel rescaled; the anchored
+   variant's layer is exactly the box, so it does not.
+   ========================================================================== */
+const DRIFT = 10;
+const RANGE = {
+  center:         { from: -(DRIFT / (100 + DRIFT * 2)) * 100, to: (DRIFT / (100 + DRIFT * 2)) * 100 },
+  start:          { from: 0, to: DRIFT },
+  "start-raised": { from: 0, to: (DRIFT / (100 + 20)) * 100 },
+};
+document.querySelectorAll("[data-parallax]").forEach((box) => {
+  const layer = box.querySelector(".layer");
+  const range = RANGE[box.dataset.parallax];
+  const start = box.dataset.start || "top bottom";
+  const end = box.dataset.end || "bottom top";
+  let lastValue = NaN, onScreen = true;
+  new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }, { rootMargin: "10%" }).observe(box);
+  subscribeToTicker(() => {
+    if (!onScreen) return;
+    const p = scrollProgress(box, start, end);
+    const value = lerp(range.from, range.to, p);
+    if (Math.abs(value - lastValue) < 0.001) return;
+    lastValue = value;
+    layer.style.transform = "translate3d(0," + value.toFixed(4) + "%,0)";
+  });
+});
+
+/* ============================================================================
+   6. THE WORD-SPLIT REVEAL
+   Words are laid out as FLEX items — which is why the text trim is geometric,
+   and why `text-align` alone cannot centre one. The column gap is the MEASURED
+   space advance of Google Sans Flex (0.2245em): the engine's own 0.3em default
+   is wider and pushes two of these headings onto an extra line.
+   ========================================================================== */
+const WORD_GAP_EM = 0.2245;
+
+function splitWords(host) {
+  const out = [];
+  const walk = (node, extraClass) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        child.textContent.split(/(\s+)/).forEach((chunk) => {
+          if (!chunk.trim()) return;
+          const span = document.createElement("span");
+          span.className = "w" + (extraClass ? " " + extraClass : "");
+          span.textContent = chunk;
+          out.push(span);
+        });
+      } else if (child.nodeType === 1) {
+        walk(child, child.className || extraClass);
+      }
+    });
+  };
+  walk(host, "");
+  return out;
+}
+
+function mountWords(host) {
+  const stagger = Number(host.dataset.stagger || 30);
+  const travel = Number(host.dataset.out || 28);
+  const words = splitWords(host);
+  host.textContent = "";
+  host.classList.add("words");
+  if (host.dataset.nowrap !== undefined) host.classList.add("nowrap");
+  host.style.columnGap = WORD_GAP_EM + "em";
+  // The animated copy is decorative — the same string is exposed once, plainly,
+  // to assistive technology.
+  const label = words.map((w) => w.textContent).join(" ");
+  host.setAttribute("aria-hidden", "true");
+  const sr = document.createElement("span");
+  sr.className = "sr-only";
+  sr.textContent = label;
+  host.parentNode.insertBefore(sr, host);
+
+  words.forEach((w) => {
+    w.style.opacity = "0";
+    w.style.transform = "translate3d(0," + travel + "px,0)";
+    host.appendChild(w);
+  });
+
+  return {
+    play(delay = 0) {
+      words.forEach((word, index) => {
+        const spring = new Spring(SPRINGS.reveal, 0);
+        window.setTimeout(() => {
+          spring.start(1);
+          let last = 0;
+          const stop = subscribeToTicker((time) => {
+            const dt = last ? (time - last) / 1000 : 0;
+            last = time;
+            const t = spring.advance(dt);
+            word.style.opacity = t.toFixed(4);
+            word.style.transform = "translate3d(0," + (travel * (1 - t)).toFixed(3) + "px,0)";
+            if (spring.done) stop();
+          });
+        }, delay + index * stagger);
+      });
+    },
+  };
+}
+
+const wordBlocks = new Map();
+document.querySelectorAll("[data-words]").forEach((host) => {
+  // Below 1280 the animated version is not used at all: the engine positions
+  // its split children as flex items and a heading that fits at 1440 simply
+  // runs off a narrow screen. One heading, two renderings.
+  if (host.classList.contains("animated") && !mq("(min-width: 1280px)")) { host.remove(); return; }
+  wordBlocks.set(host, mountWords(host));
+});
+/* The plain rendering is the one that ships below the breakpoint. */
+const plainStyle = document.createElement("style");
+plainStyle.textContent =
+  "@media (min-width:1280px){ #hero h1 .plain, #contact h2 .plain { display:none } }" +
+  "@media (max-width:1279.98px){ #hero h1 .animated, #contact h2 .animated { display:none } }";
+document.head.appendChild(plainStyle);
+
+/* Headings that are not part of the hero's timed entrance play when seen. */
+wordBlocks.forEach((block, host) => {
+  if (host.closest("#hero") || host.closest("#contact h2")) return;
+  onceInView(host, () => block.play(0));
+});
+const contactHead = document.querySelector("#contact h2 .animated");
+if (contactHead && wordBlocks.has(contactHead)) {
+  onceInView(contactHead, () => wordBlocks.get(contactHead).play(0));
+}
+
+/* ============================================================================
+   7. THE PRELOADER
+   ========================================================================== */
+const PRELOADER_MINIMUM_MS = 1500;
+const PRELOADER_HOLD_MS = 160;
+const PRELOADER_EXIT_MS = 1200;
+const PRELOADER_REVEAL_AT_MS = PRELOADER_MINIMUM_MS + PRELOADER_HOLD_MS;   // 1660
+const HERO_DELAY = {
+  wordmark: PRELOADER_REVEAL_AT_MS + 120,   // 1780
+  heading:  PRELOADER_REVEAL_AT_MS + 260,   // 1920
+  subtitle: PRELOADER_REVEAL_AT_MS + 420,   // 2080
+  cta:      PRELOADER_REVEAL_AT_MS + 540,   // 2200
+  caption:  PRELOADER_REVEAL_AT_MS + 660,   // 2320
+};
+const WORDMARK_LETTER_STAGGER_MS = 90;
+/** Corner radius of the growing window, in rem, before it is clamped. */
+const WINDOW_RADIUS = 6;
+
+const curtain = document.getElementById("curtain");
+const counterNode = document.getElementById("counter");
+const countSpring = new Spring(SPRINGS.count, 0);
+const openSpring = new Spring(SPRINGS.open, 0);
+
+/** Outer viewport rect plus an inner rounded rect; `evenodd` makes it a hole. */
+function holePath(open) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  // Overshoot: a spring settles asymptotically, so at open = 0.99 a hairline of
+  // curtain would still frame the viewport for the last few hundred ms.
+  const t = Math.min(1, open * 1.06);
+  const w = vw * t, h = vh * t;
+  const x = (vw - w) / 2, y = (vh - h) / 2;
+  // The radius is a rem value and the root font-size is viewport-derived, so it
+  // has to be read rather than assumed to be 16.
+  const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  // Clamped by the half-extents, so a small window is a pill and the corners
+  // square off exactly as they reach the viewport edge.
+  const r = Math.min(WINDOW_RADIUS * remPx * (1 - t), w / 2, h / 2);
+  return "M0,0 H" + vw + " V" + vh + " H0 Z " +
+    "M" + (x + r) + "," + y + " H" + (x + w - r) + " A" + r + "," + r + " 0 0 1 " + (x + w) + "," + (y + r) + " " +
+    "V" + (y + h - r) + " A" + r + "," + r + " 0 0 1 " + (x + w - r) + "," + (y + h) + " " +
+    "H" + (x + r) + " A" + r + "," + r + " 0 0 1 " + x + "," + (y + h - r) + " " +
+    "V" + (y + r) + " A" + r + "," + r + " 0 0 1 " + (x + r) + "," + y + " Z";
+}
+
+let curtainDone = false;
+let opening = false;
+const openedAt = performance.now();
+document.documentElement.style.overflow = "hidden";
+window.scrollTo(0, 0);
+
+// Fully closed until the reveal starts, so the curtain is solid while the
+// counter runs.
+curtain.style.clipPath = 'path(evenodd, "' + holePath(0) + '")';
+
+let curtainLast = 0;
+const stopCurtain = subscribeToTicker((time) => {
+  const dt = curtainLast ? (time - curtainLast) / 1000 : 0;
+  curtainLast = time;
+
+  if (!opening) {
+    // Drive the count from real readiness where possible, so the number means
+    // something rather than being a fixed animation pretending to measure.
+    const elapsed = performance.now() - openedAt;
+    const byTime = Math.min(1, elapsed / PRELOADER_MINIMUM_MS);
+    const loaded = document.readyState === "complete" ? 1 : 0.85;
+    countSpring.start(Math.min(byTime, loaded));
+    if (byTime >= 1 && loaded >= 1) {
+      opening = true;
+      document.documentElement.style.overflow = "";
+      window.setTimeout(() => { openSpring.start(1); }, PRELOADER_HOLD_MS);
+      window.setTimeout(() => {
+        curtainDone = true;
+        curtain.classList.add("gone");
+        stopCurtain();
+      }, PRELOADER_HOLD_MS + PRELOADER_EXIT_MS);
+    }
+  }
+
+  const count = countSpring.advance(dt);
+  const open = openSpring.advance(dt);
+  if (curtainDone) return;
+
+  counterNode.textContent = Math.round(count * 100) + "%";
+  counterNode.style.left = (count * 100).toFixed(2) + "%";
+  // ONE transform from BOTH springs: the horizontal travel is the counter's own
+  // progress, the vertical exit is the reveal's. Chaining off one spring alone
+  // would leave the other's value frozen at whatever it held when that spring
+  // last moved.
+  counterNode.style.transform =
+    "translate(" + (-count * 100).toFixed(2) + "%," + (Math.min(1, open * 1.6) * 100).toFixed(2) + "%)";
+  curtain.style.clipPath = 'path(evenodd, "' + holePath(open) + '")';
+});
+
+/* ============================================================================
+   8. THE HERO ENTRANCE
+   Offsets from PRELOADER_REVEAL_AT_MS, measured from load, so changing the
+   curtain's length moves the hero with it instead of silently desyncing.
+   ========================================================================== */
+function springTo(node, from, to, config, delay) {
+  writeStyle(node, from, to, 0);
+  window.setTimeout(() => {
+    const spring = new Spring(config, 0);
+    spring.start(1);
+    let last = 0;
+    const stop = subscribeToTicker((time) => {
+      const dt = last ? (time - last) / 1000 : 0;
+      last = time;
+      const t = spring.advance(dt);
+      writeStyle(node, from, to, t);
+      if (spring.done) stop();
+    });
+  }, Math.max(0, delay - performance.now()));
+}
+
+{
+  const nav = document.getElementById("nav");
+  const write = (t) => {
+    nav.style.setProperty("--nav-y", (-16 * (1 - t)).toFixed(3) + "px");
+    nav.style.opacity = t.toFixed(4);
+  };
+  write(0);
+  window.setTimeout(() => {
+    const spring = new Spring(SPRINGS.reveal, 0);
+    spring.start(1);
+    let last = 0;
+    const stop = subscribeToTicker((time) => {
+      const dt = last ? (time - last) / 1000 : 0;
+      last = time;
+      write(spring.advance(dt));
+      if (spring.done) stop();
+    });
+  }, Math.max(0, 200 - performance.now()));
+}
+
+const heroHead = document.querySelector("#hero h1 .animated");
+if (heroHead && wordBlocks.has(heroHead)) {
+  window.setTimeout(() => wordBlocks.get(heroHead).play(0),
+    Math.max(0, HERO_DELAY.heading - performance.now()));
+}
+springTo(document.getElementById("hero-sub"), PRESETS.fade.from, PRESETS.fade.to, SPRINGS.reveal, HERO_DELAY.subtitle);
+springTo(document.getElementById("hero-cta"), { opacity: 0, y: 16 }, { opacity: 1, y: 0 }, SPRINGS.reveal, HERO_DELAY.cta);
+springTo(document.getElementById("hero-caption"), PRESETS.fade.from, PRESETS.fade.to, SPRINGS.reveal, HERO_DELAY.caption);
+
+/* ============================================================================
+   9. THE SPLIT WORDMARK
+   Alternating letters climb at different rates on scroll. The gradient goes on
+   EACH LETTER, not the wrapper: on the wrapper it masks to the glyphs the
+   wrapper itself paints, and a transformed child composites separately — so the
+   letters fall straight out of a wrapper-level background-clip:text mask and
+   render nothing at all.
+   ========================================================================== */
+const WORDMARK_TEXT = "aerra";
+/** Travel for the faster (odd) and slower (even) letters, in rem. Kept modest:
+    at a 50rem type size a large gap stops reading as "some letters lead" and
+    starts reading as the word coming apart. The word has to stay a word. */
+const LEAD_REM = 14, TRAIL_REM = 5;
+
+const wordmarkHost = document.getElementById("wordmark");
+if (wordmarkHost) {
+  const letters = WORDMARK_TEXT.split("").map((glyph, index) => {
+    // The entrance WRAPS the scroll-scrubbed span rather than nesting inside it:
+    // the scrub has no way to also play a one-shot, and — decisively — the
+    // gradient lives on the inner span, so putting a filter BELOW it would
+    // composite the glyphs out of the mask and render nothing.
+    const outer = document.createElement("span");   // entrance
+    outer.style.display = "inline-block";
+    outer.style.opacity = "0";
+    const scrub = document.createElement("span");   // scroll travel
+    scrub.style.display = "inline-block";
+    scrub.setAttribute("aria-hidden", "true");
+    const ink = document.createElement("span");     // the gradient
+    ink.style.display = "inline-block";
+    ink.style.backgroundImage = "var(--wordmark-fill)";
+    ink.style.webkitBackgroundClip = "text";
+    ink.style.backgroundClip = "text";
+    ink.style.color = "transparent";
+    ink.textContent = glyph;
+    scrub.appendChild(ink);
+    outer.appendChild(scrub);
+    wordmarkHost.appendChild(outer);
+    return { outer, scrub, travel: index % 2 === 1 ? LEAD_REM : TRAIL_REM, index };
+  });
+
+  const heroSection = document.getElementById("hero");
+  subscribeToTicker(() => {
+    if (!mq("(min-width: 1280px)")) return;
+    const p = scrollProgress(heroSection, "top top", "bottom top");
+    letters.forEach((letter) => {
+      letter.scrub.style.transform = "translate3d(0,-" + (letter.travel * p).toFixed(4) + "rem,0)";
+    });
+  });
+
+  /* Nothing is shown until the webfont is in place. At this size the
+     metric-adjusted fallback is nowhere near the real face — measured, `aerra`
+     sets 1909px in the fallback against 1627px in Google Sans Flex. Fading in
+     over the swap meant the letters appeared bunched and then jumped to their
+     real positions the moment the font landed. */
+  document.fonts.ready.then(() => {
+    const startDelay = Math.max(0, HERO_DELAY.wordmark - performance.now());
+    letters.forEach((letter) => {
+      const from = { opacity: 0 }, to = { opacity: 1 };
+      window.setTimeout(() => {
+        const spring = new Spring(SPRINGS.soft, 0);
+        spring.start(1);
+        let last = 0;
+        const stop = subscribeToTicker((time) => {
+          const dt = last ? (time - last) / 1000 : 0;
+          last = time;
+          const t = spring.advance(dt);
+          // In `em`, so the entrance keeps its proportions at every grid width:
+          // at 801px type, 0.22em is a 176px rise and 0.03em a 24px blur.
+          letter.outer.style.opacity = t.toFixed(4);
+          letter.outer.style.transform = "translate3d(0," + (0.22 * (1 - t)).toFixed(4) + "em,0)";
+          letter.outer.style.filter = "blur(" + (0.03 * (1 - t)).toFixed(4) + "em)";
+          if (spring.done) { letter.outer.style.filter = "blur(0em)"; stop(); }
+        });
+      }, startDelay + letter.index * WORDMARK_LETTER_STAGGER_MS);
+    });
+  });
+}
+
+/* ============================================================================
+   10. THE COUNTING STATISTICS
+   The blur is derived from the SAME spring that drives the number, so the two
+   can never disagree — the digits sharpen exactly as they stop moving.
+   ========================================================================== */
+const MAX_BLUR_REM = 0.75;
+const SETTLE_EPSILON = 0.01;
+document.querySelectorAll("[data-count]").forEach((node) => {
+  const raw = node.dataset.count;
+  const target = Number(raw);
+  const decimals = raw.includes(".") ? raw.split(".")[1].length : 0;
+  node.textContent = (0).toFixed(decimals);
+  onceInView(node, () => {
+    const spring = new Spring(SPRINGS.counter, 0);
+    spring.start(1);
+    let last = 0;
+    const stop = subscribeToTicker((time) => {
+      const dt = last ? (time - last) / 1000 : 0;
+      last = time;
+      const p = spring.advance(dt);
+      const remaining = 1 - p;
+      node.textContent = (target * p).toFixed(decimals);
+      node.style.filter = remaining < SETTLE_EPSILON ? "none" : "blur(" + (remaining * MAX_BLUR_REM).toFixed(4) + "rem)";
+      node.style.opacity = Math.min(1, 0.15 + p * 1.6).toFixed(4);
+      if (spring.done) stop();
+    });
+  });
+});
+
+/* ============================================================================
+   11. THE NAV PANEL
+   ========================================================================== */
+const burger = document.getElementById("burger");
+const navPanel = document.getElementById("nav-panel");
+let navOpen = false;
+function setNav(open) {
+  navOpen = open;
+  burger.setAttribute("aria-expanded", String(open));
+  burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  navPanel.classList.toggle("open", open);
+  navPanel.setAttribute("aria-hidden", open ? "false" : "true");
+  navPanel.style.opacity = open ? "1" : "0";
+  navPanel.style.transform = open ? "translate3d(0,0,0)" : "translate3d(0,-8px,0)";
+  navPanel.querySelectorAll("a").forEach((a) => a.setAttribute("tabindex", open ? "0" : "-1"));
+}
+setNav(false);
+navPanel.style.transition = "opacity 200ms var(--ease-entrance), transform 200ms var(--ease-entrance)";
+burger.addEventListener("click", () => setNav(!navOpen));
+navPanel.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setNav(false)));
+window.addEventListener("keydown", (e) => { if (e.key === "Escape" && navOpen) setNav(false); });
+
+/* The arrow tiles — two of them per button, built once. */
+const ARROW = '<svg viewBox="0 0 18 8.71875" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><path d="M17.7938 3.86167L17.7931 3.861L14.1192 0.204748C13.8439 -0.0691546 13.3987 -0.0681353 13.1248 0.207138C12.8508 0.482376 12.8519 0.92756 13.1271 1.2015L15.5938 3.65625H0.703125C0.314789 3.65625 0 3.97104 0 4.35937C0 4.74771 0.314789 5.0625 0.703125 5.0625H15.5938L13.1272 7.51725C12.8519 7.79118 12.8509 8.23637 13.1248 8.51161C13.3988 8.78692 13.844 8.78786 14.1192 8.514L17.7932 4.85775L17.7938 4.85708C18.0692 4.58223 18.0683 4.1356 17.7938 3.86167Z" fill="currentColor"/></svg>';
+document.querySelectorAll("[data-arrow]").forEach((tile) => { tile.innerHTML = ARROW + ARROW; });
+
+/* Images */
+document.querySelectorAll("[data-asset]").forEach((img) => {
+  img.addEventListener("error", () => showAssetBanner(asset(img.dataset.asset)));
+  img.src = asset(img.dataset.asset);
+});
+
+document.getElementById("contact-form").addEventListener("submit", (e) => e.preventDefault());
+
+/* ============================================================================
+   12. THE TURNTABLE
+   A video advanced frame-by-frame rather than played. The clip is never
+   play()ed: a phase is advanced on the shared ticker and mapped onto
+   currentTime, so the file behaves like an image sequence while staying one
+   compressed asset. Requires an ALL-KEYFRAME encode — with sparse keyframes the
+   browser snaps to the nearest one and the rotation looks steppy.
+   ========================================================================== */
+{
+  const KEY_STEP = 1 / 24;
+  const FLICK_DAMPING = 0.14;
+  const SEEK_EPSILON = 1 / 240;
+  const SEEK_INTERVAL_MS = 1000 / 30;
+  const MAX_DELTA_MS = 100;
+  /* Just short of a whole turn: the phase is wrapped before it becomes a
+     timestamp and wrap(1) is 0, so landing on exactly 1 would snap back to the
+     first frame instead of resting on the last one. */
+  const AUTO_END = 0.9995;
+  const PLAY_SPEED = 2.2;
+  const WIDTHS_PER_TURN = 1;
+  const wrap = (v) => ((v % 1) + 1) % 1;
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+  const host = document.getElementById("turntable");
+  const video = document.getElementById("turntable-video");
+  const scrubber = document.getElementById("scrubber");
+  const track = document.getElementById("scrub-track");
+  const handle = document.getElementById("scrub-handle");
+
+  video.addEventListener("error", () => showAssetBanner(asset("about-video.mp4")));
+  video.src = asset("about-video.mp4");
+
+  let duration = 0, ready = false;
+  let autoPhase = 0, scrubPhase = null;
+  let lastTick = 0, lastSeek = 0;
+  let rate = 0, spent = false;
+  let pointer = null;
+  const turn = new Spring(SPRINGS.drag, 0);
+  const rateSpring = new Spring(SPRINGS.drag, 0);
+
+  const adopt = () => {
+    if (video.readyState < 1) return;
+    duration = video.duration;
+    // Nudge off zero so the first frame paints without ever calling play().
+    if (video.currentTime === 0) video.currentTime = SEEK_EPSILON;
+    ready = true;
+  };
+  video.addEventListener("loadedmetadata", adopt);
+  adopt();
+
+  onceInView(host, () => { if (!spent) rateSpring.start(1); });
+
+  /** Taking hold cancels the playthrough instead of fighting it for the phase. */
+  const takeOver = () => { if (!spent) { spent = true; rateSpring.start(0); } };
+
+  const seekInterval = Math.max(SEEK_INTERVAL_MS, FRAME_BUDGET);
+  subscribeToTicker((time) => {
+    if (!duration || document.hidden) return;
+    const delta = lastTick ? Math.min(time - lastTick, MAX_DELTA_MS) : 0;
+    lastTick = time;
+    const dt = delta / 1000;
+    turn.advance(dt);
+    rate = rateSpring.advance(dt);
+
+    if (autoPhase < AUTO_END && scrubPhase === null) {
+      autoPhase = Math.min(AUTO_END, autoPhase + (rate * PLAY_SPEED * dt) / duration);
+      if (autoPhase >= AUTO_END && !spent) {
+        spent = true; rateSpring.start(0);
+        scrubber.setAttribute("aria-valuenow", "100");
+      }
+    }
+
+    // A held scrubber is authoritative: no spring between the pointer and the
+    // frame, and CLAMPED rather than wrapped so the ends are walls instead of a
+    // jump back to the far side.
+    const phase = scrubPhase !== null ? scrubPhase : wrap(autoPhase + turn.value);
+    handle.style.left = (phase * 100).toFixed(3) + "%";
+
+    // Only the SEEK is throttled. Writing the handle's position is a style
+    // assignment costing nothing, and inheriting the seek's 30Hz budget made it
+    // step visibly behind a 60Hz cursor.
+    if (time - lastSeek < seekInterval) return;
+    lastSeek = time;
+    // A seek that is still decoding must not be given another target — queued
+    // seeks are what makes scrubbing stutter.
+    if (video.seeking) return;
+    const next = phase * duration;
+    if (Math.abs(video.currentTime - next) > SEEK_EPSILON) video.currentTime = next;
+  });
+
+  host.addEventListener("pointerdown", (event) => {
+    if (!ready || event.target.closest(".scrubber")) return;
+    takeOver();
+    pointer = { id: event.pointerId, x: event.clientX, time: event.timeStamp, velocity: 0 };
+    try { host.setPointerCapture(event.pointerId); } catch (_) {}
+  });
+  host.addEventListener("pointermove", (event) => {
+    if (!pointer || pointer.id !== event.pointerId) return;
+    const width = host.clientWidth;
+    if (!width) return;
+    const dx = event.clientX - pointer.x;
+    const dt = Math.max(event.timeStamp - pointer.time, 1);
+    const turns = dx / (width * WIDTHS_PER_TURN);
+    pointer.x = event.clientX; pointer.time = event.timeStamp; pointer.velocity = turns / dt;
+    // Drag right → rotate the subject right, i.e. run the sequence backwards.
+    turn.start(turn.target - turns);
+  });
+  const endDrag = (event) => {
+    if (!pointer || pointer.id !== event.pointerId) return;
+    const velocity = pointer.velocity;
+    pointer = null;
+    try { if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId); } catch (_) {}
+    // Let a flick keep spinning; the same spring decelerates it.
+    if (Math.abs(velocity) > 0) turn.start(turn.target - velocity * FLICK_DAMPING * 1000);
+  };
+  host.addEventListener("pointerup", endDrag);
+  host.addEventListener("pointercancel", endDrag);
+
+  const scrubTo = (clientX) => {
+    const rect = track.getBoundingClientRect();
+    if (!rect.width) return;
+    scrubPhase = clamp01((clientX - rect.left) / rect.width);
+  };
+  scrubber.addEventListener("pointerdown", (event) => {
+    if (!ready) return;
+    event.stopPropagation();
+    takeOver();
+    pointer = { id: event.pointerId, x: event.clientX, time: event.timeStamp, velocity: 0 };
+    try { scrubber.setPointerCapture(event.pointerId); } catch (_) {}
+    scrubTo(event.clientX);
+  });
+  scrubber.addEventListener("pointermove", (event) => {
+    if (!pointer || pointer.id !== event.pointerId) return;
+    event.stopPropagation();
+    scrubTo(event.clientX);
+  });
+  const endScrub = (event) => {
+    if (!pointer || pointer.id !== event.pointerId) return;
+    pointer = null;
+    try { if (scrubber.hasPointerCapture(event.pointerId)) scrubber.releasePointerCapture(event.pointerId); } catch (_) {}
+    // Hand the value back to the spring path WITHOUT moving it: rebase
+    // autoPhase so autoPhase + turn already equals where the scrub ended.
+    // Skipping this is what would make the frame jump on release.
+    if (scrubPhase !== null) {
+      const landed = scrubPhase;
+      autoPhase = landed - turn.value;
+      scrubber.setAttribute("aria-valuenow", String(Math.round(landed * 100)));
+      scrubPhase = null;
+    }
+  };
+  scrubber.addEventListener("pointerup", endScrub);
+  scrubber.addEventListener("pointercancel", endScrub);
+  scrubber.addEventListener("keydown", (event) => {
+    if (!ready) return;
+    if (event.key === "ArrowRight") { event.preventDefault(); takeOver(); turn.start(turn.target + KEY_STEP); }
+    else if (event.key === "ArrowLeft") { event.preventDefault(); takeOver(); turn.start(turn.target - KEY_STEP); }
+    else if (event.key === "Home") { event.preventDefault(); takeOver(); autoPhase = 0; turn.set(0); }
+  });
+}
+
+/* ============================================================================
+   13. THE PIXEL REVEAL  (raw WebGL — one full-screen quad; the location section
+   should not pull in a 3D engine to draw it)
+   ========================================================================== */
+{
+  const COLS = 84, ROWS = 56;
+  const DECAY = 0.955;
+  const RADIUS = 11;
+  const PRELOAD_MARGIN = "600px";
+
+  const VERTEX = `
+attribute vec2 position;
+varying vec2 vUv;
+void main() {
+  vUv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}`;
+
+  const FRAGMENT = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uImage;
+uniform sampler2D uHeat;
+uniform vec2 uGrid;
+uniform vec2 uCoverScale;
+
+void main() {
+  // Heat stays in canvas space, so the wave follows the cursor regardless of
+  // how the artwork is fitted. NEAREST on a low-res grid quantises the reveal
+  // into blocks — the grid's own cells are the pixels of the effect.
+  float heat = texture2D(uHeat, vUv).r;
+
+  // Cover-fit, matching the object-cover photograph underneath: the canvas is
+  // 120% of the section tall (it rides the same parallax layer), so sampling
+  // straight would stretch the artwork out of step with the photo.
+  vec2 uv = (vUv - 0.5) * uCoverScale + 0.5;
+
+  // No displacement: warping the lookup smeared the artwork into streaks
+  // instead of revealing it.
+  vec4 image = texture2D(uImage, uv);
+
+  // Quantise the alpha to the same block grid so the edge steps in pixels
+  // rather than fading smoothly, then keep a touch of softness at the tail.
+  float alpha = smoothstep(0.04, 0.5, heat);
+  gl_FragColor = vec4(image.rgb, image.a * alpha);
+}`;
+
+  const canvas = document.getElementById("pixel-canvas");
+  const compile = (gl, type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error("[PixelRevealImage] shader failed:", gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  };
+
+  /* Latched: proximity decides when to BUILD, never when to tear down. Making
+     the effect depend on visibility directly meant leaving the section disposed
+     the program and returning re-created it — measured as a linkProgram plus a
+     57–81ms long task on EVERY re-entry, landing mid-scroll. */
+  let armed = false;
+  const gate = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting || armed) return;
+    armed = true;
+    gate.disconnect();
+    build();
+  }, { rootMargin: PRELOAD_MARGIN });
+  gate.observe(canvas);
+
+  function build() {
+    if (!mq("(hover: hover) and (pointer: fine) and (min-width: 768px)")) return;
+
+    // One flat quad — nothing here depth-tests, stencils or antialiases.
+    const gl = canvas.getContext("webgl", {
+      alpha: true, premultipliedAlpha: false, antialias: false, depth: false, stencil: false,
+    });
+    if (!gl) return;
+
+    const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX);
+    const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
+    if (!vertex || !fragment) return;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const positionLoc = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    const heat = new Float32Array(COLS * ROWS);
+    const heatBytes = new Uint8Array(COLS * ROWS * 4);
+    const heatTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, heatTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const imageTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, imageTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const coverLoc = gl.getUniformLocation(program, "uCoverScale");
+    let imageAspect = 1;
+    const applyCover = () => {
+      const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+      const canvasAspect = w / h;
+      if (canvasAspect > imageAspect) gl.uniform2f(coverLoc, 1, imageAspect / canvasAspect);
+      else gl.uniform2f(coverLoc, canvasAspect / imageAspect, 1);
+    };
+
+    let imageReady = false;
+    const image = new Image();
+    // Externalised media is CROSS-ORIGIN — the element must opt in, or the
+    // texture upload throws, the exception is swallowed, and the canvas
+    // silently never paints. A CORS header on the bucket is necessary and NOT
+    // sufficient.
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, imageTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      imageAspect = image.naturalWidth / image.naturalHeight;
+      applyCover();
+      imageReady = true;
+    };
+    image.onerror = () => showAssetBanner(asset("mask.png"));
+    image.src = asset("mask.png");
+
+    gl.uniform1i(gl.getUniformLocation(program, "uImage"), 0);
+    gl.uniform1i(gl.getUniformLocation(program, "uHeat"), 1);
+    gl.uniform2f(gl.getUniformLocation(program, "uGrid"), COLS, ROWS);
+
+    const resize = () => {
+      // The effect is quantised to an 84 × 56 grid, so it is the opposite of
+      // hard-edged — it can take the lower clamp with no visible cost.
+      const dpr = clampPixelRatio(false);
+      const width = Math.round(canvas.clientWidth * dpr);
+      const height = Math.round(canvas.clientHeight * dpr);
+      if (!width || !height) return;
+      if (canvas.width === width && canvas.height === height) return;
+      canvas.width = width; canvas.height = height;
+      gl.viewport(0, 0, width, height);
+      applyCover();
+    };
+    resize();
+    new ResizeObserver(resize).observe(canvas);
+
+    let splat = null;
+    let pointerX = 0, pointerY = 0, pointerMoved = false;
+    let lastX = null, lastY = null;
+
+    const onMove = (event) => {
+      // Scrolling the page under a stationary cursor makes the browser
+      // synthesise pointer events at the SAME coordinates. Treating those as
+      // hovering painted the reveal in wherever the cursor happened to be
+      // parked, so the mask was already showing on arrival.
+      if (event.clientX === lastX && event.clientY === lastY) return;
+      lastX = event.clientX; lastY = event.clientY;
+      pointerX = event.clientX; pointerY = event.clientY;
+      pointerMoved = true;
+    };
+    const onLeave = () => { pointerMoved = false; splat = null; };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerleave", onLeave, { passive: true });
+
+    let onScreen = true;
+    new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      // Leave cold, arrive cold: heat left in the grid would still be there on
+      // the way back, which reads as a reveal nobody asked for.
+      if (!onScreen) { heat.fill(0); splat = null; pointerMoved = false; lastX = null; lastY = null; }
+    }, { rootMargin: "10%" }).observe(canvas);
+
+    let alive = 0;
+    subscribeToTicker(() => {
+      if (!imageReady || !onScreen || document.hidden) return;
+
+      // ONE rect read per frame, inside the ticker. A rect read in a
+      // pointermove handler that fires during scroll is a forced layout on
+      // every event.
+      if (pointerMoved) {
+        const rect = canvas.getBoundingClientRect();
+        const u = (pointerX - rect.left) / rect.width;
+        const v = (pointerY - rect.top) / rect.height;
+        splat = (u < 0 || u > 1 || v < 0 || v > 1)
+          ? null
+          // The heat texture is sampled with the image's flipped Y, so paint
+          // into the row the shader will read.
+          : { col: u * COLS, row: (1 - v) * ROWS };
+        pointerMoved = false;
+      } else {
+        // A cursor that stopped moving stops feeding the wave; the trail decays
+        // out on its own.
+        splat = null;
+      }
+
+      let peak = 0;
+      for (let i = 0; i < heat.length; i += 1) {
+        heat[i] *= DECAY;
+        if (heat[i] > peak) peak = heat[i];
+      }
+
+      if (splat) {
+        const minCol = Math.max(0, Math.floor(splat.col - RADIUS));
+        const maxCol = Math.min(COLS - 1, Math.ceil(splat.col + RADIUS));
+        const minRow = Math.max(0, Math.floor(splat.row - RADIUS));
+        const maxRow = Math.min(ROWS - 1, Math.ceil(splat.row + RADIUS));
+        for (let row = minRow; row <= maxRow; row += 1) {
+          for (let col = minCol; col <= maxCol; col += 1) {
+            const dx = col + 0.5 - splat.col;
+            const dy = row + 0.5 - splat.row;
+            const falloff = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
+            if (falloff <= 0) continue;
+            const index = row * COLS + col;
+            const add = falloff * falloff * 0.34;
+            heat[index] = Math.min(1, heat[index] + add);
+            if (heat[index] > peak) peak = heat[index];
+          }
+        }
+      }
+
+      // Nothing visible and nothing incoming — skip the upload and the draw.
+      if (peak < 0.002 && !splat) { if (alive === 0) return; alive = 0; }
+      else alive = 1;
+
+      for (let i = 0; i < heat.length; i += 1) heatBytes[i * 4] = heat[i] * 255;
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, heatTexture);
+      // FLIP_Y is global GL state, and the image upload turns it on. Left set,
+      // it would flip the heat grid too and mirror the whole reveal.
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, COLS, ROWS, 0, gl.RGBA, gl.UNSIGNED_BYTE, heatBytes);
+
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }, () => FRAME_BUDGET);
+  }
+}
+
+/* ============================================================================
+   14. THE 3D MARK  (three.js)
+   Loaded only once the audience section is close: without the gate ~456KB of
+   three plus the Draco decoder are fetched and parsed while the visitor is
+   still looking at the hero — measured as a 125ms main-thread block at load.
+   Code-splitting alone defers the BUNDLE, not the WORK.
+   ========================================================================== */
+{
+  const HEIGHT_RATIO = 0.127;
+  const PRELOAD_MARGIN = "800px";
+  const CHASE_TAU = 0.12;
+  const EPSILON = 0.0004;
+  const CAMERA_FOV = 35;
+  const CAMERA_Z = 4.2;
+  const TURNS = 2;
+
+  const host = document.getElementById("mark-host");
+  const section = document.getElementById("audience");
+  let progress = 0;
+  subscribeToTicker(() => { progress = scrollProgress(section, "top bottom", "bottom top"); });
+
+  let mounted = false;
+  const gate = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting || mounted) return;
+    mounted = true;   // proximity decides when to MOUNT, and nothing decides
+    gate.disconnect(); // when to unmount
+    boot().catch((error) => showAssetBanner("https://unpkg.com/three@0.185.0", error));
+  }, { rootMargin: PRELOAD_MARGIN });
+  gate.observe(host);
+
+  async function boot() {
+    const [THREE, { GLTFLoader }, { DRACOLoader }, { RoomEnvironment }] = await Promise.all([
+      import("three"),
+      import("three/addons/loaders/GLTFLoader.js"),
+      import("three/addons/loaders/DRACOLoader.js"),
+      import("three/addons/environments/RoomEnvironment.js"),
+    ]);
+
+    // The canvas is transparent over the page so `alpha` stays, but nothing
+    // here stencils, and antialiasing is dropped on mobile where the DPR clamp
+    // hides its absence.
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true, antialias: ANTIALIAS, stencil: false,
+      powerPreference: TIER === "desktop" ? "high-performance" : "default",
+    });
+    renderer.setPixelRatio(clampPixelRatio(true));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // Filmic tone mapping keeps the specular roll-off on a dark metal from
+    // clipping to a flat white edge.
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.domElement.setAttribute("aria-hidden", "true");
+    host.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 100);
+    camera.position.set(0, 0, CAMERA_Z);
+    /** World height the camera sees at z = 0 — the canvas height in world units. */
+    const visibleHeight = 2 * CAMERA_Z * Math.tan((CAMERA_FOV / 2) * (Math.PI / 180));
+
+    // A metal is almost entirely reflection, so without an environment it
+    // renders as a flat black silhouette. This synthetic room is what makes it
+    // read as metal rather than plastic.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const environment = pmrem.fromScene(new RoomEnvironment(), 0.04);
+    scene.environment = environment.texture;
+
+    // One directional key plus the environment map. Every real-time light
+    // multiplies the fragment cost of every lit material, and the PMREM'd room
+    // above already supplies the fill and the rim.
+    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    key.position.set(2.5, 3, 2.5);
+    scene.add(key);
+
+    const pivot = new THREE.Group();
+    scene.add(pivot);
+
+    // High roughness on a full metal is what "matte metal" means — it keeps the
+    // reflection broad and soft instead of mirror-sharp.
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x0b0b0b, metalness: 1, roughness: 0.62, envMapIntensity: 1.1,
+    });
+
+    const resize = () => {
+      const { clientWidth, clientHeight } = host;
+      if (!clientWidth || !clientHeight) return;
+      // `updateStyle` must stay on: with a pixel ratio above 1 the backing
+      // store is larger than the layout box, and without the CSS size three
+      // leaves the canvas to lay out at its attribute size — overflowing the
+      // box by exactly the device pixel ratio.
+      renderer.setSize(clientWidth, clientHeight);
+      camera.aspect = clientWidth / clientHeight;
+      camera.updateProjectionMatrix();
+    };
+    resize();
+    new ResizeObserver(resize).observe(host);
+
+    let onScreen = true;
+    new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; }, { rootMargin: "10%" }).observe(host);
+
+    let angle = 0, offsetY = 0;
+    let lastAngle = NaN, lastOffset = NaN, lastTime = 0;
+    let loaded = false, primed = false, modelHeight = 0;
+
+    const draco = new DRACOLoader();
+    draco.setDecoderPath("https://unpkg.com/three@0.185.0/examples/jsm/libs/draco/gltf/");
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(draco);
+
+    loader.load(asset("model.glb"), (gltf) => {
+      const model = gltf.scene;
+      model.traverse((child) => { if (child.isMesh) child.material = material; });
+
+      // Normalise whatever the file was authored at: centre it on the pivot,
+      // then scale so it occupies `heightRatio` of what the camera sees.
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const centre = box.getCenter(new THREE.Vector3());
+      const largest = Math.max(size.x, size.y, size.z) || 1;
+      modelHeight = visibleHeight * HEIGHT_RATIO;
+      model.position.sub(centre);
+      model.scale.setScalar(modelHeight / largest);
+      pivot.add(model);
+
+      // Prewarm: compile the program and upload the environment while the model
+      // is still off screen, so the first frame after it scrolls into view does
+      // not stall on a shader link or a texture upload.
+      renderer.compile(scene, camera);
+      renderer.render(scene, camera);
+      loaded = true;
+    }, undefined, (error) => showAssetBanner(asset("model.glb"), error));
+
+    subscribeToTicker((time) => {
+      // A background tab paints nothing, and neither does an off-screen
+      // section. Under reduced motion / low power the scene settles on one
+      // frame — WebGL keeps it on the canvas, so that costs nothing.
+      if (!loaded || !onScreen || document.hidden || (SCENE_FREEZE && !Number.isNaN(lastAngle))) {
+        lastTime = time;
+        // Scroll keeps moving while this is gated off, so whatever is chased
+        // toward on resume would be stale. Re-prime instead.
+        primed = false;
+        return;
+      }
+      const delta = lastTime ? Math.min((time - lastTime) / 1000, 0.1) : 0;
+      lastTime = time;
+
+      const value = progress;
+      const targetAngle = value * TURNS * Math.PI * 2;
+      // Enter from above the top edge, leave past the bottom.
+      const targetOffset = (0.5 - value) * (visibleHeight + modelHeight * 2);
+
+      if (!primed) {
+        // First drawn frame: SNAP. `offsetY` starts at 0, which is the middle
+        // of the travel rather than the start of it, so chasing from there made
+        // the model fly up to its entry point and only then descend.
+        primed = true; angle = targetAngle; offsetY = targetOffset;
+      } else {
+        // Frame-rate independent chase: a fixed per-frame lerp would spin at
+        // different speeds on 60Hz and 120Hz displays.
+        const k = delta > 0 ? 1 - Math.exp(-delta / CHASE_TAU) : 1;
+        angle += (targetAngle - angle) * k;
+        offsetY += (targetOffset - offsetY) * k;
+      }
+
+      if (Math.abs(angle - lastAngle) < EPSILON && Math.abs(offsetY - lastOffset) < EPSILON) return;
+      lastAngle = angle; lastOffset = offsetY;
+      pivot.rotation.y = angle;
+      pivot.position.y = offsetY;
+      renderer.render(scene, camera);
+    }, () => FRAME_BUDGET);
+  }
+}
+</script>
+</body>
+</html>

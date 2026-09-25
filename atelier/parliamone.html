@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<!-- PARLIAMONE — IL PREVENTIVO PER UN SITO (richiesta di Nike).
+     Prima qui c'era un modulo generico (nome, email, «cosa hai in mente»).
+     Ora e' il preventivo DEDICATO ai siti web: chi arriva dall'Atelier ha
+     appena visto otto mondi, e le domande sono quelle che servono davvero a
+     farne un nono — che tipo di sito, quale mondo gli somiglia, cosa deve
+     fare, quanto e' grande, con quali tempi. Tutto a tocchi, poco da
+     scrivere: il minimo obbligatorio e' tipo di sito, nome ed email.
+     Invio con lo stesso servizio email del preventivo del sito principale
+     (stesse chiavi pubbliche, stesso modello): arriva a info@axxell.ai con
+     tutte le scelte in chiaro.
+     `<base href="/atelier/">` come la pagina madre. -->
+<base href="/atelier/">
+<script>try{window.__DA=new URLSearchParams(location.search).get('da')||'';}catch(e){window.__DA='';}</script>
+<title>Preventivo sito web | Axxell</title>
+<meta name="description" content="Richiedi un preventivo per il tuo sito: scegli il tipo, lo stile e le funzioni. Ti rispondiamo entro un giorno lavorativo.">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta property="og:title" content="Preventivo sito web | Axxell">
+<meta property="og:description" content="Scegli il tipo di sito, lo stile e le funzioni: ti rispondiamo entro un giorno lavorativo.">
+<meta property="og:url" content="https://axxell.ai/atelier/parliamone">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://axxell.ai/atelier/assets/og.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#04050a; --panel:#0a0c14; --line:rgba(223,228,238,.12); --line-2:rgba(223,228,238,.22);
+    --ink:#f0f0f6; --muted:rgba(223,228,238,.66); --dim:rgba(223,228,238,.46);
+    --cyan:#00d4ff; --err:#ff6b6b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{background:var(--bg)}
+  body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;
+    font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
+  a{color:inherit}
+
+  /* ── IL MENU: quello del sito, identico a quello dell'Atelier ───────── */
+  #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+    font-family:'Space Grotesk',sans-serif}
+  #nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-30px;z-index:-1;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(6,6,9,.97) 0%,rgba(6,6,9,.94) 52%,rgba(6,6,9,.62) 78%,rgba(6,6,9,0) 100%);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%)}
+  .nav-logo-img{display:flex;align-items:center;text-decoration:none}
+  .nav-logo-img img{height:42px;width:auto;display:block}
+  .nav-links{display:flex;list-style:none;gap:.2rem}
+  .nav-links a{color:rgba(240,240,246,.72);text-decoration:none;font-size:.88rem;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;padding:.5rem 1.1rem;border-radius:4px;
+    transition:color .2s,background .2s;display:inline-block}
+  .nav-links a:hover{color:#f0f0f6;background:rgba(255,255,255,.05)}
+  @keyframes atelierShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  #n-wc,.mobile-dropdown a.-atelier{
+    background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+    background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite}
+  .nav-right{display:flex;align-items:center}
+  .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;border:1px solid var(--cyan);color:var(--cyan);
+    font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:center;transition:all .2s}
+  .nav-cta:hover{background:var(--cyan);color:#060609}
+  .lang-sw{display:flex;align-items:center;gap:.15rem;margin-left:1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.12)}
+  .lang-sw button{background:none;border:none;cursor:pointer;color:rgba(240,240,246,.72);font-family:inherit;
+    font-size:.78rem;font-weight:600;letter-spacing:.06em;padding:.25rem .3rem;border-radius:3px;transition:color .2s}
+  .lang-sw button:hover{color:#fff}
+  .lang-sw button.on{color:var(--cyan)}
+  .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem}
+  #nav a:focus-visible,#nav button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .mobile-menu-wrap{display:none;position:relative;order:2}
+  .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
+    color:#fff;border-radius:10px;font-size:1.2rem;cursor:pointer}
+  .mobile-dropdown{position:absolute;top:52px;right:0;width:180px;background:#060609;
+    border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.5rem;display:none;
+    flex-direction:column;gap:.3rem;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  .mobile-dropdown.-on{display:flex}
+  .mobile-dropdown a{color:#fff;text-decoration:none;padding:.8rem 1rem;border-radius:10px;font-size:.85rem;white-space:nowrap}
+  .mobile-dropdown a:hover{background:rgba(255,255,255,.06)}
+  @media (max-width:960px){
+    #nav{padding:0 1rem} #nav::before{bottom:-26px}
+    .nav-links,.nav-cta{display:none}
+    .mobile-menu-wrap{display:flex}
+    .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .nav-right{order:0;margin:0}
+    .lang-sw{margin:0;padding:0;border-left:none}
+  }
+  @media (max-width:480px){ #nav{height:60px} }
+
+  /* ── LA PAGINA ─────────────────────────────────────────────────────── */
+  main{max-width:880px;margin:0 auto;padding:128px 24px 96px}
+  .kick{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--cyan)}
+  h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:500;line-height:1.08;letter-spacing:-.01em;margin:.9rem 0 1rem}
+  .lead{color:var(--muted);font-size:1.05rem;max-width:40rem}
+
+  form{margin-top:3rem;display:flex;flex-direction:column;gap:2.75rem}
+  fieldset{border:0;display:flex;flex-direction:column;gap:1rem}
+  legend{display:flex;align-items:baseline;gap:.9rem;font-size:1.2rem;font-weight:500;margin-bottom:1rem;padding:0}
+  legend .n{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.14em;color:var(--dim)}
+  legend .opz{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--dim);font-weight:400}
+  .hint{color:var(--dim);font-size:.9rem;margin-top:-.4rem}
+
+  /* le scelte a tocco */
+  .chips{display:flex;flex-wrap:wrap;gap:.6rem}
+  .chip{position:relative}
+  .chip input{position:absolute;opacity:0;pointer-events:none}
+  .chip span{display:inline-flex;align-items:center;min-height:44px;padding:.55rem 1.05rem;border-radius:999px;
+    border:1px solid var(--line-2);color:var(--muted);font-size:.95rem;cursor:pointer;user-select:none;
+    transition:border-color .18s,color .18s,background .18s}
+  .chip span:hover{border-color:rgba(223,228,238,.45);color:var(--ink)}
+  .chip input:checked + span{border-color:var(--cyan);color:var(--ink);background:rgba(0,212,255,.10)}
+  .chip input:focus-visible + span{outline:2px solid var(--cyan);outline-offset:2px}
+
+  /* le card dei mondi dell'Atelier */
+  .mondi{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}
+  .mondo{position:relative}
+  .mondo input{position:absolute;opacity:0;pointer-events:none}
+  .mondo label{display:block;cursor:pointer;border-radius:10px;overflow:hidden;border:1px solid var(--line);
+    background:var(--panel);transition:border-color .18s,transform .18s}
+  .mondo img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;opacity:.72;transition:opacity .18s}
+  .mondo b{display:block;padding:.55rem .7rem .15rem;font-weight:500;font-size:.92rem}
+  .mondo small{display:block;padding:0 .7rem .6rem;color:var(--dim);font-size:.78rem}
+  .mondo label:hover img{opacity:.95}
+  .mondo input:checked + label{border-color:var(--cyan)}
+  .mondo input:checked + label img{opacity:1}
+  .mondo input:focus-visible + label{outline:2px solid var(--cyan);outline-offset:2px}
+  @media (max-width:760px){ .mondi{grid-template-columns:repeat(2,1fr)} }
+
+  /* i campi da scrivere */
+  .campi{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.2rem}
+  .campo{display:flex;flex-direction:column;gap:.4rem}
+  .campo.-tutta{grid-column:1/-1}
+  .campo label{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .campo label i{font-style:normal;color:var(--cyan)}
+  .campo input,.campo textarea{width:100%;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;
+    color:var(--ink);font:inherit;font-size:16px;padding:.8rem .9rem;transition:border-color .18s}
+  .campo textarea{min-height:120px;resize:vertical}
+  .campo input:focus,.campo textarea:focus{outline:none;border-color:var(--cyan)}
+  .campo input[aria-invalid="true"]{border-color:var(--err)}
+  @media (max-width:640px){ .campi{grid-template-columns:1fr} }
+
+  .consenso{display:flex;gap:.75rem;align-items:flex-start;color:var(--muted);font-size:.92rem;cursor:pointer}
+  .consenso input{width:20px;height:20px;margin-top:.15rem;accent-color:var(--cyan);flex:0 0 auto}
+  .consenso a{color:var(--cyan)}
+  .consenso.-err{color:var(--err)}
+
+  .invio{display:flex;flex-wrap:wrap;align-items:center;gap:1rem 1.5rem}
+  .btn{height:52px;padding:0 1.8rem;border-radius:6px;border:0;background:var(--cyan);color:#060609;
+    font:inherit;font-weight:600;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+    transition:filter .18s,opacity .18s}
+  .btn:hover{filter:brightness(1.1)}
+  .btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .btn[disabled]{opacity:.55;cursor:progress}
+  .err{color:var(--err);font-size:.95rem}
+  .altro{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.1em;color:var(--dim)}
+  .altro a{color:var(--cyan)}
+
+  .ok{margin-top:3rem;padding:2rem;border:1px solid var(--line-2);border-radius:12px;background:var(--panel)}
+  .ok h2{font-size:1.6rem;font-weight:500;margin:.6rem 0 .6rem}
+  .ok p{color:var(--muted)}
+  .ok a{color:var(--cyan)}
+
+  #torna{position:fixed;left:clamp(14px,2.5vw,28px);bottom:clamp(14px,2.5vw,28px);z-index:15;
+    display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:11px 18px;border-radius:999px;
+    font:500 11.5px/1 'DM Mono',ui-monospace,monospace;letter-spacing:.16em;text-transform:uppercase;
+    color:#f4efe6;text-decoration:none;background:rgba(12,10,8,.72);border:1px solid rgba(244,239,230,.24);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  #torna:hover{border-color:#f4efe6}
+  @media (max-width:640px){ main{padding:96px 18px 110px} }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="mobile-menu-wrap">
+    <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown" data-t-aria="menu">☰</button>
+    <div class="mobile-dropdown" id="mobileDropdown">
+      <a href="/sabe" data-sito="/sabe">SABE</a>
+      <a href="/atlas" data-sito="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier" data-sito="/atelier">Atelier</a>
+      <a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a>
+      <a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a>
+    </div>
+  </div>
+  <a href="/" class="nav-logo-img" data-sito="/"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <ul class="nav-links">
+    <li><a href="/sabe" data-sito="/sabe">Sabe</a></li>
+    <li><a href="/atlas" data-sito="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" data-sito="/atelier">Atelier</a></li>
+    <li><a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a></li>
+    <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <div class="lang-sw">
+      <button type="button" id="lang-it">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en">EN</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1 data-t="h1">Il nono mondo è il tuo: chiedi il preventivo.</h1>
+  <p class="lead" data-t="lead">Rispondi a qualche domanda con un tocco: ci serve per capire che sito ti serve e darti un preventivo preciso. Due minuti, e ti rispondiamo entro un giorno lavorativo.</p>
+
+  <form id="prev" novalidate>
+    <fieldset>
+      <legend><span class="n">01</span><span data-t="q1">Che sito ti serve?</span></legend>
+      <div class="chips" id="tipo">
+        <label class="chip"><input type="radio" name="tipo" value="Landing page"><span data-t="t_landing">Landing page</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="Sito vetrina"><span data-t="t_vetrina">Sito vetrina</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="E-commerce"><span data-t="t_ecom">E-commerce</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="Sito con prenotazioni"><span data-t="t_pren">Sito con prenotazioni</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="Portfolio"><span data-t="t_port">Portfolio</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="Rifacimento di un sito esistente"><span data-t="t_rifa">Rifare il sito che ho</span></label>
+        <label class="chip"><input type="radio" name="tipo" value="Non so ancora"><span data-t="t_nonso">Non so ancora</span></label>
+      </div>
+      <p class="err" id="errTipo" role="alert" hidden data-t="errTipo">Scegli il tipo di sito, anche «Non so ancora».</p>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">02</span><span data-t="q2">Quale mondo dell'Atelier ti somiglia?</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <p class="hint" data-t="h2">Puoi sceglierne più di uno: ci dice lo stile che hai in mente.</p>
+      <div class="mondi" id="mondi"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">03</span><span data-t="q3">Cosa deve saper fare?</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" name="funz" value="Animazioni ed effetti 3D"><span data-t="f_3d">Animazioni ed effetti 3D</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Più lingue"><span data-t="f_lingue">Più lingue</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Prenotazioni online"><span data-t="f_pren">Prenotazioni online</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Vendita e pagamenti online"><span data-t="f_pag">Vendita e pagamenti online</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Blog o notizie"><span data-t="f_blog">Blog o notizie</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Area riservata ai clienti"><span data-t="f_area">Area riservata ai clienti</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Assistente AI in chat"><span data-t="f_chat">Assistente AI in chat</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Modulo contatti e preventivi"><span data-t="f_form">Modulo contatti e preventivi</span></label>
+        <label class="chip"><input type="checkbox" name="funz" value="Collegamento ai social"><span data-t="f_social">Collegamento ai social</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">04</span><span data-t="q4">Quanto è grande?</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <div class="chips">
+        <label class="chip"><input type="radio" name="pagine" value="Una pagina sola"><span data-t="p1">Una pagina sola</span></label>
+        <label class="chip"><input type="radio" name="pagine" value="2–5 pagine"><span data-t="p2">2–5 pagine</span></label>
+        <label class="chip"><input type="radio" name="pagine" value="6–10 pagine"><span data-t="p3">6–10 pagine</span></label>
+        <label class="chip"><input type="radio" name="pagine" value="Più di 10 pagine"><span data-t="p4">Più di 10</span></label>
+        <label class="chip"><input type="radio" name="pagine" value="Non lo so"><span data-t="p5">Non lo so</span></label>
+      </div>
+      <p class="hint" data-t="h4">Testi e foto li hai già?</p>
+      <div class="chips">
+        <label class="chip"><input type="radio" name="contenuti" value="Testi e foto pronti"><span data-t="c1">Sì, sono pronti</span></label>
+        <label class="chip"><input type="radio" name="contenuti" value="Testi e foto in parte"><span data-t="c2">In parte</span></label>
+        <label class="chip"><input type="radio" name="contenuti" value="Servono testi e foto"><span data-t="c3">No, servono anche quelli</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">05</span><span data-t="q5">Tempi e budget</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <div class="chips">
+        <label class="chip"><input type="radio" name="tempi" value="Il prima possibile"><span data-t="w1">Il prima possibile</span></label>
+        <label class="chip"><input type="radio" name="tempi" value="Entro un mese"><span data-t="w2">Entro un mese</span></label>
+        <label class="chip"><input type="radio" name="tempi" value="Entro 2–3 mesi"><span data-t="w3">Entro 2–3 mesi</span></label>
+        <label class="chip"><input type="radio" name="tempi" value="Nessuna fretta"><span data-t="w4">Nessuna fretta</span></label>
+      </div>
+      <div class="chips">
+        <label class="chip"><input type="radio" name="budget" value="Fino a 500 €"><span data-t="b1">Fino a 500 €</span></label>
+        <label class="chip"><input type="radio" name="budget" value="500–1.000 €"><span data-t="b2">500–1.000 €</span></label>
+        <label class="chip"><input type="radio" name="budget" value="1.000–2.500 €"><span data-t="b3">1.000–2.500 €</span></label>
+        <label class="chip"><input type="radio" name="budget" value="Oltre 2.500 €"><span data-t="b4">Oltre 2.500 €</span></label>
+        <label class="chip"><input type="radio" name="budget" value="Preferisco parlarne"><span data-t="b5">Preferisco parlarne</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">06</span><span data-t="q6">A chi rispondiamo?</span></legend>
+      <div class="campi">
+        <div class="campo"><label for="nome"><span data-t="l_nome">Nome e cognome</span> <i>*</i></label><input id="nome" autocomplete="name" required></div>
+        <div class="campo"><label for="azienda" data-t="l_azienda">Azienda o attività</label><input id="azienda" autocomplete="organization"></div>
+        <div class="campo"><label for="email">Email <i>*</i></label><input id="email" type="email" autocomplete="email" inputmode="email" required></div>
+        <div class="campo"><label for="tel" data-t="l_tel">Telefono</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel"></div>
+        <div class="campo -tutta"><label for="url" data-t="l_url">Il tuo sito attuale, se c'è</label><input id="url" type="url" inputmode="url" placeholder="https://"></div>
+        <div class="campo -tutta"><label for="note" data-t="l_note">Raccontaci il progetto</label><textarea id="note" data-t-ph="ph_note" placeholder="Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…"></textarea></div>
+      </div>
+      <p class="err" id="errContatti" role="alert" hidden></p>
+    </fieldset>
+
+    <label class="consenso" id="consensoBox">
+      <input type="checkbox" id="consenso">
+      <span><span data-t="consenso">Ho letto l'informativa sulla</span> <a href="/#privacy" data-sito="/#privacy" target="_blank" rel="noopener">privacy</a> <span data-t="consenso2">e accetto di essere ricontattato per questo preventivo.</span></span>
+    </label>
+
+    <div class="invio">
+      <button class="btn" id="invia" type="submit" data-t="invia">Richiedi il preventivo</button>
+      <p class="altro"><span data-t="altro">Oppure scrivici a</span> <a href="mailto:info@axxell.ai">info@axxell.ai</a></p>
+    </div>
+    <p class="err" id="errInvio" role="alert" hidden></p>
+  </form>
+
+  <div class="ok" id="ok" hidden tabindex="-1">
+    <h2 data-t="okH">Grazie, abbiamo ricevuto tutto.</h2>
+    <p data-t="okP">Ti rispondiamo entro un giorno lavorativo con un preventivo o qualche domanda in più. Nel frattempo puoi tornare a guardare i mondi dell'Atelier.</p>
+    <p style="margin-top:1rem"><a href="/atelier?da=il-tuo" data-t="okA">← Torna all'Atelier</a></p>
+  </div>
+</main>
+
+<a id="torna" href="/atelier?da=il-tuo" data-t="torna">← Torna alla mappa</a>
+
+<script src="vendor/email.min.js?v=20260824a"></script>
+<script>
+(function(){
+  'use strict';
+  /* I MONDI DELL'ATELIER, con le loro anteprime. Stessi nomi delle card. */
+  var MONDI = [
+    { id:'il-prodotto',  it:'Il negozio',      en:'The shop',         sit:'retail, e-commerce',        sen:'retail, e-commerce',        img:'assets/il-negozio.webp' },
+    { id:'il-viaggio',   it:'Il viaggio',      en:'The journey',      sit:'turismo, ospitalità',       sen:'travel, hospitality',       img:'assets/il-viaggio.webp' },
+    { id:'la-macchina',  it:'L’officina',      en:'The machine shop', sit:'industria, B2B',            sen:'manufacturing, B2B',        img:'assets/la-macchina.webp' },
+    { id:'il-dettaglio', it:'La bottega',      en:'The workshop',     sit:'artigianato, lusso',        sen:'craftsmanship, luxury',     img:'assets/il-dettaglio.webp' },
+    { id:'prima-e-dopo', it:'La casa',         en:'The house',        sit:'immobiliare, edilizia',     sen:'real estate, construction', img:'assets/prima-e-dopo.jpg' },
+    { id:'la-notte',     it:'Il ristorante',   en:'The restaurant',   sit:'ristoranti, locali',        sen:'restaurants, venues',       img:'assets/la-notte.webp' },
+    { id:'lo-studio',    it:'Lo studio',       en:'The practice',     sit:'consulenza, professionisti', sen:'consulting, professionals', img:'assets/lo-studio.webp' },
+    { id:'effetti-speciali', it:'Effetti speciali', en:'Special effects', sit:'le tecniche',         sen:'the techniques',            img:'assets/effetti-speciali.webp' }
+  ];
+
+  var T = {
+    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
+         kick:'// Preventivo sito web', h1:'Il nono mondo è il tuo: chiedi il preventivo.',
+         lead:'Rispondi a qualche domanda con un tocco: ci serve per capire che sito ti serve e darti un preventivo preciso. Due minuti, e ti rispondiamo entro un giorno lavorativo.',
+         q1:'Che sito ti serve?', t_landing:'Landing page', t_vetrina:'Sito vetrina', t_ecom:'E-commerce', t_pren:'Sito con prenotazioni', t_port:'Portfolio', t_rifa:'Rifare il sito che ho', t_nonso:'Non so ancora',
+         errTipo:'Scegli il tipo di sito, anche «Non so ancora».',
+         q2:'Quale mondo dell’Atelier ti somiglia?', opz:'facoltativo', h2:'Puoi sceglierne più di uno: ci dice lo stile che hai in mente.',
+         q3:'Cosa deve saper fare?', f_3d:'Animazioni ed effetti 3D', f_lingue:'Più lingue', f_pren:'Prenotazioni online', f_pag:'Vendita e pagamenti online', f_blog:'Blog o notizie', f_area:'Area riservata ai clienti', f_chat:'Assistente AI in chat', f_form:'Modulo contatti e preventivi', f_social:'Collegamento ai social',
+         q4:'Quanto è grande?', p1:'Una pagina sola', p2:'2–5 pagine', p3:'6–10 pagine', p4:'Più di 10', p5:'Non lo so',
+         h4:'Testi e foto li hai già?', c1:'Sì, sono pronti', c2:'In parte', c3:'No, servono anche quelli',
+         q5:'Tempi e budget', w1:'Il prima possibile', w2:'Entro un mese', w3:'Entro 2–3 mesi', w4:'Nessuna fretta',
+         b1:'Fino a 500 €', b2:'500–1.000 €', b3:'1.000–2.500 €', b4:'Oltre 2.500 €', b5:'Preferisco parlarne',
+         q6:'A chi rispondiamo?', l_nome:'Nome e cognome', l_azienda:'Azienda o attività', l_tel:'Telefono', l_url:'Il tuo sito attuale, se c’è', l_note:'Raccontaci il progetto',
+         ph_note:'Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…',
+         consenso:'Ho letto l’informativa sulla', consenso2:'e accetto di essere ricontattato per questo preventivo.',
+         invia:'Richiedi il preventivo', invio:'Invio in corso…', altro:'Oppure scrivici a',
+         eNome:'Scrivi il tuo nome.', eEmail:'Scrivi un’email valida: ti rispondiamo lì.', eConsenso:'Serve il consenso per poterti ricontattare.',
+         eInvio:'Invio non riuscito. Riprova, oppure scrivici a info@axxell.ai.', eServizio:'Il modulo non è disponibile in questo momento. Scrivici a info@axxell.ai.',
+         okKick:'// Richiesta inviata', okH:'Grazie, abbiamo ricevuto tutto.',
+         okP:'Ti rispondiamo entro un giorno lavorativo con un preventivo o qualche domanda in più. Nel frattempo puoi tornare a guardare i mondi dell’Atelier.',
+         okA:'← Torna all’Atelier', torna:'← Torna alla mappa' },
+    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
+         kick:'// Website quote', h1:'The ninth world is yours: request a quote.',
+         lead:'Answer a few questions with a tap: it helps us understand the website you need and give you an accurate quote. Two minutes, and we reply within one working day.',
+         q1:'What kind of website do you need?', t_landing:'Landing page', t_vetrina:'Showcase website', t_ecom:'E-commerce', t_pren:'Website with bookings', t_port:'Portfolio', t_rifa:'Redo my current site', t_nonso:'Not sure yet',
+         errTipo:'Pick a type of website, even “Not sure yet”.',
+         q2:'Which Atelier world feels like you?', opz:'optional', h2:'You can pick more than one: it tells us the style you have in mind.',
+         q3:'What should it do?', f_3d:'Animations and 3D effects', f_lingue:'Multiple languages', f_pren:'Online bookings', f_pag:'Online sales and payments', f_blog:'Blog or news', f_area:'Customer area', f_chat:'AI chat assistant', f_form:'Contact and quote forms', f_social:'Social media links',
+         q4:'How big is it?', p1:'A single page', p2:'2–5 pages', p3:'6–10 pages', p4:'More than 10', p5:'Not sure',
+         h4:'Do you already have texts and photos?', c1:'Yes, they’re ready', c2:'Partly', c3:'No, we need those too',
+         q5:'Timing and budget', w1:'As soon as possible', w2:'Within a month', w3:'Within 2–3 months', w4:'No rush',
+         b1:'Up to €500', b2:'€500–1,000', b3:'€1,000–2,500', b4:'Over €2,500', b5:'I’d rather talk about it',
+         q6:'Who should we reply to?', l_nome:'Full name', l_azienda:'Company or business', l_tel:'Phone', l_url:'Your current website, if any', l_note:'Tell us about the project',
+         ph_note:'Who you are, who you’re speaking to, what you like about websites you’ve seen…',
+         consenso:'I have read the', consenso2:'notice and agree to be contacted about this quote.',
+         invia:'Request a quote', invio:'Sending…', altro:'Or write to us at',
+         eNome:'Please enter your name.', eEmail:'Please enter a valid email: that’s where we’ll reply.', eConsenso:'We need your consent to contact you.',
+         eInvio:'Sending failed. Try again, or write to info@axxell.ai.', eServizio:'The form is not available right now. Write to info@axxell.ai.',
+         okKick:'// Request sent', okH:'Thank you, we got everything.',
+         okP:'We’ll reply within one working day with a quote or a few more questions. Meanwhile you can go back to the Atelier worlds.',
+         okA:'← Back to the Atelier', torna:'← Back to the map' }
+  };
+
+  var L = 'it';
+  function lingua(){
+    try {
+      var p = new URL(location.href).searchParams.get('lang');
+      if (p === 'en' || p === 'it') return p;
+      if (document.referrer){
+        var r = new URL(document.referrer);
+        var rl = r.origin === location.origin ? r.searchParams.get('lang') : null;
+        if (rl === 'en' || rl === 'it') return rl;
+      }
+    } catch(e){}
+    return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+  }
+
+  /* le card dei mondi */
+  var mondiEl = document.getElementById('mondi');
+  MONDI.forEach(function(m){
+    var d = document.createElement('div'); d.className = 'mondo';
+    var i = document.createElement('input'); i.type = 'checkbox'; i.name = 'mondo'; i.value = m.it; i.id = 'm-' + m.id;
+    if (window.__DA === m.id) i.checked = true;
+    var l = document.createElement('label'); l.htmlFor = i.id;
+    var img = document.createElement('img'); img.src = m.img; img.alt = ''; img.loading = 'lazy';
+    var b = document.createElement('b'), s = document.createElement('small');
+    l.appendChild(img); l.appendChild(b); l.appendChild(s);
+    d.appendChild(i); d.appendChild(l); mondiEl.appendChild(d);
+    m.b = b; m.s = s;
+  });
+
+  function applica(l){
+    L = l; var D = T[l];
+    document.documentElement.lang = l;
+    document.querySelectorAll('[data-t]').forEach(function(el){ var v = D[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v; });
+    document.querySelectorAll('[data-t-ph]').forEach(function(el){ var v = D[el.getAttribute('data-t-ph')]; if (v !== undefined) el.placeholder = v; });
+    document.querySelectorAll('[data-t-aria]').forEach(function(el){ var v = D[el.getAttribute('data-t-aria')]; if (v !== undefined) el.setAttribute('aria-label', v); });
+    MONDI.forEach(function(m){ m.b.textContent = l === 'en' ? m.en : m.it; m.s.textContent = l === 'en' ? m.sen : m.sit; });
+    document.querySelectorAll('[data-sito]').forEach(function(a){
+      var d = a.getAttribute('data-sito'), h = '', k = d.indexOf('#');
+      if (k >= 0){ h = d.slice(k); d = d.slice(0, k); }
+      a.setAttribute('href', d + (l === 'en' ? '?lang=en' : '') + h);
+    });
+    ['torna'].forEach(function(id){ var a = document.getElementById(id); if (a) a.href = '/atelier?da=il-tuo' + (l === 'en' ? '&lang=en' : ''); });
+    ['it','en'].forEach(function(x){ document.getElementById('lang-' + x).classList.toggle('on', x === l); });
+    document.title = (l === 'en' ? 'Website quote' : 'Preventivo sito web') + ' | Axxell';
+    try { var u = new URL(location.href); if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l); history.replaceState(null, '', u); } catch(e){}
+  }
+  document.getElementById('lang-it').addEventListener('click', function(){ applica('it'); });
+  document.getElementById('lang-en').addEventListener('click', function(){ applica('en'); });
+  applica(lingua());
+
+  /* il menu ☰ sul telefono */
+  var bur = document.getElementById('navBurger'), dd = document.getElementById('mobileDropdown');
+  bur.addEventListener('click', function(e){ e.stopPropagation(); var on = dd.classList.toggle('-on'); bur.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+  document.addEventListener('click', function(){ dd.classList.remove('-on'); bur.setAttribute('aria-expanded', 'false'); });
+
+  /* ── L'INVIO ── */
+  var form = document.getElementById('prev'), btn = document.getElementById('invia');
+  var errTipo = document.getElementById('errTipo'), errC = document.getElementById('errContatti'), errI = document.getElementById('errInvio');
+  var servizio = typeof emailjs !== 'undefined';
+  if (servizio) emailjs.init('Jass-MWY1fZy7RTCk');     // chiavi pubbliche, le stesse del preventivo del sito
+
+  function valori(name){ return Array.prototype.map.call(form.querySelectorAll('input[name="' + name + '"]:checked'), function(i){ return i.value; }); }
+  function val(id){ return document.getElementById(id).value.trim(); }
+  function mostra(el, msg){ if (msg !== undefined) el.textContent = msg; el.hidden = false; }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  form.addEventListener('change', function(e){
+    if (e.target.name === 'tipo') errTipo.hidden = true;
+    if (e.target.id === 'consenso') document.getElementById('consensoBox').classList.remove('-err');
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var D = T[L];
+    [errTipo, errC, errI].forEach(function(x){ x.hidden = true; });
+    ['nome','email'].forEach(function(id){ document.getElementById(id).removeAttribute('aria-invalid'); });
+    var tipo = valori('tipo')[0], nome = val('nome'), email = val('email');
+    var primo = null;
+    if (!tipo){ mostra(errTipo); primo = primo || document.querySelector('#tipo input'); }
+    if (!nome){ mostra(errC, D.eNome); document.getElementById('nome').setAttribute('aria-invalid', 'true'); primo = primo || document.getElementById('nome'); }
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ mostra(errC, D.eEmail); document.getElementById('email').setAttribute('aria-invalid', 'true'); primo = primo || document.getElementById('email'); }
+    if (!document.getElementById('consenso').checked){ document.getElementById('consensoBox').classList.add('-err'); if (!primo) { mostra(errI, D.eConsenso); primo = document.getElementById('consenso'); } }
+    if (primo){ primo.focus({ preventScroll:true }); primo.scrollIntoView({ behavior:'smooth', block:'center' }); return; }
+    if (!servizio){ mostra(errI, D.eServizio); return; }
+
+    /* Il messaggio arriva a Axxell sempre in italiano, qualunque lingua abbia
+       usato il cliente: la lingua del cliente e' una riga del messaggio. */
+    var righe = [
+      ['Richiesta', 'Preventivo sito web (Atelier)'],
+      ['Tipo di sito', tipo],
+      ['Mondi di riferimento', valori('mondo').join(', ')],
+      ['Funzioni', valori('funz').join(', ')],
+      ['Pagine', valori('pagine')[0]],
+      ['Testi e foto', valori('contenuti')[0]],
+      ['Tempi', valori('tempi')[0]],
+      ['Budget', valori('budget')[0]],
+      ['Azienda', val('azienda')],
+      ['Sito attuale', val('url')],
+      ['Lingua del cliente', L === 'en' ? 'inglese' : 'italiano'],
+      ['Note', val('note')]
+    ];
+    var msg = righe.filter(function(r){ return r[1]; }).map(function(r){ return esc(r[0]) + ': ' + esc(r[1]); }).join('<br>');
+
+    btn.disabled = true; btn.textContent = D.invio;
+    emailjs.send('service_ma1qdph', 'template_btru4ua', {
+      nome: nome, email: email, telefono: val('tel') || '—', messaggio: msg, origine: 'atelier-preventivo-sito'
+    }).then(function(){
+      form.hidden = true;
+      var ok = document.getElementById('ok'); ok.hidden = false; ok.focus({ preventScroll:true });
+      ok.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, function(err2){
+      console.warn('[preventivo] invio non riuscito', err2);
+      btn.disabled = false; btn.textContent = D.invia;
+      mostra(errI, D.eInvio);
+    });
+  });
+})();
+</script>
+</body>
+</html>
