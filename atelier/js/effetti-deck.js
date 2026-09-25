@@ -8,7 +8,7 @@
    soltanto tre globali, sincroni, PRIMA che quello script parta:
 
      · window.EFFETTI   — i 7 record (uno per effetto), non i 9 mondi;
-     · window.CLUSTERS  — i 5 gruppi contigui, col colore;
+     · window.CLUSTERS  — i 5 gruppi contigui per tipo;
      · window.helixPlace(u, out) — la posizione della card lungo l'elica,
                                     al posto della vecchia deckPlace ad anello.
 
@@ -27,51 +27,69 @@
   /* ── I 7 RECORD ────────────────────────────────────────────────────────────
      `render` ∈ {'webgl','canvas2d','dom'} dice con che motore l'effetto vero
      girerà (Task 5–7); `modulo` è il nome WC dell'effetto (js/<modulo>.js);
-     `col` è il colore del CLUSTER a cui l'effetto appartiene — le card di uno
-     stesso tipo condividono la tinta, così il percorso dell'elica si legge a
-     grappoli. `poster` è il fotogramma congelato dentro al vetro finché
-     l'effetto non si sveglia. */
+     `col` è il colore della CARD (Nike, 2026-09-24: «quando cambia la card
+     davanti, la pagina prende il suo colore») — ognuna il suo, non piu'
+     quello del cluster: lo prendono il bordo del vetro, i fermi, il
+     contatore, l'accento della copy, la riga dell'elenco, la nebbia di fondo
+     e l'elica (WC.helix.setTint). `dna` (facoltativo) e' la tavolozza con cui
+     si tinge l'elica quando un colore solo non basta (Nebulosa, Genesi): `col`
+     ne e' allora la prima voce, e vale per tutto il resto. `poster` è il fotogramma congelato dentro al vetro finché
+     l'effetto non si sveglia. `scrimForte` (facoltativo) scurisce di piu' la
+     sfumatura sotto la copy: serve dove l'effetto accende il centro-sinistra
+     (la galassia di Nebulosa), e la scritta altrimenti non terrebbe il 4.5:1.
+     `en` e' la stessa card in inglese (Nike: «traduci tutte le scritte
+     possibili»): `nome`, `tipo` e `lp` con la stessa forma di quelli italiani
+     qui accanto. Non e' una traduzione parola per parola ma una copy scritta
+     per chi legge in inglese, con lo stesso senso e lo stesso passo — il
+     titolo resta di due righe. Chi la mostra (capitoli.html, vedi `inLingua`)
+     sceglie fra le due con `window.atelierLinguaOra`; i campi italiani restano
+     quelli di sempre, cosi' chi li leggeva direttamente non cambia. */
   var EFFETTI = [
-    { id:'altitude', nome:'La piega',     tipo:'Fluidi',              cluster:0, modulo:'altitude', render:'webgl',   poster:'assets/effetti/altitude.webp',  col:[0.36,0.80,1.00] },
-    { id:'sneaker',  nome:'La scarpa',    tipo:'Immagini animate',    cluster:1, modulo:'sneaker',  render:'webgl',   poster:'assets/effetti/sneaker.webp',   col:[0.60,0.85,1.00] },
-    { id:'orologio', nome:'Il vetro',     tipo:'Immagini animate',    cluster:1, modulo:'orologio', render:'webgl',   poster:'assets/effetti/orologio.webp',  col:[0.60,0.85,1.00] },
-    { id:'vesper',   nome:'Il modello',   tipo:'Modelli interattivi', cluster:2, modulo:'vesper',   render:'webgl',   poster:'assets/effetti/vesper.webp',    col:[0.23,0.85,1.00] },
-    { id:'saucer',   nome:'Il disco',     tipo:'Modelli interattivi', cluster:2, modulo:'saucer',   render:'webgl',   poster:'assets/effetti/saucer.webp',    col:[0.23,0.85,1.00] },
-    { id:'warp',     nome:'Il testo',     tipo:'Testo',               cluster:3, modulo:'warp',     render:'dom',     poster:'assets/effetti/warp.webp',      col:[0.85,0.70,1.00] },
-    { id:'lithos',   nome:'Prima e dopo', tipo:'Prima / dopo',        cluster:4, modulo:'lithos',   render:'canvas2d',poster:'assets/effetti/lithos.webp',    col:[0.98,0.78,0.52] }
+    { id:'altitude', nome:'Vapore',   tipo:'Fluidi', cluster:0, modulo:'altitude', render:'webgl', poster:'assets/effetti/altitude.webp', col:[0.36,0.80,1.00],
+      lp:{ kicker:'Fluidi', h:['Il cielo si piega','dove passi.'], sub:'Una simulazione di fluido che segue il cursore, in tempo reale.', cta:'Muovi il mouse' },
+      en:{ nome:'Vapour', tipo:'Fluids', lp:{ kicker:'Fluids', h:['The sky bends','wherever you go.'], sub:'A fluid simulation that follows your cursor, in real time.', cta:'Move the mouse' } } },
+    { id:'sneaker',  nome:'Gravità',  tipo:'Immagini animate', cluster:1, modulo:'sneaker',  render:'dom',   poster:'assets/effetti/sneaker.webp',  col:[1.00,0.42,0.12],
+      lp:{ kicker:'Immagini animate', h:['Ogni passo,','sospeso.'], sub:'Il prodotto che fluttua e gira da solo, come in uno spot.', cta:'Guarda' },
+      en:{ nome:'Gravity', tipo:'Animated images', lp:{ kicker:'Animated images', h:['Every step,','suspended.'], sub:'Your product floats and turns on its own, like a TV spot.', cta:'Watch' } } },
+    { id:'orologio', nome:'Anatomia', tipo:'Immagini animate', cluster:1, modulo:'orologio', render:'webgl', poster:'assets/effetti/orologio.webp', col:[0.95,0.95,0.97], chiaro:true,
+      lp:{ kicker:'Immagini animate', h:['Dentro ogni','dettaglio.'], sub:"L'orologio si apre pezzo per pezzo, senza un fotogramma fuori posto.", cta:'Esplora' },
+      en:{ nome:'Anatomy', tipo:'Animated images', lp:{ kicker:'Animated images', h:['Inside','every detail.'], sub:'The watch opens up piece by piece, with not a frame out of place.', cta:'Explore' } } },
+    { id:'vesper',   nome:'Nebulosa', tipo:'Modelli interattivi', cluster:2, modulo:'vesper', render:'webgl', poster:'assets/effetti/vesper.webp', col:[0.62,0.45,1.00],
+      dna:[[0.62,0.45,1.00],[0.35,1.00,0.70],[1.00,0.50,0.85]], scrimForte:true,
+      lp:{ kicker:'Modelli interattivi', h:['Da una sfera, una galassia.',"Da una galassia, un'idea."], sub:'Ventimila punti che cambiano forma e rispondono al tuo gesto.', cta:'Avvicinati' },
+      en:{ nome:'Nebula', tipo:'Interactive models', lp:{ kicker:'Interactive models', h:['From a sphere, a galaxy.','From a galaxy, an idea.'], sub:'Twenty thousand points that change shape and answer your every move.', cta:'Come closer' } } },
+    { id:'saucer',   nome:'Contatto', tipo:'Modelli interattivi', cluster:2, modulo:'saucer', render:'webgl', poster:'assets/effetti/saucer.webp', col:[0.35,1.00,0.45], scramble:true,
+      lp:{ kicker:'Modelli interattivi', h:["Quarantamila fili d'erba.",'Uno solo è stato scelto.'], sub:'Una scena 3D che risponde a chi la guarda.', cta:'Scopri' },
+      en:{ nome:'Contact', tipo:'Interactive models', lp:{ kicker:'Interactive models', h:['Forty thousand blades of grass.','Only one was chosen.'], sub:'A 3D scene that responds to whoever is watching.', cta:'Discover' } } },
+    { id:'warp',     nome:'Genesi',   tipo:'Testo', cluster:3, modulo:'warp', render:'dom', poster:'assets/effetti/warp.webp', col:[0.72,0.45,1.00],
+      dna:[[0.72,0.45,1.00],[0.95,0.40,0.85],[0.40,0.55,1.00]],
+      lp:{ kicker:'Testo', h:["Tutto comincia","da un'elica."], sub:'Particelle che si ricompongono in forme sempre nuove.', cta:'Osserva' },
+      en:{ nome:'Genesis', tipo:'Text', lp:{ kicker:'Text', h:['It all begins','with a helix.'], sub:'Particles that keep reassembling into brand-new shapes.', cta:'Look closer' } } },
+    { id:'lithos',   nome:'Rivela',   tipo:'Prima / dopo', cluster:4, modulo:'lithos', render:'canvas2d', poster:'assets/effetti/lithos.webp', col:[1.00,0.62,0.25],
+      lp:{ kicker:'Prima / dopo', h:['La luce racconta','il prima e il dopo.'], sub:"Passa sopra l'immagine e scopri com'era.", cta:'Illumina' },
+      en:{ nome:'Reveal', tipo:'Before / after', lp:{ kicker:'Before / after', h:['Light tells','the before and after.'], sub:'Move over the image and see how it used to be.', cta:'Light it up' } } }
   ];
 
   /* ── I 5 CLUSTER ───────────────────────────────────────────────────────────
-     Gruppi contigui: gli effetti sono già ordinati per cluster nell'array, così
-     lo stesso `col` cade su tratti d'elica adiacenti. (Tingere il TRATTO
-     d'elica sotto un cluster è un rifinimento di un task futuro; oggi la tinta
-     vive solo sulle card, via `col`.) */
+     Gruppi contigui per TIPO (gli effetti sono già ordinati per cluster
+     nell'array). Non portano piu' un colore: dal 2026-09-24 il colore e' della
+     card (`col` sul record), non del gruppo. */
   var CLUSTERS = [
-    { tipo:'Fluidi',               col:[0.36,0.80,1.00] },
-    { tipo:'Immagini animate',     col:[0.60,0.85,1.00] },
-    { tipo:'Modelli interattivi',  col:[0.23,0.85,1.00] },
-    { tipo:'Testo',                col:[0.85,0.70,1.00] },
-    { tipo:'Prima / dopo',         col:[0.98,0.78,0.52] }
+    { tipo:'Fluidi' },
+    { tipo:'Immagini animate' },
+    { tipo:'Modelli interattivi' },
+    { tipo:'Testo' },
+    { tipo:'Prima / dopo' }
   ];
 
   /* Il mazzo inline (ereditato da index.html) nomina il settore del mondo come
      `w.sett` — nei trattini in basso, nell'elenco rifratto e nella
      focus-caption. Qui il "settore" è il TIPO dell'effetto: si espone come
      alias, senza toccare il record letterale qui sopra. */
-  for (var i = 0; i < EFFETTI.length; i++) EFFETTI[i].sett = EFFETTI[i].tipo;
-
-  /* ── L'INGRESSO AL DETTAGLIO (Task 8) ──────────────────────────────────────
-     Il mazzo inline eredita `enter(w)` di peso da index.html: clic sulla card
-     A FUOCO chiama `enter(hot)`, e quella funzione sa già coprire con lo
-     zoom, precaricare al passaggio (`prefetch`, `toccato && fermo da 600ms`) e
-     navigare a `w.page` dopo ~520ms — TUTTO condizionato su `w.page` essere
-     valorizzato. I record letterali qui sopra non lo portano apposta (sono
-     dati puri, non URL); si aggiunge qui, un giro solo, PRIMA che l'inline
-     legga `window.EFFETTI`. Relativo (non "/atelier/capitoli/…"): sotto
-     `<base href="/atelier/">` risolve comunque a `/atelier/capitoli/<id>`, ed
-     è la stessa pagina — capitoli-legacy.html, servita dal rewrite in
-     vercel.json — per tutti e sette gli effetti, cambia solo l'id in coda. */
-  for (var j = 0; j < EFFETTI.length; j++) EFFETTI[j].page = 'capitoli/' + EFFETTI[j].id;
+  for (var i = 0; i < EFFETTI.length; i++){
+    EFFETTI[i].sett = EFFETTI[i].tipo;
+    if (EFFETTI[i].en) EFFETTI[i].en.sett = EFFETTI[i].en.tipo;   // lo stesso alias per l'inglese
+  }
 
   /* ── IL PERCORSO SULL'ELICA ────────────────────────────────────────────────
      Rimpiazza la vecchia `deckPlace` (che disponeva le lastre su un ANELLO
@@ -107,8 +125,25 @@
      (u=−1,0,+1), dentro il «3–4» del criterio. L'elica di js/dna.js resta
      visibile davanti/dietro (criterio d): è un canvas separato, z-index 2.
      Su ritratto (aspect<1) il passo si stringe da sé: vedi `helixTune()` in
-     capitoli.html, che stringe A/climb/yTop come fa resize() nella home. */
-  var TUNE = { A: 1.3, R: 4.5, turns: 0.38, climb: 0.85, yTop: 0.95 };
+     capitoli.html, che stringe A/climb/yTop come fa resize() nella home.
+     2026-09-24 («nessuna card ne tocca un'altra», richiesta di Nike): climb
+     0.85 → 2.2 (piu' salita fra un posto e il successivo, altrimenti la
+     vicina dietro finiva DENTRO il rettangolo della card a fuoco) e yTop
+     0.95 → 1.25 (la fila si alza quel tanto che serve perche' la vicina
+     davanti-in-alto non tocchi la barra di navigazione E la vicina
+     davanti-in-basso non tocchi la didascalia — sono in tensione fra loro,
+     1.25 e' il punto che libera entrambe). Le vicine rimpiccioliscono al 25%
+     (SCALE_SIDE in capitoli.html, vedi deckScale — sceso dal 55% di partenza:
+     a quella taglia la vicina restava troppo alta per liberare insieme barra
+     e didascalia) e deckFade si stringe da
+     cos(u)∈[-0.1,0.35] a [0.28,0.55] perche' la vicina successiva (|u|≈1.5,
+     di passaggio durante il giro) sia spenta PRIMA di toccare didascalia o
+     barra, invece di restare a meta' opacita' e continuare a toccarle.
+     Verificato con scripts/verify-capitoli.cjs overlap (desktop e mobile):
+     zero overlap card-card/card-UI a riposo, a meta' giro e dopo resize;
+     restano solo gli overlap con l'indice, accettati fino al Task 3 che lo
+     sposta. */
+  var TUNE = { A: 1.3, R: 4.5, turns: 0.38, climb: 2.2, yTop: 1.25 };
 
   function helixPlace(u, out) {
     var t = root.__HELIX_TUNE || TUNE;
@@ -168,6 +203,18 @@
     var corners = [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]];
     var awakeId = null;               // modulo dell'effetto sveglio, o null
     var lastW = 0, lastH = 0;
+    /* IL BORDO DELLA LASTRA SI SPEGNE PIANO (Nike: «il bordo luminoso della
+       card anziché sparire di botto quando la card è frontale, si attenui
+       gradualmente»). Il filo di luce lo disegna lo shader del vetro, SOTTO
+       `#stage-live`: la tela viva è opaca, e con la sua dissolvenza di .26 s
+       lo copriva tutto in tre o quattro fotogrammi. Qui la tela viva lascia
+       scoperta una fascia lungo il bordo (una maschera, vedi `.-orlo` nel CSS
+       di capitoli.html) larga quanto lo smusso del vetro, e la stringe fino a
+       zero in ORLO_MS: il bordo vero, quello di WebGL, sfuma sotto l'effetto
+       invece di essere coperto di colpo. Nessun bordo finto da intonare. */
+    var ORLO_MS = 800;
+    var ORLO_FASCIA = 0.08;           // lo smusso (uBev 0.16) in frazione dell'ALTEZZA della lastra
+    var orloT0 = 0;                   // quando e' partito lo spegnimento; 0 = finito
 
     function helix(){ return root.WC && root.WC.helix; }
 
@@ -216,6 +263,7 @@
          shader del vetro, così la tela viva non è un rettangolo appiccicato
          sopra a un vetro smussato. */
       stageLive.style.setProperty('--raggio', Math.round(w * 0.035) + 'px');
+      orlo(h);
       // Ridimensiona la tela dell'effetto solo quando il riquadro cambia misura
       // (a ogni frame è sprecato): al primo posizionamento e a ogni resize.
       if (Math.abs(w - lastW) > 1 || Math.abs(h - lastH) > 1){
@@ -224,6 +272,18 @@
         if (api && api.resize) api.resize();
       }
     }
+
+    /* La fascia scoperta: piena allo sveglio, zero dopo ORLO_MS, con un
+       ease-in-out perche' non parta e non si fermi a scatti. Finita, la
+       maschera si toglie del tutto (non costa niente a una tela che resta). */
+    function orlo(h){
+      if (!orloT0) return;
+      var k = Math.min(1, (now() - orloT0) / ORLO_MS);
+      k = k * k * (3 - 2 * k);
+      if (k >= 1){ orloT0 = 0; stageLive.classList.remove('-orlo'); return; }
+      stageLive.style.setProperty('--orlo', (h * ORLO_FASCIA * (1 - k)).toFixed(1) + 'px');
+    }
+    function now(){ return (root.performance && root.performance.now) ? root.performance.now() : Date.now(); }
 
     /* UNA CARD, IL SUO EFFETTO — E NIENT'ALTRO.
        Ogni modulo tiene in vita il proprio host dentro `#stage-live` anche da
@@ -247,6 +307,7 @@
       stageLive.hidden = false;
       lastW = lastH = 0;              // forza un resize al primo place()
       awakeId = record.modulo;
+      orloT0 = now(); stageLive.classList.add('-orlo');
       place(mesh);                    // posiziona PRIMA che l'effetto misuri
       api.start(stageLive);
       soloQuestoSiVede();
@@ -263,13 +324,17 @@
     function freeze(){
       if (!awakeId) return;
       var api = effects[awakeId];
-      if (api && api.stop) api.stop();
-      awakeId = null;
-      /* Si spegne anche in uscita, non solo in entrata: `hidden` toglierebbe
+      /* `-viva` si toglie PRIMA di fermare l'effetto: è lei a dare il
+         puntatore all'anteprima (vedi #stage-live nel CSS di capitoli.html),
+         e un'anteprima che si sta spegnendo deve ridarlo subito al mazzo.
+         Si spegne anche in uscita, non solo in entrata: `hidden` toglierebbe
          la tela in un fotogramma, e il ritorno al poster sarebbe lo stesso
          scatto visto al contrario. `hidden` arriva a dissolvenza finita — e
          solo se nel frattempo non si è svegliato qualcun altro. */
       stageLive.classList.remove('-viva');
+      orloT0 = 0; stageLive.classList.remove('-orlo');
+      if (api && api.stop) api.stop();
+      awakeId = null;
       setTimeout(function(){ if (!awakeId) stageLive.hidden = true; }, 280);
       var hx = helix(); if (hx && hx.throttle) hx.throttle(false);
     }

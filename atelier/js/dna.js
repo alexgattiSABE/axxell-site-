@@ -407,7 +407,22 @@ WC.register('dna', function(ctx){
     uWrapT:         { value: 0.0 },
     uWorldColor:    { value: 0.0 },
     uColorLo:       { value: -4.0 },
-    uColorHi:       { value: 4.6 }
+    uColorHi:       { value: 4.6 },
+    /* TINTA A RUNTIME (WC.helix.setTint, sotto) — inerte a 0 come le tre
+     * qui sopra. `uTintMix` 0 = la scala di CONFIG intatta: lo shader salta
+     * del tutto il ramo, quindi le altre pagine (home, legacy) non cambiano
+     * di un bit. `uTintPal` sono TINT_SLOTS caselle di colore: ogni punto ne
+     * pesca una sola, per sempre (vedi il vertex shader). */
+    uTintMix:       { value: 0.0 },
+    uTintPal:       { value: (function(){ var a = []; for (var i = 0; i < 30; i++) a.push(new THREE.Vector3(1, 1, 1)); return a; })() },
+    /* IL FREMITO A RIPOSO (WC.helix, solo standalone) — inerte a 0 come le
+     * altre. `uOsc` è l'ampiezza, in unità di scena PRIMA di `uScale`: a 0 lo
+     * shader salta il ramo, e home e legacy restano identiche al bit.
+     * `uOscTime` è un orologio a parte, in secondi veri: `uTime` no, perché
+     * `uTime` è la FORMA (vedi `shapeTime`) e muoverlo farebbe serpeggiare
+     * tutta l'elica. */
+    uOsc:           { value: 0.0 },
+    uOscTime:       { value: 0.0 }
   };
 
   if (standalone) {
@@ -415,6 +430,11 @@ WC.register('dna', function(ctx){
     // servono a far combaciare la cucitura del riavvolgimento (vedi sopra).
     uniforms.uWorldColor.value = 1.0;
     uniforms.uWrapT.value = HELIX_PERIOD_T;
+    /* Il fremito si accende solo col moto: in reduced-motion resta a 0, e
+     * l'elica è ferma come prima (lì non c'è nemmeno un loop che lo muova).
+     * 0.07 è meno di un settimo della grossezza del filamento (0.52): i punti
+     * tremano dentro al loro filamento, la forma resta quella. */
+    if (ctx.motionOk) uniforms.uOsc.value = 0.07;
   }
 
   /* ⚠️ IL RAGGIO SERVE ANCHE ALLO SHADER, che da `position.y` deve risalire
@@ -432,6 +452,8 @@ WC.register('dna', function(ctx){
       'uniform vec3 uColLow; uniform vec3 uColAqua; uniform vec3 uColHigh; uniform vec3 uColRed;',
       'uniform vec3 uCursor; uniform float uRepelRadius; uniform float uRepelStrength; uniform float uActivity;',
       'uniform float uWrapT; uniform float uWorldColor; uniform float uColorLo; uniform float uColorHi;',
+      'uniform float uTintMix; uniform vec3 uTintPal[30];',
+      'uniform float uOsc; uniform float uOscTime;',
       'varying float vFade; varying vec3 vColor; varying float vDepth;',
       G.SNOISE,
       'void main(){',
@@ -486,6 +508,23 @@ WC.register('dna', function(ctx){
       '    vec3 p1 = vec3(dnaRadius * cos(discreteTwist), discreteT, dnaRadius * sin(discreteTwist));',
       '    vec3 p2 = vec3(dnaRadius * cos(discreteTwist + 3.14159), discreteT, dnaRadius * sin(discreteTwist + 3.14159));',
       '    dnaPos = mix(p1, p2, rungT) + vec3(rnd1 - 0.9, rnd2 - 0.5, rnd3 - 0.5) * 2.0 * 0.16;',
+      '  }',
+      /* IL FREMITO (solo standalone, uOsc > 0). Ogni punto oscilla lungo una
+       * SUA direzione, con una SUA fase e una SUA frequenza (0.4–1.2 Hz): non
+       * è l'elica che ondeggia, sono i punti che respirano ciascuno per conto
+       * proprio. Due seni per punto, il secondo a frequenza non multipla
+       * (×1.73) e più debole, così il moto non si ripete a vista e legge
+       * organico invece che meccanico. Gli `random` sono sulla `position`,
+       * che non cambia: direzione e ritmo sono fissi, per sempre, per punto.
+       * Con uOsc a 0 il ramo non si esegue e la posizione è quella di sempre. */
+      '  if (uOsc > 0.0) {',
+      '    float r4 = random(position + vec3(4.0));',
+      '    float r5 = random(position + vec3(5.0));',
+      '    vec3 oDir = normalize(vec3(rnd2 - 0.5, rnd3 - 0.5, r4 - 0.5) + vec3(0.0001));',
+      '    float oW = 6.28318530718 * (0.4 + 0.8 * r5);',
+      '    float oPh = r4 * 6.28318530718;',
+      '    float o = sin(uOscTime * oW + oPh) * 0.7 + sin(uOscTime * oW * 1.73 + oPh * 2.3) * 0.3;',
+      '    dnaPos += oDir * o * uOsc;',
       '  }',
       // Il serpeggiamento si tiene in due variabili invece di sommarlo al
       // volo: serve una seconda volta più sotto, per sapere dov'è l'ASSE
@@ -551,6 +590,23 @@ WC.register('dna', function(ctx){
       '  vec3 col = mix(uColLow,  uColAqua, smoothstep(0.02, 0.24, g));',
       '  col      = mix(col,      uColHigh, smoothstep(0.40, 0.62, g));',
       '  col      = mix(col,      uColRed,  smoothstep(0.76, 0.97, g));',
+      /* ⚠️ L'UNICA MODIFICA ALLO SHADER PER LA TINTA, ed è il minimo: la
+       * regola resta "le tinte di scena passano dal CONFIG", ma una tavolozza
+       * MISTA (ogni punto un colore diverso) non si può scrivere con quattro
+       * fermate uniformi — serve che il punto SCELGA. Sceglie con un quarto
+       * `random` sulla sua `position`, che non cambia mai: stessa casella a
+       * ogni fotogramma, niente attributo nuovo da riempire.
+       *
+       * La tinta SOSTITUISCE la tinta, non la moltiplica: dalla scala di
+       * CONFIG si tiene solo la LUCE (il canale più alto, cioè quanto è
+       * accesa quella quota) e il colore lo mette la casella. Moltiplicando,
+       * un bianco sul ciano di base resterebbe ciano. Con uTintMix a 0 il
+       * ramo non si esegue: il colore è quello di sempre, esatto. */
+      '  if (uTintMix > 0.0) {',
+      '    float shade = max(col.r, max(col.g, col.b));',
+      '    int slot = int(min(floor(random(position + vec3(3.0)) * 30.0), 29.0));',
+      '    col = mix(col, uTintPal[slot] * shade, uTintMix);',
+      '  }',
       '  vColor = col;',
       /* LA PROFONDITÀ, che prima non c'era proprio: `vFade` valeva 1.0 per ogni
        * punto, la fusione è additiva, e la dimensione dipendeva da z solo per
@@ -651,6 +707,38 @@ WC.register('dna', function(ctx){
   var atmo = G.makeAtmosphere({ count: CONFIG.atmoCount, size: CONFIG.atmoSize,
                                 speed: CONFIG.atmoSpeed, color: CONFIG.atmoColor });
   scene.add(atmo.points);
+
+  /* IL PULVISCOLO SEGUE LA TINTA (WC.helix.setTint), SOLO standalone.
+   * Il pulviscolo nasce in glsl.js, condiviso con altre pagine, e lì non si
+   * tocca: qui, PRIMA del primo disegno, si ritocca il sorgente del SUO
+   * materiale con lo stesso ramo dell'elica. Le due uniformi sono gli STESSI
+   * oggetti di `uniforms` (non copie): la dissolvenza che muove l'elica
+   * muove anche il pulviscolo, senza una riga in più. Ogni granello pesca
+   * la sua casella su 30 con un hash della `position`, come i punti
+   * dell'elica. Qui la tinta NON si moltiplica per una luce: `atmoColor` è
+   * già a luce piena (#7fe6ff), quindi il colore della casella va dritto.
+   * Con uTintMix a 0 il colore è `uColor`, esatto: il pulviscolo di sempre.
+   * Se un giorno glsl.js cambia quelle righe e gli agganci non si trovano,
+   * non si ritocca niente: il pulviscolo resta ciano, l'elica si tinge lo
+   * stesso. */
+  if (standalone) {
+    var am = atmo.material;
+    var vsHook = 'void main(){';
+    var fsHook = 'gl_FragColor = vec4(uColor * tex';
+    if (am.vertexShader.indexOf(vsHook) >= 0 && am.fragmentShader.indexOf(fsHook) >= 0) {
+      am.uniforms.uTintMix = uniforms.uTintMix;
+      am.uniforms.uTintPal = uniforms.uTintPal;
+      am.vertexShader = am.vertexShader.replace(vsHook,
+        'uniform vec3 uTintPal[30]; varying vec3 vTint;\n' + vsHook + '\n' +
+        '  float tr = fract(sin(dot(position + vec3(3.0), vec3(12.9898, 78.233, 45.164))) * 43758.5453);\n' +
+        '  vTint = uTintPal[int(min(floor(tr * 30.0), 29.0))];');
+      am.fragmentShader = 'uniform float uTintMix; varying vec3 vTint;\n' +
+        am.fragmentShader.replace(fsHook,
+          'vec3 aCol = uColor; if (uTintMix > 0.0) aCol = mix(uColor, vTint, uTintMix);\n  ' +
+          'gl_FragColor = vec4(aCol * tex');
+      am.needsUpdate = true;
+    }
+  }
 
   var pointer = G.makePointer();
   cleanups.push(function(){ pointer.dispose(); });
@@ -773,11 +861,80 @@ WC.register('dna', function(ctx){
    * legata a `standalone`: il manifesto (`!standalone`) non la vede mai. */
   var throttled = false, throttleFlip = false;
 
+  /* TINTA A RUNTIME — `WC.helix.setTint(spec, opts)`, SOLO standalone.
+   * capitoli.html la chiama quando cambia la carta davanti: l'elica prende
+   * il colore della carta. `spec` è un colore [r,g,b] (0..1), una tavolozza
+   * [[r,g,b], …] da 2 a 5 colori, oppure null per tornare alla scala ciano
+   * di CONFIG.
+   *
+   * TRENTA CASELLE, non cinque. Ogni punto pesca una casella fissa su 30, e
+   * la tavolozza di N colori si stende sulle caselle in giro (casella i =
+   * colore i % N). 30 è divisibile per 1, 2, 3 e 5, quindi la mescolanza è
+   * alla pari; con 4 colori è 8/8/7/7, a occhio uguale. Il vantaggio vero è
+   * la DISSOLVENZA: si passa da uno stato all'altro sfumando ogni casella dal
+   * colore che ha ORA a quello nuovo, quindi colore→tavolozza,
+   * tavolozza→colore e una chiamata a metà dissolvenza sono tutti continui,
+   * senza scatti — si riparte sempre da quello che si vede.
+   *
+   * La dissolvenza (TINT_FADE, 0.8 s) va a orologio vero, non a fotogrammi:
+   * con la strozzatura a 30fps dura uguale. In reduced-motion il cambio è
+   * immediato, e si ridisegna un fotogramma perché lì non c'è un loop. */
+  var TINT_SLOTS = 30, TINT_FADE = 0.8;
+  var tint = null;   // { from:[…], to:[…], mixFrom, mixTo, t0 } finché dissolve
+  function tintSlots(spec){
+    var pal = (spec && typeof spec[0] === 'number') ? [spec] : spec;
+    var out = [];
+    for (var i = 0; i < TINT_SLOTS; i++) {
+      var c = pal[i % pal.length];
+      out.push([+c[0] || 0, +c[1] || 0, +c[2] || 0]);
+    }
+    return out;
+  }
+  function tintApply(k){
+    var e = k * k * (3 - 2 * k);   // smoothstep: parte e arriva morbida
+    var pal = uniforms.uTintPal.value;
+    for (var i = 0; i < TINT_SLOTS; i++) {
+      var a = tint.from[i], b = tint.to[i];
+      pal[i].set(a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e);
+    }
+    uniforms.uTintMix.value = tint.mixFrom + (tint.mixTo - tint.mixFrom) * e;
+  }
+  function tintStep(now){
+    if (!tint) return;
+    var k = Math.min(1, (now - tint.t0) / (tint.dur * 1000));
+    tintApply(k);
+    if (k >= 1) tint = null;
+  }
+  function setTint(spec, opts){
+    opts = opts || {};
+    var valid = spec && spec.length && (typeof spec[0] === 'number' ? spec.length >= 3 : spec[0] && spec[0].length >= 3);
+    var pal = uniforms.uTintPal.value;
+    var cur = [];
+    for (var i = 0; i < TINT_SLOTS; i++) cur.push([pal[i].x, pal[i].y, pal[i].z]);
+    var mixNow = uniforms.uTintMix.value;
+    // Da nessuna tinta: le caselle non si vedono (mix 0), quindi si
+    // posano subito sul colore nuovo e sfuma solo il mix — niente passaggio
+    // da un colore vecchio che non c'era.
+    var to = valid ? tintSlots(spec) : cur;
+    var from = (valid && mixNow <= 0) ? to : cur;
+    var dur = opts.duration != null ? Math.max(0, +opts.duration) : TINT_FADE;
+    if (!ctx.motionOk || opts.instant) dur = 0;
+    tint = { from: from, to: to, mixFrom: mixNow, mixTo: valid ? 1 : 0,
+             t0: performance.now(), dur: dur };
+    if (dur === 0) { tintApply(1); tint = null; }
+    if (reducedStandalone) renderOnce();
+  }
+
+  var oscT0 = performance.now();   // l'origine del fremito, vedi uOscTime
   function frame(){
     raf = requestAnimationFrame(frame);
     if (standalone && throttled){ throttleFlip = !throttleFlip; if (throttleFlip) return; }
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    tintStep(now);
+    // Orologio vero, non a fotogrammi: con la strozzatura a 30fps il fremito
+    // va alla stessa velocità, solo a scatti più radi. A 0 fuori standalone.
+    if (uniforms.uOsc.value > 0) uniforms.uOscTime.value = (now - oscT0) / 1000;
 
     if (standalone) {
       var rawScroll = globalScrollProgress();
@@ -1003,7 +1160,7 @@ WC.register('dna', function(ctx){
    * capitoli.html; il manifesto non la espone). Il controller degli effetti la
    * usa per assottigliare la cadenza mentre un disco è a fuoco. */
   if (standalone) {
-    WC.helix = { throttle: function(on){ throttled = !!on; } };
+    WC.helix = { throttle: function(on){ throttled = !!on; }, setTint: setTint };
     cleanups.push(function(){ if (WC.helix && WC.helix.throttle) { WC.helix.throttle(false); WC.helix = null; } });
   }
 

@@ -140,6 +140,19 @@ function mountSaucer(ctx, cfg){
   // Il bloom è tre passate in più: sullo scaglione più debole si spegne e resta
   // l'alone geometrico, che è già la parte grossa del bagliore.
   var useBloom = !mobile;
+  /* NELLA CARD DEL TELEFONO (2026-09-24, «migliora la qualita' grafica»). I
+   * tagli qui sopra sono per la sezione a tutto schermo; la card e' ~340×212
+   * px CSS. A dpr 2 sono 0,29 megapixel contro i 0,6 della sezione legacy a
+   * 1.35: si puo' dare nitidezza piena. Il bloom gira a un quarto di quella
+   * risoluzione (170×106), costa pochissimo ed e' lui che fa alonare le
+   * lampade del disco — senza, sul telefono il disco usciva piatto. I fili
+   * d'erba salgono allo scaglione tablet: sono istanze da vertex shader, il
+   * loro costo non dipende dall'area della tela. */
+  if (external && wide <= 1024){
+    maxDpr = 2;
+    useBloom = true;
+    nGrass = Math.max(nGrass, 20000);
+  }
 
   /* Il colore scritto a mano è sRGB; gli shader lavorano in luce LINEARE (la
    * passata d'uscita fa l'unica conversione, alla fine). Convertire qui è quello
@@ -985,6 +998,22 @@ function mountSaucer(ctx, cfg){
     renderer.setPixelRatio(dpr);
     renderer.setSize(rect.w, rect.h, false);
     camera.aspect = rect.w / rect.h;
+    /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
+     * vedono completamente»). Sul telefono la copy (#lp.-stretta in
+     * capitoli.html) occupa la meta' bassa della card a tutta larghezza, e il
+     * rapito, al centro del raggio, finiva proprio sotto «Uno solo è stato
+     * scelto.»; in cima il disco toccava il bordo. Si sposta l'INQUADRATURA,
+     * non la scena: il centro della camera va al 68% della larghezza (la
+     * scritta finisce prima del 56%) e la camera apre un filo (zoom 0.9) per
+     * staccare il disco dal bordo. Solo esterno e solo sotto i 420 px (la
+     * soglia di `#lp.-stretta`): il desktop e il legacy restano com'erano. */
+    if (external && rect.w < 420){
+      camera.zoom = 0.9;
+      camera.setViewOffset(rect.w, rect.h, (0.5 - 0.68) * rect.w, 0, rect.w, rect.h);
+    } else {
+      camera.zoom = 1;
+      if (camera.view) camera.clearViewOffset();
+    }
     camera.updateProjectionMatrix();
 
     var pw = Math.max(1, Math.round(rect.w * dpr)), ph = Math.max(1, Math.round(rect.h * dpr));
@@ -1128,6 +1157,23 @@ function mountSaucer(ctx, cfg){
     window.addEventListener('resize', onResizeE);
     document.addEventListener('visibilitychange', onVisE);
     if (ctx.desktop) window.addEventListener('pointermove', onMove, { passive: true });
+    /* Il dito (solo telefono/tablet): la parallasse del mouse, ma misurata sul
+     * riquadro della card e non sulla finestra — la card e' un terzo dello
+     * schermo, e in coordinate di finestra il dito spostava la camera di poco.
+     * Alzato il dito, la camera torna al centro. */
+    var onDito = function(e){
+      if (e.pointerType === 'mouse') return;
+      var r = rectEl.getBoundingClientRect();
+      tmx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1));
+      tmy = Math.max(-1, Math.min(1, ((e.clientY - r.top) / Math.max(1, r.height)) * 2 - 1));
+    };
+    var viaDito = function(e){ if (e.pointerType !== 'mouse'){ tmx = 0; tmy = 0; } };
+    if (!ctx.desktop){
+      rectEl.addEventListener('pointerdown', onDito, { passive: true });
+      rectEl.addEventListener('pointermove', onDito, { passive: true });
+      rectEl.addEventListener('pointerup', viaDito, { passive: true });
+      rectEl.addEventListener('pointercancel', viaDito, { passive: true });
+    }
     return {
       start: function(){ wantRun = true; scrollTarget = 1; resize(); start(); },
       stop:  function(){ wantRun = false; stop(); },
@@ -1137,6 +1183,10 @@ function mountSaucer(ctx, cfg){
         window.removeEventListener('resize', onResizeE);
         document.removeEventListener('visibilitychange', onVisE);
         window.removeEventListener('pointermove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
+        rectEl.removeEventListener('pointerup', viaDito);
+        rectEl.removeEventListener('pointercancel', viaDito);
         disposeAll();
       }
     };
@@ -1193,13 +1243,42 @@ WC.effects = WC.effects || {};
  * già) la sposta in coda ai figli di `#stage-live`, così l'ultimo effetto
  * risvegliato dipinge SEMPRE sopra i canvas congelati degli altri — stesso
  * meccanismo, in ciascuno dei quattro moduli pilotabili. */
+/* ── SUL TELEFONO (2026-09-24, «su tel alcune animazioni sono nere») ────────
+ * Vedi la nota gemella in js/altitude.js. In breve: sul telefono il contesto
+ * WebGL si rilascia allo stop e si rimonta al risveglio (dopo un giro del
+ * mazzo erano sei contesti vivi insieme, e iOS sotto pressione ne butta uno:
+ * la tela resta nera per sempre); e se il contesto si perde lo stesso, al
+ * prossimo `start()` — o subito, se e' a fuoco — si rimonta da capo. */
+var SAUCER_TEL = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 900;
 WC.effects.saucer = (function(){
-  var inst = null, host = null;
+  var inst = null, host = null, perso = false, vivo = false;
+  function libera(){
+    if (inst && inst.dispose){ try { inst.dispose(); } catch(e){} }
+    if (host){
+      // renderer.dispose() libera le risorse ma NON il contesto: lo si chiede
+      // alla tela, che restituisce quello gia' aperto.
+      try {
+        var gl = host.getContext('webgl2') || host.getContext('webgl');
+        var ext = gl && !gl.isContextLost() && gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      } catch(e){}
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    inst = host = null; perso = false;
+  }
   return {
     start: function(container){
+      vivo = true;
+      if (inst && perso) libera();
       if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('canvas');
       host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      var mia = host;
+      host.addEventListener('webglcontextlost', function(){
+        if (host !== mia) return;           // una tela gia' liberata: non conta
+        perso = true;
+        setTimeout(function(){ if (vivo && perso && host && host.parentNode){ var c = host.parentNode; libera(); WC.effects.saucer.start(c); } }, 0);
+      });
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountSaucer(ctx, { section: null, pin: null, canvas: host,
@@ -1207,7 +1286,12 @@ WC.effects.saucer = (function(){
       if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
       inst.start();
     },
-    stop:   function(){ if (inst) inst.stop(); },
+    stop: function(){
+      vivo = false;
+      if (!inst) return;
+      inst.stop();
+      if (SAUCER_TEL) libera();
+    },
     resize: function(){ if (inst) inst.resize(); }
   };
 })();

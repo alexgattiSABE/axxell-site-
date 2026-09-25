@@ -228,6 +228,8 @@ function mountVesper(ctx, cfg){
   }
 
   var progressTarget = 0, progress = 0;   // dove dice lo scroll / dove sta la scena
+  var ciclo = null;                       // solo esterno: il passo del giro automatico
+  var stretta = false;                    // solo esterno: card stretta, inquadratura spostata
   var outro = 0;                          // 0 finché la scena possiede l'inquadratura
 
   // INTRO — `lib/scene/intro.ts`. Nella sorgente è una molla 0→1 fatta partire
@@ -235,11 +237,12 @@ function mountVesper(ctx, cfg){
   // originali: i punti dell'orb arrivano volando dalla camera, e a quel passo
   // attraversavano l'inquadratura troppo in fretta per leggersi come un raduno.
   var INTRO_MS = 2900;
+  var introMs = INTRO_MS;   // l'esterno lo stringe (Task 8): il giro è automatico, non c'è motivo di far aspettare
   var introStart = 0, introRunning = false, intro = 0;
   function startIntro(){ if (introRunning) return; introRunning = true; introStart = performance.now(); }
   function stepIntro(){
     if (!introRunning) return;
-    var t = clamp01((performance.now() - introStart) / INTRO_MS);
+    var t = clamp01((performance.now() - introStart) / introMs);
     intro = 1 - Math.pow(1 - t, 3);   // easeOutCubic, come la molla sorgente
   }
 
@@ -894,6 +897,10 @@ function mountVesper(ctx, cfg){
   brainGroup.visible = false;
   scene.add(brainGroup);
   var brainGeo = null, brainPoints = null;
+  // «Nebulosa» (Task 8): il giro automatico non deve puntare al cervello finché
+  // la sua mesh non è davvero arrivata dalla rete — altrimenti il terzo atto
+  // sarebbe vuoto.
+  var brainPronto = false;
   var brainParallax = { ry: 0, rx: 0 };
 
   /* Decodifica del contenitore cotto: 'VBRN' + versione + conteggi, poi le
@@ -979,6 +986,7 @@ function mountVesper(ctx, cfg){
   }).then(function(buf){
     if (brainAborted) return;
     brainGeo = buildBrainGeometry(decodeBrainMesh(buf), tier.brainCount, BRAIN.radius);
+    brainPronto = true;
     brainPoints = new THREE.Points(brainGeo, brainMaterial);
     brainPoints.frustumCulled = false;
     brainGroup.add(brainPoints);
@@ -1100,6 +1108,7 @@ function mountVesper(ctx, cfg){
     // L'orologio avanza SEMPRE, anche nei frame che il gate non disegna: se
     // avanzasse solo al disegno, sugli scaglioni bassi la scena si muoverebbe a
     // scatti proporzionali al frame skip invece che al tempo.
+    if (ciclo) ciclo(now);   // solo esterno: il giro automatico (vedi `passoCiclo`)
     stepIntro();
     var d = progressTarget - progress;
     if (Math.abs(d) < 0.00005) progress = progressTarget;
@@ -1154,6 +1163,9 @@ function mountVesper(ctx, cfg){
     var lineRevealed = clamp01((intro - 0.35) / 0.65);
     var lineGone = clamp01((progress - 0.08) / 0.2);
     var lineAlpha = lineRevealed * (1 - lineGone);
+    // La riga ha la maschera al centro della tela: con l'inquadratura spostata
+    // (card stretta, solo esterno) non cadrebbe piu' attorno alla sfera.
+    if (external && stretta) lineAlpha = 0;
     lineUniforms.uAlpha.value = lineAlpha;
     heroLine.visible = lineAlpha > 0.002;
 
@@ -1290,20 +1302,136 @@ function mountVesper(ctx, cfg){
 
   /* ── MONTAGGIO ESTERNO (capitoli.html) ─────────────────────────────────────
    * Nessuna sezione, nessuno ScrollTrigger: lo pilota il controller.
-   * `progressTarget` non si tocca — resta 0, quindi la scena resta per sempre
-   * sull'orb (vedi il commento in testa al file). `startIntro()` fa arrivare
-   * i punti al primo `start()`; l'istanza vive fra un fuoco e l'altro come
-   * `saucer` — `stop()` ferma solo il rAF, non ricarica né il cervello né la
-   * galassia. */
+   * `progressTarget` è guidato da un tween proprio (vedi sotto), non più fermo
+   * a 0. `startIntro()` fa arrivare i punti al primo `start()`; l'istanza vive
+   * fra un fuoco e l'altro come `saucer` — `stop()` ferma solo il rAF, non
+   * ricarica né il cervello né la galassia. */
   if (external){
+    introMs = 500;      // il raduno deve chiudersi in fretta: qui gira già da solo
+    INTRO_DOLLY = 3;    // arretramento più corto — l'intro qui è solo un accenno
+    // Riga :255 ha già letto il vecchio INTRO_DOLLY per la camera iniziale:
+    // va ripetuto lo stesso posizionamento con il valore appena cambiato.
+    camera.position.set(0, 0, tier.orbCamZ + INTRO_DOLLY);
+
+    /* «Nebulosa» — IL GIRO DA SOLO, SEMPRE IN AVANTI (round 3, Nike: «se
+     * interagisco con nebulosa l'animazione rallenta e a volte torna indietro
+     * invece deve sempre andare avanti»). Prima era un tween GSAP in yoyo:
+     * sfera → galassia → cervello e poi lo stesso percorso AL CONTRARIO, con un
+     * `sine.inOut` che frenava fino a fermarsi a ogni capo — la frenata si
+     * leggeva come «rallenta», il ritorno come «torna indietro». Ora e' un
+     * ciclo che va solo avanti, con un orologio proprio (`giro`, in secondi)
+     * che avanza nel `frame()` col tempo vero e non con GSAP:
+     *
+     *   SFERA    la sfera si raduna (l'INTRO) e resta un attimo;
+     *   CORSA    il clock 0 → tetto: la sfera si scioglie nella galassia, la
+     *            galassia esplode e dai suoi punti nasce il cervello;
+     *   CERVELLO resta, gira;
+     *   SCOPPIO  il cervello si sfalda verso la camera — lo stesso `outro`
+     *            che in legacy lo porta via quando arriva la sezione dopo;
+     *   e a scoppio finito si riparte dalla sfera che si RIFORMA con
+     *   `startIntro()` (i punti arrivano dalla camera): un nuovo inizio, non un
+     *   riavvolgimento.
+     *
+     * Niente di quello che fa il dito (olio, vuoto nella galassia, sinapsi,
+     * parallasse) tocca `giro`: l'interazione cambia l'aspetto, mai la
+     * velocita' ne' il verso del ciclo. Finche' il cervello non e' arrivato
+     * dalla rete la corsa si ferma alla galassia (2.4) e lo scoppio la sfuma. */
+    var CICLO = { sfera: 2.2, corsa: 9, cervello: 3.2, scoppio: 2.4 };
+    var tetto = 2.4, giro = 0, lastGiro = 0;
+    var durCiclo = CICLO.sfera + CICLO.corsa + CICLO.cervello + CICLO.scoppio;
+    /* Una rampa che parte e arriva morbida ma non si ferma mai a meta':
+       meta' lineare e meta' smoothstep, la velocita' resta > 0 fino in fondo. */
+    function rampa(x){ var c = clamp01(x); return 0.5 * c + 0.5 * c * c * (3 - 2 * c); }
+    function passoCiclo(now){
+      /* Il tempo vero, non il `dt` del frame (quello e' tagliato a 50 ms): se
+         il telefono scende di fotogrammi mentre lo si tocca il ciclo non deve
+         rallentare con lui. Il taglio a 250 ms serve solo dopo una pausa. */
+      var d = Math.min(0.25, Math.max(0, (now - lastGiro) / 1000)); lastGiro = now;
+      giro += d;
+      if (giro >= durCiclo){
+        // SCOPPIO finito: si riparte dalla sfera che si riforma.
+        giro -= durCiclo;
+        progress = progressTarget = 0; outro = 0;
+        introRunning = false; intro = 0; introMs = 1400; startIntro();
+      }
+      var g = giro;
+      if (g < CICLO.sfera){
+        /* Il tetto si decide solo sulla sfera: cambiarlo a corsa iniziata
+           farebbe saltare la scena da galassia a cervello di colpo. */
+        tetto = brainPronto ? 3.6 : 2.4;
+        progressTarget = 0; outro = 0; return;
+      }
+      g -= CICLO.sfera;
+      if (g < CICLO.corsa){ progressTarget = rampa(g / CICLO.corsa) * tetto; outro = 0; return; }
+      g -= CICLO.corsa;
+      progressTarget = tetto;
+      if (g < CICLO.cervello){ outro = 0; return; }
+      g -= CICLO.cervello;
+      outro = clamp01(g / CICLO.scoppio);
+    }
+
+    /* SUL TELEFONO (2026-09-24, «migliora la qualita' grafica» e «alcune
+     * interazioni non vanno»). Lo scaglione lo sceglie la finestra (390 px →
+     * il piu' povero: dpr 1.1, 30 fps, niente puntatore), pensato per la
+     * sezione a tutto schermo. Nella card la tela e' ~340×212: a dpr 2 sono
+     * 0,29 megapixel, meno dei 0,40 della sezione legacy a 1.1 — il fill rate
+     * (count × size² × dpr²) resta nello stesso ordine, e i punti smettono di
+     * uscire sgranati. 60 fps perche' a 30 il giro automatico scatta.
+     * Il dito diventa un puntatore: olio sulla sfera, vuoto nella galassia,
+     * sinapsi nel cervello, come col mouse; si spegne quando il dito si alza. */
+    var dprScaglione = tier.dpr;
+    if (!ctx.desktop){
+      tier.dpr = 2;
+      frameInterval = 0;
+      pointerOk = true;
+    }
+    /* La galassia e' l'unico strato col `gl_PointSize` in pixel di device, non
+     * scalato per il dpr: alzando il dpr i suoi punti si rimpiccioliscono a
+     * schermo. Si compensa, cosi' cambia la nitidezza e non la taglia. */
+    /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
+     * vedono completamente»). Sul telefono la copy (#lp.-stretta in
+     * capitoli.html) e' una fascia che occupa la meta' bassa della card, a
+     * tutta larghezza: la sfera, la galassia e il cervello, centrati, ci
+     * finivano sotto — «Da una sfera, una galassia» scritto sopra la galassia.
+     * Si sposta l'INQUADRATURA, non la scena: `setViewOffset` fa cadere il
+     * centro della camera al 56% della larghezza e al 32% dell'altezza, nella
+     * fascia libera in alto. Le proiezioni del puntatore (olio, vuoto, sinapsi)
+     * passano dalla stessa camera, quindi seguono. Stessa soglia di
+     * `#lp.-stretta` (420 px); la card larga del desktop resta com'era. */
+    var resizeE = function(){
+      resize();
+      stretta = size.w < 420;
+      if (stretta) camera.setViewOffset(size.w, size.h, (0.5 - 0.56) * size.w, (0.5 - 0.32) * size.h, size.w, size.h);
+      else if (camera.view) camera.clearViewOffset();
+      galUniforms.uSize.value = GALAXY.pointSize * Math.max(1, dpr / Math.min(window.devicePixelRatio || 1, dprScaglione));
+    };
+    var onDito = function(e){ if (e.pointerType !== 'mouse') onMove(e); };
+    var viaDito = function(e){ if (e.pointerType !== 'mouse') hasPointer = false; };
+    if (!ctx.desktop){
+      rectEl.addEventListener('pointerdown', onDito, { passive: true });
+      rectEl.addEventListener('pointermove', onDito, { passive: true });
+      rectEl.addEventListener('pointerup', viaDito, { passive: true });
+      rectEl.addEventListener('pointercancel', viaDito, { passive: true });
+      cleanups.push(function(){
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
+        rectEl.removeEventListener('pointerup', viaDito);
+        rectEl.removeEventListener('pointercancel', viaDito);
+      });
+    }
+
+    // Sonda di sola lettura per la verifica automatica (come `__warpProbe` in
+    // js/warp.js): nessun codice della scena la legge.
+    window.__vesperProbe = function(){ return { giro: giro, durata: durCiclo, progress: progress, outro: outro, intro: intro }; };
     var wantRun = false;
-    var onResizeE = function(){ resize(); };
+    var onResizeE = function(){ resizeE(); };
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     window.addEventListener('resize', onResizeE);
     document.addEventListener('visibilitychange', onVisE);
     cleanups.push(function(){
       stop();
       brainAborted = true;
+      delete window.__vesperProbe;
       window.removeEventListener('resize', onResizeE);
       document.removeEventListener('visibilitychange', onVisE);
       orbGeo.dispose(); orbMaterial.dispose();
@@ -1316,9 +1444,9 @@ function mountVesper(ctx, cfg){
       renderer.dispose();
     });
     return {
-      start: function(){ wantRun = true; startIntro(); resize(); start(); },
-      stop:  function(){ wantRun = false; stop(); },
-      resize: resize,
+      start: function(){ wantRun = true; startIntro(); resizeE(); lastGiro = performance.now(); ciclo = passoCiclo; start(); },
+      stop:  function(){ wantRun = false; stop(); hasPointer = false; },
+      resize: resizeE,
       dispose: function(){ cleanups.forEach(function(f){ f(); }); }
     };
   }
@@ -1392,17 +1520,42 @@ WC.register('vesper', function(ctx){
 });
 
 WC.effects = WC.effects || {};
+/* ── SUL TELEFONO (2026-09-24, «su tel alcune animazioni sono nere») ────────
+ * Vedi la nota gemella in js/altitude.js. In breve: sul telefono il contesto
+ * WebGL si rilascia allo stop e si rimonta al risveglio (dopo un giro del
+ * mazzo erano sei contesti vivi insieme, e iOS sotto pressione ne butta uno:
+ * la tela resta nera per sempre); e se il contesto si perde lo stesso, al
+ * prossimo `start()` — o subito, se e' a fuoco — si rimonta da capo. */
+var VESPER_TEL = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 900;
 WC.effects.vesper = (function(){
-  var inst = null, host = null;
+  var inst = null, host = null, perso = false, vivo = false;
+  function libera(){
+    if (inst && inst.dispose){ try { inst.dispose(); } catch(e){} }
+    if (host){
+      // renderer.dispose() libera le risorse ma NON il contesto: lo si chiede
+      // alla tela, che restituisce quello gia' aperto.
+      try {
+        var gl = host.getContext('webgl2') || host.getContext('webgl');
+        var ext = gl && !gl.isContextLost() && gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      } catch(e){}
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    inst = host = null; perso = false;
+  }
   return {
     start: function(container){
-      // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
-      // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
-      // fa dipingere sopra i canvas congelati degli altri (vedi la nota
-      // gemella in js/saucer.js).
+      vivo = true;
+      if (inst && perso) libera();
       if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('canvas');
       host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+      var mia = host;
+      host.addEventListener('webglcontextlost', function(){
+        if (host !== mia) return;           // una tela gia' liberata: non conta
+        perso = true;
+        setTimeout(function(){ if (vivo && perso && host && host.parentNode){ var c = host.parentNode; libera(); WC.effects.vesper.start(c); } }, 0);
+      });
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountVesper(ctx, { section: null, pin: null, canvas: host,
@@ -1410,7 +1563,12 @@ WC.effects.vesper = (function(){
       if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
       inst.start();
     },
-    stop:   function(){ if (inst) inst.stop(); },
+    stop: function(){
+      vivo = false;
+      if (!inst) return;
+      inst.stop();
+      if (VESPER_TEL) libera();
+    },
     resize: function(){ if (inst) inst.resize(); }
   };
 })();

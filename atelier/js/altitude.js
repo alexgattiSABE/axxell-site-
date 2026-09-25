@@ -529,6 +529,10 @@ function mountAltitude(ctx, cfg){
     texcoordX: 0, texcoordY: 0, prevTexcoordX: 0, prevTexcoordY: 0,
     deltaX: 0, deltaY: 0, moved: false, seen: false, color: generateColor()
   };
+  // Il puntatore fantasma (solo nella card, vedi driveVortex): quanto tempo fa
+  // si è mosso davvero il mouse, e se la traccia invisibile è abilitata.
+  // `inScena`: il fantasma sta guidando adesso (serve a sapere quando subentra).
+  var lastRealMove = 0, fantasma = false, passiFantasma = 0, inScena = false;
 
   function correctDeltaX(delta){
     var aspect = canvas.width / canvas.height;
@@ -571,10 +575,10 @@ function mountAltitude(ctx, cfg){
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
   }
 
-  var onMouseMove = function(e){ movePointer(e.clientX, e.clientY); };
+  var onMouseMove = function(e){ lastRealMove = performance.now(); movePointer(e.clientX, e.clientY); };
   var onTouchMove = function(e){
     var t = e.targetTouches[0];
-    if (t) movePointer(t.clientX, t.clientY);
+    if (t) { lastRealMove = performance.now(); movePointer(t.clientX, t.clientY); }
   };
   var onLeave = function(){ pointer.seen = false; pointer.moved = false; };
   window.addEventListener('mousemove', onMouseMove, { passive: true });
@@ -668,7 +672,12 @@ function mountAltitude(ctx, cfg){
     dye.swap();
   }
 
-  function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, 1.5)); }
+  /* Il tetto 1.5 e' della sezione a tutto schermo. Nella card del telefono
+   * (esterno, ~340×212 px CSS) a 2 la tela resta sotto i 0,3 megapixel, e il
+   * costo che sale e' solo la passata finale: il solutore gira su SIM/DYE, che
+   * non dipendono dal dpr. A 1.5 su uno schermo a 3× il cielo usciva impastato. */
+  var tettoDpr = (external && mobile) ? 2 : 1.5;
+  function scaleByPixelRatio(v){ return Math.floor(v * Math.min(window.devicePixelRatio || 1, tettoDpr)); }
 
   function resizeCanvas(){
     var w = scaleByPixelRatio(canvas.clientWidth);
@@ -773,6 +782,21 @@ function mountAltitude(ctx, cfg){
   var vColor = null, lastVColor = 0;
 
   function driveVortex(now){
+    /* IL PUNTATORE FANTASMA (solo nella card, 2026-09-24): se la mano e' ferma
+     * da 1,5 s una traccia invisibile gira su una Lissajous lenta e continua a
+     * mescolare il fumo — «Vapore» non resta mai immobile ad aspettare il mouse.
+     * Appena il mouse vero si muove, il fantasma tace. */
+    if (fantasma && performance.now() - lastRealMove > 1500){
+      /* Quando subentra, il fantasma parte da un punto nuovo: si dimentica il
+       * cursore vero, se no la prima mossa tirerebbe una scia di velocita'
+       * dall'ultima posizione della mano fino alla Lissajous. */
+      if (!inScena){ inScena = true; pointer.seen = false; }
+      var r0 = canvas.getBoundingClientRect(), tt = performance.now() / 1000;
+      movePointer(r0.left + r0.width  * (0.5 + 0.30 * Math.sin(tt * 0.61)),
+                  r0.top  + r0.height * (0.5 + 0.24 * Math.sin(tt * 0.83 + 1.3)));
+      passiFantasma++;
+    } else inScena = false;
+
     var w = canvas.clientWidth, h = canvas.clientHeight;
     if (w < 1 || h < 1) return;
 
@@ -870,6 +894,14 @@ function mountAltitude(ctx, cfg){
     // non si vede. Serve solo a non far comparire un rettangolo nero nel caso
     // la texture arrivi in ritardo.
     fade = Math.min(1, fade + dt * 1.6);
+    /* Solo nella card: la tela e' opaca (alpha 1 anche a `fade` 0), quindi
+     * finche' il video non ha dato un fotogramma copriva di NERO il <video> e
+     * il suo poster. Su iPhone succede sempre per un attimo, e per sempre col
+     * Risparmio energetico, che blocca l'autoplay anche dei video muti: la
+     * card restava nera. Qui la tela si mostra solo quando la texture c'e'. */
+    if (external && canvas.style.visibility !== (videoReady ? '' : 'hidden'))
+      canvas.style.visibility = videoReady ? '' : 'hidden';
+    if (external && !videoReady) fade = 0;
 
     uploadVideo();
     driveVortex(now);
@@ -908,6 +940,8 @@ function mountAltitude(ctx, cfg){
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     document.addEventListener('visibilitychange', onVisE);
+    fantasma = WC.motionOk !== false;
+    window.__altProbe = function(){ return { fantasma: passiFantasma }; };
     return {
       start: function(){ wantRun = true; start(); },
       stop:  function(){ wantRun = false; stop(); },
@@ -918,6 +952,7 @@ function mountAltitude(ctx, cfg){
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('touchmove', onTouchMove);
         window.removeEventListener('mouseout', onLeave);
+        delete window.__altProbe;
         if (dye) dye.destroy();
         if (velocity) velocity.destroy();
         if (pressure) pressure.destroy();
@@ -986,10 +1021,37 @@ WC.register('altitude', function(ctx){
 });
 
 WC.effects = WC.effects || {};
+/* ── SUL TELEFONO (2026-09-24, «su tel alcune animazioni sono nere») ────────
+ * Tre cose che su desktop non si vedono:
+ *  1. Il CONTESTO SI RILASCIA allo stop. Ogni modulo teneva il suo WebGL vivo
+ *     anche congelato: dopo un giro del mazzo erano sei contesti insieme (lo
+ *     stage, l'elica e quattro effetti), e su iPhone la memoria della GPU e'
+ *     quella del telefono — iOS ne butta uno, e una tela col contesto perso
+ *     resta nera per sempre. Sul telefono si smonta tutto allo stop e si
+ *     rimonta al risveglio: la regola «un solo effetto vivo» diventa vera.
+ *  2. Se il contesto si perde lo stesso (app in background, pressione di
+ *     memoria), al prossimo `start()` si rimonta da capo invece di ridipingere
+ *     una tela morta.
+ *  3. L'autoplay che iOS nega (Risparmio energetico) si riprova al primo
+ *     tocco: dentro un gesto `play()` e' sempre permesso. */
+var ALT_TEL = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 900;
 WC.effects.altitude = (function(){
-  var inst = null, host = null;
+  var inst = null, host = null, vid = null, canv = null, perso = false, vivo = false;
+  function suGesto(){ if (vid && vivo && vid.paused){ var p = vid.play(); if (p && p.catch) p.catch(function(){}); } }
+  function libera(){
+    if (inst && inst.dispose){ try { inst.dispose(); } catch(e){} }
+    if (host){
+      host.removeEventListener('touchend', suGesto);
+      host.removeEventListener('click', suGesto);
+      if (vid){ vid.pause(); vid.removeAttribute('src'); while (vid.firstChild) vid.removeChild(vid.firstChild); vid.load(); }
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    inst = host = vid = canv = null; perso = false;
+  }
   return {
     start: function(container){
+      vivo = true;
+      if (inst && perso) libera();
       // `#stage-live` è condiviso da più effetti pilotabili (Task 6): spostare
       // sempre l'host in coda ai figli — anche quando `inst` esiste già — lo
       // fa dipingere sopra i canvas congelati degli altri (vedi la nota
@@ -1000,8 +1062,12 @@ WC.effects.altitude = (function(){
       if (inst){ container.appendChild(host); inst.start(); return; }
       host = document.createElement('div');
       host.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:hidden;';
-      var vid = document.createElement('video');
+      vid = document.createElement('video');
       vid.muted = true; vid.loop = true; vid.playsInline = true; vid.preload = 'none';
+      vid.setAttribute('muted', ''); vid.setAttribute('playsinline', '');
+      // Il poster: finche' il video non parte (o se iOS non lo fa partire) si
+      // vede il cielo fermo, non un rettangolo vuoto.
+      vid.poster = 'assets/starry-poster.webp';
       vid.setAttribute('aria-hidden', 'true');
       vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
       // Stesso ordine del markup legacy: mp4 prima (i browser veri lo prendono,
@@ -1011,16 +1077,32 @@ WC.effects.altitude = (function(){
       var s2 = document.createElement('source');
       s2.type = 'video/webm'; s2.setAttribute('data-src', 'assets/starry.webm');
       vid.appendChild(s1); vid.appendChild(s2);
-      var canv = document.createElement('canvas');
+      canv = document.createElement('canvas');
       canv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+      var mia = canv;
+      canv.addEventListener('webglcontextlost', function(){
+        // Solo la tela in servizio: quella appena liberata (dispose chiama
+        // loseContext) manda anche lei l'evento, un giro dopo.
+        if (canv !== mia) return;
+        perso = true;
+        // Perso mentre e' a fuoco: si rimonta subito, non al prossimo giro.
+        setTimeout(function(){ if (vivo && perso && host && host.parentNode){ var c = host.parentNode; libera(); WC.effects.altitude.start(c); } }, 0);
+      });
       host.appendChild(vid); host.appendChild(canv);
+      host.addEventListener('touchend', suGesto, { passive: true });
+      host.addEventListener('click', suGesto);
       container.appendChild(host);
       var ctx = { motionOk: WC.motionOk, desktop: WC.desktop };
       inst = mountAltitude(ctx, { canvas: canv, video: vid, section: null, external: true });
-      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = null; return; }
+      if (!inst){ if (host && host.parentNode) host.parentNode.removeChild(host); host = vid = canv = null; return; }
       inst.start();
     },
-    stop:   function(){ if (inst) inst.stop(); },
+    stop: function(){
+      vivo = false;
+      if (!inst) return;
+      inst.stop();
+      if (ALT_TEL) libera();
+    },
     resize: function(){ if (inst) inst.resize(); }
   };
 })();

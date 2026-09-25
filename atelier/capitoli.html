@@ -31,6 +31,11 @@
        l'asse centrale (Task 2) ha bisogno del contrario: una pagina che
        scorre DAVVERO, perché è lo scroll a far salire e girare l'elica. */
     overscroll-behavior-y:none}
+  /* Col dito il gesto verticale e' del mazzo (vedi «SU TELEFONO SI SCORRE PER
+     GIRARE» nello script): la pagina non deve scorrere ne' rimbalzare sotto,
+     se no il browser si prende il gesto e il trascino viene annullato. La
+     rotellina non passa di qui: su desktop non cambia niente. */
+  html,body{touch-action:none}
   canvas{display:block;width:100%;height:100%}
   #stage{position:fixed;inset:0}
 
@@ -54,27 +59,10 @@
      L'elica vive su un canvas suo, sopra allo stage (il renderer dello stage è
      opaco: dietro non ci sarebbe niente da vedere), quindi nessuna lastra del
      mazzo può coprirla — i punti passavano DENTRO al quadro della card, sopra
-     al poster e sopra l'effetto. Qui si fora la maschera dell'elica sul
-     rettangolo della card davanti: due livelli di maschera, tutto lo schermo
-     meno quel riquadro (`exclude`). Le misure arrivano ogni fotogramma dal
-     controller (`deckCtl.rect`), che proietta gli stessi quattro angoli con la
-     stessa camera con cui la card è disegnata.
-     Il buco si apre solo quando la card è FRONTALE (vedi `-buco` in frame()):
-     girata, il suo rettangolo proiettato è più largo della lastra e si
-     mangerebbe elica anche fuori dal quadro. La transizione sulla misura fa il
-     resto — si apre e si chiude, non sbatte. */
-  #helixStage.-buco{
-    -webkit-mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
-            mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);
-    -webkit-mask-repeat:no-repeat,no-repeat;
-            mask-repeat:no-repeat,no-repeat;
-    -webkit-mask-position:0 0,var(--bx,0) var(--by,0);
-            mask-position:0 0,var(--bx,0) var(--by,0);
-    -webkit-mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
-            mask-size:100% 100%,var(--bw,0px) var(--bh,0px);
-    -webkit-mask-composite:xor;
-            mask-composite:exclude;
-    transition:-webkit-mask-size .22s ease, mask-size .22s ease}
+     al poster e sopra l'effetto. Qui si fora la maschera dell'elica
+     con la SAGOMA vera delle lastre che stanno davanti all'asse: un
+     clip-path path() scritto a ogni fotogramma. */
+  #helixStage.-buco{-webkit-clip-path:var(--buco);clip-path:var(--buco)}
   body.-entra #helixStage{opacity:0;transform:translateY(42px)}
 
   /* IL LAYER VIVO (Task 5) — la tela dell'effetto a fuoco. Un riquadro assoluto
@@ -82,8 +70,8 @@
      rettangolo proiettato della card davanti: sopra la tela dello stage (dove
      vive il poster congelato) e sopra l'elica, ma SOTTO nav/etichette/didascalia.
      Quando nessun effetto è sveglio è `hidden` e non c'è nulla: si vede il
-     poster. `pointer-events:none` perché il clic sulla card (entrare nel mondo)
-     lo intercetta lo stage sotto, non questo. */
+     poster. `pointer-events:none` da congelata: il clic arriva al mazzo sotto;
+     da viva l'anteprima si usa (vedi `.-viva` più sotto). */
   #stage-live{position:fixed;left:0;top:0;width:0;height:0;z-index:3;
     pointer-events:none;overflow:hidden;
     /* LA TELA VIVA HA LA FORMA DELLA LASTRA, e non appare di scatto.
@@ -95,8 +83,81 @@
        fotogramma vivo, che sono due immagini diverse per definizione. */
     border-radius:var(--raggio,18px);
     opacity:0;transition:opacity .26s ease}
-  #stage-live.-viva{opacity:1}
+  /* L'ANTEPRIMA SI USA (2026-09-24, richiesta di Nike: niente pagine di
+     dettaglio, il cliente tocca l'effetto dentro la card). Solo da viva:
+     congelata e' un poster, e i clic devono arrivare al mazzo. `touch-action`
+     perche' un dito che striscia sull'anteprima muova l'effetto, non la pagina. */
+  #stage-live.-viva{opacity:1;pointer-events:auto;touch-action:none}
   #stage-live canvas{display:block;width:100%;height:100%}
+  /* IL BORDO CHE SFUMA (vedi `orlo()` in js/effetti-deck.js). Appena sveglia
+     la tela viva lascia trasparente una fascia larga `--orlo` lungo i quattro
+     lati — in gradiente, da vuoto sul filo a pieno verso l'interno — e ci si
+     vede sotto il bordo luminoso del vetro, disegnato dallo shader. Il
+     controller stringe la fascia fino a zero in ~0.8 s e poi toglie la classe.
+     Due gradienti incrociati (uno per asse) intersecati: gli angoli tondi li
+     taglia gia' `border-radius`. */
+  #stage-live.-orlo{
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+                       linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    -webkit-mask-composite:source-in;
+    mask-image:linear-gradient(to right,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent),
+               linear-gradient(to bottom,transparent,#000 var(--orlo,0px),#000 calc(100% - var(--orlo,0px)),transparent);
+    mask-composite:intersect}
+
+  /* LA PAGINA DENTRO LA CARD (2026-09-24, richiesta di Nike: «a tutte aggiungi
+     scritte come se fossero landing page»). Livello suo, FUORI da #stage-live:
+     quello nasconde i figli che non sono l'effetto sveglio ed e' `hidden`
+     quando nessuno e' sveglio — qui la copy deve esserci anche sul poster e
+     con moto ridotto. Non prende il puntatore: sotto c'e' l'anteprima da usare. */
+  #lp{position:fixed;left:0;top:0;width:0;height:0;z-index:4;pointer-events:none;
+    display:flex;flex-direction:column;justify-content:center;gap:.9em;
+    box-sizing:border-box;padding:0 6% 0 6%;opacity:0;transition:opacity .35s ease;
+    border-radius:var(--raggio,18px);overflow:hidden;
+    font-size:var(--lpfs,16px);color:#f0f0f6;
+    background:linear-gradient(90deg,rgba(4,5,10,.72) 0%,rgba(4,5,10,.46) 34%,rgba(4,5,10,0) 52%)}
+  #lp.-on{opacity:1}
+  #lp > *{max-width:40%;margin:0}
+  /* Il titolo va a capo DENTRO la colonna (40% della card): due righe
+     logiche, ognuna libera di spezzarsi. Niente nowrap — a 1440 la riga piu'
+     lunga uscirebbe dalla sfumatura fino al centro dell'effetto. */
+  #lp .lp-k{font:500 max(11px,.72em)/1.2 'DM Mono',ui-monospace,monospace;font-style:normal;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--lpc)}
+  #lp .lp-h{font:600 1.6em/1.1 'Space Grotesk',system-ui,sans-serif;letter-spacing:-.01em}
+  /* `balance`: quando una riga va a capo le due meta' escono pari, invece di
+     lasciare sola l'ultima parola («galaxy.», «idea.» in inglese). */
+  #lp .lp-l{display:block;text-wrap:balance}
+  #lp .lp-s{font:400 max(11px,.86em)/1.45 'Space Grotesk',system-ui,sans-serif;color:rgba(240,240,246,.86)}
+  #lp .lp-b{align-self:flex-start;font:500 max(11px,.74em)/1 'DM Mono',ui-monospace,monospace;
+    letter-spacing:.16em;text-transform:uppercase;padding:.9em 1.3em;
+    border:1px solid var(--lpc);color:#f0f0f6}
+  #lp.-chiaro{color:#10131a;
+    background:linear-gradient(90deg,rgba(255,255,255,.0) 0%,rgba(255,255,255,0) 100%)}
+  #lp.-chiaro .lp-s{color:rgba(16,19,26,.78)}
+  /* Sfumatura forte (record `scrimForte`, oggi Nebulosa): la galassia accende
+     proprio il centro-sinistra, e sulla sfumatura normale «un'idea.» e il
+     sottotitolo ci finivano sopra. Qui sotto la colonna del testo (fino al 46%)
+     il nero resta ad almeno .80, e si spegne del tutto entro il 60%. */
+  #lp.-forte{background:linear-gradient(90deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.82) 46%,rgba(4,5,10,0) 60%)}
+  /* Su bianco il colore della card (azzurro chiaro) non si legge (~1.6:1):
+     kicker e bottone passano a un blu profondo della stessa famiglia. */
+  #lp.-chiaro{--lpc:#1d4a6b} #lp.-chiaro .lp-b{color:#10131a}
+  /* Card stretta (telefono): una fascia in basso, solo titolo e bottone. */
+  #lp.-stretta{justify-content:flex-end;padding:0 6% 6% 6%;gap:.7em;
+    background:linear-gradient(0deg,rgba(4,5,10,.78) 0%,rgba(4,5,10,.40) 40%,rgba(4,5,10,0) 62%)}
+  #lp.-stretta > *{max-width:100%}
+  #lp.-stretta .lp-k,#lp.-stretta .lp-s{display:none}
+  #lp.-stretta .lp-h{font-size:max(15px,1.25em)}
+  #lp.-stretta .lp-l{white-space:normal}
+  #lp.-forte.-stretta{background:linear-gradient(0deg,rgba(4,5,10,.88) 0%,rgba(4,5,10,.80) 34%,rgba(4,5,10,0) 62%)}
+  /* Stretta E chiara (Anatomia su telefono): la fascia scura finirebbe sul
+     bianco dell'orologio, sotto un testo scuro. La fascia diventa bianca: sul
+     bianco della tela non si vede, e sopra il metallo tiene leggibile il titolo.
+     Round 3 (Nike: «su tel alcune animazioni non si vedono completamente»): a
+     tutta larghezza il velo bianco sbiancava la meta' bassa dell'orologio, che
+     su telefono sta a destra (js/orologio.js) e sotto la scritta non passa mai.
+     Ora il velo resta nella fascia bassa e SOLO sotto la colonna del testo, e
+     si spegne prima di arrivare al metallo. */
+  #lp.-chiaro.-stretta{background:linear-gradient(90deg,rgba(255,255,255,.86) 0%,rgba(255,255,255,.6) 30%,rgba(255,255,255,0) 44%) left bottom/100% 62% no-repeat}
 
   /* LO SPAZIO DA SCORRERE. Tutto il resto della pagina è `position:fixed`
      (nav, stage, atrio, etichette…): senza un elemento vero, nel FLUSSO del
@@ -109,22 +170,64 @@
   /* Le etichette stanno FUORI dal vetro, in DOM: un testo dentro a una
      superficie che rifrange e smeriglia diventa illeggibile. Le insegue lo
      script proiettando il punto in basso di ogni portale. */
-  /* Nav propria e minima: il foglio del sito e' scritto per pagine che
-     scorrono, e questa non scorre. Stessi colori, stesse misure. */
+  /* IL MENU E' QUELLO DEL SITO (richiesta utente): stesso logo, stesse
+     voci, stesse misure e stesso comportamento su telefono di index.html
+     alla radice. Qui e' riscritto su `#nav` perche' il foglio del sito non
+     e' caricato: questa pagina non scorre e non ne ha bisogno. */
   #nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:9;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:0 clamp(1rem,3vw,3rem);gap:.75rem;
-    background:linear-gradient(180deg,rgba(4,5,10,.82),rgba(4,5,10,0));
-    transition:opacity .4s ease}
+    display:flex;align-items:center;justify-content:space-between;padding:0 3rem;
+    font-family:'Space Grotesk',sans-serif;transition:opacity .4s ease}
+  #nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-30px;z-index:-1;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(6,6,9,.97) 0%,rgba(6,6,9,.94) 52%,rgba(6,6,9,.62) 78%,rgba(6,6,9,0) 100%);
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0%,#000 55%,rgba(0,0,0,.45) 80%,transparent 100%)}
   #nav.-hide{opacity:0;pointer-events:none}
-  .nv-logo{color:#f0f0f6;text-decoration:none;font-size:13px;letter-spacing:.24em;font-weight:500}
-  .nv-links{display:flex;list-style:none;gap:.3rem}
-  .nv-links a{color:rgba(240,240,246,.62);text-decoration:none;font-size:11px;
-    letter-spacing:.1em;padding:.9rem .5rem;display:inline-block}
-  .nv-links a:hover,.nv-links a.active{color:#3ad8ff}
-  .nv-cta{border:1px solid rgba(240,240,246,.22);margin-left:.4rem}
-  #nav a:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
-  @media (max-width:600px){ .nv-links a{font-size:9.5px;padding:.9rem .28rem} }
+  .nav-logo-img{display:flex;align-items:center;text-decoration:none}
+  .nav-logo-img img{height:42px;width:auto;display:block}
+  .nav-links{display:flex;list-style:none;gap:.2rem;margin:0;padding:0}
+  .nav-links a{color:rgba(240,240,246,.72);text-decoration:none;font-size:.88rem;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;padding:.5rem 1.1rem;border-radius:4px;
+    transition:color .2s,background .2s;display:inline-block}
+  .nav-links a:hover,.nav-links a.active{color:#f0f0f6;background:rgba(255,255,255,.05)}
+  @keyframes atelierShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  #n-wc,.mobile-dropdown a.-atelier{
+    background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00d4ff,#2a6bff);
+    background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){#n-wc,.mobile-dropdown a.-atelier{animation:none;background-position:0% 50%}}
+  .nav-right{display:flex;align-items:center}
+  .nav-cta{height:40px;padding:0 1.4rem;border-radius:4px;border:1px solid #00d4ff;color:#00d4ff;
+    font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:center;transition:all .2s}
+  .nav-cta:hover{background:#00d4ff;color:#060609}
+  .lang-sw{display:flex;align-items:center;gap:.15rem;margin-left:1rem;padding-left:1rem;border-left:1px solid rgba(255,255,255,.12)}
+  .lang-sw button{background:none;border:none;cursor:pointer;color:rgba(240,240,246,.72);font-family:inherit;
+    font-size:.78rem;font-weight:600;letter-spacing:.06em;padding:.25rem .3rem;border-radius:3px;transition:color .2s}
+  .lang-sw button:hover{color:#fff}
+  .lang-sw button.on{color:#00d4ff}
+  .lang-sep{color:rgba(255,255,255,.18);font-size:.72rem}
+  #nav a:focus-visible,#nav button:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}
+  .mobile-menu-wrap{display:none;position:relative;order:2}
+  .mobile-menu-btn{width:42px;height:42px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.45);
+    color:#fff;border-radius:10px;font-size:1.2rem;cursor:pointer}
+  .mobile-dropdown{position:absolute;top:52px;right:0;width:180px;background:#060609;
+    border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:.5rem;display:none;
+    flex-direction:column;gap:.3rem;z-index:9999;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  .mobile-dropdown.-on{display:flex}
+  .mobile-dropdown a{color:#fff;text-decoration:none;padding:.8rem 1rem;border-radius:10px;font-size:.85rem;white-space:nowrap}
+  .mobile-dropdown a:hover{background:rgba(255,255,255,.06)}
+  @media (max-width:960px){
+    #nav{padding:0 1rem}
+    #nav::before{bottom:-26px}
+    .nav-links,.nav-cta{display:none}
+    .mobile-menu-wrap{display:flex}
+    .nav-logo-img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .nav-right{order:0;margin:0}
+    .lang-sw{margin:0;padding:0;border-left:none}
+  }
+  @media (max-width:480px){ #nav{height:60px} }
 
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
   #labelCam{position:absolute;top:0;left:0;width:100%;height:100%;
@@ -168,9 +271,16 @@
   .lb.-void.-hot b{color:#3ad8ff}
   @media (max-width:760px){ .lb.-void b{font-size:10.5px} }
 
-  #hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
-    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
-    color:rgba(223,228,238,.34);transition:opacity .4s ease;text-align:center}
+  /* LE SCRITTE STANNO SOPRA AL DNA PER z-index, E BASTA (Nike, round 2: «è
+     come se avessero uno sfondo che coprisse il dna, toglilo»). Niente buchi
+     nell'elica attorno al testo e niente fasce: i punti passano dietro alle
+     lettere. Per leggerle resta solo un'ombra corta, nera e neutra — non un
+     alone colorato. */
+  #hint,#focus .counter,#focus .fname,#focus .fsub{
+    text-shadow:0 1px 2px rgba(0,0,0,.55),0 0 10px rgba(0,0,0,.35)}
+  #hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:6;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(223,228,238,.84);transition:opacity .4s ease;text-align:center;white-space:nowrap}
 
   /* LA FOCUS CAPTION — le scritte come in Mirror Hall.
      Non piu' un'etichetta appesa a ogni card (nella rotonda sono nove e si
@@ -183,57 +293,103 @@
   #focus.-on{opacity:1}
   #focus .counter{display:flex;align-items:baseline;gap:7px;
     font-family:'DM Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.16em}
-  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px;
-    text-shadow:0 0 16px rgba(58,216,255,.4)}
-  #focus .counter i{color:rgba(190,214,246,.34);font-style:normal}
-  #focus .counter .tot{color:rgba(190,214,246,.5)}
+  #focus .counter .num{color:var(--hot,#3ad8ff);font-size:13px}
+  #focus .counter i{color:rgba(190,214,246,.72);font-style:normal}
+  #focus .counter .tot{color:rgba(190,214,246,.80)}
   #focus .fname{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;
     font-size:clamp(21px,3.2vw,34px);letter-spacing:.16em;margin-right:-.16em;
     text-transform:uppercase;color:#f0f0f6;line-height:1;
-    text-shadow:0 2px 30px rgba(4,5,10,.92);will-change:transform,opacity,filter}
+    will-change:transform,opacity,filter}
   /* IL VUOTO: l'unica scritta senza colore, in corsivo di peso e non di forma. */
   #focus .fname.-void{color:rgba(240,240,246,.58);font-weight:500;font-style:italic}
   @keyframes focusSwap{
     from{opacity:0;transform:translateY(9px);filter:blur(5px)}
     to{opacity:1;transform:none;filter:blur(0)}}
   #focus .fname.-swap{animation:focusSwap .5s cubic-bezier(.22,.61,.36,1) both}
-  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;
+  #focus .fsub{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;
     letter-spacing:.26em;margin-right:-.26em;margin-top:-2px;text-transform:uppercase;
-    color:rgba(223,228,238,.55)}
+    color:rgba(223,228,238,.82)}
   /* I FERMI, a capsula come in Mirror Hall: un punto per mondo che quando e'
      davanti sboccia in una capsula del colore del mondo. */
   #dots{display:flex;align-items:center;gap:9px;margin-top:3px}
   #dots button{width:5px;height:5px;padding:0;border:0;border-radius:4px;
-    background:rgba(176,204,244,.26);cursor:pointer;pointer-events:auto;
+    background:rgba(176,204,244,.72);cursor:pointer;pointer-events:auto;
     transition:width .5s cubic-bezier(.22,.61,.36,1),background .5s ease,box-shadow .5s ease}
-  #dots button:hover{background:rgba(176,204,244,.52)}
-  #dots button.-now{width:22px;background:var(--now,#3ad8ff);
-    box-shadow:0 0 12px rgba(58,216,255,.55)}
+  #dots button:hover{background:rgba(176,204,244,.95)}
+  #dots button.-now{width:22px;background:var(--now,#3ad8ff)}
   #dots button:focus-visible{outline:2px solid #3ad8ff;outline-offset:4px}
   @media (max-width:600px){
     #focus{bottom:44px} #dots button.-now{width:18px}
-    #hint{font-size:9px;letter-spacing:.1em;bottom:20px;white-space:nowrap}
+    #hint{font-size:12px;letter-spacing:.06em;bottom:18px;white-space:nowrap}
   }
 
-  /* Il mondo aperto: il video a tutto schermo dopo lo zoom. */
-  #world{position:fixed;inset:0;z-index:8;opacity:0;pointer-events:none;
-    transition:opacity .28s ease;background:#04050a}
-  #world.-on{opacity:1;pointer-events:auto}
-  #world video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  #world .veil{position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(4,5,10,.82) 0%,rgba(4,5,10,.25) 42%,rgba(4,5,10,.88) 100%)}
-  #world .copy{position:absolute;left:clamp(1.4rem,5vw,4rem);bottom:clamp(2rem,8vh,5rem);max-width:36ch}
-  #world .copy i{font-style:normal;font-size:10.5px;letter-spacing:.2em;
-    text-transform:uppercase;color:var(--hot,#3ad8ff)}
-  #world .copy h2{font-size:clamp(1.8rem,4.4vw,3.1rem);font-weight:400;line-height:1.05;
-    letter-spacing:.02em;margin:.5rem 0 .6rem;text-transform:uppercase}
-  #world .copy p{font-size:12.5px;color:rgba(223,228,238,.6);letter-spacing:.04em;line-height:1.7}
-  #world .exits{display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
-  #world button{background:transparent;color:#dfe4ee;border:1px solid rgba(223,228,238,.26);
-    padding:9px 16px;font:inherit;font-size:10.5px;letter-spacing:.14em;
-    text-transform:uppercase;cursor:pointer}
-  #world button:hover{border-color:var(--hot,#3ad8ff);color:var(--hot,#3ad8ff)}
-  #world button:focus-visible{outline:2px solid #3ad8ff;outline-offset:2px}
+  /* TORNA ALLA MAPPA (Nike: «tasto torna alla mappa nell'angolo in basso a
+     sinistra»). Lo stesso bottone delle pagine dei capitoli (vedi #torna in
+     il-prodotto/index.html), con l'accento della card davanti al posto del
+     viola fisso: `--pag`, messo sulla radice da aggiornaFocus(). Niente alone.
+     Il suo clic e la sua pressione non arrivano alla scena (vedi `fuoriScena`). */
+  #torna{position:fixed;left:clamp(14px,2.5vw,28px);bottom:clamp(14px,2.5vw,28px);z-index:99999;
+    display:inline-flex;align-items:center;gap:.5em;padding:11px 18px;border-radius:999px;
+    font:500 11.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;
+    color:#f2f0ff;text-decoration:none;background:rgba(8,6,20,.66);
+    border:1px solid rgba(242,240,255,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    transition:border-color .2s ease,color .2s ease}
+  #torna:hover{border-color:var(--pag,#dfe4ee);color:var(--pag,#dfe4ee)}
+  #torna:focus-visible{outline:2px solid var(--pag,#dfe4ee);outline-offset:3px}
+  @media (max-width:760px){#torna{min-height:44px;padding:0 16px;font-size:11px;letter-spacing:.14em}}
+  /* IL TUO MONDO — il preventivo (Nike: «chiamalo il tuo mondo e anziché
+     l'azzurro lo voglio bianco con effetto riflettente dinamico automatico»).
+     Un bottone semplice che porta al modulo dei siti (/atelier/parliamone):
+     filo e scritta bianchi su fondo scuro, e un riflesso che ci scorre sopra da
+     solo ogni pochi secondi, come la luce su un metallo lucido. Il riflesso e'
+     `::after`: una fascia diagonale bianca a bassa opacita', larga ~25%, che si
+     sposta con `transform` (costa poco) ed e' tagliata dagli angoli tondi
+     (`overflow:hidden`); mentre passa il filo si schiarisce appena. Niente
+     alone, niente colore. Con moto ridotto il riflesso resta fermo, tenue.
+     Niente `data-sito`: la lingua non lo riscrive verso la home. Desktop: sul
+     bordo destro, a meta' altezza. Telefono: in basso a destra (vedi sotto). */
+  #preventivo{position:fixed;right:clamp(24px,2.2vw,32px);top:50%;transform:translateY(-50%);z-index:6;
+    height:40px;padding:0 1.2rem;box-sizing:border-box;border-radius:4px;overflow:hidden;isolation:isolate;
+    display:inline-flex;align-items:center;gap:.5em;
+    border:1px solid rgba(255,255,255,.72);color:#fff;background:rgba(6,6,9,.55);
+    font:600 .8rem/1 'Space Grotesk',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;
+    text-decoration:none;transition:background .2s ease;animation:mondoFilo 5.5s ease-in-out infinite}
+  #preventivo::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:26%;z-index:-1;pointer-events:none;
+    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.30) 50%,rgba(255,255,255,0));
+    transform:translateX(-160%) skewX(-22deg);animation:mondoRiflesso 5.5s ease-in-out infinite}
+  @keyframes mondoRiflesso{0%,55%{transform:translateX(-160%) skewX(-22deg)}85%,100%{transform:translateX(560%) skewX(-22deg)}}
+  @keyframes mondoFilo{0%,58%,100%{border-color:rgba(255,255,255,.72)}70%{border-color:#fff}}
+  #preventivo:hover{background:rgba(255,255,255,.12)}
+  #preventivo:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  #preventivo svg{display:none}
+  @media (prefers-reduced-motion:reduce){
+    #preventivo{animation:none}
+    #preventivo::after{animation:none;transform:translateX(150%) skewX(-22deg);opacity:.5}
+  }
+  /* Telefono: la stessa taglia e gli stessi margini della freccia di #torna,
+     nell'angolo opposto. «Il tuo mondo» per esteso non ci sta: a 40 px dal
+     fondo toccherebbe il settore della didascalia («MODELLI INTERATTIVI»
+     arriva a x≈284 su 390), e piu' in basso il suggerimento. Resta un'icona
+     da 44×44 (un piccolo globo), col nome per chi legge lo schermo. */
+  @media (max-width:760px){
+    #preventivo{top:auto;transform:none;right:clamp(14px,2.5vw,28px);bottom:40px;
+      width:44px;height:44px;padding:0;justify-content:center;border-radius:999px}
+    #preventivo .pv-t{display:none}
+    #preventivo svg{display:block}
+    #preventivo::after{width:40%}
+  }
+
+  /* SUL TELEFONO SOLO LA FRECCIA (Nike: «su tel il torna alla mappa è
+     semplicemente una freccia»): un quadrato da 44 px, l'etichetta resta per
+     chi legge lo schermo (aria-label). Didascalia e suggerimento restano dove
+     sono: e' il bottone a stare un filo piu' su (40 px dal fondo), perche' il
+     suggerimento, centrato e largo ~290 px, comincia a x≈49 e un bottone a
+     14..58 px dal fondo gli finirebbe addosso. */
+  @media (max-width:760px){
+    #torna{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;
+      bottom:40px;font-size:16px;letter-spacing:0}
+    #torna .t-testo{display:none}
+  }
 
   #hero{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:1.4rem;text-align:center;
@@ -297,14 +453,165 @@
 
 
 <nav id="nav">
-  <a href="/" class="nv-logo">AXXELL</a>
-  <ul class="nv-links">
-    <li><a href="/">Home</a></li>
-    <li><a href="/atelier" class="active">Atelier</a></li>
-    <li><a href="/atelier/capitoli">Capitoli</a></li>
-    <li><a href="/atelier/parliamone" class="nv-cta">Parliamone</a></li>
+  <div class="mobile-menu-wrap">
+    <button class="mobile-menu-btn" id="navBurger" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="mobileDropdown">☰</button>
+    <div class="mobile-dropdown" id="mobileDropdown">
+      <a href="/sabe" data-sito="/sabe">SABE</a>
+      <a href="/atlas" data-sito="/atlas">ATLAS</a>
+      <a href="/atelier" class="-atelier" data-sito="/atelier">Atelier</a>
+      <a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a>
+      <a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a>
+    </div>
+  </div>
+  <a href="/" class="nav-logo-img" data-sito="/"><img src="assets/logo-axxell.webp" alt="Axxell" width="126" height="42"></a>
+  <ul class="nav-links">
+    <li><a href="/sabe" data-sito="/sabe">Sabe</a></li>
+    <li><a href="/atlas" data-sito="/atlas">ATLAS</a></li>
+    <li><a href="/atelier" id="n-wc" class="active" aria-current="page" data-sito="/atelier">Atelier</a></li>
+    <li><a href="/#servizi" data-sito="/#servizi" data-t="servizi">Servizi</a></li>
+    <li><a href="/#visione" data-sito="/#visione" data-t="visione">Visione</a></li>
   </ul>
+  <div class="nav-right">
+    <a href="/#preventivo" class="nav-cta" data-sito="/#preventivo" data-t="preventivo">Preventivo gratuito</a>
+    <div class="lang-sw">
+      <button type="button" id="lang-it" onclick="return window.atelierLingua && atelierLingua('it')">IT</button><span class="lang-sep">/</span><button type="button" id="lang-en" onclick="return window.atelierLingua && atelierLingua('en')">EN</button>
+    </div>
+  </div>
 </nav>
+<!-- «Il tuo mondo», il preventivo dei siti (vedi #preventivo nel CSS). -->
+<a id="preventivo" href="/atelier/parliamone" aria-label="Il tuo mondo — preventivo"><span class="pv-t">Il tuo mondo &rarr;</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></a>
+<script>
+(function(){
+  var b = document.getElementById('navBurger'), m = document.getElementById('mobileDropdown');
+  b.addEventListener('click', function(e){
+    e.stopPropagation();
+    var on = m.classList.toggle('-on');
+    b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+  /* il clic sulla scena non deve arrivare alla giostra mentre si usa il menu */
+  m.addEventListener('click', function(e){ e.stopPropagation(); });
+  /* nemmeno IT/EN: senza, il clic sulla lingua faceva anche «Entra» */
+  document.querySelector('#nav .lang-sw').addEventListener('click', function(e){
+    e.stopPropagation(); m.classList.remove('-on'); b.setAttribute('aria-expanded','false');
+  });
+  document.addEventListener('click', function(){ m.classList.remove('-on'); b.setAttribute('aria-expanded','false'); });
+})();
+</script>
+<script>
+/* ITALIANO / INGLESE — tutta la pagina, non piu' solo il menu (Nike: «la
+   traduzione in inglese non traduce tutto. traduci tutte le scritte
+   possibili»). Come nel sito la lingua vive nell'URL (?lang=en); se l'URL non
+   la dice vale quella della pagina da cui si arriva, poi quella del browser.
+   UN SOLO DIZIONARIO, in due metà:
+     · TESTI (qui sotto) — le scritte della PAGINA: menu (`data-t`), titolo e
+       descrizione, atrio, suggerimento, didascalia, elenco, i due link fissi;
+     · il record di ogni effetto in js/effetti-deck.js — nome, tipo e copy
+       della card, con la sua versione inglese in `en`.
+   Questo script gira PRIMA del mazzo: traduce subito quello che c'e' nel DOM
+   e poi avvisa (`atelier:lingua` sul document) chi disegna il resto — la
+   didascalia, i fermi, l'elenco sulla tela e la copy dentro la card —, che
+   legge la lingua corrente da `window.atelierLinguaOra`. Si cambia dal vivo,
+   senza ricaricare, in tutte e due le direzioni. */
+(function(){
+  var TESTI = {
+    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
+         titolo:'Effetti speciali — Atelier',
+         desc:'Otto mondi costruiti, uno per ogni settore. Il nono posto è vuoto: è il tuo.',
+         ogTitolo:'La costellazione | Axxell',
+         heroK:'// atelier', heroH:'Otto mondi costruiti.<br>Il nono è <em>il tuo</em>.', entra:'Entra →',
+         hint:"scorri per cambiare mondo · usa l'anteprima", hintM:"scorri per girare · tocca l'anteprima",
+         fermi:'I mondi', indice:'ESPLORA IL MONDO',
+         torna:'Torna alla mappa', mondo:'Il tuo mondo →', mondoAria:'Il tuo mondo — preventivo',
+         noThree:'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.' },
+    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
+         titolo:'Special effects — Atelier',
+         desc:'Eight worlds built, one for every industry. The ninth spot is empty: it’s yours.',
+         ogTitolo:'The constellation | Axxell',
+         heroK:'// atelier', heroH:'Eight worlds built.<br>The ninth is <em>yours</em>.', entra:'Enter →',
+         /* Su telefono il suggerimento deve stare su UNA riga a 390 px, fra
+            le due icone d'angolo: l'inglese resta piu' corto dell'italiano. */
+         hint:'scroll to change world · try the preview', hintM:'swipe to turn · tap the preview',
+         fermi:'The worlds', indice:'EXPLORE THE WORLD',
+         torna:'Back to the map', mondo:'Your world →', mondoAria:'Your world — get a quote',
+         noThree:'three.js did not load. Open the page from a server (http://localhost:8788/atelier/), not by double-clicking it in the Finder.' }
+  };
+  var mobile = window.matchMedia('(max-width:760px)').matches ||
+               window.matchMedia('(pointer:coarse)').matches;
+  function linguaIniziale(){
+    try {
+      var p = new URL(location.href).searchParams.get('lang');
+      if (p === 'en' || p === 'it') return p;
+      if (document.referrer){
+        var r = new URL(document.referrer);
+        var rl = r.origin === location.origin ? r.searchParams.get('lang') : null;
+        if (rl === 'en' || rl === 'it') return rl;
+      }
+    } catch(e){}
+    return (navigator.language || 'it').toLowerCase().indexOf('it') === 0 ? 'it' : 'en';
+  }
+  function testo(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; return el; }
+  function meta(sel, v){ var m = document.querySelector(sel); if (m) m.setAttribute('content', v); }
+  function atelierLingua(l){
+    if (l !== 'it' && l !== 'en') return false;
+    var T = TESTI[l], en = l === 'en';
+    window.atelierLinguaOra = l;
+    document.documentElement.lang = l;
+    document.title = T.titolo;
+    meta('meta[name="description"]', T.desc);
+    meta('meta[property="og:description"]', T.desc);
+    meta('meta[property="og:title"]', T.ogTitolo);
+    document.querySelectorAll('#nav [data-t], #preventivo [data-t]').forEach(function(el){
+      var v = T[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v;
+    });
+    var burger = document.getElementById('navBurger'); if (burger) burger.setAttribute('aria-label', T.menu);
+    document.querySelectorAll('#nav [data-sito]').forEach(function(a){
+      var d = a.getAttribute('data-sito'), h = '', i = d.indexOf('#');
+      if (i >= 0){ h = d.slice(i); d = d.slice(0, i); }
+      a.setAttribute('href', d + (en ? '?lang=en' : '') + h);
+    });
+    /* I due link fissi si portano dietro la lingua anche loro: la mappa
+       dell'atelier e il modulo del preventivo si aprono in inglese. */
+    var torna = document.getElementById('torna');
+    if (torna){
+      torna.setAttribute('aria-label', T.torna);
+      torna.setAttribute('href', '/atelier?da=effetti-speciali' + (en ? '&lang=en' : ''));
+      var tt = torna.querySelector('.t-testo'); if (tt) tt.textContent = T.torna;
+    }
+    var pv = document.getElementById('preventivo');
+    if (pv){
+      pv.setAttribute('aria-label', T.mondoAria);
+      pv.setAttribute('href', '/atelier/parliamone' + (en ? '?lang=en' : ''));
+      var pt = pv.querySelector('.pv-t'); if (pt) pt.textContent = T.mondo;
+    }
+    /* L'atrio, il suggerimento in basso, l'etichetta dei fermi. */
+    var hero = document.getElementById('hero');
+    if (hero){
+      var hk = hero.querySelector('.k'), hh = hero.querySelector('h1');
+      if (hk) hk.textContent = T.heroK;
+      if (hh) hh.innerHTML = T.heroH;
+    }
+    testo('go', T.entra);
+    testo('hint', mobile ? T.hintM : T.hint);
+    var dots = document.getElementById('dots'); if (dots) dots.setAttribute('aria-label', T.fermi);
+    ['it','en'].forEach(function(x){ var b = document.getElementById('lang-' + x); if (b) b.classList.toggle('on', x === l); });
+    try {
+      var u = new URL(location.href);
+      if (l === 'it') u.searchParams.delete('lang'); else u.searchParams.set('lang', l);
+      history.replaceState(history.state, '', u);
+    } catch(e){}
+    /* Il resto lo disegna il mazzo (didascalia, fermi, elenco, copy). */
+    try { document.dispatchEvent(new CustomEvent('atelier:lingua', { detail: l })); } catch(e){}
+    return false;
+  }
+  window.atelierTesti = TESTI;
+  window.atelierLingua = atelierLingua;
+  /* Il DOM di #hero, #hint, #torna ecc. sta PIU' IN BASSO di questo script:
+     qui si fissano subito lingua, titolo e menu; la seconda passata, sulle
+     scritte che ancora non c'erano, parte subito sotto a #err (vedi li'),
+     prima che il mazzo legga `atelierLinguaOra`. */
+  atelierLingua(linguaIniziale());
+})();
+</script>
 
 <div id="stage"><canvas id="c"></canvas></div>
 
@@ -322,6 +629,12 @@
      a fuoco e lo posiziona sul rettangolo proiettato della card davanti. Vuoto e
      `hidden` finché non si sveglia un effetto — allora, sotto, resta il poster. -->
 <div id="stage-live" hidden></div>
+<div id="lp" aria-hidden="true">
+  <i class="lp-k"></i>
+  <h2 class="lp-h"><span class="lp-l"></span><span class="lp-l"></span></h2>
+  <p class="lp-s"></p>
+  <span class="lp-b" role="presentation"></span>
+</div>
 
 <!-- L'ATRIO. Il tunnel sta già correndo dietro a queste due righe: non è un
      video di attesa, è la stessa scena in cui si sta per entrare. -->
@@ -337,23 +650,14 @@
   <div class="fsub" id="fSub">retail, e-commerce</div>
   <div id="dots" aria-label="I mondi"></div>
 </div>
-<p id="hint" style="opacity:0">scorri per cambiare mondo — clicca quello davanti</p>
-
-<div id="world" aria-hidden="true">
-  <div class="veil"></div>
-  <div class="copy">
-    <i id="wKick"></i>
-    <h2 id="wName"></h2>
-    <p id="wDesc"></p>
-    <div class="exits">
-      <button id="wNext">Il prossimo mondo →</button>
-      <button id="wTalk">Parliamone</button>
-      <button id="wBack">← Mappa</button>
-    </div>
-  </div>
-</div>
+<p id="hint" style="opacity:0">scorri per cambiare mondo · usa l'anteprima</p>
+<!-- Torna alla mappa dell'atelier, parcheggiata sulla card «Effetti speciali»
+     (?da=… : la home salta il vapore dell'ingresso). -->
+<a id="torna" href="/atelier?da=effetti-speciali" aria-label="Torna alla mappa"><span aria-hidden="true">&larr;</span><span class="t-testo">Torna alla mappa</span></a>
 
 <div id="err"></div>
+<!-- Seconda passata della lingua: ora l'atrio, il suggerimento e i due link fissi esistono. -->
+<script>window.atelierLingua && atelierLingua(window.atelierLinguaOra);</script>
 
 <!-- Vedi il commento su #scrollSpacer nel CSS: dà al documento l'altezza su
      cui scorrere, così l'asse centrale (Task 2) ha un progresso di scroll
@@ -366,24 +670,26 @@
      pinnare), lenis (lo scroll fluido su desktop — WC.lenis, letto da
      dna.js per il progresso globale), e glsl.js (gli aiutanti G.* che dna.js
      usa: colori, smorzamento, atmosfera, puntatore). CustomEase/SplitText/
-     Flip/ScrambleTextPlugin restano fuori: core.js li registra solo se
-     `typeof` li trova, e qui non serve nessuno dei quattro. -->
+     Flip restano fuori: core.js li registra solo se `typeof` li trova, e qui
+     non serve nessuno dei tre. ScrambleTextPlugin invece c'e' (2026-09-24):
+     decifra il titolo della copy di «Contatto» (vedi `lpDecifra`). -->
 <script src="vendor/gsap.min.js?v=20260824a"></script>
 <script src="vendor/ScrollTrigger.min.js?v=20260824a"></script>
 <script src="vendor/lenis.min.js?v=20260824a"></script>
 <script src="vendor/three.min.js?v=20260824a"></script>
+<script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
 <script src="js/core.js?v=20260824a"></script>
 <script src="js/glsl.js?v=20260824a"></script>
-<script src="js/dna.js?v=20260824a"></script>
+<script src="js/dna.js?v=20260924c"></script>
 <!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
-<script src="js/effetti-deck.js?v=20260831a"></script>
+<script src="js/effetti-deck.js?v=20260925a"></script>
 <!-- Task 5 — l'effetto WebGL «Il disco». Qui non c'è la sua sezione (#capSaucer),
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
      PRIMA dell'inline: il controller lo cerca in WC.effects. -->
-<script src="js/saucer.js?v=20260831a"></script>
+<script src="js/saucer.js?v=20260924d"></script>
 <!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
      dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
      js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
@@ -392,9 +698,9 @@
      tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
      servono per registrare i tre handle esterni su WC.effects, che il
      controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
-<script src="js/vesper.js?v=20260831a"></script>
-<script src="js/orologio.js?v=20260831a"></script>
-<script src="js/altitude.js?v=20260831a"></script>
+<script src="js/vesper.js?v=20260924d"></script>
+<script src="js/orologio.js?v=20260924b"></script>
+<script src="js/altitude.js?v=20260924b"></script>
 <!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
      (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
      vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
@@ -403,14 +709,17 @@
      esiste qui, quindi l'init WC di ciascuna è un no-op innocuo; servono per
      registrare i due handle esterni su WC.effects, che il controller sveglia
      dentro #stage-live. Caricati PRIMA dell'inline. -->
-<script src="js/lithos.js?v=20260831a"></script>
-<script src="js/warp.js?v=20260831a"></script>
+<script src="js/lithos.js?v=20260924b"></script>
+<script src="js/warp.js?v=20260924d"></script>
+<!-- «Gravità»: lo sneaker, l'handle esterno WC.effects.sneaker che il
+     controller sveglia dentro #stage-live (il video del prodotto sospeso). -->
+<script src="js/sneaker.js?v=20260924b"></script>
 <script>
 (function(){
   var errBox = document.getElementById('err');
   if (typeof THREE === 'undefined'){
     errBox.style.display = 'grid';
-    errBox.textContent = 'three.js non caricato. Apri la pagina da un server (http://localhost:8788/atelier/), non con doppio clic dal Finder.';
+    errBox.textContent = window.atelierTesti[window.atelierLinguaOra || 'it'].noThree;
     return;
   }
 
@@ -424,6 +733,10 @@
      cavalcano l'elica (window.helixPlace), guidate dallo scroll globale come
      l'asse centrale. */
   var DECK_ON = true;
+  /* L'anteprima viva (vedi #stage-live nel CSS): dichiarata qui in cima perche'
+     la leggono gia' i gestori dell'input (`inPreview`), molto prima del
+     controller che ci monta dentro gli effetti. */
+  var STAGE_LIVE = document.getElementById('stage-live');
 
   /* ⚠️ LA MINA DELLO SCROLL (Task 2→4). La giostra di index.html dirottava la
      rotellina e le frecce sulla rotazione dell'anello con e.preventDefault(),
@@ -440,11 +753,10 @@
      dell'intero progetto. Il colore non è decorativo — è quello con cui il
      mondo tinge la nebbia intorno a sé quando lo guardi, così il fondo resta
      neutro e sono i portali a colorarlo.
-     `poster` è quello che si vede sempre; `video` parte solo al passaggio.
+     `poster` è quello che si vede sempre sulla lastra; l'effetto vivo lo
+     monta il controller sopra, in #stage-live. Nessun mondo ha piu' una
+     pagina sua (2026-09-24): l'effetto si usa dentro la card.
      ====================================================================== */
-  /* `page` = il mondo ha una pagina sua. Chi ce l'ha si raggiunge navigando,
-     sotto la copertura dello zoom; chi non ce l'ha ancora resta sul pannello
-     provvisorio, cosi' la mappa e' completa anche a costruzione in corso. */
   /* MISURA UNICA PER TUTTE LE LASTRE.
      Nella costellazione ogni portale aveva la sua taglia: erano fermi, e la
      differenza si leggeva come profondita'. In una giostra sfilano uno dietro
@@ -466,6 +778,12 @@
      i trattini. Niente `vuoto`/`page`/`video`: le card sono poster di vetro. */
   var WORLDS = window.EFFETTI;
   WORLDS.forEach(function(w, i){ w.idx = i; });
+  /* LE SCRITTE DI UNA CARD NELLA LINGUA DELLA PAGINA: il record stesso in
+     italiano, la sua meta' `en` in inglese (vedi js/effetti-deck.js). Ha gli
+     stessi campi che il mazzo legge — `nome`, `sett`, `lp` —, quindi dove
+     prima si scriveva `w.nome` ora si scrive `inLingua(w).nome`. */
+  function inLingua(w){ return (window.atelierLinguaOra === 'en' && w.en) ? w.en : w; }
+  function testoPagina(k){ var T = window.atelierTesti; return T ? T[window.atelierLinguaOra || 'it'][k] : ''; }
 
   /* ══ IL MAZZO ═════════════════════════════════════════════════════════
      Non piu' un anello. L'anello era onesto — la lastra si volta e il vetro
@@ -525,13 +843,32 @@
      misura: e' la rotonda di Mirror Hall. Il mondo a fuoco non si stacca per
      grandezza ma perche' e' centrato, piu' acceso (uHot) e nominato dalla
      didascalia. */
-  function deckScale(u){ return 1; }
+  /* LE VICINE RIMPICCIOLISCONO (2026-09-24, richiesta di Nike: «nessuna card
+     deve toccarne un'altra»). A grandezza piena le card accanto finivano
+     quasi tutte DENTRO al rettangolo di quella davanti; scalate al 25% (con
+     la salita `climb` e la quota `yTop` tarate in js/effetti-deck.js) restano
+     staccate anche a meta' giro. Smussato (smoothstep su |u|) perche' la card
+     che arriva cresca, non scatti. 0.25 e' piu' piccolo del 55% di partenza:
+     al 55% la vicina restava troppo alta per liberare insieme la barra di
+     navigazione E la didascalia (sono ai due lati opposti dello schermo). */
+  var SCALE_SIDE = 0.25;
+  function deckScale(u){
+    var a = Math.min(1, Math.abs(u));
+    a = a * a * (3 - 2 * a);
+    return 1 - (1 - SCALE_SIDE) * a;
+  }
   /* Chi si volta di spalle sparisce. Dietro la camera non si vedrebbe
      comunque, ma questo spegne DOLCEMENTE l'arco posteriore ai lati invece di
-     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te. */
+     farlo scomparire di scatto. c = quanto la lastra e' rivolta verso di te.
+     2026-09-24: soglie strette da [-0.1,0.35] a [0.28,0.55]. Durante il giro
+     (non a riposo) la card successiva passa per |u|≈1.5 prima di arrivare a
+     fianco: con le soglie vecchie ci arrivava ancora al 18% di opacita' e
+     toccava didascalia/barra. cos(1.5·2π/7)≈0.222 sta sotto la nuova soglia
+     bassa (0.28): a |u|≈1.5 e' gia' spenta. cos(1·2π/7)≈0.624 resta sopra la
+     soglia alta (0.55): la vicina ferma a |u|=1 resta piena, invariata. */
   function deckFade(u){
     var c = Math.cos(u * TWO_PI_N);
-    return c <= -0.1 ? 0 : (c >= 0.35 ? 1 : (c + 0.1) / 0.45);
+    return c <= 0.28 ? 0 : (c >= 0.55 ? 1 : (c - 0.28) / 0.27);
   }
 
   var canvas   = document.getElementById('c');
@@ -567,7 +904,9 @@
       '  vec3 base=mix(vec3(0.055,0.052,0.085),vec3(0.010,0.011,0.021),smoothstep(0.0,0.95,d));',
       '  base+=vec3(0.020,0.012,0.050)*(1.0-smoothstep(0.0,0.55,d));',
       // il mondo guardato tinge la nebbia: il fondo resta neutro, sono i portali a colorarlo
-      '  base+=uTint*uTintStr*0.085*(1.0-smoothstep(0.0,1.05,d));',
+      // (2026-09-24) 0.085 → 0.15: con un colore per card la tinta deve
+      // leggersi — una velatura chiara del colore, non un fondo colorato
+      '  base+=uTint*uTintStr*0.15*(1.0-smoothstep(0.0,1.05,d));',
       '  base+=(h(gl_FragCoord.xy+uTime)-0.5)*0.012;',
       '  gl_FragColor=vec4(base,1.0);',
       '}'
@@ -650,7 +989,8 @@
     transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
     uniforms:{ uTime:{value:0}, uPr:{value:renderer.getPixelRatio()},
                uTravel:{value:0}, uAssign:{value:0}, uSpeed:{value:1},
-               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN} },
+               uCardsIn:{value:0}, uNZ:{value:0}, uLen:{value:TUNNEL_LEN},
+               uTint:{value:new THREE.Vector3(0,0,0)}, uTintStr:{value:0} },
     vertexShader:[
       'attribute vec3 aTarget; attribute float aSeed, aRole;',
       'uniform float uTime,uPr,uTravel,uAssign,uSpeed,uCardsIn,uNZ,uLen;',
@@ -683,9 +1023,12 @@
       '}'
     ].join('\n'),
     fragmentShader:[
-      'varying float vA;',
+      // il pulviscolo resta azzurro, ma tira un po' (35%) verso il colore
+      // della card davanti — la stessa tinta, e lo stesso passo, della nebbia
+      'varying float vA; uniform vec3 uTint; uniform float uTintStr;',
       'void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;',
-      '  gl_FragColor=vec4(vec3(0.62,0.78,0.95), vA*(1.0-smoothstep(0.18,0.5,d))); }'
+      '  vec3 c=mix(vec3(0.62,0.78,0.95), uTint, 0.35*uTintStr);',
+      '  gl_FragColor=vec4(c, vA*(1.0-smoothstep(0.18,0.5,d))); }'
     ].join('\n')
   });
   var dust = new THREE.Points(pGeo, dustMat);
@@ -994,16 +1337,26 @@
      spostano, lo sdoppiano nei tre colori. E' l'unico modo per avere
      davvero del testo rifratto senza rinunciare alla nitidezza di quello
      che conta.
-     Non e' solo una dimostrazione: e' l'elenco dei TIPI (Task 4 — cinque
-     righe, una per `CLUSTERS[]`, non piu' una per effetto: sette righe
-     dicevano "questi sono i sette nomi", cinque dicono "questi sono i cinque
-     modi in cui lavoriamo", che è la domanda a cui l'elenco deve rispondere.
-     Chi arriva legge in un colpo se il suo mestiere c'e', e cliccando una
-     riga si porta davanti il PRIMO effetto di quel tipo). I sette trattini in
-     basso restano uno per effetto — dicono "quale", l'elenco dice "quale
-     specie".
+     Non e' solo una dimostrazione: e' l'elenco "ESPLORA IL MONDO" (Task 3 —
+     torna a sette righe, una per EFFETTO: elencare i cinque TIPI ("questi
+     sono i cinque modi in cui lavoriamo") rispondeva a una domanda che chi
+     arriva non si è ancora fatto; sette nomi evocativi ("questi sono i sette
+     posti da esplorare") invitano a curiosare invece di classificare. Chi
+     arriva legge il titolo di ogni effetto e, cliccando una riga, si porta
+     davanti QUELLA card — non più il primo di un gruppo). I sette trattini in
+     basso restano uno per effetto: ora dicono la stessa cosa dell'elenco,
+     solo in forma di fermo invece che di riga.
      ══════════════════════════════════════════════════════════════════ */
-  var IW = 900, IH = 540, IROW0 = 150, IROWH = 44;
+  /* 2026-09-24 (fix round 1): Nike voleva la scaletta "più grande" — a
+     parita' di posizione/scala della lastra, il testo di una riga cresce
+     solo aumentando quanto SPAZIO del canvas occupa: fonte riga 36→58px,
+     passo riga 70→80 (piu' largo, non piu' stretto, perche' 58px in 70px di
+     passo restava leggibile ma compresso) e titolo 40→46px. Misurato con
+     `window.__capitoli.rowHeight(k, FS)`: 8.66px a schermo (1440×900) sulla
+     versione base (e066c88, fonte 25px/passo 44), 9.06px con questa lastra
+     prima del fix (fonte 36px — solo +5%, non e' "più grande"), 14.6px dopo
+     (fonte 58px) — ×1.69 sulla base, sopra la soglia ×1.5 richiesta. */
+  var IW = 1100, IH = 760, IROW0 = 190, IROWH = 80;
   var idxCv = document.createElement('canvas');
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
@@ -1013,7 +1366,7 @@
   var idxMat = new THREE.MeshBasicMaterial({
     map:idxTex, transparent:true, depthWrite:false, opacity:0
   });
-  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.40, 1.44), idxMat);
+  var idxMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.90, 2.00), idxMat);
   idxMesh.position.set(-2.62, -1.12, -2.00);
   idxMesh.frustumCulled = false;
   /* In `bg`, non in `scene`: `bg` viene disegnato nel render target PRIMA
@@ -1022,25 +1375,43 @@
   bg.add(idxMesh);
 
   var idxSopra = -1;                 // la riga sotto al puntatore
-  /* Chi e' acceso non e' piu' "questa e' la card a fuoco" (un solo `w`): e'
-     "il tipo a cui appartiene la card a fuoco" — piu' card condividono lo
-     stesso tipo (`cluster`), e la riga resta accesa per tutte loro. */
+  /* Chi e' acceso e' di nuovo "questa e' la card a fuoco" (un solo `w`, per
+     `idx`) — l'elenco torna a essere per effetto, non per tipo. */
   function idxDisegna(){
     idxG.clearRect(0,0,IW,IH);
-    try { idxG.letterSpacing = '3px'; } catch(e){}
+    try { idxG.letterSpacing = '4px'; } catch(e){}
     idxG.textBaseline = 'middle';
-    idxG.font = '500 27px "DM Mono", ui-monospace, monospace';
-    idxG.fillStyle = 'rgba(240,240,246,0.82)';
-    idxG.fillText('CHE COSA TI MOSTRO?', 34, 60);
-    CLUSTERS.forEach(function(cl, i){
+    idxG.font = '500 46px "DM Mono", ui-monospace, monospace';
+    idxG.fillStyle = 'rgba(240,240,246,0.92)';
+    idxG.fillText(testoPagina('indice'), 34, 80);
+    /* OGNI RIGA NEL COLORE DELLA SUA CARD, sempre (2026-09-24) — non solo
+       quella accesa. Le tavolozze (Nebulosa, Genesi) in sfumatura
+       orizzontale lungo la parola. Per distinguere: la card davanti a colore
+       pieno e con la freccia; quella sotto al puntatore a colore pieno con la
+       freccia a meta'; le altre schiarite di un quarto verso il bianco e a
+       .80 — non .72: moltiplicate per l'opacita' della lastra (.92) i viola e
+       l'arancio scendevano sotto il 4.5:1 sul fondo scuro. */
+    function idxTinta(c, a, chiaro){
+      return 'rgba(' + c.map(function(v){ return Math.round((v + (1 - v)*chiaro)*255); }).join(',') + ',' + a + ')';
+    }
+    WORLDS.forEach(function(w, i){
       var y = IROW0 + i*IROWH;
-      var acceso = (hot && hot.cluster === i) || (i === idxSopra);
-      idxG.font = '400 25px "DM Mono", ui-monospace, monospace';
-      idxG.fillStyle = acceso
-        ? 'rgba(' + cl.col.map(function(v){ return Math.round(v*255); }).join(',') + ',0.95)'
-        : 'rgba(223,228,238,0.60)';
-      idxG.fillText('->', 34, y);
-      idxG.fillText(cl.tipo.toUpperCase(), 84, y);
+      var davanti = !!(hot && hot.idx === i), sopra = (i === idxSopra);
+      var nome = inLingua(w).nome.toUpperCase();
+      idxG.font = '400 58px "DM Mono", ui-monospace, monospace';
+      if (davanti || sopra){
+        idxG.globalAlpha = davanti ? 1 : 0.5;
+        idxG.fillStyle = idxTinta(w.col, 1, 0);
+        idxG.fillText('->', 34, y);
+        idxG.globalAlpha = 1;
+      }
+      /* IL COLORE SOLO A CHI E' SCELTO (Nike, 2026-09-24): la parola prende
+         il colore della sua card solo quando la card e' davanti o la parola e'
+         sotto al puntatore; le altre restano di un bianco neutro, leggibile.
+         UN colore per parola: anche Nebulosa e Genesi usano il loro `col`
+         pieno, niente sfumatura dentro al testo. */
+      idxG.fillStyle = (davanti || sopra) ? idxTinta(w.col, 1, 0) : 'rgba(223,228,238,0.78)';
+      idxG.fillText(nome, 140, y);
     });
     idxTex.needsUpdate = true;
   }
@@ -1052,7 +1423,7 @@
   /* Quale riga sta sotto al puntatore. Le lastre hanno la precedenza: la
      parte destra dell'elenco sta DIETRO a quella davanti, ed e' li' che
      si vede la rifrazione — cliccandoci si deve entrare nella lastra.
-     Torna l'indice del CLUSTER (0..4), non piu' quello dell'effetto. */
+     Torna l'indice della CARD (0..6). */
   function pickRiga(){
     if (idxMat.opacity < 0.25) return -1;
     ray.setFromCamera(ptr, camera);
@@ -1060,54 +1431,7 @@
     if (!h.length || !h[0].uv) return -1;
     var y = (1 - h[0].uv.y) * IH;
     var k = Math.round((y - IROW0)/IROWH);
-    return (k >= 0 && k < CLUSTERS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
-  }
-  /* Il primo effetto di un cluster: gli effetti sono già ordinati per
-     cluster in `EFFETTI` (vedi js/effetti-deck.js), quindi il primo con
-     quel `.cluster` è sempre lo stesso, stabile. */
-  function primoDelCluster(c){
-    for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].cluster === c) return WORLDS[i];
-    return null;
-  }
-
-  /* Un solo video acceso per volta: la regola che tiene in piedi il telefono. */
-  var video = document.createElement('video');
-  video.muted = true; video.loop = true; video.playsInline = true;
-  video.setAttribute('playsinline',''); video.preload = 'auto';
-  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
-  document.body.appendChild(video);
-  var vtex = new THREE.VideoTexture(video);
-  vtex.minFilter = THREE.LinearFilter; vtex.magFilter = THREE.LinearFilter;
-  vtex.format = THREE.RGBFormat; vtex.encoding = THREE.sRGBEncoding;
-  var videoOn = null;
-
-  function playOn(w){
-    if (videoOn === w) return;
-    if (videoOn){ videoOn.uni.tVideo.value = videoOn.posterTex;
-                  videoOn.uni.uVidAsp.value = videoOn.posterAsp || 16/9;
-                  videoOn.uni.uGain.value = videoOn.gain || TARATURA.uGain;
-                  videoOn = null; }
-    if (!w || !w.video) { video.pause(); return; }
-    videoOn = w;
-    if (video.getAttribute('src') !== w.video){ video.src = w.video; }
-    video.play().catch(function(){});
-    /* LA TEXTURE SI ATTACCA SOLO QUANDO C'E' UN FOTOGRAMMA DA LEGGERE.
-       Assegnandola subito, three prova a caricare un video ancora vuoto e il
-       driver risponde `INVALID_VALUE: texImage2D: no video` — a ogni
-       fotogramma, finche' non arriva il primo. Non si perde niente ad
-       aspettare: fino a quel momento nella lastra resta il poster. */
-    /* Il guadagno segue la SORGENTE, non il mondo: il poster del prodotto e'
-       su fondo bianco e il suo video e' notturno, e un solo numero per tutti
-       e due li sbaglia tutti e due. */
-    function attacca(){
-      if (videoOn !== w) return;
-      w.uni.tVideo.value = vtex;
-      w.uni.uGain.value = w.gainVid || TARATURA.uGain;
-    }
-    if (video.readyState >= 2) attacca();
-    else video.addEventListener('loadeddata', function una(){
-      video.removeEventListener('loadeddata', una); attacca();
-    });
+    return (k >= 0 && k < WORLDS.length && Math.abs(y - (IROW0 + k*IROWH)) < IROWH*0.46) ? k : -1;
   }
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -1161,6 +1485,7 @@
   var toccato = false;                // qualcuno l'ha preso in mano?
   var lastInput = -1e9;
   var dragging = false, dragId = null, dragX = 0, dragY = 0, dragAxis = 0, dragMoved = 0;
+  var premuto = false;                // premuto ma non ancora mosso: non e' input
 
   /* IL PONTE VERSO L'ELICA (Task 4). dna.js, montato in modalità standalone
      su #helixStage, cerca questa funzione PRIMA di leggere Lenis/scrollY (è
@@ -1222,23 +1547,26 @@
     }
     return false;
   }
-  /* L'unica guardia è `openW` (si è dentro a un mondo): niente più
-     RING_SCROLL — qui non c'è una modalità in cui l'input NON deve muovere
-     l'accumulatore, perché non c'è più una sorgente concorrente (la pagina)
-     che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra solo
-     per non fare `e.preventDefault()` su rotellina/frecce — vedi il
-     commento lì. */
+  /* Nessuna guardia: non c'è più un mondo in cui entrare (2026-09-24, niente
+     pagine di dettaglio), e non c'è una modalità in cui l'input NON deve
+     muovere l'accumulatore, perché non c'è più una sorgente concorrente (la
+     pagina) che lo faccia al posto suo. `RING_SCROLL` resta `false` più sopra
+     solo per non fare `e.preventDefault()` su rotellina/frecce — vedi il
+     commento lì. La rotellina NON guarda `inPreview`: anche sopra
+     l'anteprima cambia card. */
   function spingi(d){
-    if (openW) return;
     toccato = true; lastInput = performance.now();
     spinT += d;
+  }
+  /* Un gesto che nasce DENTRO l'anteprima viva e' dell'effetto, non del mazzo. */
+  function inPreview(e){
+    return !!(STAGE_LIVE && e && e.target && e.target.nodeType === 1 && STAGE_LIVE.contains(e.target));
   }
   /* Porta davanti un effetto preciso prendendo il giro piu' corto: si somma il
      numero intero di giri che avvicina di piu' il bersaglio a dove siamo.
      Con `spinT` senza fondo il "giro" è sempre relativo a dove siamo ORA, non
      a un progresso 0..1 — la stessa formula di prima, invariata. */
   function portaDavanti(i){
-    if (openW) return;
     toccato = true;
     lastInput = -1e9;                 // niente attesa: questo e' gia' un fermo
     spinT = i + Math.round((spinT - i)/WORLDS.length)*WORLDS.length;
@@ -1267,7 +1595,7 @@
      card a fuoco, che altrimenti con `spin` frazionario non si sveglia mai
      scorrendo di rotellina/trascino. */
   window.addEventListener('wheel', function(e){
-    if (openW || !WC.motionOk) return;
+    if (!WC.motionOk) return;
     var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     var unit = e.deltaMode === 1 ? 17 : (e.deltaMode === 2 ? window.innerHeight : 1);
     spingi(d * unit * (1/1200));
@@ -1280,18 +1608,68 @@
      REDUCED-MOTION: come la rotellina, è un gesto continuo — disattivo con
      `!WC.motionOk` (il `pointerdown` resta innocuo: senza `pointermove` che
      spinga, trascinare non muove nulla). */
+  /* SU TELEFONO SI SCORRE PER GIRARE (Nike, round 2: «su tel voglio anche
+     poter scrollare per far girare le card»). Il dito che striscia in
+     VERTICALE fa quello che fa la rotellina, ovunque — anche sopra
+     l'anteprima viva. Sull'anteprima pero' il gesto nasce dell'effetto: un
+     tocco, o un trascinamento soprattutto orizzontale, restano suoi. Quindi
+     un tocco che parte li' resta IN ATTESA (`attesa`) e non e' ancora un
+     trascino — `dragging` acceso anche solo per un istante addormenterebbe
+     l'effetto (vedi `_settled` nel frame) mentre lo si sta usando. Diventa
+     trascino del mazzo solo quando, superati i 6px, si capisce che va in su
+     o in giu'; se va di lato, lo si lascia all'effetto. Col mouse non cambia
+     niente: sopra l'anteprima il trascino resta dell'effetto, come prima.
+     La nav (menu a tendina compreso) non gira mai il mazzo. Perche' la
+     pagina non scorra sotto al dito, `touch-action:none` su html/body. */
+  var attesa = null;                  // { id, x, y } tocco nato sull'anteprima
+  /* Fuori dalla scena: la nav (menu compreso) e i link fissi della pagina
+     (#torna, #preventivo) — non girano il mazzo e non sono un
+     clic sulla scena. */
+  function inNav(e){ return !!(e && e.target && e.target.closest && e.target.closest('#nav,#torna,#preventivo')); }
+  ['torna', 'preventivo'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    ['pointerdown', 'click', 'wheel'].forEach(function(t){
+      el.addEventListener(t, function(ev){ ev.stopPropagation(); }, t === 'wheel' ? { passive: true } : false);
+    });
+  });
   window.addEventListener('pointerdown', function(e){
-    if (openW || e.button) return;
+    if (e.button || inNav(e)) return;
+    if (inPreview(e)){
+      if (e.pointerType === 'touch') attesa = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
     ptr.set((e.clientX/window.innerWidth)*2-1, -((e.clientY/window.innerHeight)*2-1));
-    dragging = true; dragId = e.pointerId;
+    /* UN TOCCO NON E' UN GESTO (round 3, Nike: «quando tocco fuori dalla card
+       si refresha l'animazione», anche col mouse su pc). Qui prima si
+       accendeva subito `dragging`: il gate `_settled` del frame cadeva per un
+       istante, il controller congelava l'effetto e al rilascio (con
+       `lastInput` rinfrescato) lo risvegliava — sul telefono i moduli si
+       rimontano da capo al risveglio, quindi ripartiva dall'inizio. Ora la
+       pressione resta solo PREMUTA (`premuto`): diventa trascino, e conta
+       come input, solo quando supera i 6px nel `pointermove` qui sotto. */
+    premuto = true; dragId = e.pointerId;
     dragX = e.clientX; dragY = e.clientY; dragAxis = 0; dragMoved = 0;
   });
   window.addEventListener('pointermove', function(e){
-    if (!dragging || e.pointerId !== dragId || !WC.motionOk) return;
+    if (attesa && e.pointerId === attesa.id){
+      var ax = e.clientX - attesa.x, ay = e.clientY - attesa.y;
+      if (Math.abs(ax) + Math.abs(ay) <= 6) return;
+      attesa = null;
+      if (Math.abs(ay) <= Math.abs(ax)) return;          // di lato: e' dell'effetto
+      dragging = true; dragId = e.pointerId; dragAxis = 2;
+      dragMoved = Math.abs(ax) + Math.abs(ay);
+      dragX = e.clientX; dragY = e.clientY;
+      if (WC.motionOk) spingi(-ay*0.0060);
+      return;
+    }
+    if (!(dragging || premuto) || e.pointerId !== dragId || !WC.motionOk) return;
     var dx = e.clientX - dragX, dy = e.clientY - dragY;
     dragX = e.clientX; dragY = e.clientY;
     dragMoved += Math.abs(dx) + Math.abs(dy);
-    if (!dragAxis && dragMoved > 6) dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+    if (!dragAxis && dragMoved > 6){
+      dragAxis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+      premuto = false; dragging = true;      // adesso si' che e' un trascino
+    }
     if (!dragAxis) return;
     /* IL SEGNO NON E' UNA SCELTA: la lastra davanti deve andare DOVE VA IL
        DITO, se no si sta tirando una cosa che scappa dalla parte opposta.
@@ -1301,7 +1679,11 @@
        patto della rotellina: dito in su = come scorrere in giu' = avanti. */
     spingi(dragAxis === 1 ? -dx*0.0060 : -dy*0.0060);
   }, {passive:true});
-  function fineTrascino(){ if (dragging){ dragging = false; lastInput = performance.now(); } }
+  function fineTrascino(e){
+    if (attesa && (!e || e.pointerId === attesa.id)) attesa = null;
+    premuto = false;                  // una pressione senza moto non lascia traccia
+    if (dragging){ dragging = false; lastInput = performance.now(); }
+  }
   window.addEventListener('pointerup', fineTrascino);
   window.addEventListener('pointercancel', fineTrascino);
 
@@ -1310,14 +1692,11 @@
      dei due modi di navigare a passi richiesti dal brief (l'altro sono i
      click su fermi/elenco). */
   window.addEventListener('keydown', function(e){
-    if (openW) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){
       spingi(STEP);
     } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){
       spingi(-STEP);
-    } else if (k === 'Enter'){
-      if (hot){ e.preventDefault(); enter(hot); }
     }
   });
 
@@ -1328,16 +1707,15 @@
   WORLDS.forEach(function(w, i){
     var b = document.createElement('button');
     b.type = 'button';
-    b.setAttribute('aria-label', w.nome + ' — ' + w.sett);
+    b.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
     b.style.setProperty('--now', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
     b.addEventListener('click', function(ev){ ev.stopPropagation(); portaDavanti(i); });
     dotsEl.appendChild(b);
     w.dot = b;
   });
 
-  if (mobile){
-    document.getElementById('hint').textContent = 'trascina per cambiare mondo — tocca per entrare';
-  }
+  /* Il suggerimento (e la sua variante da telefono) lo scrive la lingua:
+     vedi `hint`/`hintM` in TESTI, in testa alla pagina. */
 
   /* LA FOCUS CAPTION — nome del mondo davanti, come in Mirror Hall. Cambia col
      blur-rise a ogni mondo nuovo; il vuoto e' l'unica scritta senza colore. */
@@ -1348,13 +1726,92 @@
   document.getElementById('fTot').textContent = String(WORLDS.length).padStart(2,'0');
   function aggiornaFocus(w){
     if (!w) return;
-    fNameEl.textContent = w.nome;
+    fNameEl.textContent = inLingua(w).nome;
     fNameEl.classList.toggle('-void', !!w.vuoto);
-    fSubEl.textContent = w.sett;
+    fSubEl.textContent = inLingua(w).sett;
     fNumEl.textContent = String(w.idx+1).padStart(2,'0');
     focusEl.style.setProperty('--hot', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
+    // L'accento della card anche per i link fissi della pagina (#torna, #preventivo)
+    document.documentElement.style.setProperty('--pag', 'rgb(' + w.col.map(function(v){return Math.round(v*255);}).join(',') + ')');
     // riavvia l'animazione di scambio
     fNameEl.classList.remove('-swap'); void fNameEl.offsetWidth; fNameEl.classList.add('-swap');
+  }
+
+  /* LA COPY DELLA CARD DAVANTI — vedi #lp nel CSS. */
+  var lpEl = document.getElementById('lp');
+  var lpK = lpEl.querySelector('.lp-k'), lpL = lpEl.querySelectorAll('.lp-l'),
+      lpS = lpEl.querySelector('.lp-s'), lpB = lpEl.querySelector('.lp-b');
+  var lpDi = null, lpTw = null;
+  function lpRiempi(w){
+    lpDi = w;
+    var lp = inLingua(w).lp;
+    lpK.textContent = lp.kicker;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
+    lpS.textContent = lp.sub; lpB.textContent = lp.cta;
+    lpEl.classList.toggle('-chiaro', !!w.chiaro);
+    lpEl.classList.toggle('-forte', !!w.scrimForte);
+    if (w.chiaro) lpEl.style.removeProperty('--lpc');
+    else lpEl.style.setProperty('--lpc', 'rgb(' + w.col.map(function(v){ return Math.round(v*255); }).join(',') + ')');
+    /* Un tween ucciso non arriva all'onComplete: l'altezza bloccata va tolta
+       qui, se no la card nuova eredita quella del titolo di Contatto. */
+    if (lpTw){ lpTw.kill(); lpTw = null; lpEl.querySelector('.lp-h').style.minHeight = ''; }
+  }
+  /* «Contatto»: il titolo si decifra a ogni arrivo, riga per riga — due righe
+     fisse, cosi' i caratteri a caso non rimandano a capo il testo. Stessi
+     parametri di js/headings.js. */
+  function lpDecifra(){
+    if (!lpDi || !lpDi.scramble || !WC.motionOk || !window.ScrambleTextPlugin) return;
+    /* Un tween lasciato a meta' (la card e' scivolata via e tornata) avrebbe
+       lasciato lettere a caso: '{original}' le prenderebbe per buone. Si
+       ferma e si rimette il testo vero PRIMA di ripartire; l'altezza resta
+       bloccata mentre decifra, cosi' un a-capo diverso non fa saltare la copy. */
+    var hEl = lpEl.querySelector('.lp-h');
+    if (lpTw){ lpTw.kill(); lpTw = null; hEl.style.minHeight = ''; }
+    var lp = inLingua(lpDi).lp;
+    lpL[0].textContent = lp.h[0]; lpL[1].textContent = lp.h[1] || '';
+    hEl.style.minHeight = hEl.offsetHeight + 'px';
+    lpTw = gsap.to(lpL, { onComplete: function(){ hEl.style.minHeight = ''; }, duration: 1.3, ease: 'none', stagger: 0.22,
+      scrambleText: { text: '{original}', chars: 'upperAndLowerCase', speed: 0.5, revealDelay: 0.15 } });
+  }
+  var lpFermo = false;
+
+  /* CAMBIO DI LINGUA DAL VIVO (IT/EN nella barra): il DOM fisso lo traduce
+     `atelierLingua`; qui si ridisegna quello che nasce dai record — i nomi
+     dei fermi, la didascalia (senza rifare lo scambio: la card e' la
+     stessa), l'elenco sulla tela e la copy della card davanti. Se la copy e'
+     gia' in vista e la card decifra («Contatto»), lo scramble riparte sul
+     testo nuovo. */
+  document.addEventListener('atelier:lingua', function(){
+    WORLDS.forEach(function(w){
+      if (w.dot) w.dot.setAttribute('aria-label', inLingua(w).nome + ' — ' + inLingua(w).sett);
+    });
+    if (hot){ fNameEl.textContent = inLingua(hot).nome; fSubEl.textContent = inLingua(hot).sett; }
+    idxDisegna();
+    if (lpDi){ lpRiempi(lpDi); if (lpFermo) lpDecifra(); }
+  });
+  function lpFrame(){
+    var w = hot;
+    var ok = DECK_ON && deckCtl && stage === 'mappa' && w && w.mesh && w.lp;
+    var frac = Math.abs(spin - Math.round(spin));
+    var fermo = ok && frac < 0.15 && !dragging;
+    if (ok && lpDi !== w) lpRiempi(w);
+    if (fermo){
+      var r = deckCtl ? deckCtl.rect(w.mesh) : null;
+      if (r){
+        lpEl.style.left = r.x + 'px'; lpEl.style.top = r.y + 'px';
+        lpEl.style.width = r.w + 'px'; lpEl.style.height = r.h + 'px';
+        lpEl.style.setProperty('--raggio', Math.round(r.w * 0.035) + 'px');
+        /* Un quarto piu' piccola (Nike, round 2: «le scritte dentro le card
+           falle piu' piccole»): la base scende a 3/4 e con lei, in `em`,
+           titolo, sottotitolo, kicker e bottone. I minimi da 11px del testo
+           che serve (kicker, bottone, sottotitolo) restano nel CSS. */
+        lpEl.style.setProperty('--lpfs', (Math.max(12, Math.min(22, r.w / 44)) * 0.75).toFixed(1) + 'px');
+        lpEl.classList.toggle('-stretta', r.w < 420);
+      }
+    }
+    lpEl.classList.toggle('-on', !!fermo);
+    if (fermo && !lpFermo) lpDecifra();
+    lpFermo = !!fermo;
   }
 
   /* ======================================================================
@@ -1364,26 +1821,6 @@
      GLI STADI. `hero` → `arrivo` → `mappa`. Non sono scene diverse: è lo
      stesso frame, con tre numeri che si muovono.
      ══════════════════════════════════════════════════════════════════════ */
-  /* UN INDIRIZZO PER MONDO, SUL PATH.
-     Si condivide, il tasto indietro funziona, e Google indicizza sette pagine
-     invece di una. Il rewrite che serve sta in vercel.json: senza, un ingresso
-     diretto su /atelier/la-notte darebbe 404. */
-  var ROOT = '/atelier';
-  function worldFromPath(){
-    var parts = location.pathname.replace(/\/+$/,'').split('/');
-    var last = parts[parts.length-1];
-    return (last === 'atelier' || last === '') ? '' : last;
-  }
-
-  /* SI TORNA DA UN MONDO: la coreografia d'ingresso e' roba da prima visita.
-     Chi rientra dalla pagina di un mondo trova la mappa gia' composta, col
-     portale da cui e' uscito acceso e un filo piu' avanti. Il parametro lo
-     mette il link «Mappa» delle pagine dei mondi. */
-  var CAME_FROM = (function(){
-    try { return new URLSearchParams(location.search).get('da') || ''; }
-    catch(e){ return ''; }
-  })();
-
   var stage = 'hero';
   var travel = 0, speed = 1;      // quanto scorre il tunnel, e a che velocità
   var assign = 0;                 // 0 = sfila, 1 = tutti a destinazione
@@ -1412,107 +1849,36 @@
      c'e' sempre e solo un mondo davanti, ed e' quello. Il puntatore resta per
      una cosa sola: sapere su quale lastra si e' cliccato. */
   var hot = null;                 // il mondo davanti
-  var hotSince = 0;               // da quando: il precaricamento aspetta che ci si fermi
   var overCard = null;            // la lastra sotto al puntatore, se c'e'
   function pick(){
     ray.setFromCamera(ptr, camera);
     var h = ray.intersectObjects(cards.children, false);
     return h.length ? h[0].object.userData.world : null;
   }
-  var openW = null;               // il mondo in cui si è entrati
-  var zoom = 0, zoomT = 0;        // 0 = mappa, 1 = dentro
   var tintCol = new THREE.Vector3(0,0,0), tintStr = 0;
+  var tintaElica = null;           // la card di cui l'elica ha preso il colore
 
   /* Qui non c'e' piu' la guardia `pointerMoved`: serviva quando a mettere a
      fuoco era il raycast, e il primo fotogramma col mouse fermo altrove
      spegneva il portale da cui si era appena usciti. Ora a fuoco c'e' chi e'
      davanti sull'anello, e al rientro l'anello e' gia' fermo su quel mondo. */
   window.addEventListener('pointermove', function(e){
-    tmx = (e.clientX/window.innerWidth)*2-1;
-    tmy = (e.clientY/window.innerHeight)*2-1;
-    ptr.set(tmx, -tmy);
+    var px = (e.clientX/window.innerWidth)*2-1, py = (e.clientY/window.innerHeight)*2-1;
+    ptr.set(px, -py);
+    /* Sopra l'anteprima viva la parallasse si ferma: la camera che scivola
+       sotto la mano sposterebbe la card mentre la si sta usando. `ptr` invece
+       si aggiorna lo stesso — serve a sapere su cosa si clicca. */
+    if (inPreview(e)) return;
+    tmx = px; tmy = py;
   }, {passive:true});
 
-  ['pointerdown','keydown','touchstart'].forEach(function(ev){
-    window.addEventListener(ev, function(){ video.play().catch(function(){}); }, {once:true});
-  });
-
-  var prefetched = {};
-  function prefetch(w){
-    if (!w || !w.page || prefetched[w.id]) return;
-    prefetched[w.id] = 1;
-    var l = document.createElement('link');
-    l.rel = 'prefetch'; l.href = w.page; l.as = 'document';
-    document.head.appendChild(l);
-  }
-
-  function enter(w, push){
-    if (!w || openW) return;
-    /* Nella rotonda si entra in chi e' davanti; ma da URL/popstate il mondo
-       puo' non esserlo ancora — si scatta l'anello su di lui prima di volarci
-       dentro, se no la camera parte verso una lastra di fianco. */
-    if (w.idx !== frontIdx()) { spin = spinT = w.idx; }
-
-    /* LA CARD È UNA PAGINA: SI VA, E BASTA (richiesta utente).
-       Prima il clic faceva volare la camera dentro alla lastra per mezzo
-       secondo e poi navigava: uno zoom su un'ISTANTANEA — il poster congelato,
-       o al più il fotogramma dell'effetto — che ingrandendosi si sgranava, e
-       che comunque copriva un caricamento che non c'era più (la pagina è già
-       precaricata al passaggio del puntatore). Tolto: niente `zoomT`, niente
-       posa, si segue il collegamento come un collegamento qualunque. */
-    if (w.page){
-      openW = w;                       // un solo clic: il secondo non riparte
-      document.getElementById('hint').style.opacity = 0;
-      location.href = w.page;
-      return;
-    }
-    openW = w; zoomT = 1;
-    playOn(w);
-    var el = document.getElementById('world');
-    el.style.setProperty('--hot','rgb('+w.col.map(function(v){return Math.round(v*255);}).join(',')+')');
-    document.getElementById('wKick').textContent = '// ' + w.sett;
-    document.getElementById('wName').textContent = w.nome;
-    document.getElementById('wDesc').textContent = w.desc;
-    var vv = el.querySelector('video');
-    if (vv) vv.remove();
-    if (w.video){
-      var v2 = document.createElement('video');
-      v2.muted = true; v2.loop = true; v2.playsInline = true; v2.setAttribute('playsinline','');
-      v2.src = w.video; el.insertBefore(v2, el.firstChild); v2.play().catch(function(){});
-    }
-    setTimeout(function(){ el.classList.add('-on'); el.setAttribute('aria-hidden','false'); }, 380);
-    document.getElementById('hint').style.opacity = 0;
-    document.getElementById('nav').classList.add('-hide');
-    if (push !== false && window.history && history.pushState) history.pushState({w:w.id}, '', ROOT + '/' + w.id);
-  }
-  function leave(pop){
-    if (!openW) return;
-    var el = document.getElementById('world');
-    el.classList.remove('-on'); el.setAttribute('aria-hidden','true');
-    var vv = el.querySelector('video'); if (vv) vv.remove();
-    hot = openW; openW = null; zoomT = 0;
-    document.getElementById('hint').style.opacity = '';
-    document.getElementById('nav').classList.remove('-hide');
-    if (!pop && window.history && history.pushState) history.pushState({}, '', ROOT);
-  }
-  window.addEventListener('popstate', function(e){
-    var id = worldFromPath();
-    var w = WORLDS.filter(function(x){ return x.id === id; })[0];
-    if (w && !openW) enter(w, false);
-    else if (!w && openW) leave(true);
-  });
-  document.getElementById('wBack').addEventListener('click', function(){ leave(); });
-  document.getElementById('wTalk').addEventListener('click', function(){ leave(); });
-  document.getElementById('wNext').addEventListener('click', function(){
-    var i = WORLDS.indexOf(openW); leave();
-    setTimeout(function(){ enter(WORLDS[(i+1)%WORLDS.length]); }, 420);
-  });
-  window.addEventListener('keydown', function(e){ if (e.key === 'Escape') leave(); });
-
-  window.addEventListener('click', function(){
+  window.addEventListener('click', function(e){
+    /* Un clic sul menu (il suo fondo compreso) non e' un clic sulla scena. */
+    if (inNav(e)) return;
     if (stage === 'hero'){ entra(); return; }
     if (stage === 'arrivo'){ skip(); return; }
-    if (openW) return;
+    /* Il clic dentro l'anteprima viva e' dell'effetto: il mazzo non lo vede. */
+    if (inPreview(e)) return;
     /* Un trascinamento finisce sempre con un clic: senza questa guardia
        girare la giostra farebbe entrare nel mondo su cui si e' lasciato. */
     if (dragMoved > 8){ dragMoved = 0; return; }
@@ -1520,12 +1886,14 @@
        il rilascio, prima che il ciclo di disegno abbia rifatto il raycast, e
        con un tocco secco il risultato del fotogramma precedente e' vecchio. */
     var w = pick();
-    if (w){ if (w === hot) enter(w); else portaDavanti(w.idx); return; }
-    /* `r` e' l'indice del CLUSTER cliccato (Task 4): si porta davanti il
-       PRIMO effetto di quel tipo, `portaDavanti` la anima come per i fermi —
-       non salta. */
+    /* La card davanti non si apre piu' (2026-09-24): da congelata un clic su
+       di lei non fa niente, da viva lo prende l'anteprima. */
+    if (w){ if (w !== hot) portaDavanti(w.idx); return; }
+    /* `r` e' l'indice della CARD cliccata nell'elenco (Task 3): si porta
+       davanti quella card, `portaDavanti` la anima come per i fermi — non
+       salta. */
     var r = pickRiga();
-    if (r >= 0){ var primo = primoDelCluster(r); if (primo) portaDavanti(primo.idx); }
+    if (r >= 0) portaDavanti(r);
   });
 
   /* Dove sta la lastra davanti, e quanto lontano bisogna stare per vederla
@@ -1598,9 +1966,27 @@
          misura a schermo non dipende più da quanto la camera è arretrata.
          Sale anche di quota (1.78 → 2.08): sotto ci passa l'elica, e il
          titolo restava mangiato dai punti. */
-      idxMesh.position.set(0, 1.80, CAM0.z - 2.55); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.50);
+      /* 2026-09-24 (Task 3): a sette righe l'elenco è più alto (IH 540→760) e
+         non c'è più, in ritratto, una fascia libera abbastanza alta da
+         contenerlo intero senza toccare la vicina sopra o sotto — lo spazio
+         fra la barra di navigazione e la prima vicina è ~142px, e sotto
+         0.50 di scala il testo non si legge più. Resta comunque posizionato
+         (per continuità con `indexRowPt`/`pickRiga`, usati solo su desktop
+         dai test), ma `frame()` lo tiene a opacità zero in ritratto: vedi
+         `idxT` più sotto. */
+      idxMesh.position.set(0, 2.35, CAM0.z - 2.55); idxMesh.rotation.set(0, 0, 0); idxMesh.scale.setScalar(0.50);
     } else {
-      idxMesh.position.set(-2.55, 2.05, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.82);
+      /* SU DESKTOP L'ELENCO STA A SINISTRA (Task 3): la lastra davanti
+         riempie il centro dello schermo (x≈400-1040) per ogni posto — solo
+         lo spigolo destro dell'elenco conta, deve restare a sinistra di
+         quella soglia con un margine reale, non al pixel. A sette righe e
+         a scala 0.95 l'elenco è largo ~560px: spostarlo tutto a sinistra
+         del bordo lo spingeva quasi fuori schermo (solo l'ultima parola del
+         titolo restava leggibile). Sceso a scala 0.60 e a x=-3.18 lo spigolo
+         destro sta a x≈365 (le vicine sopra/sotto stanno molto più a destra,
+         x≈570-870, e non lo toccano mai) mentre il titolo e le sette righe
+         restano interi e leggibili sul lato sinistro. */
+      idxMesh.position.set(-3.18, 0.55, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.60);
     }
     rt.setSize(Math.round(w*pr), Math.round(h*pr));
     RES.set(Math.round(w*pr), Math.round(h*pr));
@@ -1672,8 +2058,72 @@
      inline) — Task 7 aggiunge `warp`/`lithos`; resta poster solo `sneaker`
      (nessuna sezione statica per lui in questa sotto-costellazione). La
      soglia di sosta è ~250ms, come il «toccato && fermo» della home. */
-  var STAGE_LIVE = document.getElementById('stage-live');
   var HELIX_EL   = document.getElementById('helixStage');
+
+  /* LE LASTRE DAVANTI ALL'ELICA LA COPRONO — SEMPRE, NON SOLO DA FERME.
+     L'elica vive su un canvas suo, sopra allo stage, quindi di suo passa
+     sopra a tutto. Prima si bucava la sua maschera con un rettangolo dritto,
+     e solo a card frontale: appena la lastra si girava il buco si chiudeva e
+     il DNA le scorreva sopra, facendola sembrare DIETRO anche se stava davanti.
+     Qui il buco ha la sagoma vera della lastra (angoli smussati compresi),
+     proiettata con la stessa camera che la disegna, a ogni fotogramma e a
+     ogni inclinazione. Si buca solo per le lastre piu' vicine alla camera
+     dell'asse dell'elica: quelle dietro l'asse devono restare coperte dal DNA,
+     ed e' proprio quel davanti/dietro a dare la profondita'. */
+  var BUCO_PTS = (function(){
+    var r = CW * 0.035, hw = CW/2 - r, hh = CH/2 - r, pts = [], k, a;
+    var centri = [[hw,hh,0],[-hw,hh,1],[-hw,-hh,2],[hw,-hh,3]];
+    centri.forEach(function(c){
+      for (k = 0; k <= 5; k++){
+        a = (c[2] + k/5) * Math.PI/2;
+        pts.push([c[0] + Math.cos(a)*r, c[1] + Math.sin(a)*r]);
+      }
+    });
+    return pts;
+  })();
+  var bucoV = new THREE.Vector3(), bucoKey = null;
+
+  function bucoElica(spegni){
+    if (!HELIX_EL) return;
+    var el = renderer.domElement;
+    var W = el.clientWidth || window.innerWidth, H = el.clientHeight || window.innerHeight;
+    var paths = [];
+    if (!spegni){
+      var asseZ = -((window.__HELIX_TUNE && window.__HELIX_TUNE.R) || 4.5);
+      /* Durante l'ingresso (`body.-entra`) l'asse scivola di 42px: il buco va
+         spostato di quanto e' spostato lui, se no resta sfasato sulla card. */
+      var dy = document.body.classList.contains('-entra') ? HELIX_EL.getBoundingClientRect().top : 0;
+      camera.updateMatrixWorld();
+      WORLDS.forEach(function(w){
+        if (!w.mesh || w.uni.uReveal.value < 0.3) return;
+        if (w.mesh.position.z <= asseZ) return;
+        w.mesh.updateWorldMatrix(true, false);
+        var d = '';
+        /* SENSO OPPOSTO AL RETTANGOLO: BUCO_PTS, proiettato sullo schermo (y in
+           giu'), gira al contrario del rettangolo `M0 0 H W V H H0 Z`, quindi
+           con `nonzero` dentro la sagoma il conto fa zero e l'elica si taglia.
+           Due sagome sovrapposte li' ridipingerebbero (−1): non succede perche'
+           le card non si toccano piu' (vedi deckScale). */
+        for (var i = 0; i < BUCO_PTS.length; i++){
+          bucoV.set(BUCO_PTS[i][0], BUCO_PTS[i][1], 0).applyMatrix4(w.mesh.matrixWorld).project(camera);
+          d += (d ? 'L' : 'M') + Math.round((bucoV.x*0.5+0.5)*W) + ' ' +
+               Math.round((1-(bucoV.y*0.5+0.5))*H - dy);
+        }
+        paths.push(d + 'Z');
+      });
+    }
+    var key = paths.length ? W + 'x' + H + paths.join('') : '';
+    if (key === bucoKey) return;
+    bucoKey = key;
+    if (!key){
+      HELIX_EL.classList.remove('-buco');
+      HELIX_EL.style.removeProperty('--buco');
+      return;
+    }
+    HELIX_EL.style.setProperty('--buco',
+      'path(nonzero, "M0 0H' + W + 'V' + H + 'H0Z' + paths.join('') + '")');
+    HELIX_EL.classList.add('-buco');
+  }
   var SETTLE_MS = 250;
   var deckCtl = (DECK_ON && STAGE_LIVE && window.EffettiController)
     ? window.EffettiController.create({
@@ -1736,7 +2186,7 @@
        clamp: `spinT` può valere un milione, `Math.round` di un numero enorme
        resta un numero enorme — nessun avvolgimento da gestire qui, come già
        per `wrapN` sulle card. */
-    if (!openW && toccato && !dragging && now - lastInput > SETTLE_MS){
+    if (toccato && !dragging && now - lastInput > SETTLE_MS){
     /* PIÙ MORBIDO SUL FERMO (richiesta utente: «a volte, mentre si scorre,
        le card passano da un'immagine all'altra in modo scattante»).
        Il colpevole era qui: fermato il gesto, il bersaglio veniva tirato
@@ -1771,6 +2221,10 @@
     if (DECK_ON) WORLDS.forEach(function(w, i){
       var u = deckU(i, spin);
       w.u = u;
+      /* Chi e' piu' vicino alla camera si disegna per ultimo. Senza, three
+         ordina i trasparenti per distanza dal CENTRO, e con lastre inclinate
+         e di scala diversa l'ordine a volte si inverte per un istante. */
+      w.mesh.renderOrder = Math.round(-Math.abs(u) * 100);
       deckPlace(u, w.mesh.position);
       w.mesh.rotation.set(0, deckYaw(u), deckRoll(u));
       w.mesh.scale.setScalar(deckScale(u));
@@ -1785,56 +2239,51 @@
     });
 
     mx += (tmx-mx)*0.055; my += (tmy-my)*0.055;
-    zoom += (zoomT-zoom)*(zoomT > zoom ? 0.115 : 0.16);   // entra in ~600ms, esce in ~400
 
     // a fuoco c'e' chi e' davanti, e basta — ma solo col mazzo acceso
-    if (DECK_ON && stage === 'mappa' && !openW){
+    if (DECK_ON && stage === 'mappa'){
       var nw = WORLDS[frontIdx()];
       if (nw !== hot){
-        hot = nw; hotSince = now; playOn(hot);
+        hot = nw;
         WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === hot); });
         aggiornaFocus(hot);
         idxDisegna();
       }
-      /* PRECARICARE CHI PASSA E' UN'ALTRA COSA DA PRECARICARE CHI E' SCELTO.
-         Prima il precaricamento partiva al passaggio del puntatore, che e'
-         gia' una scelta; una giostra invece porta davanti tutti e otto i
-         mondi da sola, e precaricandoli tutti si scaricherebbe un megabyte
-         e mezzo di pagine a chi non ha ancora deciso niente. Si aspetta che
-         qualcuno abbia preso in mano la giostra E che sia rimasto fermo su
-         quel mondo mezzo secondo. */
-      if (toccato && hot && now - hotSince > 600) prefetch(hot);
+      /* L'ELICA PRENDE IL COLORE DELLA CARD (Nike: «quando cambia la card
+         davanti, la pagina prende il suo colore»). La tavolozza `dna` dove
+         c'e' (Nebulosa, Genesi), se no il colore della card — il bianco di
+         Anatomia compreso, cosi' com'e'. La dissolvenza (0.8 s) e' di dna.js.
+         Fuori dal blocco qui sopra, con un suo ricordo (`tintaElica`): alla
+         prima card l'elica puo' non essere ancora montata (WC.helix arriva
+         con l'init di dna.js), e quella chiamata andrebbe persa. */
+      if (hot && hot !== tintaElica && WC.helix && WC.helix.setTint){
+        tintaElica = hot;
+        WC.helix.setTint(hot.dna || hot.col);
+      }
       if (!mobile && !dragging){
         overCard = pick();
         var r = overCard ? -1 : pickRiga();
         if (r !== idxSopra){ idxSopra = r; idxDisegna(); }
-        document.body.style.cursor = (overCard || r >= 0) ? 'pointer' : '';
+        /* La mano solo dove un clic fa qualcosa: una card di fianco o una riga
+           dell'elenco. Sulla card davanti no — congelata non risponde, e da
+           viva il cursore lo decide l'effetto. */
+        document.body.style.cursor = ((overCard && overCard !== hot) || r >= 0) ? 'pointer' : '';
       }
     }
 
     /* La camera si sposta col puntatore: la parallasse viene da sé, i portali
        vicini si muovono più dei lontani senza doverlo scrivere da nessuna
-       parte. Entrando, va incontro al portale scelto. */
+       parte. */
     /* La camera sta al centro dell'anello e guarda verso la lastra davanti
        (0, lookY, -R). Il puntatore la sposta appena — la parallasse viene da
-       se'. Entrando, vola incontro al portale scelto (che a quel punto e' gia'
-       quello davanti) e finisce appena davanti a lui. */
+       se'. */
     var tx = mx*0.34, ty = RING.camH - my*0.18, tz = CAM0.z;
     var look = new THREE.Vector3(0, RING.lookY, -RING.R);
-    if (openW){
-      var wp = openW.mesh.position;
-      tx = wp.x*zoom + tx*(1-zoom);
-      ty = wp.y*zoom + ty*(1-zoom);
-      tz = (wp.z + 0.62)*zoom + CAM0.z*(1-zoom);
-      look.set(wp.x*zoom + 0*(1-zoom),
-               wp.y*zoom + RING.lookY*(1-zoom),
-               wp.z*zoom + (-RING.R)*(1-zoom));
-    }
     camera.position.set(tx, ty, tz);
     camera.lookAt(look);
 
     if (DECK_ON) WORLDS.forEach(function(w){
-      var isHot = (w === hot || w === openW);
+      var isHot = (w === hot);
       var u = w.uni;
       u.uHot.value += ((isHot?1:0) - u.uHot.value)*0.12;
       /* Chi non e' davanti arretra, ma non troppo: devono restare tutte
@@ -1845,21 +2294,30 @@
     });
 
     // la nebbia prende il colore del mondo guardato (nessuno, finche' il mazzo e' spento)
-    var target = hot || openW;
+    var target = hot;
     var ts = target ? 1 : 0;
     tintStr += (ts - tintStr)*0.08;
-    if (target) tintCol.set(target.col[0], target.col[1], target.col[2]);
-    fogMat.uniforms.uTint.value.copy(tintCol);
-    fogMat.uniforms.uTintStr.value = tintStr*(1-zoom);
-    if (!openW){
-      document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*0.9 : 0);
-      focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
+    /* Il colore passa per sfumatura, non di scatto: prima la nebbia saltava
+       al colore nuovo nel fotogramma in cui cambiava la card (col ciano di
+       tutti i cluster non si notava; con arancio→ciano→bianco si'). */
+    if (target){
+      tintCol.x += (target.col[0] - tintCol.x)*0.06;
+      tintCol.y += (target.col[1] - tintCol.y)*0.06;
+      tintCol.z += (target.col[2] - tintCol.z)*0.06;
     }
+    fogMat.uniforms.uTint.value.copy(tintCol);
+    fogMat.uniforms.uTintStr.value = tintStr;
+    dustMat.uniforms.uTint.value.copy(tintCol);
+    dustMat.uniforms.uTintStr.value = tintStr;
+    document.getElementById('hint').style.opacity = (DECK_ON && stage === 'mappa' ? spokeIn*1 : 0);
+    focusEl.classList.toggle('-on', DECK_ON && stage === 'mappa' && spokeIn > 0.5);
 
     /* L'elenco compare quando la fila si e' composta e si ritira entrando
        in un mondo: e' un attrezzo della mappa, non della scena — e la mappa
-       non c'e' finche' DECK_ON e' false. */
-    var idxT = (DECK_ON && stage === 'mappa' && !openW) ? spokeIn*0.92*(1-zoom) : 0;
+       non c'e' finche' DECK_ON e' false. In ritratto resta spento (Task 3):
+       a sette righe non c'e' una fascia libera che lo contenga intero senza
+       toccare una vicina (vedi il commento in resize()). */
+    var idxT = (DECK_ON && stage === 'mappa' && camera.aspect >= 1) ? spokeIn*0.92 : 0;
     idxMat.opacity += (idxT - idxMat.opacity)*0.10;
 
     /* IL TEMPO DELL'AMBIENTE (Task 9 — rifinitura reduced-motion).
@@ -1880,16 +2338,14 @@
     du.uTime.value = tAmb; du.uTravel.value = travel; du.uAssign.value = assign;
     du.uSpeed.value = speed; du.uCardsIn.value = cardsIn; du.uNZ.value = NZ;
 
-    if (video.videoWidth && videoOn) videoOn.uni.uVidAsp.value = video.videoWidth/video.videoHeight;
-
     /* IL CONTROLLER SVEGLIA/CONGELA (Task 5). Si sveglia l'effetto della card
        davanti SOLO a pieno fuoco: ferma da ~250ms (spinT raggiunto e nessun
        gesto in corso da SETTLE_MS) e centrata (frazione di `spin` presso lo zero
-       → face≈1). Mentre si scorre — o dentro un mondo (openW) — nulla è sveglio
+       → face≈1). Mentre si scorre nulla è sveglio
        e tutte le card mostrano il poster. Un solo effetto per volta lo garantisce
        il controller stesso (freeze del precedente prima del wake del nuovo). */
     if (deckCtl){
-      if (DECK_ON && stage === 'mappa' && !openW){
+      if (DECK_ON && stage === 'mappa'){
         var _frac = Math.abs(spin - Math.round(spin));
         var _settled = !dragging && Math.abs(spinT - spin) < 0.02 && (now - lastInput) > SETTLE_MS;
         var _full = _settled && _frac < 0.045;   // face≈1
@@ -1897,22 +2353,13 @@
         deckCtl.tick(now, _hw && _hw.mesh, _hw, _full);
         /* IL BUCO PER L'ELICA. Frontale entro ~0.10 di giro: da lì in poi il
            rettangolo proiettato è la lastra, e il DNA si ferma sul bordo. */
-        if (HELIX_EL && _hw && _hw.mesh && _frac < 0.10){
-          var _r = deckCtl.rect(_hw.mesh);
-          HELIX_EL.style.setProperty('--bx', Math.round(_r.x) + 'px');
-          HELIX_EL.style.setProperty('--by', Math.round(_r.y) + 'px');
-          HELIX_EL.style.setProperty('--bw', Math.round(_r.w) + 'px');
-          HELIX_EL.style.setProperty('--bh', Math.round(_r.h) + 'px');
-          HELIX_EL.classList.add('-buco');
-        } else if (HELIX_EL){
-          HELIX_EL.style.setProperty('--bw', '0px');
-          HELIX_EL.style.setProperty('--bh', '0px');
-        }
+        bucoElica();
       } else {
         deckCtl.tick(now, null, null, false);
-        if (HELIX_EL){ HELIX_EL.classList.remove('-buco'); }
+        bucoElica(true);
       }
     }
+    lpFrame();
 
     /* --- UN SOLO PASSAGGIO (Task 1) ---
        Qui c'erano tre passate: (A) il RIFLESSO, camera specchiata rispetto
@@ -1944,31 +2391,78 @@
 
   requestAnimationFrame(frame);
 
-  // se si arriva con un indirizzo già puntato a un mondo, ci si entra
-  // (irrilevante finche' il mazzo e' spento: `playOn`/`hot` presumono le mesh)
-  if (DECK_ON && CAME_FROM){
-    var back = WORLDS.filter(function(x){ return x.id === CAME_FROM; })[0];
-    if (back){
-      stage = 'mappa'; speed = 0; assign = 1; cardsIn = 1; spokeIn = 1; travel = 0;
-      /* La giostra e' gia' girata fin li': si esce dal mondo e lo si ritrova
-         davanti, fermo sul suo scatto. Ed e' gia' stata «toccata», quindi non
-         riparte il giro d'invito — quello e' per chi non ha ancora capito. */
-      spin = spinT = back.idx;
-      toccato = true;
-      hot = back; playOn(back);
-      WORLDS.forEach(function(x){ x.dot.classList.toggle('-now', x === back); });
-      aggiornaFocus(back);
-      var h = document.getElementById('hero');
-      h.classList.add('-off'); h.style.display = 'none';
-      if (window.history && history.replaceState) history.replaceState({}, '', ROOT);
-    }
+  /* LA SONDA DELLA VERIFICA (scripts/verify-capitoli.cjs). Solo letture e due
+     comandi (portare davanti una card, fermare il mazzo a meta' giro): niente
+     che la pagina usi da se'. */
+  var sondaV = new THREE.Vector3();
+  function sondaQuad(mesh, w2, h2){
+    var el = renderer.domElement, W = el.clientWidth, H = el.clientHeight;
+    mesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+    return [[-w2, h2], [w2, h2], [w2, -h2], [-w2, -h2]].map(function(p){
+      sondaV.set(p[0], p[1], 0).applyMatrix4(mesh.matrixWorld).project(camera);
+      return [(sondaV.x * 0.5 + 0.5) * W, (1 - (sondaV.y * 0.5 + 0.5)) * H];
+    });
   }
-
-  var initial = worldFromPath();
-  if (initial){
-    var w0 = WORLDS.filter(function(x){ return x.id === initial; })[0];
-    if (w0) setTimeout(function(){ enter(w0, false); }, 600);
+  function sondaRect(els){
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    els.forEach(function(e){
+      if (!e) return;
+      var r = e.getBoundingClientRect();
+      if (r.width < 1 || getComputedStyle(e).opacity === '0') return;
+      x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top);
+      x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+    });
+    return x0 === Infinity ? { x: -10, y: -10, w: 1, h: 1 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
+  window.__capitoli = {
+    cards: function(){
+      return WORLDS.map(function(w){
+        return { idx: w.idx, id: w.id, u: w.u, reveal: w.uni.uReveal.value, quad: sondaQuad(w.mesh, CW/2, CH/2) };
+      });
+    },
+    index: function(){ return { quad: sondaQuad(idxMesh, idxMesh.geometry.parameters.width/2, idxMesh.geometry.parameters.height/2), opacity: idxMat.opacity }; },
+    /* Altezza a schermo (px CSS) del testo di una riga: proietta il bordo
+       superiore e inferiore del glifo (centro riga ± FS/2 in px di canvas)
+       con la stessa proiezione di `indexRowPt`, e ne misura la distanza sullo
+       schermo — usato per verificare "quanto e' grande" l'elenco, non solo
+       "dove sta". */
+    rowHeight: function(k, FS){
+      var w2 = idxMesh.geometry.parameters.width/2, h2 = idxMesh.geometry.parameters.height/2;
+      var rowY = IROW0 + k*IROWH;
+      var vTop = h2 - (2*h2)*((rowY - FS/2)/IH);
+      var vBot = h2 - (2*h2)*((rowY + FS/2)/IH);
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      var el = renderer.domElement;
+      var a = new THREE.Vector3(0, vTop, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var b = new THREE.Vector3(0, vBot, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var ay = (1 - (a.y*0.5+0.5))*el.clientHeight, by = (1 - (b.y*0.5+0.5))*el.clientHeight;
+      return Math.abs(by - ay);
+    },
+    indexRowPt: function(k, fx){
+      var v = 1.00 - 2.00 * ((IROW0 + k * IROWH) / IH);   // da uv a coordinate locali del piano
+      var x = -1.45 + 2.90 * fx;
+      idxMesh.updateWorldMatrix(true, false); camera.updateMatrixWorld();
+      sondaV.set(x, v, 0).applyMatrix4(idxMesh.matrixWorld).project(camera);
+      var el = renderer.domElement;
+      return [(sondaV.x * 0.5 + 0.5) * el.clientWidth, (1 - (sondaV.y * 0.5 + 0.5)) * el.clientHeight];
+    },
+    /* La didascalia si misura sulle scritte che la compongono, non sulla
+       scatola di #focus: quella e' larga il 92% dello schermo (serve per
+       andare a capo su telefono) e contava come «didascalia» anche l'aria vuota
+       ai lati, dove ora sta #torna. */
+    caption: function(){ return sondaRect([].slice.call(document.getElementById('focus').children)); },
+    /* Il suggerimento a parte: sul telefono sta in basso a destra, accanto a
+       #torna, e unito alla didascalia ne farebbe una scatola che copre anche
+       l'angolo di #torna. */
+    extra: function(){ return { hint: sondaRect([document.getElementById('hint')]),
+      torna: sondaRect([document.getElementById('torna')]), preventivo: sondaRect([document.getElementById('preventivo')]) }; },
+    nav: function(){ return sondaRect([document.getElementById('nav')]); },
+    goTo: function(i){ portaDavanti(i); },
+    setSpin: function(v){ spin = spinT = v; lastInput = performance.now() + 1e7; dragging = false; },
+    spin: function(){ return spin; },
+    front: function(){ return frontIdx(); },
+    awake: function(){ return deckCtl ? deckCtl.awake() : null; }
+  };
 
 })();
 </script>

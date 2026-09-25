@@ -82,6 +82,40 @@ cd <root del branch effetti> && python3 -m http.server 8802
 # apri http://localhost:8802/atelier/capitoli.html
 ```
 
+### 2026-09-24 — Le card vive (branch `atelier-card-vive`), pronte per la revisione
+
+Piano `2026-09-24-atelier-card-vive` (12 task, tutti chiusi). Cosa è cambiato rispetto alla
+versione sopra:
+- **Niente più sovrapposizioni** fra le 7 card lungo l'elica, su desktop e mobile.
+- **L'elica si ritaglia col `clip-path`** dietro ogni card a fuoco, per-fotogramma, invece della
+  vecchia maschera immagine.
+- **Titoli evocativi nuovi** per ogni card (Gravità, Anatomia, Nebulosa, Genesi, Rivela, Contatto,
+  Vapore) e indice "Esplora il mondo" più leggibile.
+- **Copy da landing page** sulla card frontale (kicker + headline + sottotitolo + CTA), con
+  scramble sul titolo di Contatto.
+- **Gli effetti si animano da soli**, senza aspettare il mouse: Vapore si muove con un puntatore
+  fantasma, Rivela sposta la luce, Nebulosa gira da sola fra sfera/galassia/cervello, Genesi salta
+  il tunnel e ricompone l'elica in loop.
+- **Niente più navigazione di dettaglio**: le card non aprono più pagine `capitoli/<effetto>`,
+  l'anteprima vive dentro la card stessa e prende lei il puntatore.
+- I 4 poster (`sneaker.webp`, `orologio.webp`, `vesper.webp`, `warp.webp`) sono stati rigenerati
+  come fotogrammi veri degli effetti live, non più segnaposto.
+
+**Verifica:** `node scripts/verify-capitoli.cjs <check> [--mobile] [--reduce]` (elenco dei check
+in cima allo script). Run completa a doppio viewport eseguita il 2026-09-24: tutti PASS (helix,
+overlap, index, interact, copy, alive, format, tunnel, vapore, ritorno). La guardia sulla pagina
+legacy (`capitoli-legacy.html`, confrontata col commit pre-branch `f869d0a`) conferma che il
+comportamento non è cambiato: stesso aspetto, tunnel presente in Genesi/warp, colonne bianche
+nell'orologio, nessun errore console. Due controlli restano manuali e NON sono stati verificati
+in automatico: lo swipe col dito sull'anteprima da telefono (deve muovere l'effetto, non il
+mazzo) e la fluidità dello scroll su Safari col taglio dell'elica.
+
+**Stato: il branch `atelier-card-vive` è solo locale, non è stato fatto nessun push.** Il
+remote è quello che stampa `git remote -v`: oggi `origin` →
+`https://github.com/alexgattiSABE/axxell-site-` (account **alexgattiSABE**, repo
+**axxell-site-**). **Il merge in `main` (e qualsiasi push su quel remote) richiede l'OK
+esplicito di Nike**, dato dopo che gli si è detto su quale account e quale repo si va a scrivere.
+
 ---
 
 ## Note per chi riprende (incl. l'assistente AI)

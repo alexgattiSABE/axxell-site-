@@ -54,6 +54,11 @@ function mountLithos(ctx, cfg){
 
   var tx = 0, ty = 0, sx = 0, sy = 0, has = false;
   var raf = 0, running = false, last = performance.now();
+  // `ibrido`: solo montaggio esterno (Task 11). Il faro parte da solo sulla
+  // Lissajous e SUBITO cede al puntatore appena questo si muove; se poi il
+  // mouse tace per 1.5s il faro riprende a muoversi da solo. `lastMove` a
+  // -Infinity: senza un vero movimento il ramo automatico resta attivo.
+  var ibrido = false, lastMove = -1e9;
 
   function place(x, y){
     // Le due custom property sono l'unica cosa che cambia: il resto — la
@@ -67,7 +72,7 @@ function mountLithos(ctx, cfg){
     var now = performance.now();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-    if (auto) {
+    if (auto || (ibrido && now - lastMove > 1500)) {
       var r = rectEl.getBoundingClientRect();
       var t = now / 1000;
       // Periodi non commensurabili: la figura non si richiude, quindi il
@@ -89,13 +94,14 @@ function mountLithos(ctx, cfg){
   function stop(){ if (!running) return; running = false; cancelAnimationFrame(raf); }
 
   var onMove = function(e){
-    if (auto) return;
+    if (auto && !ibrido) return;
     var r = rectEl.getBoundingClientRect();
     tx = e.clientX - r.left;
     ty = e.clientY - r.top;
     if (!has) {                 // primo movimento: niente scivolata dall'angolo
       sx = tx; sy = ty; has = true;
     }
+    lastMove = performance.now();
   };
 
   // Il faro parte dal centro, se no la prima cosa che si vede è la seconda
@@ -115,29 +121,56 @@ function mountLithos(ctx, cfg){
    * puntatore solo quando è a fuoco" del brief — non sempre come in legacy
    * (lì la sezione esiste comunque solo mentre è nel viewport). */
   if (external){
-    reveal.style.setProperty('--lr', R + 'px');
+    ibrido = true;               // Task 11: qui il faro parte da solo e il
+                                  // mouse prende il comando appena si muove.
+    /* E `auto` si spegne: sul telefono (`pointer:fine` falso) era sempre vero,
+     * e in `frame()` la Lissajous vinceva su qualunque tocco. Il giro da solo
+     * lo garantisce gia' `ibrido`, finche' nessuno tocca. */
+    auto = false;
+    /* Il faro in proporzione alla card: 260px su una card da telefono (~340px)
+       la copre tutta, e il suo girare non si vede piu'. Al 41% della
+       larghezza — sul desktop resta 260, il tetto — sul telefono si stringe. */
+    var raggio = function(){
+      var w = rectEl.getBoundingClientRect().width || R / 0.41;
+      reveal.style.setProperty('--lr', Math.round(Math.min(R, w * 0.41)) + 'px');
+    };
+    raggio();
+    /* IL DITO (2026-09-24, «alcune interazioni non vanno»). Su iPhone un
+     * trascinamento non manda `mousemove` — al massimo uno, sul tocco secco —
+     * quindi il faro non seguiva mai il dito. Gli eventi `pointer` coprono
+     * mouse, dito e penna con le stesse coordinate: si ascoltano quelli, e
+     * `pointerdown` sposta il faro subito dove si tocca. Il mouse continua a
+     * passare da `mousemove`, come prima; qui si filtra per non contarlo due
+     * volte. Alzato il dito, dopo 1,5 s il faro riprende il giro da solo. */
+    var onDito = function(e){ if (e.pointerType !== 'mouse') onMove(e); };
     var wantRun = false;
     var onVisE = function(){ if (document.hidden) stop(); else if (wantRun) start(); };
     document.addEventListener('visibilitychange', onVisE);
     return {
       start: function(){
         wantRun = true;
-        if (!auto) rectEl.addEventListener('mousemove', onMove);
+        raggio();
+        rectEl.addEventListener('mousemove', onMove);
+        rectEl.addEventListener('pointerdown', onDito);
+        rectEl.addEventListener('pointermove', onDito);
         start();
       },
       stop: function(){
         wantRun = false;
-        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
         stop();
       },
-      // Nessuna misura in cache da ricalcolare: la rect si legge live a ogni
-      // fotogramma (Lissajous) o a ogni evento (puntatore). Esposto per
-      // simmetria con gli altri handle — il controller lo chiama solo se c'è.
-      resize: function(){},
+      // La rect si legge live a ogni fotogramma (Lissajous) o a ogni evento
+      // (puntatore); l'unica misura da rifare e' il raggio del faro.
+      resize: function(){ raggio(); },
       dispose: function(){
         stop();
         document.removeEventListener('visibilitychange', onVisE);
-        if (!auto) rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('mousemove', onMove);
+        rectEl.removeEventListener('pointerdown', onDito);
+        rectEl.removeEventListener('pointermove', onDito);
       }
     };
   }
