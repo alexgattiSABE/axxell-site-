@@ -682,7 +682,7 @@
 <script src="vendor/ScrambleTextPlugin.min.js?v=20260824a"></script>
 <script src="js/core.js?v=20260824a"></script>
 <script src="js/glsl.js?v=20260824a"></script>
-<script src="js/dna.js?v=20260924c"></script>
+<script src="js/dna.js?v=20260925a"></script>
 <!-- Task 3 — i dati del disco degli effetti (EFFETTI/CLUSTERS) e il percorso
      sull'elica (window.helixPlace). Caricato PRIMA dell'inline: quello legge
      window.EFFETTI durante il parse (al posto della vecchia lista WORLDS). -->
@@ -691,7 +691,7 @@
      quindi l'init WC è un no-op innocuo; serve per registrare l'handle esterno
      WC.effects.saucer, che il controller sveglia dentro #stage-live. Caricato
      PRIMA dell'inline: il controller lo cerca in WC.effects. -->
-<script src="js/saucer.js?v=20260924d"></script>
+<script src="js/saucer.js?v=20260925a"></script>
 <!-- Task 6 — gli altri tre effetti pilotabili: «Il modello» (vesper, la sfera
      dell'orb — senza scroll la scena resta sull'atto 0, vedi la testa di
      js/vesper.js), «Il vetro» (orologio, apertura/chiusura a tween proprio
@@ -700,9 +700,9 @@
      tre sezioni esiste qui, quindi l'init WC di ciascuna è un no-op innocuo;
      servono per registrare i tre handle esterni su WC.effects, che il
      controller sveglia dentro #stage-live. Caricati PRIMA dell'inline. -->
-<script src="js/vesper.js?v=20260924d"></script>
-<script src="js/orologio.js?v=20260924b"></script>
-<script src="js/altitude.js?v=20260924b"></script>
+<script src="js/vesper.js?v=20260925a"></script>
+<script src="js/orologio.js?v=20260925a"></script>
+<script src="js/altitude.js?v=20260925a"></script>
 <!-- Task 7 — gli ultimi due effetti pilotabili, non-WebGL: «Prima e dopo»
      (lithos, un faro CSS che scopre una seconda fotografia — non un canvas,
      vedi la testa di js/lithos.js) e «Il testo» (warp — in realtà la scena
@@ -712,7 +712,7 @@
      registrare i due handle esterni su WC.effects, che il controller sveglia
      dentro #stage-live. Caricati PRIMA dell'inline. -->
 <script src="js/lithos.js?v=20260924b"></script>
-<script src="js/warp.js?v=20260924d"></script>
+<script src="js/warp.js?v=20260925a"></script>
 <!-- «Gravità»: lo sneaker, l'handle esterno WC.effects.sneaker che il
      controller sveglia dentro #stage-live (il video del prodotto sospeso). -->
 <script src="js/sneaker.js?v=20260924b"></script>
@@ -875,7 +875,20 @@
 
   var canvas   = document.getElementById('c');
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  /* LA NITIDEZZA DEL TELEFONO (2026-09-25 — «la qualità è bassa su tel», Nike).
+     Il tetto era 2: su un iPhone (dpr 3) la tela intera — pulviscolo, vicine,
+     bordo di luce del vetro — usciva ingrandita del 50% dal browser. Ora il dpr
+     vero fino a 3, dentro un tetto di ~2,5 megapixel che su uno schermo grande
+     abbassa il dpr da solo; ma mai sotto 2, cosi' il desktop resta dov'era. Il
+     render target della rifrazione NON segue (vedi `resize()`): oggi `frame()`
+     non ci disegna niente (un solo passaggio a schermo), e se tornera' a
+     riempirsi quello che ci finisce dentro esce smerigliato dal vetro — a dpr
+     2 basta e avanza, e non si alloca memoria per nulla. */
+  function prMazzo(){
+    var d = window.devicePixelRatio || 1;
+    return Math.min(d, 3, Math.max(2, Math.sqrt(2.5e6 / Math.max(1, window.innerWidth * window.innerHeight))));
+  }
+  renderer.setPixelRatio(prMazzo());
   renderer.setClearColor(0x04050a, 1);
   renderer.autoClear = false;
 
@@ -1265,7 +1278,15 @@
         w.posterAsp = t.image.width / t.image.height;
         w.mat.uniforms.uVidAsp.value = w.posterAsp;
       });
-      tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+      /* LE MIPMAP (2026-09-25 — «la qualità è bassa su tel», Nike). Il poster
+         e' largo ~1200 px e le vicine lo mostrano al 25%: senza mipmap ogni
+         pixel a schermo ne pescava uno solo su quattro-otto, e le vicine
+         sfarfallavano sgranate mentre il mazzo gira. Con la catena di mipmap
+         (e l'anisotropia per le lastre viste di sbieco) si ridimensionano
+         pulite; la card davanti, grande quanto il poster, non cambia. */
+      tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       tex.encoding = THREE.sRGBEncoding;
     }
     w.posterTex = tex;
@@ -1363,7 +1384,14 @@
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
   var idxTex = new THREE.CanvasTexture(idxCv);
-  idxTex.minFilter = THREE.LinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  /* Mipmap e anisotropia anche qui (2026-09-25): sul desktop le righe da 58 px
+     della tela arrivano a ~15 px a schermo, su un piano girato di 30°. Senza
+     mipmap le lettere uscivano seghettate; la catena si rigenera solo quando
+     l'elenco si ridisegna (fuoco o puntatore che cambia riga), non a ogni
+     fotogramma. */
+  idxTex.minFilter = THREE.LinearMipmapLinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  idxTex.generateMipmaps = true;
+  idxTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   idxTex.encoding = THREE.sRGBEncoding;
   var idxMat = new THREE.MeshBasicMaterial({
     map:idxTex, transparent:true, depthWrite:false, opacity:0
@@ -1932,6 +1960,8 @@
   }
 
   function resize(){
+    renderer.setPixelRatio(prMazzo());
+    dustMat.uniforms.uPr.value = renderer.getPixelRatio();
     var w = window.innerWidth, h = window.innerHeight, pr = renderer.getPixelRatio();
     renderer.setSize(w,h,false);
     camera.aspect = w/h; camera.updateProjectionMatrix();
@@ -1990,7 +2020,11 @@
          restano interi e leggibili sul lato sinistro. */
       idxMesh.position.set(-3.18, 0.55, -4.35); idxMesh.rotation.set(0, 0.52, 0); idxMesh.scale.setScalar(0.60);
     }
-    rt.setSize(Math.round(w*pr), Math.round(h*pr));
+    /* Il render target a dpr 2 al massimo: il vetro lo legge in coordinate
+       normalizzate (gl_FragCoord/uRes, con uRes = la tela vera), quindi puo'
+       essere piu' piccolo della tela senza spostare niente. */
+    var prRt = Math.min(pr, 2);
+    rt.setSize(Math.round(w*prRt), Math.round(h*prRt));
     RES.set(Math.round(w*pr), Math.round(h*pr));
     fogMat.uniforms.uAspect.value = w/h;
   }

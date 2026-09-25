@@ -106,6 +106,13 @@ function mountOrologio(ctx, cfg){
   function resize(){
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     var r = rectEl.getBoundingClientRect();
+    /* NELLA CARD (esterno, 2026-09-25 — «la qualità è bassa su tel», Nike): a
+     * dpr 2 su un iPhone (3) i fotogrammi da 814 px si rimpicciolivano a 425 e
+     * il browser li ringrandiva del 50%: l'orologio usciva morbido. Nella card
+     * del telefono il fotogramma entra a ~620 px, sotto la sua risoluzione
+     * vera: fino a 3 con un tetto di pixel, e la nitidezza e' quella del file. */
+    if (external) dpr = Math.min(window.devicePixelRatio || 1, 3,
+                                 Math.max(1, Math.sqrt(2.5e6 / Math.max(1, r.width * r.height))));
     W = Math.max(1, Math.round(r.width  * dpr));
     H = Math.max(1, Math.round(r.height * dpr));
     canvas.width = W; canvas.height = H;
