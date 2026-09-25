@@ -1078,6 +1078,7 @@ function mountVesper(ctx, cfg){
      ========================================================================== */
 
   var dpr = 1, size = { w: 1, h: 1 };
+  var TETTO_PX = 2.5e6;                // tetto di pixel della tela nella card (esterno)
   var running = false, raf = 0, last = performance.now(), started = performance.now();
   var lastDraw = 0;
   // Tetto di frame rate per scaglione. È un tetto RAGGIUNGIBILE saltando interi
@@ -1093,6 +1094,7 @@ function mountVesper(ctx, cfg){
     var r = rectEl.getBoundingClientRect();
     size.w = Math.max(1, r.width); size.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, tier.dpr);
+    if (external) dpr = Math.min(dpr, Math.max(1, Math.sqrt(TETTO_PX / (size.w * size.h))));
     renderer.setPixelRatio(dpr);
     renderer.setSize(size.w, size.h, false);
     camera.aspect = size.w / size.h;
@@ -1380,8 +1382,13 @@ function mountVesper(ctx, cfg){
      * Il dito diventa un puntatore: olio sulla sfera, vuoto nella galassia,
      * sinapsi nel cervello, come col mouse; si spegne quando il dito si alza. */
     var dprScaglione = tier.dpr;
+    /* 2026-09-25 («la qualità è bassa su tel», Nike): 2 su un iPhone (dpr 3)
+     * lasciava la tela ingrandita del 50% dal browser, e i ventimila punti
+     * uscivano impastati. Ora fino a 3, con un tetto di pixel (TETTO_PX in
+     * `resize()`): nella card sono ~0,65 megapixel. La galassia si compensa da
+     * se' (vedi sotto); orb, cervello e pulviscolo scalano gia' col dpr. */
     if (!ctx.desktop){
-      tier.dpr = 2;
+      tier.dpr = 3;
       frameInterval = 0;
       pointerOk = true;
     }

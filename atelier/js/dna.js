@@ -214,6 +214,15 @@ WC.register('dna', function(ctx){
    * secondo numero), non `pointSize`: quella cambierebbe anche lo spessore. */
   var seg    = wide > 1440 ? [140, 273] : wide > 1024 ? [120, 221] : [90, 156];
   var maxDpr = wide > 1024 ? 1.75 : 1.25;
+  /* L'ELICA SUL TELEFONO (2026-09-25 — «la qualità è bassa su tel», Nike).
+   * A 1.25 su un iPhone (dpr 3) la tela era a meno di meta' risoluzione e il
+   * browser la ingrandiva 2,4 volte: i punti davanti, che dovrebbero avere il
+   * bordo netto, uscivano tutti sfocati come quelli dietro. Solo standalone
+   * (atelier/capitoli.html) e solo sotto i 1024 px: il dpr vero fino a
+   * TETTO_DPR, dentro un tetto di pixel. `dprBase` e' il dpr di prima: i punti
+   * hanno `gl_PointSize` in pixel di device, e si compensano su quello (vedi
+   * `resize()`) — cambia la nitidezza, non la taglia ne' la densita'. */
+  var dprBase = maxDpr, TETTO_PX = 2.5e6, TETTO_DPR = 3;
 
   // Valori originali della scena GetLayers. Quelli del pass finale (bgColor,
   // flameColor, flameAmt) non compaiono: vivevano nel post-processing che qui
@@ -761,6 +770,11 @@ WC.register('dna', function(ctx){
     var r = pin.getBoundingClientRect();
     size.w = Math.max(1, r.width); size.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, maxDpr);
+    if (standalone && wide <= 1024){
+      dpr = Math.min(window.devicePixelRatio, TETTO_DPR,
+                     Math.max(dprBase, Math.sqrt(TETTO_PX / (size.w * size.h))));
+      uniforms.uSize.value = CONFIG.pointSize * dpr / Math.min(window.devicePixelRatio, dprBase);
+    }
     renderer.setPixelRatio(dpr);
     renderer.setSize(size.w, size.h, false);
     camera.aspect = size.w / size.h;

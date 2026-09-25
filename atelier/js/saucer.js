@@ -148,8 +148,14 @@ function mountSaucer(ctx, cfg){
    * lampade del disco — senza, sul telefono il disco usciva piatto. I fili
    * d'erba salgono allo scaglione tablet: sono istanze da vertex shader, il
    * loro costo non dipende dall'area della tela. */
+  /* 2026-09-25 («la qualità è bassa su tel», Nike): il tetto 2 lasciava un
+   * iPhone (dpr 3) con la tela a due terzi della risoluzione, ingrandita dal
+   * browser — il disco e l'erba uscivano morbidi. Ora il dpr vero del telefono,
+   * fino a 3, con un tetto di pixel (TETTO_PX, vedi `resize()`): la card resta
+   * sui 0,65 megapixel, e su una card piu' grande il dpr scende da solo. */
+  var TETTO_PX = 2.5e6;
   if (external && wide <= 1024){
-    maxDpr = 2;
+    maxDpr = 3;
     useBloom = true;
     nGrass = Math.max(nGrass, 20000);
   }
@@ -995,6 +1001,7 @@ function mountSaucer(ctx, cfg){
     var r = rectEl.getBoundingClientRect();
     rect.w = Math.max(1, r.width); rect.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, maxDpr);
+    if (external) dpr = Math.min(dpr, Math.max(1, Math.sqrt(TETTO_PX / (rect.w * rect.h))));
     renderer.setPixelRatio(dpr);
     renderer.setSize(rect.w, rect.h, false);
     camera.aspect = rect.w / rect.h;

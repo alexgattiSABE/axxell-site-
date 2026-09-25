@@ -195,7 +195,11 @@ function mountWarp(ctx, cfg){
    * tetto 1.4 e' della sezione a tutto schermo. La card e' ~340×212 px CSS, a
    * dpr 2 fa 0,29 megapixel — meno della meta' della sezione legacy — e le
    * scie sottili smettono di sfarfallare fra un pixel e l'altro. */
-  if (external && wide <= 1024) maxDpr = 2;
+  /* 2026-09-25 («la qualità è bassa su tel», Nike): 2 lasciava un iPhone (dpr
+   * 3) con la tela ingrandita del 50% dal browser. Ora fino a 3, con un tetto
+   * di pixel (TETTO_PX, vedi `resize()`): la card resta sui 0,65 megapixel. */
+  var TETTO_PX = 2.5e6;
+  if (external && wide <= 1024) maxDpr = 3;
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true,
                                            powerPreference: 'high-performance' });
@@ -577,8 +581,15 @@ function mountWarp(ctx, cfg){
     var r = rectEl.getBoundingClientRect();
     rect.w = Math.max(1, r.width); rect.h = Math.max(1, r.height);
     dpr = Math.min(window.devicePixelRatio, maxDpr);
+    if (external) dpr = Math.min(dpr, Math.max(1, Math.sqrt(TETTO_PX / (rect.w * rect.h))));
     renderer.setPixelRatio(dpr);
     renderer.setSize(rect.w, rect.h, false);
+    /* Stelle e polvere hanno il `gl_PointSize` in pixel di device: sopra dpr 2
+     * (la misura approvata nella card) si rimpicciolirebbero. Si compensa, cosi'
+     * il dpr piu' alto cambia la nitidezza e non la taglia. */
+    var kPunti = external ? Math.max(1, dpr / 2) : 1;
+    stars.mat.uniforms.uSize.value = CONFIG.starSize * kPunti;
+    dust.mat.uniforms.uSize.value  = 1.1 * kPunti;
     camera.aspect = rect.w / rect.h;
     /* NELLA CARD STRETTA (round 3, Nike: «su tel alcune animazioni non si
      * vedono completamente»). Sul telefono la copy (#lp.-stretta in
