@@ -1276,7 +1276,15 @@
         w.posterAsp = t.image.width / t.image.height;
         w.mat.uniforms.uVidAsp.value = w.posterAsp;
       });
-      tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+      /* LE MIPMAP (2026-09-25 — «la qualità è bassa su tel», Nike). Il poster
+         e' largo ~1200 px e le vicine lo mostrano al 25%: senza mipmap ogni
+         pixel a schermo ne pescava uno solo su quattro-otto, e le vicine
+         sfarfallavano sgranate mentre il mazzo gira. Con la catena di mipmap
+         (e l'anisotropia per le lastre viste di sbieco) si ridimensionano
+         pulite; la card davanti, grande quanto il poster, non cambia. */
+      tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       tex.encoding = THREE.sRGBEncoding;
     }
     w.posterTex = tex;
@@ -1374,7 +1382,14 @@
   idxCv.width = IW; idxCv.height = IH;
   var idxG = idxCv.getContext('2d');
   var idxTex = new THREE.CanvasTexture(idxCv);
-  idxTex.minFilter = THREE.LinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  /* Mipmap e anisotropia anche qui (2026-09-25): sul desktop le righe da 58 px
+     della tela arrivano a ~15 px a schermo, su un piano girato di 30°. Senza
+     mipmap le lettere uscivano seghettate; la catena si rigenera solo quando
+     l'elenco si ridisegna (fuoco o puntatore che cambia riga), non a ogni
+     fotogramma. */
+  idxTex.minFilter = THREE.LinearMipmapLinearFilter; idxTex.magFilter = THREE.LinearFilter;
+  idxTex.generateMipmaps = true;
+  idxTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   idxTex.encoding = THREE.sRGBEncoding;
   var idxMat = new THREE.MeshBasicMaterial({
     map:idxTex, transparent:true, depthWrite:false, opacity:0
