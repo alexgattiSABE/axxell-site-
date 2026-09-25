@@ -3,16 +3,17 @@
  * ATTENZIONE, questa sezione rompe due vincoli del piano, di proposito e su
  * richiesta esplicita:
  *
- *  - il runtime `@splinetool/viewer` (~2.2 MB) e la scena `.splinecode`
- *    (~1.3 MB) arrivano da CDN di terze parti. Il runtime è pinnato e ha il
- *    suo `integrity`; la scena no, perché non è uno <script> ma un binario
- *    che il runtime va a prendere da sé.
+ *  - il runtime `@splinetool/viewer` 1.9.82 (~2.2 MB) e la scena
+ *    `.splinecode` (~1.3 MB) sono serviti da noi: vendor/spline-viewer-1.9.82/
+ *    e assets/robot/. Nessuna richiesta a CDN di terze parti (parità privacy
+ *    con il sito madre, commit 2717d54). Il runtime ha il suo `integrity`,
+ *    ricalcolato sul file in casa (vedi il README di quella cartella: le URL
+ *    di wasm, DRACO e logo puntano ai file locali).
  *  - la scena non è nostra: è la demo pubblica di Spline.
  *
  * Per tenerne il costo dove non fa danno, niente di tutto questo viene
  * toccato finché la sezione non si avvicina davvero al viewport: sopra la
- * piega la pagina non paga un byte. Se un giorno si vuole chiudere il
- * cerchio, le due strade sono ospitare la scena in proprio o rifarla.
+ * piega la pagina non paga un byte.
  */
 WC.register('robot', function(ctx){
   var section = document.getElementById('cap05');
@@ -21,9 +22,9 @@ WC.register('robot', function(ctx){
   var hint    = document.getElementById('wcRobotHint');
   if (!section || !card || !stage) return;
 
-  var VIEWER = 'https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js';
-  var VIEWER_SRI = 'sha384-MncMO4oYWD5D17Cg+k0Ag2UcKtc6zPR7kUHgGev9M9n5I9N4ekk0XB29G0dDwgOo';
-  var SCENE = 'https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode';
+  var VIEWER = '/atelier/vendor/spline-viewer-1.9.82/spline-viewer.js';
+  var VIEWER_SRI = 'sha384-V/W2IW7d84zv43iNLXNMlC6SpG/hDcr1EjdVi83snTMZyoUD1k4eq3kxqOL/FFqQ';
+  var SCENE = '/atelier/assets/robot/scene.splinecode';
 
   var cleanups = [];
 
