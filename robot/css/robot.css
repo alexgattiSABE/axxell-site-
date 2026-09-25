@@ -1,0 +1,251 @@
+/* Il robot di Axxell, da solo (ramo robot-isolato).
+   Pezzi presi TALI E QUALI da website-creation/css/base.css e sections.css:
+   token e fondo del sito, la sezione del robot, le etichette anatomiche, lo
+   strato degli effetti di cursore (il circuito dietro il robot) e il tasto
+   dello spaccato. Se cambia uno di quei blocchi là, va ricopiato qui. */
+
+:root{
+  --bg:#060609;--bg2:#0b0b12;--bg3:#101019;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --white:#f0f0f6;--muted:rgba(240,240,246,.72);--dim:rgba(240,240,246,.38);
+  --cyan:#00d4ff;--green:#00e8a2;
+  /* Palette del cap. 03 (colonna di vetro) e del cursore fluido. */
+  --violet:#7a20ff;--iris:#8c7cff;--fuchsia:#ff2bd6;
+  --font:'Space Grotesk',sans-serif;--mono:'DM Mono',monospace;
+  --nav-h:72px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{-webkit-font-smoothing:antialiased;}
+body{background:var(--bg);color:var(--white);font-family:var(--font);
+  font-size:15px;line-height:1.6;overflow-x:hidden;}
+
+/* GRANA — identica al sito madre */
+body::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");}
+
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+
+/* ---- MODELLO INTERATTIVO (id cap05, ora "// 04" a schermo) ---- */
+/* Il modello prende tutta la sezione e sta al centro: niente copy e niente
+   velo a fianco, solo lo stage (vedi index.html #cap05). */
+.wc-robot{padding:0;}
+/* `isolation:isolate` non serve più a un `mix-blend-mode` — qui dentro non ce
+   n'è più nessuno. Resta perché tiene LOCALI gli z-index del capitolo: crea
+   un contesto di impilamento sulla card, così il canvas del circuito (0) e lo
+   stage (1) si ordinano fra loro e non contro il resto della pagina. */
+.wc-robot-card{position:relative;overflow:hidden;isolation:isolate;
+  background:var(--bg);min-height:100svh;
+  display:flex;align-items:flex-end;}
+/* Canvas trasparente: il circuito (il canvas che FX.circuit di js/cursorfx.js
+   crea a z-index 0) sta DIETRO lo stage (z 1) e si vede attraverso i pixel
+   vuoti del canvas del robot. È occlusione VERA — niente blend, niente
+   filtri: il robot deve restare identico allo Spline.
+   QUI C'ERA "IL BUCO ATTORNO AL ROBOT": una maschera a ellisse sul `.wc-fx`
+   della card (più una variante @media per schermi stretti) che spegneva il
+   rame al centro. Serviva quando la scena era un canvas OPACO di cui non si
+   conosceva la silhouette. Da quando è trasparente cancellava il circuito
+   proprio nei VUOTI — fra braccia e torso, fra le gambe, attorno alla testa —
+   cioè dove l'occlusione vera lo mostra al posto giusto. Tolta. */
+.wc-robot-stage{position:absolute;inset:0;z-index:1;}
+.wc-robot-stage canvas{width:100%;height:100%;display:block;}
+.wc-robot-hint{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:.68rem;
+  letter-spacing:.16em;color:var(--dim);}
+/* Modello non partito: reduced-motion, three assente, GLB e dati disallineati,
+   rete. `fail()` in js/robot.js mette questa classe, e prima riattacca il nodo
+   del messaggio se era già stato tolto — è quello il motivo per cui la sezione
+   restava un rettangolo nero alto una schermata. Queste due righe fanno il
+   resto: il canvas sparisce (una scena a metà non si guarda) e il messaggio si
+   legge, invece di restare grigio scuro su nero.
+   `visibility` e non `display`: il canvas lo crea three, che gli scrive
+   `display:block` come stile INLINE — una regola di classe non lo batte
+   senza `!important`, e resterebbe una riga di CSS che non fa niente. */
+.wc-robot-stage.-failed canvas{visibility:hidden;}
+.wc-robot-stage.-failed .wc-robot-hint{color:var(--muted);}
+/* Sopra una zona che porta da qualche parte il puntatore diventa una mano.
+   `#cap05` dichiara `data-cursor="hidden"`, che spegne solo il pallino del
+   cursore finto (js/cursor.js): il puntatore di sistema resta, quindi qui non
+   si scontra niente. */
+.wc-robot-stage.-zona{cursor:pointer;}
+
+/* ---- ETICHETTE ANATOMICHE (js/anatomia.js) ----
+   Linea spezzata — obliqua, poi orizzontale — e due voci: la grande sopra il
+   filo, la piccola sotto. L'overlay sta a z-index 2 DENTRO la card (il
+   circuito è a 0, lo stage a 1) ed è ACCANTO allo stage, non dentro: così un
+   clic sull'etichetta non finisce anche nel pointerup dello stage.
+   A riposo le etichette sono a `opacity:0; pointer-events:none` ma restano
+   nel flusso — niente `display:none` né `visibility:hidden` — perché sono
+   link veri e il tab ci deve arrivare: in questa sezione non c'è nessun altro
+   collegamento ad Atlas, SABE e Atelier.
+   Si animano SOLO opacità e `stroke-dashoffset`: niente transizioni su
+   larghezza o altezza, che il JS riscrive a ogni fotogramma. */
+.wc-anat-layer{position:absolute;inset:0;z-index:2;pointer-events:none;color:var(--white);}
+.wc-anat-zona{position:absolute;inset:0;pointer-events:none;}
+.wc-anat-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;
+  opacity:0;transition:opacity .18s linear;}
+.wc-anat-svg polyline{fill:none;stroke:currentColor;stroke-width:1;
+  stroke-dashoffset:var(--corda,3000);transition:stroke-dashoffset .22s ease-out;}
+.wc-anat{position:absolute;left:0;top:0;display:block;white-space:nowrap;
+  text-decoration:none;color:inherit;pointer-events:none;opacity:0;
+  transition:opacity .18s linear;outline-offset:6px;}
+/* Task D5/D6 — «tutte le scritte devono essere piu' grandi» (Nike), e i due
+   righi si scambiano di posto «e di conseguenza anche le dimensioni»: adesso
+   il NOME del prodotto sta sopra il filo ed e' il rigo grande (1,35rem, mono,
+   maiuscolo: un nome si legge come un marchio), la DESCRIZIONE sta sotto ed e'
+   il rigo piccolo (1,05rem, nel carattere del testo). Prima era l'opposto.
+   Le misure non cambiano — cambia quale dei due righi le porta. */
+/* Task D7 — il rigo di sopra in GRASSETTO (Nike) e quello di sotto un po' piu'
+   grande (1,05 -> 1,18rem).
+   DM Mono, pero', un grassetto non ce l'ha: la famiglia arriva a 500 e in
+   pagina si caricano solo 400 e 500 (index.html). Chiedere 700 non darebbe un
+   peso vero ma il finto-grassetto del browser, che a 1,35rem su fondo nero
+   impasta le aste. Quindi: il peso VERO piu' alto che il carattere ha (500)
+   piu' un contorno di mezzo pixel del colore del testo, che ingrassa le aste
+   senza sbavarle. Su bianco pieno sopra il nero e' la stessa cosa che fa un
+   grassetto, e resta nitido. */
+.wc-anat-nome{display:block;font-family:var(--mono);font-size:1.35rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--white);font-weight:500;line-height:1.25;
+  -webkit-text-stroke:.5px currentColor;}
+.wc-anat-descrizione{display:block;font-family:var(--font);font-size:1.18rem;font-weight:500;
+  letter-spacing:.01em;line-height:1.35;}
+.wc-anat.-sinistra{text-align:right;}
+/* ---- Task D8: LA SCALETTA (telefono) ----
+   Sotto i 760 px le etichette con la linea non ci stanno — a 390 px di
+   larghezza «GESTIONALE» da solo ne misura 145 — e soprattutto non si
+   accendono: escono col passaggio del mouse, che su un touch non esiste. La
+   sezione, sul telefono, restava muta: un busto e nessun nome di prodotto.
+   Al loro posto una scaletta in alto a destra, sempre accesa. La stessa
+   gerarchia dell'etichetta (nome sopra, descrizione sotto) e le stesse classi,
+   cosi' i due modi di mostrare le stesse quattro cose non possono divergere
+   nel carattere o nel peso.
+   Chi si vede lo decide SOLO questa media query: il JS costruisce sempre
+   tutti e due, e girare il telefono non rimonta niente. */
+.wc-anat-scaletta{display:none;}
+/* Task D12 — la spezzata che parte dalla voce toccata e arriva al pezzo del
+   corpo. Esiste solo sul telefono (sul pc la linea ce l'ha gia' ogni
+   etichetta) e si disegna progressivamente, come quelle: stessa corda, stesso
+   tempo. */
+.wc-anat-tratto{display:none;position:absolute;inset:0;z-index:2;
+  width:100%;height:100%;overflow:visible;pointer-events:none;color:var(--white);
+  opacity:0;transition:opacity .16s linear;}
+/* Il disegno progressivo lo pilota il JS (`strokeDashoffset` a ogni
+   fotogramma, vedi anatomia.js): niente transizione qui, o farebbe a botte con
+   una corda che cambia insieme al respiro del robot. */
+.wc-anat-tratto polyline{fill:none;stroke:currentColor;stroke-width:1;}
+.wc-anat-tratto.-on{opacity:1;}
+@media (max-width:760px){.wc-anat-tratto{display:block;}}
+@media (prefers-reduced-motion:reduce){.wc-anat-tratto{transition:none;}}
+@media (max-width:760px){
+  .wc-anat-zona{display:none;}
+  /* Task D11 — la scaletta e' una RIGA sopra il robot, non piu' una colonna
+     di fianco. Nike: «mettile una di fianco all'altra sopra al robot». In
+     colonna si mangiava un terzo dello schermo in altezza e costringeva a
+     rimpicciolire il robot; in riga ne occupa una fascia bassa, e il robot
+     sotto resta grande quanto la LARGHEZZA gli permette.
+     `flex-wrap` non e' un ripiego: sotto i ~340 px le quattro voci non ci
+     stanno su una riga sola e vanno a capo due e due, che e' meglio di quattro
+     voci schiacciate o tagliate.
+     La fascia che il robot le lascia e' `bandaScaletta` in robot.js: se qui la
+     riga cresce (una quinta voce, un corpo piu' grande), li' va alzata. */
+  .wc-anat-scaletta{position:absolute;z-index:3;display:flex;flex-direction:row;
+    flex-wrap:wrap;justify-content:center;align-items:flex-start;
+    gap:.2rem 1.15rem;top:calc(var(--nav-h) + .55rem);left:1rem;right:1rem;
+    text-align:center;pointer-events:auto;
+    text-shadow:0 0 14px rgba(6,6,9,.95),0 0 4px rgba(6,6,9,.9);}
+  .wc-anat-riga{display:block;text-decoration:none;color:var(--white);
+    /* Bersaglio da dito: in riga le voci si toccano di fianco, quindi l'aria
+       la da' il padding orizzontale (piu' il `gap` del contenitore). */
+    padding:.25rem .1rem;outline-offset:5px;}
+  .wc-anat-riga:focus-visible{outline:1px solid var(--white);}
+  /* Task D12 — la voce toccata resta piena, le altre si ritirano: mentre la
+     linea corre verso il corpo si deve capire QUALE delle quattro si sta
+     guardando. */
+  .wc-anat-riga{transition:opacity .2s linear;}
+  .wc-anat-scaletta.-scelta .wc-anat-riga{opacity:.42;}
+  .wc-anat-scaletta .wc-anat-riga.-attiva{opacity:1;}
+  /* Task D11 — le gambe sfumano nel nero invece di essere tranciate dal bordo.
+     Con le braccia dentro il riquadro (vedi robot.js) il robot ci sta in
+     larghezza ma non in altezza, quindi qualcosa esce di sotto: tagliato di
+     netto sembra un errore, sfumato sembra un ritratto. La fascia parte sotto
+     il ginocchio e il colore e' quello dello sfondo, quindi non c'e' nessun
+     bordo da vedere. */
+  .wc-robot-card::after{content:'';position:absolute;left:0;right:0;bottom:0;
+    height:26%;z-index:2;pointer-events:none;
+    background:linear-gradient(180deg,rgba(6,6,9,0) 0%,rgba(6,6,9,.75) 45%,var(--bg) 100%);}
+  /* In riga il corpo scende: quattro voci affiancate a 390 px di larghezza
+     stanno in 300 px scarsi solo a queste misure, e «GESTIONALE» e «website
+     creation» sono le due che decidono. */
+  .wc-anat-scaletta .wc-anat-nome{font-size:.8rem;letter-spacing:.04em;line-height:1.25;}
+  .wc-anat-scaletta .wc-anat-descrizione{font-size:.66rem;font-weight:400;color:var(--muted);line-height:1.25;}
+}
+
+/* Accesa dal JS (`-on`) oppure perché uno dei suoi link ha il fuoco: il
+   secondo caso è quello che tiene in piedi il montaggio fermo, dove non c'è
+   nessun JS ad accendere niente. */
+.wc-anat-zona.-on>.wc-anat,.wc-anat-zona:focus-within>.wc-anat,
+.wc-anat-zona.-on>.wc-anat-svg,.wc-anat-zona:focus-within>.wc-anat-svg{opacity:1;}
+.wc-anat-zona.-on>.wc-anat-svg polyline,
+.wc-anat-zona:focus-within>.wc-anat-svg polyline{stroke-dashoffset:0;}
+.wc-anat-zona.-on>.wc-anat,.wc-anat:focus{pointer-events:auto;}
+.wc-anat:focus-visible{outline:1px solid var(--white);}
+/* Montaggio fermo (reduced-motion): le etichette sono SEMPRE VISIBILI, non
+   solo raggiungibili col tab. Qui il robot non c'è: la sezione è un rettangolo
+   nero con scritto «Modello 3D disattivato», e tre link invisibili lascerebbero
+   chi guarda con un mouse davanti al nulla. Visibili, invece, sono l'unica cosa
+   che quella sezione ha da dire — e restano ferme: niente si disegna, niente
+   sfuma, niente si accende al passaggio. */
+.wc-anat-layer.-statico .wc-anat,.wc-anat-layer.-statico .wc-anat-svg,
+.wc-anat-layer.-statico .wc-anat-svg polyline{transition:none;}
+.wc-anat-layer.-statico .wc-anat-svg polyline{stroke-dashoffset:0;}
+.wc-anat-layer.-statico .wc-anat-svg{opacity:1;}
+.wc-anat-layer.-statico .wc-anat{opacity:1;pointer-events:auto;}
+@media (prefers-reduced-motion:reduce){
+  .wc-anat,.wc-anat-svg,.wc-anat-svg polyline{transition:none;}
+  .wc-anat-svg polyline{stroke-dashoffset:0;}
+}
+
+/* ---- EFFETTI DI CURSORE PER CAPITOLO (js/cursorfx.js) ----
+   Un solo strato per tutti: canvas o velo, sopra il capitolo e trasparente ai
+   click. Sta a 40, cioè sopra le scene (0-2) e sopra la copy (3-5): sono
+   effetti che seguono il puntatore, e il puntatore passa sopra tutto.
+   Ogni sezione che ne vuole uno lo dichiara con `data-cursor-fx` sul proprio
+   elemento ospite — vedi index.html. */
+.wc-fx{position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:40;transition:opacity .35s ease;}
+/* Fuori dalla finestra dichiarata con `data-cursor-fx-range`: il loop è già
+   fermo, questo toglie di mezzo l'ultimo fotogramma rimasto sul canvas. */
+.-fx-off .wc-fx{opacity:0;}
+
+/* Le parole attratte dal puntatore. `will-change` perché la transform la
+   riscrive il JS a ogni frame; `inline-block` perché su uno span in linea la
+   transform non ha effetto. */
+[data-magnetic]{display:inline-block;will-change:transform;}
+
+/* Reduced-motion: il modulo non parte nemmeno, ma se un velo fosse già stato
+   montato prima del cambio di preferenza resterebbe un rettangolo nero. */
+@media (prefers-reduced-motion:reduce){
+  .wc-fx{display:none;}
+}
+
+/* ---- LO SPACCATO (js/robot.js, creaTastoSpaccato) ----
+   Nike: «il pulsante dello spaccato voglio che sia semplicemente un occhio».
+   Un tondo col solo occhio disegnato a filo, in basso a sinistra della
+   sezione, dove non c'è né robot né etichetta. Acceso diventa ciano e la
+   pupilla si riempie. */
+.wc-robot-spaccato{position:absolute;z-index:3;left:2rem;bottom:2rem;
+  width:3rem;height:3rem;padding:0;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(240,240,246,.28);background:rgba(6,6,9,.55);color:var(--white);
+  transition:color .2s linear,border-color .2s linear;}
+.wc-robot-spaccato svg{width:1.45rem;height:1.45rem;fill:none;stroke:currentColor;
+  stroke-width:1.4;stroke-linejoin:round;}
+.wc-robot-spaccato svg circle{transition:fill .2s linear;}
+.wc-robot-spaccato:hover{border-color:rgba(240,240,246,.62);}
+.wc-robot-spaccato:focus-visible{outline:1px solid var(--white);outline-offset:4px;}
+.wc-robot-spaccato[aria-pressed="true"]{color:var(--cyan);border-color:var(--cyan);}
+.wc-robot-spaccato[aria-pressed="true"] svg circle{fill:currentColor;}
+@media (max-width:760px){.wc-robot-spaccato{left:1rem;bottom:1.25rem;}}
+@media (prefers-reduced-motion:reduce){.wc-robot-spaccato,.wc-robot-spaccato svg circle{transition:none;}}
+/* Con lo spaccato la scaletta del telefono tiene tutte le voci piene. */
+.wc-anat-scaletta.-tutte .wc-anat-riga{opacity:1;}

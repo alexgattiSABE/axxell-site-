@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Il robot di Axxell DA SOLO: la stessa scena del capitolo 05 della pagina
+     website-creation (ramo robot-look-spline), senza il resto della pagina,
+     pronta da portare dove si deciderà (homepage o Atelier).
+     La <base> non è una comodità: `vercel.json` ha `trailingSlash: false`,
+     quindi in produzione questa pagina vive a `/robot` senza la barra finale e
+     tutti gli indirizzi relativi (css, js, asset, e le fetch del modello)
+     andrebbero a sbattere sulla radice del sito. -->
+<base href="/robot/">
+<link rel="preload" href="assets/robot.glb?v=20260920a" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Head-16.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Body-2.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Body-11.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Parts-11.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/textures/Parts-16.png" as="image" crossorigin="anonymous">
+<link rel="preload" href="assets/robot-spline/eyes-poster.png" as="image" crossorigin="anonymous">
+<title>Il robot | Axxell</title>
+<!-- Non è ancora una pagina pubblica: è il pezzo da integrare. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/robot.css?v=20260925b">
+</head>
+<body>
+
+  <section class="wc-robot" id="cap05" data-cursor="hidden">
+    <div class="wc-robot-card" id="wcRobotCard" data-cursor-fx="circuit">
+      <h2 class="sr-only">Il robot di Axxell</h2>
+      <div class="wc-robot-stage" id="wcRobotStage">
+        <p class="wc-robot-hint" id="wcRobotHint">Scena in arrivo…</p>
+      </div>
+    </div>
+  </section>
+
+<!-- gsap + ScrollTrigger + Lenis servono a js/core.js (l'avvio delle sezioni
+     e lo scroll morbido) e a js/cursorfx.js (il circuito dietro il robot). -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" integrity="sha384-HOvlOYPIs/zjoIkWUGXkVmXsjr8GuZLV+Q+rcPwmJOVZVpvTSXQChiN4t9Euv9Vc" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" integrity="sha384-P8VzCVnT9NBUkMrpcIZrJbA7EBjJvh/fJS6PmP+4nLIM284DtsImIv8D0fFjIkeh" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" integrity="sha384-eD5ubmuCcvTdCADWuSchJYE7wcj2nzNr0itbrh6w/KJyBiltSZ8w3VFRBSWu5YQ8" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="js/core.js?v=20260819a"></script>
+<script src="js/cursorfx.js?v=20260819a"></script>
+<!-- L'ordine conta: ognuno di questi definisce un pezzo di WC che robot.js
+     usa, quindi robot.js va per ultimo. -->
+<script src="js/pointbrain.js?v=20260920b"></script>
+<script src="vendor/three-r128/GLTFLoader.js"></script>
+<script src="vendor/three-r128/DRACOLoader.js"></script>
+<script src="assets/robot-spline/robot-spline-data.js?v=20260920a"></script>
+<script src="js/robot-parts.js?v=20260920a"></script>
+<script src="js/robot-fibers.js?v=20260920e"></script>
+<script src="js/robot-spline-glsl.js?v=20260920d"></script>
+<script src="js/robot-spline-materials.js?v=20260925a"></script>
+<script src="js/pointorb.js?v=20260920b"></script>
+<script src="js/robot-voce.js?v=20260925a"></script>
+<script src="js/robot-occhi.js?v=20260925b"></script>
+<script src="js/anatomia.js?v=20260924e"></script>
+<script src="js/robot.js?v=20260924h"></script>
+</body>
+</html>
