@@ -679,10 +679,12 @@ WC.anatomia = (function () {
       location.href = hrefVero(z);
     }
 
+    // `tutte`: lo spaccato di robot.js — tutte le etichette accese insieme.
+    var tutte = false;
     function accendi(id) {
       if (attivo && attivo !== id) { ultimo = attivo; spentoA = ora(); }
       attivo = id || null;
-      Object.keys(el).forEach(function (k) { el[k].wrap.classList.toggle('-on', k === attivo); });
+      Object.keys(el).forEach(function (k) { el[k].wrap.classList.toggle('-on', tutte || k === attivo); });
     }
     // La mano NON segue l'etichetta accesa ma il raggio: l'etichetta resta su
     // per la grazia e per tutto il tempo in cui ha il fuoco, e in quei momenti
@@ -692,7 +694,8 @@ WC.anatomia = (function () {
     // parte. La pancia è una zona (si apre, l'etichetta esce) ma finché la
     // pagina del gestionale non c'è il cursore non deve promettere niente.
     function segnalaMano(colpita) {
-      var ora_mano = !!(colpita && colpita === attivo && conDestinazione(perId(colpita)));
+      // Con lo spaccato il corpo non porta da nessuna parte: niente mano.
+      var ora_mano = !tutte && !!(colpita && colpita === attivo && conDestinazione(perId(colpita)));
       if (ora_mano === mano) return;
       mano = ora_mano;
       if (stage) stage.classList.toggle('-zona', mano);
@@ -720,6 +723,7 @@ WC.anatomia = (function () {
       puntata: function () {
         if (fuoco) return fuoco;
         if (!sopra) return null;
+        if (tutte) return sopra;   // con lo spaccato ogni etichetta è accesa
         if (sopra === attivo) return sopra;
         if (sopra === ultimo && (ora() - spentoA) < RIPRESA) return sopra;
         return null;
@@ -757,6 +761,16 @@ WC.anatomia = (function () {
       // parte» sono due domande diverse: la pancia risponde sì alla prima e no
       // alla seconda. robot.js chiede la seconda prima di navigare.
       cliccabile: function (id) { return conDestinazione(perId(id)); },
+      // Lo spaccato (robot.js): tutte le etichette accese, e sul telefono
+      // tutte le voci della scaletta piene. Spegnendolo resta accesa solo la
+      // zona che il puntatore sta indicando, come prima.
+      tutte: function (on) {
+        tutte = !!on;
+        if (tutte) spegniTocco();
+        accendi(attivo);
+        scaletta.classList.toggle('-tutte', tutte);
+        rifai(true);
+      },
       layer: layer,
       dispose: function () {
         pulisciTimer();

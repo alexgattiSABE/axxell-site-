@@ -342,6 +342,48 @@ WC.register('robot', function(ctx){
     if (anat || !WC.anatomia) return;
     anat = WC.anatomia.mount({ stage: stage, host: card, camera: camera || null });
     if (anat) cleanups.push(function () { if (anat) { anat.dispose(); anat = null; } });
+    if (anat && camera) creaTastoSpaccato();
+  }
+
+  // LO SPACCATO (Nike, 2026-09-24): «aggiungi un tasto "spaccato" per
+  // mostrare in un solo colpo gli interni del robot e le linee anatomiche», e
+  // «il pulsante dello spaccato voglio che sia semplicemente un occhio».
+  // Acceso, apre TUTTE le zone insieme (tick() alza tutti i segnali a 1, con
+  // le transizioni di sempre) e accende tutte le etichette (anat.tutte); il
+  // tocco o il clic sul corpo non porta da nessuna parte — a navigare restano
+  // le etichette e la scaletta, che sono link espliciti. Esiste solo con la
+  // scena viva: il montaggio fermo (fail) non ha niente da aprire.
+  var spaccato = false, tastoSpaccato = null;
+  var OCCHIO_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+    + '<path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z"/>'
+    + '<circle cx="12" cy="12" r="3.6"/></svg>';
+  function impostaSpaccato(on) {
+    spaccato = !!on;
+    if (tastoSpaccato) {
+      tastoSpaccato.setAttribute('aria-pressed', spaccato ? 'true' : 'false');
+      tastoSpaccato.title = spaccato ? 'Chiudi lo spaccato' : 'Spaccato: mostra gli interni';
+    }
+    card.classList.toggle('-spaccato', spaccato);
+    if (anat && anat.tutte) anat.tutte(spaccato);
+    if (window.__robot) window.__robot.spaccato = spaccato;
+  }
+  function creaTastoSpaccato() {
+    if (tastoSpaccato) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'wc-robot-spaccato';
+    b.setAttribute('aria-label', 'Spaccato: mostra gli interni del robot e i loro nomi');
+    b.innerHTML = OCCHIO_SVG;
+    function onTasto() { impostaSpaccato(!spaccato); }
+    b.addEventListener('click', onTasto);
+    card.appendChild(b);
+    tastoSpaccato = b;
+    impostaSpaccato(false);
+    cleanups.push(function () {
+      b.removeEventListener('click', onTasto);
+      if (b.parentNode) b.parentNode.removeChild(b);
+      tastoSpaccato = null;
+    });
   }
   // Le condizioni per cui la scena non partirà MAI (si sanno già qui, non
   // serve aspettare che la sezione entri in vista): reduced-motion, three o i
@@ -501,6 +543,9 @@ WC.register('robot', function(ctx){
     function onDown(e) { giu = (e.button === 0) ? { x: e.clientX, y: e.clientY } : null; }
     function onUpStage(e) {
       var g = giu; giu = null;
+      // Con lo spaccato acceso tutto è già aperto e il corpo non porta da
+      // nessuna parte: né il clic sul pc né il tocco sul telefono.
+      if (spaccato) return;
       if (!g || !anat || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
       var st = window.__robot && window.__robot.anatomia;
@@ -2082,9 +2127,11 @@ WC.register('robot', function(ctx){
           // una zona sola può valere 1, le altre hanno per forza bersaglio 0.
           // La gara fra le distanze (quale zona il raggio colpisce per prima)
           // l'ha già fatta `vicina`, più sopra.
-          hoverHead = verso(hoverHead, zonaViva === 'testa');
-          hoverCollo = verso(hoverCollo, zonaViva === 'collo');
-          hoverBelly = verso(hoverBelly, zonaViva === 'pancia');
+          // Lo spaccato apre tutto insieme: è l'unica eccezione alla regola
+          // «una zona sola», ed è voluta.
+          hoverHead = verso(hoverHead, spaccato || zonaViva === 'testa');
+          hoverCollo = verso(hoverCollo, spaccato || zonaViva === 'collo');
+          hoverBelly = verso(hoverBelly, spaccato || zonaViva === 'pancia');
           robot.spline.setReveal(hoverHead);
           robot.spline.setBellyReveal(hoverBelly);
           robot.spline.setApertura('collo', hoverCollo);
@@ -2186,7 +2233,7 @@ WC.register('robot', function(ctx){
           // acceso un braccio mentre si apriva un'altra zona: due cose insieme.
           // Adesso chiudono alla stessa velocità di tutti (vedi `verso`), che
           // resta una discesa vista — 8 fotogrammi — non uno scatto.
-          var vivaSx = zonaViva === 'braccioSx', vivaDx = zonaViva === 'braccioDx';
+          var vivaSx = spaccato || zonaViva === 'braccioSx', vivaDx = spaccato || zonaViva === 'braccioDx';
           surgeL = verso(surgeL, sxEArmL ? vivaSx : vivaDx);
           surgeR = verso(surgeR, sxEArmL ? vivaDx : vivaSx);
           robot.fibers.update(dt, surgeL, surgeR);
@@ -2293,6 +2340,8 @@ WC.register('robot', function(ctx){
         }
         // La voce: particelle cervello → corde vocali → sfera (js/robot-voce.js).
         if (robot && WC.robotVoce) WC.robotVoce.update(robot, dt);
+        // Gli occhi a LED con le espressioni (js/robot-occhi.js).
+        if (robot && WC.robotOcchi) WC.robotOcchi.update(robot, dt);
         renderer.render(scene, cam);
       })();
       } catch (e) {

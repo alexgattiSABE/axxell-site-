@@ -947,3 +947,25 @@ body.wc-locked{overflow:hidden;}
 /* Reduced-motion: resta il poster, che il tag mostra da sé. */
 .wc-offer.-static .wc-offer-video{display:none;}
 .wc-offer.-static{background:#05050a url(../assets/glass-poster.webp) center/cover no-repeat;}
+
+/* ---- LO SPACCATO (js/robot.js, creaTastoSpaccato) ----
+   Nike: «il pulsante dello spaccato voglio che sia semplicemente un occhio».
+   Un tondo col solo occhio disegnato a filo, in basso a sinistra della
+   sezione, dove non c'è né robot né etichetta. Acceso diventa ciano e la
+   pupilla si riempie. */
+.wc-robot-spaccato{position:absolute;z-index:3;left:2rem;bottom:2rem;
+  width:3rem;height:3rem;padding:0;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(240,240,246,.28);background:rgba(6,6,9,.55);color:var(--white);
+  transition:color .2s linear,border-color .2s linear;}
+.wc-robot-spaccato svg{width:1.45rem;height:1.45rem;fill:none;stroke:currentColor;
+  stroke-width:1.4;stroke-linejoin:round;}
+.wc-robot-spaccato svg circle{transition:fill .2s linear;}
+.wc-robot-spaccato:hover{border-color:rgba(240,240,246,.62);}
+.wc-robot-spaccato:focus-visible{outline:1px solid var(--white);outline-offset:4px;}
+.wc-robot-spaccato[aria-pressed="true"]{color:var(--cyan);border-color:var(--cyan);}
+.wc-robot-spaccato[aria-pressed="true"] svg circle{fill:currentColor;}
+@media (max-width:760px){.wc-robot-spaccato{left:1rem;bottom:1.25rem;}}
+@media (prefers-reduced-motion:reduce){.wc-robot-spaccato,.wc-robot-spaccato svg circle{transition:none;}}
+/* Con lo spaccato la scaletta del telefono tiene tutte le voci piene. */
+.wc-anat-scaletta.-tutte .wc-anat-riga{opacity:1;}

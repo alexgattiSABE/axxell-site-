@@ -152,12 +152,26 @@ WC.robotSplineMaterials = (function () {
     hu.uVideoAlpha = { value: Hd.video.alpha };
     hu.uVideoMode = { value: Hd.video.mode };
     hu.uEyes = { value: 1 };
+    // Occhi disegnati (js/robot-occhi.js). Finché il modulo non li prende,
+    // tutto va come prima: poster, poi video. Da quando chiama setOcchi, la
+    // texture degli occhi è la SUA tela e basta: `occhiTex` è la serratura
+    // che impedisce a useVideo, al rifiuto di play() e a setPlaying di
+    // rimettere il video o il poster al suo posto. Il video (e il poster)
+    // si caricano lo stesso: il poster tiene il robot nascosto finché non è
+    // vestito (`pronte()`), ed è ciò che si vede nei fotogrammi prima del
+    // primo aggiornamento del modulo.
+    var occhiTex = null;
+    // La sezione è in vista? Lo dice robot.js con setPlaying; il modulo
+    // degli occhi lo legge per non disegnare fuori schermo. Vero finché
+    // nessuno dice il contrario (senza IntersectionObserver robot.js non lo
+    // chiama con false mai).
+    var inVista = true;
     // Dal poster al video al primo fotogramma presentato: a quel punto la
     // VideoTexture (r128, requestVideoFrameCallback) ha già un'immagine da
     // caricare — niente fotogramma nero fra poster e video.
-    function useVideo() { hu.uVideo.value = vtex; }
+    function useVideo() { if (!occhiTex) hu.uVideo.value = vtex; }
     function onPlaying() {
-      if (hu.uVideo.value === vtex) return;
+      if (occhiTex || hu.uVideo.value === vtex) return;
       if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback(useVideo); else useVideo();
     }
     video.addEventListener('playing', onPlaying);
@@ -317,8 +331,29 @@ WC.robotSplineMaterials = (function () {
       // Posizione (view space) della luce virtuale che fa brillare la «A».
       setLogoLight: function (v) { if (api.logo) api.logo.material.uniforms.uLogoLight.value.copy(v); },
       setPlaying: function (on) {
-        if (on) { var pr = video.play(); if (pr && pr.catch) pr.catch(function () { hu.uVideo.value = poster; }); }
+        inVista = !!on;
+        // Dopo setOcchi il video non si vede più: farlo scorrere vorrebbe
+        // dire decodificare 60 fotogrammi al secondo per nessuno.
+        if (occhiTex) { video.pause(); return; }
+        if (on) { var pr = video.play(); if (pr && pr.catch) pr.catch(function () { if (!occhiTex) hu.uVideo.value = poster; }); }
         else video.pause();
+      },
+      inVista: function () { return inVista; },
+      // Gli occhi passano alla tela di js/robot-occhi.js (una CanvasTexture
+      // 512×288, la misura del video). Le impostazioni si COPIANO dalla
+      // VideoTexture — encoding, flipY, formato, mipmap e filtri — così lo
+      // shader (16 prelievi con textureGrad, sp_head) la legge esattamente
+      // come leggeva il video, e il giorno che quelle cambiano qui cambiano
+      // per tutte e due. Finisce nella lista delle texture: la smaltisce
+      // dispose() insieme alle altre.
+      setOcchi: function (texture) {
+        texture.encoding = vtex.encoding; texture.flipY = vtex.flipY; texture.format = vtex.format;
+        texture.generateMipmaps = vtex.generateMipmaps; texture.minFilter = vtex.minFilter; texture.magFilter = vtex.magFilter;
+        texture.needsUpdate = true;
+        occhiTex = texture;
+        hu.uVideo.value = texture;
+        if (list.indexOf(texture) < 0) list.push(texture);
+        video.pause();
       },
       // r = reveal della testa (0..1, smorzato in robot.js). Agli estremi si
       // aggancia al valore esatto: sotto 0.01 è riposo vero (alpha 1, depth
