@@ -265,19 +265,12 @@
     </fieldset>
 
     <fieldset>
-      <legend><span class="n">05</span><span data-t="q5">Tempi e budget</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <legend><span class="n">05</span><span data-t="q5">Tempi</span><span class="opz" data-t="opz">facoltativo</span></legend>
       <div class="chips">
         <label class="chip"><input type="radio" name="tempi" value="Il prima possibile"><span data-t="w1">Il prima possibile</span></label>
         <label class="chip"><input type="radio" name="tempi" value="Entro un mese"><span data-t="w2">Entro un mese</span></label>
         <label class="chip"><input type="radio" name="tempi" value="Entro 2–3 mesi"><span data-t="w3">Entro 2–3 mesi</span></label>
         <label class="chip"><input type="radio" name="tempi" value="Nessuna fretta"><span data-t="w4">Nessuna fretta</span></label>
-      </div>
-      <div class="chips">
-        <label class="chip"><input type="radio" name="budget" value="Fino a 500 €"><span data-t="b1">Fino a 500 €</span></label>
-        <label class="chip"><input type="radio" name="budget" value="500–1.000 €"><span data-t="b2">500–1.000 €</span></label>
-        <label class="chip"><input type="radio" name="budget" value="1.000–2.500 €"><span data-t="b3">1.000–2.500 €</span></label>
-        <label class="chip"><input type="radio" name="budget" value="Oltre 2.500 €"><span data-t="b4">Oltre 2.500 €</span></label>
-        <label class="chip"><input type="radio" name="budget" value="Preferisco parlarne"><span data-t="b5">Preferisco parlarne</span></label>
       </div>
     </fieldset>
 
@@ -341,8 +334,7 @@
          q3:'Cosa deve saper fare?', f_3d:'Animazioni ed effetti 3D', f_lingue:'Più lingue', f_pren:'Prenotazioni online', f_pag:'Vendita e pagamenti online', f_blog:'Blog o notizie', f_area:'Area riservata ai clienti', f_chat:'Assistente AI in chat', f_form:'Modulo contatti e preventivi', f_social:'Collegamento ai social',
          q4:'Quanto è grande?', p1:'Una pagina sola', p2:'2–5 pagine', p3:'6–10 pagine', p4:'Più di 10', p5:'Non lo so',
          h4:'Testi e foto li hai già?', c1:'Sì, sono pronti', c2:'In parte', c3:'No, servono anche quelli',
-         q5:'Tempi e budget', w1:'Il prima possibile', w2:'Entro un mese', w3:'Entro 2–3 mesi', w4:'Nessuna fretta',
-         b1:'Fino a 500 €', b2:'500–1.000 €', b3:'1.000–2.500 €', b4:'Oltre 2.500 €', b5:'Preferisco parlarne',
+         q5:'Tempi', w1:'Il prima possibile', w2:'Entro un mese', w3:'Entro 2–3 mesi', w4:'Nessuna fretta',
          q6:'A chi rispondiamo?', l_nome:'Nome e cognome', l_azienda:'Azienda o attività', l_tel:'Telefono', l_url:'Il tuo sito attuale, se c’è', l_note:'Raccontaci il progetto',
          ph_note:'Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…',
          consenso:'Ho letto l’informativa sulla', consenso2:'e accetto di essere ricontattato per questo preventivo.',
@@ -361,8 +353,7 @@
          q3:'What should it do?', f_3d:'Animations and 3D effects', f_lingue:'Multiple languages', f_pren:'Online bookings', f_pag:'Online sales and payments', f_blog:'Blog or news', f_area:'Customer area', f_chat:'AI chat assistant', f_form:'Contact and quote forms', f_social:'Social media links',
          q4:'How big is it?', p1:'A single page', p2:'2–5 pages', p3:'6–10 pages', p4:'More than 10', p5:'Not sure',
          h4:'Do you already have texts and photos?', c1:'Yes, they’re ready', c2:'Partly', c3:'No, we need those too',
-         q5:'Timing and budget', w1:'As soon as possible', w2:'Within a month', w3:'Within 2–3 months', w4:'No rush',
-         b1:'Up to €500', b2:'€500–1,000', b3:'€1,000–2,500', b4:'Over €2,500', b5:'I’d rather talk about it',
+         q5:'Timing', w1:'As soon as possible', w2:'Within a month', w3:'Within 2–3 months', w4:'No rush',
          q6:'Who should we reply to?', l_nome:'Full name', l_azienda:'Company or business', l_tel:'Phone', l_url:'Your current website, if any', l_note:'Tell us about the project',
          ph_note:'Who you are, who you’re speaking to, what you like about websites you’ve seen…',
          consenso:'I have read the', consenso2:'notice and agree to be contacted about this quote.',
@@ -468,7 +459,6 @@
       ['Pagine', valori('pagine')[0]],
       ['Testi e foto', valori('contenuti')[0]],
       ['Tempi', valori('tempi')[0]],
-      ['Budget', valori('budget')[0]],
       ['Azienda', val('azienda')],
       ['Sito attuale', val('url')],
       ['Lingua del cliente', L === 'en' ? 'inglese' : 'italiano'],
