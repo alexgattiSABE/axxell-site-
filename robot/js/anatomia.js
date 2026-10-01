@@ -67,11 +67,11 @@ WC.anatomia = (function () {
   // `dritta` (Nike, 2026-09-24: «la linea anatomica di sabe falla tutta
   // dritta»): niente tratto obliquo, il filo esce orizzontale dal pezzo.
   var ZONE = [
-    { id: 'testa',     lato: 'destra',   nome: 'Atlas',      descrizione: 'cervello',         href: '/atlas',  attiva: true },
-    { id: 'collo',     lato: 'destra',   nome: 'SABE',       descrizione: 'Agente Vocale',    href: '/sabe',   attiva: true, dritta: true },
-    { id: 'pancia',    lato: 'destra',   nome: 'gestionale', descrizione: 'anima',            href: '',               attiva: true },
-    { id: 'braccioSx', lato: 'sinistra', nome: 'atelier',    descrizione: 'website creation', href: '/atelier', attiva: true },
-    { id: 'braccioDx', lato: 'destra',   nome: '',           descrizione: '',                 href: '',               attiva: false }
+    { id: 'testa',     lato: 'destra',   nome: 'Atlas',           descrizione: 'Cervello',           href: '/atlas',   attiva: true },
+    { id: 'collo',     lato: 'sinistra', nome: 'SABE',            descrizione: 'Agente Vocale',      href: '/sabe',    attiva: true, dritta: true },
+    { id: 'pancia',    lato: 'destra',   nome: 'Gestionale',      descrizione: 'In Arrivo...',       href: '',         attiva: true },
+    { id: 'braccioSx', lato: 'sinistra', nome: 'Atelier',         descrizione: 'Creazione Siti Web', href: '/atelier', attiva: true },
+    { id: 'braccioDx', lato: 'destra',   nome: 'Agente Whatsapp', descrizione: 'In Arrivo...',       href: '',         attiva: true }
   ];
   // Misure in frazione della LARGHEZZA del riquadro (così valgono a ogni
   // dimensione), tranne `margineBordo` (px) e `staccoTesto` (altezze di riga).
@@ -96,7 +96,7 @@ WC.anatomia = (function () {
   // accorciate») e il testo cresce (vedi sections.css). Obiettivo da 0,27 a
   // 0,16 della larghezza, minimo da 0,12 a 0,085. Il minimo serve solo da
   // paracadute sui riquadri stretti.
-  var LINEA = { orizzontaleObiettivo: 0.16, orizzontaleMinimo: 0.085, obliquoGradi: 38,
+  var LINEA = { orizzontaleObiettivo: 0.16, orizzontaleMinimo: 0.06, obliquoGradi: 38,
     staccoTesto: 0.5, margineBordo: 24, obliquoFrazione: 0.22 };
   // ---- AGGANCI SENZA SCENA ----
   // Con reduced-motion robot.js non monta niente: non c'è camera, non c'è GLB,
@@ -143,9 +143,10 @@ WC.anatomia = (function () {
   // alla quinta cifra.
   var FISSI = {
     testa:     [ 0.11252, -0.32044 ],
-    collo:     [ 0.09509, -0.13195 ],   // 2026-09-24: all'altezza delle corde vocali (linea dritta)
+    collo:     [-0.09509, -0.13195 ],   // 2026-09-24: all'altezza delle corde vocali (linea dritta)
     pancia:    [ 0.18251,  0.12092 ],
-    braccioSx: [-0.39432,  0.16901 ]
+    braccioSx: [-0.39432,  0.16901 ],
+    braccioDx: [ 0.39432,  0.16901 ]
   };
   // Quanto si allarga il rettangolo dell'etichetta per decidere «il puntatore
   // è sull'etichetta». La linea SVG è pointer-events:none, quindi il corridoio

@@ -1697,7 +1697,7 @@ WC.register('robot', function(ctx){
         // in locale, si riporta in mondo con una matrice del busto senza
         // respiro (vedi `mBustoFermo`, più sotto): segue la mira del cursore,
         // non l'oscillazione.
-        var ancoraTestaLoc = null, ancoraColloLoc = null, ancoraPancia = null, ancoraBraccio = null;
+        var ancoraTestaLoc = null, ancoraColloLoc = null, ancoraPancia = null, ancoraBraccio = null, ancoraBraccioDx = null;
         var braccioSx = null, braccioDx = null;
         if (parts.armL.length && parts.armR.length) {
           var boxL = unione(parts.armL), boxR = unione(parts.armR);
@@ -1705,6 +1705,11 @@ WC.register('robot', function(ctx){
           braccioSx = sinistraEL ? parts.armL : parts.armR;
           braccioDx = sinistraEL ? parts.armR : parts.armL;
           ancoraBraccio = bordoEsterno(sinistraEL ? boxL : boxR, -1);
+          // Braccio destro: bordo esterno, specchio del sinistro.
+          var boxDx = sinistraEL ? boxR : boxL;
+          ancoraBraccioDx = bordoEsterno(boxDx, 1);
+          // Un po' dentro il bordo: il nome «Agente Whatsapp» e' largo e a destra il robot lascia meno aria che a sinistra.
+          ancoraBraccioDx.x = boxDx.getCenter(new THREE.Vector3()).x + (ancoraBraccioDx.x - boxDx.getCenter(new THREE.Vector3()).x) * 0.75;
         }
         if (window.__robot.parts.chest) {
           // La pancia NON si aggancia a metà altezza del torso, e non è una
@@ -1762,7 +1767,7 @@ WC.register('robot', function(ctx){
             var yPetto = window.__robot.parts.chest
               ? new THREE.Box3().setFromObject(window.__robot.parts.chest).max.y : window.__robot.collo.yLogo;
             var yCollo = (window.__robot.collo.yMento + Math.min(yPetto, window.__robot.collo.yMento)) / 2;
-            ancoraColloLoc = hg.worldToLocal(bordoEsterno(cbx, 1,
+            ancoraColloLoc = hg.worldToLocal(bordoEsterno(cbx, -1,
               (cbx.max.y - yCollo) / Math.max(1e-6, cbx.max.y - cbx.min.y)));
           }
         }
@@ -2356,6 +2361,7 @@ WC.register('robot', function(ctx){
           }
           if (ancoraPancia) anc.pancia = aSchermo(ancoraPancia);
           if (ancoraBraccio) anc.braccioSx = aSchermo(ancoraBraccio);
+          if (ancoraBraccioDx) anc.braccioDx = aSchermo(ancoraBraccioDx);
           // Task D13 — la SAGOMA a schermo, non un aggancio: `x` e' l'asse del
           // corpo, `y` la sua mezza larghezza. Serve alla spezzata del tocco
           // (anatomia.js, telefono) per sapere dove passare senza attraversare

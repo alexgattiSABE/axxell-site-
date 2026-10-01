@@ -1692,59 +1692,46 @@ overflow-y:auto;
 <script src="vendor/emailjs.min.js"></script>
 <link rel="stylesheet" href="/robot/fonts/chakra-petch.css?v=20261001a">
 <link rel="stylesheet" href="/robot/css/robot-sezione.css?v=20261001a">
-<link rel="stylesheet" href="/tema-chiaro.css?v=20261001a">
 <style>
-/* ══ HOME CON IL ROBOT + TEMA CHIARO ══ */
-/* Livello fisso del robot: come la vecchia scena 3D, resta composto (mai display:none) e si accende con l'opacita'. */
-.home-robot{position:fixed;inset:0;z-index:0;opacity:0;pointer-events:none;transition:opacity .45s ease;}
+/* ══ HOME CON IL ROBOT ══ */
+/* Livello del robot: assoluto, si appoggia sul vuoto #homeRobotSpot (in fondo alla home) e scorre con la pagina.
+   Non e' mai display:none (bug WebKit sui livelli WebGL nascosti): fuori dalla home si spegne con l'opacita'. */
+.home-robot{position:absolute;left:0;width:100%;top:0;height:100svh;z-index:0;opacity:0;pointer-events:none;transition:opacity .45s ease;}
 .home-robot.attiva{opacity:1;pointer-events:auto;}
 .home-robot .wc-robot{height:100%;}
 .home-robot .wc-robot-card{height:100%;min-height:0;}
-/* La pagina home lascia passare il mouse al robot; solo le sezioni piene lo riprendono. */
 #p-home{pointer-events:none;}
-#p-home>section,#p-home>.cta-band,#p-home>.contact-bar,#p-home>footer,.rh-cta{pointer-events:auto;}
-.rh-hero{height:calc(100svh - 72px);position:relative;pointer-events:none;}
-.rh-top{position:absolute;top:1.4rem;left:3rem;max-width:330px;pointer-events:none;}
-.rh-top .eyebrow{margin-bottom:.9rem;}
-.rh-h1{font-size:clamp(1.4rem,2.1vw,2rem);font-weight:700;line-height:1.15;letter-spacing:-.025em;color:var(--white);}
-.rh-cta{position:absolute;left:3rem;top:15.5rem;flex-direction:column;align-items:flex-start;display:flex;gap:.8rem;}
+#p-home>section,#p-home>.cta-band,#p-home>.contact-bar,#p-home>footer{pointer-events:auto;}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+.rh-sec{padding:6rem 0;}
+.rh-sec .inner.rh-in{max-width:1060px;}
+.rh-alt{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.rh-h1{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:700;line-height:1.05;letter-spacing:-.035em;color:var(--white);margin-bottom:1.4rem;max-width:14em;}
+.rh-big{font-size:clamp(1.8rem,3.4vw,2.8rem);line-height:1.1;letter-spacing:-.03em;max-width:20em;}
+.rh-lead{font-size:1.15rem;line-height:1.75;color:var(--muted);max-width:38rem;margin-bottom:2rem;}
+.rh-cta{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:3rem;}
 .rh-cta .btn-g,.rh-cta .btn-p{display:inline-flex;align-items:center;text-decoration:none;}
-.rh-sec{padding:7rem 0;}
-.rh-big{font-size:clamp(2rem,4vw,3.4rem);line-height:1.06;letter-spacing:-.035em;}
-.rh-chi{display:grid;grid-template-columns:1.05fr 1fr;gap:4rem;align-items:start;max-width:1160px;}
-.rh-lead{font-size:1.2rem;line-height:1.7;color:var(--muted);margin-bottom:2.4rem;max-width:34rem;}
-.rh-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;border-top:1px solid var(--border2);padding-top:1.6rem;}
+.rh-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;border-top:1px solid var(--border2);padding-top:1.6rem;max-width:40rem;}
 .rh-nums b{display:block;font-size:1.7rem;font-weight:700;letter-spacing:-.03em;color:var(--white);}
 .rh-nums span{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);}
-.rh-sec .inner{max-width:1160px;}
-.rh-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:3rem;}
-.rh-card{display:flex;flex-direction:column;gap:.7rem;padding:2.2rem 2rem;background:var(--bg2);border:1px solid var(--border);
-  border-radius:8px;text-decoration:none;color:var(--white);position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;}
-.rh-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--green));transform:scaleX(0);transform-origin:left;transition:transform .35s;}
-.rh-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(10,14,28,.1);border-color:var(--border2);}
-.rh-card:hover::before{transform:scaleX(1);}
-.rh-card-k{font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
-.rh-card-n{font-size:2.1rem;font-weight:700;letter-spacing:-.03em;}
-.rh-card-atelier{background:linear-gradient(90deg,#2a6bff,#ff3d55,#a63ce8,#ffd93d,#00a3c4,#2a6bff);background-size:300% 100%;
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:atelierShift 12s ease-in-out infinite;}
-.rh-card-p{font-size:.98rem;line-height:1.65;color:var(--muted);flex:1;}
-.rh-card-l{font-size:.85rem;font-weight:600;color:var(--cyan);margin-top:.6rem;}
-.rh-foot{margin-top:2.6rem;font-size:.95rem;color:var(--muted);}
-.rh-foot a{color:var(--cyan);text-decoration:none;font-weight:600;white-space:nowrap;}
+.rh-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-top:2.4rem;}
+.rh-step{background:var(--bg);padding:1.8rem 1.5rem;}
+.rh-step b{display:block;font-family:var(--mono);font-size:.8rem;color:var(--cyan);margin-bottom:.9rem;}
+.rh-step h3,.rh-why h3{font-size:1rem;font-weight:700;color:var(--white);margin-bottom:.5rem;}
+.rh-step p,.rh-why p{font-size:.9rem;line-height:1.65;color:var(--muted);}
+.rh-why{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3.4rem;}
+.rh-spot{height:100svh;position:relative;pointer-events:none;}
+.rh-spot-cap{position:absolute;top:6rem;left:3rem;max-width:15rem;display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;text-align:left;z-index:3;pointer-events:none;}
+.rh-spot-hint{font-size:.8rem;color:var(--dim);}
 @media (max-width:900px){
-  .rh-chi{grid-template-columns:1fr;gap:2rem;}
-  .rh-cards{grid-template-columns:1fr;}
-  .rh-sec{padding:4.5rem 0;}
-  .rh-nums{grid-template-columns:1fr 1fr 1fr;gap:.8rem;}
+  .rh-steps{grid-template-columns:1fr 1fr;}
+  .rh-why{grid-template-columns:1fr;gap:1.4rem;}
+  .rh-sec{padding:4rem 0;}
 }
 @media (max-width:760px){
-  .rh-top{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
-  .rh-cta{top:auto;left:4.4rem;right:4.6rem;bottom:1.4rem;flex-direction:row;justify-content:center;}
-  .rh-cta .btn-p{width:100%;padding:0 .6rem;font-size:.7rem;justify-content:center;}
-  .rh-cta .btn-g{display:none;}
+  .rh-spot-hint{display:none;}
+  .rh-spot-cap{top:5.6rem;left:1rem;}
 }
-@media (prefers-reduced-motion:reduce){.rh-card-atelier{animation:none;}}
 </style>
 </head>
 <body>
@@ -1984,64 +1971,47 @@ overflow-y:auto;
 
 <!-- ══ HOME ══ -->
 <div id="p-home" class="page">
-  <!-- HERO: il robot sta nel livello fisso #homeRobot (fuori dalle pagine); qui c'è solo il vuoto che lo lascia vedere e le scritte sopra. -->
-  <div class="rh-hero">
-    <div class="rh-top">
+  <!-- INTRO: poche righe su chi siamo e cosa facciamo; il robot sta in fondo (#homeRobotSpot) -->
+  <section class="rh-sec rh-intro">
+    <div class="inner rh-in">
       <div class="eyebrow"><div class="eyebrow-line"></div><div class="eyebrow-text">Axxell Intelligence · Ecosistema AI per PMI italiane</div></div>
       <h1 class="rh-h1">Il tuo ecosistema AI <span class="hl">completo.</span></h1>
+      <p class="rh-lead">Axxell Intelligence è un ecosistema di intelligenza artificiale pensato per chi lavora ogni giorno: risponde ai clienti, organizza la giornata e fa crescere la tua attività, senza che tu debba diventare un tecnico.</p>
+      <div class="rh-cta">
+        <a href="#" class="btn-p" onclick="openPrev();return false;">Richiedi preventivo gratuito</a>
+        <a href="#homeRobotSpot" class="btn-g" onclick="return homeScorri('homeRobotSpot')">Scopri il sistema ↓</a>
+      </div>
+      <div class="rh-nums">
+        <div><b>24/7</b><span>SABE risponde sempre</span></div>
+        <div><b>&lt; 2 s</b><span>tempo di risposta</span></div>
+        <div><b>GDPR</b><span>conforme, per costruzione</span></div>
+      </div>
     </div>
-    <div class="rh-cta">
-      <a href="#" class="btn-p" onclick="openPrev();return false;">Richiedi preventivo gratuito</a>
-      <a href="#home-chi" class="btn-g" onclick="return homeScorri('home-chi')">Scopri di più ↓</a>
+  </section>
+
+  <!-- COME FUNZIONA + PERCHÉ AXXELL -->
+  <section class="rh-sec rh-alt">
+    <div class="inner rh-in">
+      <div class="mono-tag" style="margin-bottom:.9rem;">Come funziona</div>
+      <h2 class="sec-h rh-big">Dal primo contatto all'attivazione, <span class="hl">in quattro passaggi.</span></h2>
+      <div class="rh-steps">
+        <div class="rh-step"><b>01</b><h3>Analisi attività</h3><p>Capiamo il tuo business per progettare la soluzione corretta.</p></div>
+        <div class="rh-step"><b>02</b><h3>Configurazione AI</h3><p>Personalizziamo l'agente con le informazioni della tua attività.</p></div>
+        <div class="rh-step"><b>03</b><h3>Integrazione</h3><p>Colleghiamo ai sistemi esistenti. Nessuna migrazione operativa.</p></div>
+        <div class="rh-step"><b>04</b><h3>Go live</h3><p>Attivazione con supporto dedicato e ottimizzazione continua.</p></div>
+      </div>
+      <div class="rh-why">
+        <div><h3>Costruito per il tuo mercato</h3><p>I nostri agenti parlano la lingua locale in modo naturale, comprendono le abitudini locali e si adattano al tuo modo di lavorare. Non una soluzione generica tradotta.</p></div>
+        <div><h3>Risultati misurabili dal primo giorno</h3><p>Axxell è operativo rapidamente con KPI chiari e risultati documentati fin dall'inizio — non tra mesi.</p></div>
+        <div><h3>Supporto dedicato incluso</h3><p>Ogni cliente ha un referente che monitora le performance, ottimizza le configurazioni e risponde entro 24 ore.</p></div>
+      </div>
     </div>
+  </section>
+
+  <!-- ROBOT: il livello #homeRobot si posiziona qui sotto -->
+  <div class="rh-spot" id="homeRobotSpot">
+    <div class="rh-spot-cap"><span class="mono-tag">Esplora il sistema</span><span class="rh-spot-hint">Passa il cursore sul robot, o premi l'occhio per vedere tutto</span></div>
   </div>
-
-  <!-- CHI SIAMO (chiaro) -->
-  <section class="lt rh-sec" id="home-chi">
-    <div class="inner rh-chi">
-      <div>
-        <div class="mono-tag" style="margin-bottom:.9rem;">Chi siamo</div>
-        <h2 class="sec-h rh-big" data-anim data-d="1">Gli strumenti che le PMI italiane <span class="hl">non avevano.</span></h2>
-      </div>
-      <div>
-        <p class="rh-lead" data-anim data-d="2">Axxell Intelligence è un ecosistema di intelligenza artificiale pensato per chi lavora ogni giorno: risponde ai clienti, organizza la giornata e fa crescere la tua attività, senza che tu debba diventare un tecnico.</p>
-        <div class="rh-nums" data-anim data-d="3">
-          <div><b>24/7</b><span>SABE risponde sempre</span></div>
-          <div><b>&lt; 2 s</b><span>tempo di risposta</span></div>
-          <div><b>GDPR</b><span>conforme, per costruzione</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- COSA PROPONIAMO (chiaro, un tono più freddo) -->
-  <section class="lt lt-alt rh-sec" id="home-cosa">
-    <div class="inner">
-      <div class="mono-tag" style="margin-bottom:.9rem;">Cosa proponiamo</div>
-      <h2 class="sec-h rh-big" data-anim data-d="1">Tre strumenti. <span class="hl">Un solo sistema.</span></h2>
-      <div class="rh-cards">
-        <a class="rh-card" href="/sabe" onclick="return go('sabe')">
-          <span class="rh-card-k">Agente vocale AI · 24/7</span>
-          <span class="rh-card-n">SABE</span>
-          <span class="rh-card-p">Risponde ai clienti, prende le prenotazioni e non perde mai una chiamata.</span>
-          <span class="rh-card-l">Scopri SABE →</span>
-        </a>
-        <a class="rh-card" href="/atlas" onclick="return go('atlas')">
-          <span class="rh-card-k">Assistente AI personale · macOS</span>
-          <span class="rh-card-n">ATLAS</span>
-          <span class="rh-card-p">Legge i dati della tua attività, organizza la giornata e ti restituisce tempo.</span>
-          <span class="rh-card-l">Scopri ATLAS →</span>
-        </a>
-        <a class="rh-card" href="/atelier">
-          <span class="rh-card-k">Siti web su misura</span>
-          <span class="rh-card-n rh-card-atelier">Atelier</span>
-          <span class="rh-card-p">Siti professionali, veloci e costruiti per convertire.</span>
-          <span class="rh-card-l">Entra nell'Atelier →</span>
-        </a>
-      </div>
-      <p class="rh-foot">Pensato per qualsiasi attività che vuole smettere di perdere tempo al telefono e al computer. <a href="#" onclick="return go('servizi')">Tutti i servizi →</a></p>
-    </div>
-  </section>
 
   <div class="cta-band in">
     <h2 class="cta-h">Axxell Intelligence è pronto.<br><span class="hl">Inizia oggi.</span></h2>
@@ -2084,7 +2054,7 @@ overflow-y:auto;
   </div>
 
   <!-- COS'È SABE -->
-  <div class="inner sabe-what-sec lt">
+  <div class="inner sabe-what-sec">
     <div class="sabe-what-grid">
       <div data-anim data-d="1">
         <div class="mono-tag" style="margin-bottom:.8rem;">Cos'è SABE</div>
@@ -2222,7 +2192,7 @@ overflow-y:auto;
   <hr class="sep">
 
   <!-- VIDEO SABE -->
-  <div class="inner lt lt-alt" style="padding-top:3.5rem;padding-bottom:3rem;" data-anim>
+  <div class="inner" style="padding-top:3.5rem;padding-bottom:3rem;" data-anim>
     <div class="mono-tag" style="margin-bottom:.8rem;">Demo video</div>
     <h2 class="sec-h" data-anim data-d="1">Guarda SABE <span class="hl">in azione</span></h2>
     <p class="sec-sub" data-anim data-d="2">Un esempio reale di come SABE gestisce una chiamata di prenotazione.</p>
@@ -2260,7 +2230,7 @@ overflow-y:auto;
   </div></div>
 
   <hr class="sep">
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Confronto costi</div>
     <h2 class="sec-h" data-anim data-d="1">Sabe vs <span class="hl">receptionist umana</span></h2>
     <p class="sec-sub" data-anim data-d="2">Un agente AI non si stanca, non si ammala e non sbaglia.</p>
@@ -2310,7 +2280,7 @@ overflow-y:auto;
   </div></div>
 
   <hr class="sep">
-  <div class="inner lt lt-alt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Settori</div>
     <h2 class="sec-h" data-anim data-d="1">Pensato per chi <span class="hl">vive di prenotazioni</span></h2>
     <p class="sec-sub" data-anim data-d="2">Sabe si adatta a qualsiasi settore in pochi minuti.</p>
@@ -2482,7 +2452,7 @@ overflow-y:auto;
   </div>
 
   <hr class="sep">
-  <div class="inner lt"><div class="sec" id="demo-live">
+  <div class="inner"><div class="sec" id="demo-live">
     <div class="mono-tag" data-anim>Demo interattiva</div>
     <h2 class="sec-h" data-anim data-d="1">Parla con Sabe <span class="hl">adesso</span></h2>
     <p class="sec-sub" data-anim data-d="2">Clicca la sfera e prova tu stesso. È esattamente ciò che i tuoi clienti sentiranno.</p>
@@ -2533,7 +2503,7 @@ overflow-y:auto;
   </div>
 
   <!-- PRODOTTI CORE -->
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Prodotti core</div>
     <h2 class="sec-h" data-anim data-d="1">Il cuore di <span class="hl">Axxell</span></h2>
     <p class="sec-sub" data-anim data-d="2">SABE e ATLAS sono i prodotti principali — possono operare in autonomia o in sinergia.</p>
@@ -2671,7 +2641,7 @@ overflow-y:auto;
     </div>
   </div></div>
   <hr class="sep">
-  <div class="inner lt lt-alt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Processo</div>
     <h2 class="sec-h" data-anim data-d="1">Attivazione <span class="hl">rapida</span></h2>
     <p class="sec-sub" data-anim data-d="2">Dal primo contatto all'attivazione, in quattro passaggi.</p>
@@ -2714,7 +2684,7 @@ overflow-y:auto;
   </div>
 
   <hr class="sep">
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>I numeri</div>
     <h2 class="sec-h" data-anim data-d="1">I numeri che ogni<br><span class="hl">imprenditore</span> dovrebbe conoscere</h2>
     <p class="sec-sub" data-anim data-d="2">Dati reali raccolti da migliaia di attività commerciali in tutto il mondo.</p>
@@ -2763,7 +2733,7 @@ overflow-y:auto;
   </div></div>
 
   <hr class="sep">
-  <div class="inner lt lt-alt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Roadmap</div>
     <h2 class="sec-h" data-anim data-d="1">Dove siamo. <span class="hl">Dove stiamo andando.</span></h2>
     <p class="sec-sub" data-anim data-d="2">La nostra traiettoria — trasparente, ambiziosa, concreta.</p>
@@ -2790,7 +2760,7 @@ overflow-y:auto;
   </div></div>
 
   <hr class="sep">
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Vantaggi fiscali</div>
     <h2 class="sec-h" data-anim data-d="1">Investire in AI è <span class="hl">fiscalmente conveniente</span></h2>
     <p class="sec-sub" data-anim data-d="2">Agevolazioni disponibili per le imprese che adottano tecnologie AI. Verificare con il proprio consulente fiscale.</p>
@@ -2866,7 +2836,7 @@ overflow-y:auto;
   <hr class="sep">
 
   <!-- MANIFESTO ATLAS -->
-  <div class="inner atlas-mfst-sec lt">
+  <div class="inner atlas-mfst-sec">
     <div class="atlas-mfst-grid">
       <div data-anim data-d="1">
         <div class="mono-tag" style="margin-bottom:.8rem;">Perché ATLAS</div>
@@ -3051,7 +3021,7 @@ overflow-y:auto;
   <hr class="sep">
 
   <!-- PER CHI È ATLAS -->
-  <div class="inner lt lt-alt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Per chi è ATLAS</div>
     <h2 class="sec-h" data-anim data-d="1">Pensato per chi <span class="hl">non può permettersi di perdere tempo.</span></h2>
     <p class="sec-sub" data-anim data-d="2">ATLAS si adatta al tuo modo di lavorare — che tu sia solo o a capo di un team.</p>
@@ -3151,7 +3121,7 @@ overflow-y:auto;
   </div>
 
   <!-- INTEGRAZIONE SABE -->
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag" data-anim>Il pacchetto completo</div>
     <h2 class="sec-h" data-anim data-d="1">SABE risponde. ATLAS <span class="hl">analizza.</span></h2>
     <p class="sec-sub" data-anim data-d="2">Insieme sono il tuo team AI completo — uno gestisce le chiamate, l'altro ti dà tutte le risposte con la voce.</p>
@@ -3279,7 +3249,7 @@ overflow-y:auto;
 
 <!-- ══ PAGINA PRIVACY ══ -->
 <div id="p-privacy" class="page">
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag">Privacy Policy</div>
     <h2 class="sec-h">Informativa sul trattamento dei <span class="hl">dati personali</span></h2>
     <p class="sec-sub">Ai sensi degli artt. 13-14 del Regolamento UE 2016/679 (GDPR).</p>
@@ -3344,7 +3314,7 @@ overflow-y:auto;
 
 <!-- ══ PAGINA NOTE LEGALI ══ -->
 <div id="p-legale" class="page">
-  <div class="inner lt"><div class="sec">
+  <div class="inner"><div class="sec">
     <div class="mono-tag">Note legali</div>
     <h2 class="sec-h">Informazioni sul <span class="hl">titolare del sito</span></h2>
     <p class="sec-sub">Dati resi pubblici ai sensi dell'art. 7 del D.Lgs. 70/2003.</p>
@@ -3885,6 +3855,11 @@ Object.assign(I18N.en, {
   "Entra nell'Atelier →":"Enter the Atelier →",
   "Pensato per qualsiasi attività che vuole smettere di perdere tempo al telefono e al computer.":"Made for any business that wants to stop wasting time on the phone and at the computer.",
   "Tutti i servizi →":"All services →",
+  "Scopri il sistema ↓":"Explore the system ↓",
+  "Come funziona":"How it works",
+  "Dal primo contatto all'attivazione, <span class=\"hl\">in quattro passaggi.</span>":"From first contact to go-live, <span class=\"hl\">in four steps.</span>",
+  "Esplora il sistema":"Explore the system",
+  "Passa il cursore sul robot, o premi l'occhio per vedere tutto":"Hover over the robot, or press the eye to see everything",
   "Gli strumenti che le PMI italiane <span class=\"hl\">non avevano.</span>":"The tools Italian small businesses <span class=\"hl\">never had.</span>",
   "Tre strumenti. <span class=\"hl\">Un solo sistema.</span>":"Three tools. <span class=\"hl\">One system.</span>",
   "Il tuo ecosistema AI <span class=\"hl\">completo.</span>":"Your complete <span class=\"hl\">AI ecosystem.</span>"
@@ -4258,7 +4233,7 @@ window.WC_NO_LENIS = true;
 window.WC_MANUAL_BOOT = true;
 function homeScorri(id){
   var el = document.getElementById(id);
-  if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: 'smooth'});
+  if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY, behavior: 'smooth'});
   return false;
 }
 var _robotAvviato = false;
@@ -4297,18 +4272,27 @@ window.addEventListener('load', function(){ if (document.getElementById('p-home'
   // attraversando la colonna del titolo.
   const strato = document.getElementById('homeRobot');
   if (strato) {
-    // Il livello e' fisso e non viene mai messo in display:none (vedi il
-    // commento sul livello nel markup). Si accende quando la home e' la pagina
-    // attiva e si e' ancora nell'hero; altrimenti il robot va in pausa
-    // (window.__robotPausa, letto da js/robot.js) e non consuma GPU.
+    // Il robot sta in fondo alla home, in un livello assoluto che si appoggia sul
+    // vuoto #homeRobotSpot e scorre con la pagina (non sparisce mai). Il livello
+    // non e' dentro la pagina: il router la nasconde con display:none e WebKit
+    // scarta i livelli WebGL nascosti. Fuori dalla home si spegne con l'opacita'
+    // e va in pausa (window.__robotPausa, letto da js/robot.js) anche quando il
+    // robot e' fuori schermo, cosi' non consuma GPU.
     const home = document.getElementById('p-home');
+    const spot = document.getElementById('homeRobotSpot');
     const aggiorna = () => {
-      const attiva = home.classList.contains('active')
-        && window.scrollY < window.innerHeight * 0.9;
+      const attiva = home.classList.contains('active');
+      const r = spot.getBoundingClientRect();
+      if (attiva && r.height > 0) {
+        strato.style.top = (r.top + window.scrollY) + 'px';
+        strato.style.height = r.height + 'px';
+      }
+      const visibile = attiva && r.bottom > 0 && r.top < window.innerHeight;
       strato.classList.toggle('attiva', attiva);
-      window.__robotPausa = !attiva;
+      window.__robotPausa = !visibile;
     };
     new MutationObserver(aggiorna).observe(home, { attributes: true, attributeFilter: ['class'] });
+    new ResizeObserver(aggiorna).observe(document.body);
     window.addEventListener('scroll', aggiorna, { passive: true });
     window.addEventListener('resize', aggiorna);
     aggiorna();
