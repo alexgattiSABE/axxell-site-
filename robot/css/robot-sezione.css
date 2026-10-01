@@ -214,20 +214,20 @@
 .wc-robot-spaccato{position:absolute;z-index:3;left:2rem;bottom:2rem;
   height:3.4rem;padding:0 1.4rem 0 1rem;border-radius:999px;
   display:inline-flex;align-items:center;gap:.7rem;cursor:pointer;
-  border:1.5px solid var(--cyan);background:rgba(0,212,255,.14);color:#fff;
+  border:1.5px solid rgba(255,255,255,.85);background:rgba(255,255,255,.10);color:#fff;
   font:600 .85rem/1 var(--font);letter-spacing:.06em;text-transform:uppercase;
-  box-shadow:0 0 22px rgba(0,212,255,.35);
+  box-shadow:0 0 22px rgba(255,255,255,.22);
   transition:color .2s linear,border-color .2s linear,background .2s linear,box-shadow .2s linear;}
 /* Anello che pulsa: l'occhio e' il comando piu' importante della scena, non deve passare inosservato. */
-.wc-robot-spaccato::before{content:'';position:absolute;inset:-6px;border-radius:inherit;border:1.5px solid var(--cyan);
+.wc-robot-spaccato::before{content:'';position:absolute;inset:-6px;border-radius:inherit;border:1.5px solid #fff;
   opacity:0;pointer-events:none;animation:wcOcchioPulsa 2.4s ease-out infinite;}
 @keyframes wcOcchioPulsa{0%{opacity:.7;transform:scale(.96)}70%,100%{opacity:0;transform:scale(1.18)}}
 .wc-robot-spaccato svg{width:1.7rem;height:1.7rem;flex:none;fill:none;stroke:currentColor;
   stroke-width:1.5;stroke-linejoin:round;}
 .wc-robot-spaccato svg circle{transition:fill .2s linear;}
-.wc-robot-spaccato:hover{background:rgba(0,212,255,.26);box-shadow:0 0 32px rgba(0,212,255,.55);}
+.wc-robot-spaccato:hover{background:rgba(255,255,255,.22);box-shadow:0 0 32px rgba(255,255,255,.4);}
 .wc-robot-spaccato:focus-visible{outline:2px solid #fff;outline-offset:4px;}
-.wc-robot-spaccato[aria-pressed="true"]{color:#04121a;background:var(--cyan);}
+.wc-robot-spaccato[aria-pressed="true"]{color:#060609;background:#fff;}
 .wc-robot-spaccato[aria-pressed="true"]::before{animation:none;}
 .wc-robot-spaccato[aria-pressed="true"] svg circle{fill:currentColor;}
 @media (max-width:760px){.wc-robot-spaccato{left:1rem;bottom:1.25rem;height:3rem;font-size:.75rem;padding:0 1.1rem 0 .8rem;}}
