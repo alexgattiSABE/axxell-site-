@@ -480,6 +480,19 @@ WC.anatomia = (function () {
       if (!forzata || !forzataRiga || !ancore[forzata]) { trattoLinea.setAttribute('points', ''); return; }
       var r = forzataRiga.getBoundingClientRect(), rh = host.getBoundingClientRect();
       var x0 = r.left - rh.left + r.width / 2, y0 = r.bottom - rh.top + 6;
+      // La linea scende dalla voce: se sotto c'e' un'altra voce (la scaletta ha due file) non ci passa
+      // attraverso. Si prova il centro, poi i due bordi della voce, poi appena fuori.
+      var sotto = [];
+      Array.prototype.forEach.call(scaletta.children, function (c) {
+        if (c === forzataRiga) return;
+        var q = c.getBoundingClientRect();
+        if (q.top >= r.bottom - 2) sotto.push({ l: q.left - rh.left - 6, r: q.right - rh.left + 6 });
+      });
+      var libero = function (x) { return sotto.every(function (q) { return x < q.l || x > q.r; }); };
+      [x0, r.left - rh.left + 4, r.right - rh.left - 4, r.left - rh.left - 8, r.right - rh.left + 8].some(function (x) {
+        if (libero(x)) { x0 = x; return true; }
+        return false;
+      });
       var a = ancore[forzata];
       // ---- IL PERCORSO (Task D13, disegnato da Nike) ----
       // Solo angoli retti, mai una diagonale, e mai attraverso il robot:
@@ -531,6 +544,10 @@ WC.anatomia = (function () {
         : ((Math.abs(x0 - corpo.x) > colonna) ? x0 : (corpo.x + lato * (colonna + 26)));
       corsia = Math.max(10, Math.min(lar - 10, corsia));
       var y1 = y0 + 26;                            // il primo tratto verticale, corto
+      // Con due file di voci il tratto orizzontale deve passare SOTTO l'ultima, non in mezzo al suo testo.
+      Array.prototype.forEach.call(scaletta.children, function (c) {
+        y1 = Math.max(y1, c.getBoundingClientRect().bottom - rh.top + 8);
+      });
       var pts = [[x0, y0]];
       if (Math.abs(corsia - x0) > 3) { pts.push([x0, y1]); pts.push([corsia, y1]); }
       pts.push([corsia, a.y]);
