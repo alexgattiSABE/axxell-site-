@@ -56,6 +56,7 @@ WC.robotSplineMaterials = (function () {
       fatto();
     });
     t.encoding = THREE.LinearEncoding;
+    t.anisotropy = 8;
     t.flipY = g.flipY !== false;
     if (g.wrapS) t.wrapS = g.wrapS;
     if (g.wrapT) t.wrapT = g.wrapT;

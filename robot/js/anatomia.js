@@ -685,8 +685,12 @@ WC.anatomia = (function () {
     function accendi(id) {
       if (attivo && attivo !== id) { ultimo = attivo; spentoA = ora(); }
       attivo = id || null;
-      Object.keys(el).forEach(function (k) { el[k].wrap.classList.toggle('-on', tutte || k === attivo); });
+      Object.keys(el).forEach(function (k) { el[k].wrap.classList.toggle('-on', tutte || k === attivo || inSequenza(k)); });
     }
+    // Le prime `seq` zone attive, nell'ordine di ZONE: la accende lo scroll della home.
+    var seq = 0;
+    function attive() { return ZONE.filter(function (z) { return z.attiva; }).map(function (z) { return z.id; }); }
+    function inSequenza(k) { return attive().indexOf(k) !== -1 && attive().indexOf(k) < seq; }
     // La mano NON segue l'etichetta accesa ma il raggio: l'etichetta resta su
     // per la grazia e per tutto il tempo in cui ha il fuoco, e in quei momenti
     // il puntatore può essere sul vuoto — dove un clic non porta da nessuna
@@ -772,6 +776,8 @@ WC.anatomia = (function () {
         scaletta.classList.toggle('-tutte', tutte);
         rifai(true);
       },
+      sequenza: function (n) { seq = n; accendi(attivo); rifai(true); },
+      totale: function () { return attive().length; },
       layer: layer,
       dispose: function () {
         pulisciTimer();
