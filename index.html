@@ -283,7 +283,7 @@ hr.sep{border:none;border-top:1px solid var(--border);margin:0;}
 .pg-btns{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;}
 
 /* Stats strip */
-.ss-strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.ss-strip{display:grid;grid-template-columns:repeat(3,1fr);}
 
 /* SCENE 3D in cima alle pagine interne. La canvas si dimensiona da sola sul
    contenitore (vedi attachResize in axxell-3d.js): qui c'è solo il contenitore.
@@ -1705,6 +1705,10 @@ overflow-y:auto;
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
 .rh-sec{padding:6rem 0;}
 .rh-sec .inner.rh-in{max-width:1060px;}
+/* sfondo unico della home: nero, come 'Come funziona' */
+body:has(#p-home.active){background:#000;}
+.home-robot .wc-robot-card{background:#000;}
+#p-home .cta-band{background:#000;}
 .rh-alt{background:#000;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
 .rh-h1{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:700;line-height:1.05;letter-spacing:-.035em;color:var(--white);margin-bottom:1.4rem;max-width:14em;}
 .rh-big{font-size:clamp(1.8rem,3.4vw,2.8rem);line-height:1.1;letter-spacing:-.03em;max-width:20em;}
