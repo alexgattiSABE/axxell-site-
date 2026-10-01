@@ -1690,8 +1690,8 @@ overflow-y:auto;
 </style>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/emailjs.min.js"></script>
-<link rel="stylesheet" href="/robot/fonts/chakra-petch.css?v=20261001n">
-<link rel="stylesheet" href="/robot/css/robot-sezione.css?v=20261001n">
+<link rel="stylesheet" href="/robot/fonts/chakra-petch.css?v=20261001q">
+<link rel="stylesheet" href="/robot/css/robot-sezione.css?v=20261001q">
 <style>
 /* ══ HOME CON IL ROBOT ══ */
 /* Livello del robot: assoluto, si appoggia sul vuoto #homeRobotSpot (in fondo alla home) e scorre con la pagina.
@@ -4270,7 +4270,7 @@ function homeScorri(id){
 var _robotAvviato = false;
 function avviaRobot(){
   if (_robotAvviato) return; _robotAvviato = true;
-  var V = '?v=20261001n', B = '/robot/';
+  var V = '?v=20261001q', B = '/robot/';
   var lista = ['vendor/gsap/gsap.min.js','vendor/gsap/ScrollTrigger.min.js','js/core.js','js/cursorfx.js',
     'js/pointbrain.js','vendor/three-r128/GLTFLoader.js','vendor/three-r128/DRACOLoader.js',
     'assets/robot-spline/robot-spline-data.js','js/robot-parts.js','js/robot-fibers.js','js/robot-spline-glsl.js',
@@ -4315,11 +4315,13 @@ window.addEventListener('load', function(){ if (document.getElementById('p-home'
       const attiva = home.classList.contains('active');
       const r = spot.getBoundingClientRect();
       if (attiva && r.height > 0) {
-        strato.style.top = (r.top + window.scrollY) + 'px';
-        strato.style.height = r.height + 'px';
+        // si scrive solo se cambia: a ogni scroll una scrittura di stile = layout, e sul telefono pesa
+        const t = Math.round(r.top + window.scrollY) + 'px', h = Math.round(r.height) + 'px';
+        if (strato.style.top !== t) strato.style.top = t;
+        if (strato.style.height !== h) strato.style.height = h;
       }
       const visibile = attiva && r.bottom > 0 && r.top < window.innerHeight;
-      document.body.classList.toggle('vede-robot', visibile);
+      if (document.body.classList.contains('vede-robot') !== visibile) document.body.classList.toggle('vede-robot', visibile);
       strato.classList.toggle('attiva', attiva);
       window.__robotPausa = !visibile;
     };

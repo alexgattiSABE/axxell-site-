@@ -476,16 +476,28 @@ WC.anatomia = (function () {
     // del corpo. Si ridisegna a ogni fotogramma insieme al resto — l'aggancio
     // e' quello vero, proiettato da robot.js, quindi la linea resta attaccata
     // al pezzo anche mentre il torso respira.
+    // Le misure dei rettangoli si rileggono al massimo ogni 400 ms: percorso() gira a ogni
+    // fotogramma (anche per cinque linee insieme con l'occhio) e un getBoundingClientRect
+    // per elemento a fotogramma costringe il browser a rifare il layout: sul telefono lagga.
+    var rcCache = [], rcT = 0;
+    function rc(el) {
+      var t = ora();
+      if (t - rcT > 400) { rcCache = []; rcT = t; }
+      for (var i = 0; i < rcCache.length; i++) if (rcCache[i].el === el) return rcCache[i].b;
+      var b = el.getBoundingClientRect();
+      rcCache.push({ el: el, b: b });
+      return b;
+    }
     // Il percorso della linea dalla voce `riga` al pezzo `id` (lista di punti).
     function percorso(id, riga, inv, ds) {
-      var r = riga.getBoundingClientRect(), rh = host.getBoundingClientRect();
+      var r = rc(riga), rh = rc(host);
       var x0 = r.left - rh.left + r.width / 2, y0 = r.bottom - rh.top + 6;
       // La linea scende dalla voce: se sotto c'e' un'altra voce (la scaletta ha due file) non ci passa
       // attraverso. Si prova il centro, poi i due bordi della voce, poi appena fuori.
       var sotto = [];
       Array.prototype.forEach.call(scaletta.children, function (c) {
         if (c === riga) return;
-        var q = c.getBoundingClientRect();
+        var q = rc(c);
         if (q.top >= r.bottom - 2) sotto.push({ l: q.left - rh.left - 3, r: q.right - rh.left + 3 });
       });
       var libero = function (x) { return sotto.every(function (q) { return x < q.l || x > q.r; }); };
@@ -506,7 +518,7 @@ WC.anatomia = (function () {
       // Il cervello (Atlas) sta in cima: la linea scende dritta dalla voce e si ferma sopra la testa (disegno di Nike, 2026-10-01).
       if (id === 'testa') {
         var cc = (ancore.__anim || {})[id];
-        var yFine = cc ? cc.y - cc.r * 1.25 - 10 : a.y - 40;
+        var yFine = cc ? cc.y - cc.r - 6 : a.y - 40;   // si ferma appena sopra il cervello
         var pt = [[x0, y0], [x0, Math.max(y0 + 12, yFine)]];
         if (inv) pt.reverse();
         return pt;
@@ -534,6 +546,8 @@ WC.anatomia = (function () {
       var DENTRO = 26, FUORI = 12, ARIA = 12;
       var fineX = laterale ? (a.x + lato * FUORI)
         : (corpo.x + lato * Math.abs(scarto) - lato * DENTRO);
+      // SABE: la linea si ferma FUORI dal collo (8 px prima del suo bordo), non ci entra.
+      if (id === 'collo' && !laterale) fineX = corpo.x + lato * (Math.abs(scarto) + 8);
       var cerchio = (ancore.__anim || {})[id];
       if (cerchio) {
         var dy = Math.abs(a.y - cerchio.y), R = cerchio.r + ARIA;
@@ -555,7 +569,7 @@ WC.anatomia = (function () {
       var y1 = y0 + 26;                            // il primo tratto verticale, corto
       // Con due file di voci il tratto orizzontale deve passare SOTTO l'ultima, non in mezzo al suo testo.
       Array.prototype.forEach.call(scaletta.children, function (c) {
-        y1 = Math.max(y1, c.getBoundingClientRect().bottom - rh.top + 8);
+        y1 = Math.max(y1, rc(c).bottom - rh.top + 8);
       });
       var pts = [[x0, y0]];
       if (Math.abs(corsia - x0) > 3) { pts.push([x0, y1]); pts.push([corsia, y1]); }
@@ -825,7 +839,7 @@ WC.anatomia = (function () {
       tutte: function (on) {
         tutte = !!on;
         if (tutte) spegniTocco();
-        trattoDa = ora();
+        trattoDa = ora(); rcT = 0;
         tratto.classList.toggle('-on', tutte && stretto());
         accendi(attivo);
         scaletta.classList.toggle('-tutte', tutte);

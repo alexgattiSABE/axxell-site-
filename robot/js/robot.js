@@ -629,7 +629,7 @@ WC.register('robot', function(ctx){
        si disegnava a 1 pixel per pixel: bordi a scala. Ora si disegna sempre ad almeno 2x
        (supercampionamento) e fino a 2,5x sugli schermi densi; se il computer non regge i
        fotogrammi scende da solo (adattaRisoluzione, ora attiva anche sul desktop). */
-    var PR_MAX = TELEFONO ? Math.min(2, window.devicePixelRatio || 1) : Math.min(2.5, Math.max(2, window.devicePixelRatio || 1));
+    var PR_MAX = TELEFONO ? Math.min(1.75, window.devicePixelRatio || 1) : Math.min(2.5, Math.max(2, window.devicePixelRatio || 1));
     var PR_MIN = Math.min(PR_MAX, TELEFONO ? 1.25 : 1.5);
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(PR_MAX);
