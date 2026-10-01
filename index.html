@@ -3533,7 +3533,8 @@ function sitoRighe(){
   if(!document.getElementById('prevSitoCk').checked) return '';
   function v(n){return Array.prototype.map.call(document.querySelectorAll('#prevForm input[name="'+n+'"]:checked'),function(i){return i.value;}).join(', ');}
   var r=[['Tipo di sito',v('sitoTipo')||'Da definire'],['Mondi di riferimento',v('sitoMondo')],['Funzioni',v('sitoFunz')],['Pagine',v('sitoPagine')],['Testi e foto',v('sitoCont')],['Tempi',v('sitoTempi')],['Sito attuale',document.getElementById('prevSitoUrl').value.trim()],['Racconto del progetto',document.getElementById('prevSitoNote').value.trim()]];
-  return '<br><b>SERVE ANCHE UN SITO WEB</b><br>'+r.filter(function(x){return x[1];}).map(function(x){return x[0]+': '+x[1];}).join('<br>')+'<br>';
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  return '<br><b>SERVE ANCHE UN SITO WEB</b><br>'+r.filter(function(x){return x[1];}).map(function(x){return x[0]+': '+esc(x[1]);}).join('<br>')+'<br>';
 }
 function submitPrev(e){
   e.preventDefault();
