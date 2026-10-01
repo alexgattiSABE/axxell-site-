@@ -1,0 +1,16 @@
+/* Tema chiaro del sito (home, SABE, ATLAS, servizi, visione, pagine legali). Non vale per l'Atelier. */
+/* Sezioni chiare: stessi token del sito, ricolorati. Il robot e il resto restano scuri. */
+.lt{--bg:#fff;--bg2:#f5f6f9;--bg3:#eceef4;--border:rgba(10,14,28,.1);--border2:rgba(10,14,28,.18);
+  --white:#0a0d18;--muted:rgba(10,13,24,.72);--dim:rgba(10,13,24,.46);--cyan:#0086b0;--green:#00966b;
+  background:var(--bg);color:var(--white);position:relative;z-index:2;}
+.lt.lt-alt{--bg:#f1f3f8;--bg2:#fff;--bg3:#e8ebf3;}
+.lt [style*="#f0f0f6"],.lt [style*="240,240,246"]{color:var(--white)!important;}
+
+/* Nei blocchi `.inner.lt` il fondo chiaro esce a tutta larghezza con uno pseudo-elemento
+   (il contenitore e' largo 1060px, la fascia no). */
+.inner.lt{position:relative;isolation:isolate;background:none;z-index:auto;}
+.inner.lt::before{content:'';position:absolute;z-index:-1;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:var(--bg);}
+.inner.lt .sec{position:relative;}
+/* pannelli e carte che nel tema scuro erano "piu' chiari del fondo" */
+.lt .hp-c,.lt .sc,.lt .cc,.lt .srv-c,.lt .proc-i,.lt .vn-c,.lt .vis-c,.lt .fisc-c,.lt .val-c,.lt .bi,.lt .rc,.lt .roi-box{background:var(--bg2);}
+.lt .hp-c:hover,.lt .sc:hover,.lt .srv-c:hover,.lt .proc-i:hover,.lt .vn-c:hover,.lt .vis-c:hover,.lt .fisc-c:hover,.lt .val-c:hover{background:var(--bg3);}
