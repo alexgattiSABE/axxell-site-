@@ -357,21 +357,6 @@ WC.register('robot', function(ctx){
   var OCCHIO_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
     + '<path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z"/>'
     + '<circle cx="12" cy="12" r="3.6"/></svg>';
-  // 2026-10-01 — le scritte compaiono mentre si scorre (Nike). La home chiama
-  // WC.robotScroll(p) con p da 0 a 1: ad ogni passo si accende un'etichetta in
-  // piu', e all'ultimo si apre anche lo spaccato (solo se non l'ha gia' deciso
-  // il tasto dell'occhio: `autoSpaccato`).
-  var autoSpaccato = false, nSequenza = 0;
-  WC.robotScroll = function (p) {
-    if (!anat || !anat.sequenza) return;
-    var tot = anat.totale ? anat.totale() : 5;
-    var n = Math.round(Math.max(0, Math.min(1, p)) * tot);
-    if (n === nSequenza) return;
-    nSequenza = n;
-    anat.sequenza(n);
-    if (n >= tot) { if (!spaccato) { autoSpaccato = true; impostaSpaccato(true); } }
-    else if (autoSpaccato) { autoSpaccato = false; impostaSpaccato(false); }
-  };
   function impostaSpaccato(on) {
     spaccato = !!on;
     if (tastoSpaccato) {
@@ -389,7 +374,7 @@ WC.register('robot', function(ctx){
     b.className = 'wc-robot-spaccato';
     b.setAttribute('aria-label', 'Spaccato: mostra gli interni del robot e i loro nomi');
     b.innerHTML = OCCHIO_SVG;
-    function onTasto() { autoSpaccato = false; impostaSpaccato(!spaccato); }
+    function onTasto() { impostaSpaccato(!spaccato); }
     b.addEventListener('click', onTasto);
     card.appendChild(b);
     tastoSpaccato = b;

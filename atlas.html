@@ -1715,6 +1715,16 @@ body:has(#p-home.active){background:#000;}
 .rh-lead{font-size:1.15rem;line-height:1.75;color:var(--muted);max-width:38rem;margin-bottom:2rem;}
 .rh-cta{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:3rem;}
 .rh-cta .btn-g,.rh-cta .btn-p{display:inline-flex;align-items:center;text-decoration:none;}
+/* «Scopri il sistema»: filo e scritta bianchi + riflesso automatico, come «Il tuo mondo» nell'Atelier */
+.rh-cta .btn-g{position:relative;overflow:hidden;isolation:isolate;color:#fff;border:1px solid rgba(255,255,255,.72);background:rgba(6,6,9,.55);
+  animation:rhFilo 5.5s ease-in-out infinite;}
+.rh-cta .btn-g::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:26%;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.30) 50%,rgba(255,255,255,0));
+  transform:translateX(-160%) skewX(-22deg);animation:rhRiflesso 5.5s ease-in-out infinite;}
+.rh-cta .btn-g:hover{background:rgba(255,255,255,.12);color:#fff;border-color:#fff;}
+@keyframes rhRiflesso{0%,55%{transform:translateX(-160%) skewX(-22deg)}85%,100%{transform:translateX(560%) skewX(-22deg)}}
+@keyframes rhFilo{0%,58%,100%{border-color:rgba(255,255,255,.72)}70%{border-color:#fff}}
+@media (prefers-reduced-motion:reduce){.rh-cta .btn-g{animation:none}.rh-cta .btn-g::after{animation:none;transform:translateX(150%) skewX(-22deg);opacity:.5}}
 .rh-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;border-top:1px solid var(--border2);padding-top:1.6rem;max-width:52rem;}
 .rh-nums b{display:block;font-size:1.7rem;font-weight:700;letter-spacing:-.03em;color:var(--white);}
 .rh-nums span{display:block;font-family:var(--mono);font-size:.66rem;line-height:1.6;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
@@ -2004,7 +2014,7 @@ body.vede-robot .scan{display:none;}
         <div class="pchi-c" data-anim data-d="2"><div class="pchi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="pchi-name">Palestre e centri benessere</div></div>
         <div class="pchi-c" data-anim data-d="3"><div class="pchi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="pchi-name">Agenti e consulenti</div></div>
       </div>
-      <p data-anim data-d="3" style="font-size:.78rem;color:var(--dim);margin-top:1.2rem;font-family:var(--mono);letter-spacing:.04em;">E qualsiasi altra attività che vuole smettere di perdere tempo al telefono e al computer.</p>
+      <p data-anim data-d="3" style="font-size:.92rem;color:#fff;margin-top:1.4rem;font-family:var(--mono);letter-spacing:.04em;">E qualsiasi altra attività che vuole smettere di perdere tempo al telefono e al computer.</p>
       </div>
     </div>
   </section>
@@ -4310,8 +4320,6 @@ window.addEventListener('load', function(){ if (document.getElementById('p-home'
       }
       const visibile = attiva && r.bottom > 0 && r.top < window.innerHeight;
       document.body.classList.toggle('vede-robot', visibile);
-      // le scritte compaiono con lo scroll: da quando il robot entra (top al 90% dello schermo) a quando riempie lo schermo
-      if (window.WC && WC.robotScroll && attiva) WC.robotScroll((window.innerHeight * 0.9 - r.top) / (window.innerHeight * 0.8));
       strato.classList.toggle('attiva', attiva);
       window.__robotPausa = !visibile;
     };
