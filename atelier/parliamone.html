@@ -119,6 +119,19 @@
   .chip input:checked + span{border-color:var(--cyan);color:var(--ink);background:rgba(0,212,255,.10)}
   .chip input:focus-visible + span{outline:2px solid var(--cyan);outline-offset:2px}
 
+  /* i tipi di sito, con la mini spiegazione */
+  .tipi{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+  .tipo{position:relative;display:block}
+  .tipo input{position:absolute;opacity:0;pointer-events:none}
+  .tipo .tt{display:block;height:100%;padding:.8rem 1rem;border-radius:12px;border:1px solid var(--line-2);cursor:pointer;
+    user-select:none;transition:border-color .18s,background .18s}
+  .tipo b{display:block;font-weight:500;font-size:1rem;color:var(--ink);margin-bottom:.2rem}
+  .tipo small{display:block;color:var(--dim);font-size:.84rem;line-height:1.45}
+  .tipo .tt:hover{border-color:rgba(223,228,238,.45)}
+  .tipo input:checked + .tt{border-color:var(--cyan);background:rgba(0,212,255,.10)}
+  .tipo input:focus-visible + .tt{outline:2px solid var(--cyan);outline-offset:2px}
+  @media (max-width:640px){ .tipi{grid-template-columns:1fr} }
+
   /* le card dei mondi dell'Atelier */
   .mondi{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}
   .mondo{position:relative}
@@ -214,14 +227,14 @@
   <form id="prev" novalidate>
     <fieldset>
       <legend><span class="n">01</span><span data-t="q1">Che sito ti serve?</span></legend>
-      <div class="chips" id="tipo">
-        <label class="chip"><input type="radio" name="tipo" value="Landing page"><span data-t="t_landing">Landing page</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="Sito vetrina"><span data-t="t_vetrina">Sito vetrina</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="E-commerce"><span data-t="t_ecom">E-commerce</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="Sito con prenotazioni"><span data-t="t_pren">Sito con prenotazioni</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="Portfolio"><span data-t="t_port">Portfolio</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="Rifacimento di un sito esistente"><span data-t="t_rifa">Rifare il sito che ho</span></label>
-        <label class="chip"><input type="radio" name="tipo" value="Non so ancora"><span data-t="t_nonso">Non so ancora</span></label>
+      <div class="tipi" id="tipo">
+        <label class="tipo"><input type="radio" name="tipo" value="Landing page"><span class="tt"><b data-t="t_landing">Landing page</b><small data-t="d_landing">Una pagina sola, pensata per un unico obiettivo: far chiamare, prenotare o iscrivere. Ideale per una promozione o un lancio.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="Sito vetrina"><span class="tt"><b data-t="t_vetrina">Sito vetrina</b><small data-t="d_vetrina">Presenta la tua attività in più pagine: chi sei, cosa offri, dove trovarti, come contattarti. Il biglietto da visita online.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="E-commerce"><span class="tt"><b data-t="t_ecom">E-commerce</b><small data-t="d_ecom">Un negozio online con catalogo, carrello e pagamenti, per vendere i tuoi prodotti anche quando sei chiuso.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="Sito con prenotazioni"><span class="tt"><b data-t="t_pren">Sito con prenotazioni</b><small data-t="d_pren">Il cliente sceglie giorno e orario direttamente dal sito: per ristoranti, studi, saloni, servizi su appuntamento.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="Portfolio"><span class="tt"><b data-t="t_port">Portfolio</b><small data-t="d_port">Una galleria curata dei tuoi lavori, per fotografi, designer, architetti, artisti e professionisti creativi.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="Rifacimento di un sito esistente"><span class="tt"><b data-t="t_rifa">Rifare il sito che ho</b><small data-t="d_rifa">Hai già un sito ma è vecchio, lento o poco chiaro? Lo ridisegniamo mantenendo contenuti e indirizzo.</small></span></label>
+        <label class="tipo"><input type="radio" name="tipo" value="Non so ancora"><span class="tt"><b data-t="t_nonso">Non so ancora</b><small data-t="d_nonso">Nessun problema: raccontaci la tua attività e ti consigliamo noi il tipo di sito più adatto.</small></span></label>
       </div>
       <p class="err" id="errTipo" role="alert" hidden data-t="errTipo">Scegli il tipo di sito, anche «Non so ancora».</p>
     </fieldset>
@@ -287,6 +300,16 @@
       <p class="err" id="errContatti" role="alert" hidden></p>
     </fieldset>
 
+    <fieldset>
+      <legend><span class="n">07</span><span data-t="q7">Ti serve anche l'assistente?</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <p class="hint" data-t="h7">SABE risponde al telefono e prende le prenotazioni; ATLAS è l'assistente vocale completo. Li prepariamo insieme al sito, in un unico preventivo.</p>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" name="ass" value="SABE (agente vocale e prenotazioni)"><span data-t="a_sabe">SABE</span></label>
+        <label class="chip"><input type="checkbox" name="ass" value="ATLAS (assistente vocale completo)"><span data-t="a_atlas">ATLAS</span></label>
+      </div>
+      <p class="hint"><a href="/#preventivo" data-sito="/#preventivo" data-t="a_dett">Vuoi scegliere il piano SABE? Compila il preventivo dedicato →</a></p>
+    </fieldset>
+
     <label class="consenso" id="consensoBox">
       <input type="checkbox" id="consenso">
       <span><span data-t="consenso">Ho letto l'informativa sulla</span> <a href="/#privacy" data-sito="/#privacy" target="_blank" rel="noopener">privacy</a> <span data-t="consenso2">e accetto di essere ricontattato per questo preventivo.</span></span>
@@ -325,7 +348,8 @@
   ];
 
   var T = {
-    it:{ servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
+    it:{q7:'Ti serve anche l’assistente?', h7:'SABE risponde al telefono e prende le prenotazioni; ATLAS è l’assistente vocale completo. Li prepariamo insieme al sito, in un unico preventivo.', a_sabe:'SABE', a_atlas:'ATLAS', a_dett:'Vuoi scegliere il piano SABE? Compila il preventivo dedicato →', d_landing:'Una pagina sola, pensata per un unico obiettivo: far chiamare, prenotare o iscrivere. Ideale per una promozione o un lancio.', d_vetrina:'Presenta la tua attività in più pagine: chi sei, cosa offri, dove trovarti, come contattarti. Il biglietto da visita online.', d_ecom:'Un negozio online con catalogo, carrello e pagamenti, per vendere i tuoi prodotti anche quando sei chiuso.', d_pren:'Il cliente sceglie giorno e orario direttamente dal sito: per ristoranti, studi, saloni, servizi su appuntamento.', d_port:'Una galleria curata dei tuoi lavori, per fotografi, designer, architetti, artisti e professionisti creativi.', d_rifa:'Hai già un sito ma è vecchio, lento o poco chiaro? Lo ridisegniamo mantenendo contenuti e indirizzo.', d_nonso:'Nessun problema: raccontaci la tua attività e ti consigliamo noi il tipo di sito più adatto.', sv_sito:'Un sito web', sv_ass:'Assistente SABE / ATLAS →',
+         servizi:'Servizi', visione:'Visione', preventivo:'Preventivo gratuito', menu:'Apri il menu',
          kick:'// Preventivo sito web', h1:'Il nono mondo è il tuo: chiedi il preventivo.',
          lead:'Rispondi a qualche domanda con un tocco: ci serve per capire che sito ti serve e darti un preventivo preciso. Due minuti, e ti rispondiamo entro un giorno lavorativo.',
          q1:'Che sito ti serve?', t_landing:'Landing page', t_vetrina:'Sito vetrina', t_ecom:'E-commerce', t_pren:'Sito con prenotazioni', t_port:'Portfolio', t_rifa:'Rifare il sito che ho', t_nonso:'Non so ancora',
@@ -344,7 +368,8 @@
          okKick:'// Richiesta inviata', okH:'Grazie, abbiamo ricevuto tutto.',
          okP:'Ti rispondiamo entro un giorno lavorativo con un preventivo o qualche domanda in più. Nel frattempo puoi tornare a guardare i mondi dell’Atelier.',
          okA:'← Torna all’Atelier', torna:'← Torna alla mappa' },
-    en:{ servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
+    en:{q7:'Do you also need the assistant?', h7:'SABE answers the phone and takes bookings; ATLAS is the complete voice assistant. We set them up together with the site, in a single quote.', a_sabe:'SABE', a_atlas:'ATLAS', a_dett:'Want to pick a SABE plan? Fill in the dedicated quote →', d_landing:'A single page built around one goal: get people to call, book or sign up. Ideal for a promotion or a launch.', d_vetrina:'Presents your business across several pages: who you are, what you offer, where to find you. Your online business card.', d_ecom:'An online shop with catalogue, cart and payments, so you can sell your products even when you are closed.', d_pren:'Customers pick a day and time right on the site: for restaurants, studios, salons, appointment-based services.', d_port:'A curated gallery of your work, for photographers, designers, architects, artists and other creatives.', d_rifa:'Already have a site that is old, slow or unclear? We redesign it, keeping your content and address.', d_nonso:'No problem: tell us about your business and we will recommend the right type of site.', sv_sito:'A website', sv_ass:'SABE / ATLAS assistant →',
+         servizi:'Services', visione:'Vision', preventivo:'Free quote', menu:'Open the menu',
          kick:'// Website quote', h1:'The ninth world is yours: request a quote.',
          lead:'Answer a few questions with a tap: it helps us understand the website you need and give you an accurate quote. Two minutes, and we reply within one working day.',
          q1:'What kind of website do you need?', t_landing:'Landing page', t_vetrina:'Showcase website', t_ecom:'E-commerce', t_pren:'Website with bookings', t_port:'Portfolio', t_rifa:'Redo my current site', t_nonso:'Not sure yet',
@@ -454,6 +479,7 @@
     var righe = [
       ['Richiesta', 'Preventivo sito web (Atelier)'],
       ['Tipo di sito', tipo],
+      ['Serve anche', valori('ass').join(', ')],
       ['Mondi di riferimento', valori('mondo').join(', ')],
       ['Funzioni', valori('funz').join(', ')],
       ['Pagine', valori('pagine')[0]],
