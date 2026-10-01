@@ -110,7 +110,7 @@
 /* Il disegno progressivo lo pilota il JS (`strokeDashoffset` a ogni
    fotogramma, vedi anatomia.js): niente transizione qui, o farebbe a botte con
    una corda che cambia insieme al respiro del robot. */
-.wc-anat-tratto polyline{fill:none;stroke:currentColor;stroke-width:1;}
+.wc-anat-tratto polyline{fill:none;stroke:currentColor;stroke-width:1.5;}
 .wc-anat-tratto.-on{opacity:1;}
 @media (max-width:760px){.wc-anat-tratto{display:block;}}
 @media (prefers-reduced-motion:reduce){.wc-anat-tratto{transition:none;}}

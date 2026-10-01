@@ -1713,7 +1713,7 @@ WC.register('robot', function(ctx){
           ancoraBraccio = bordoEsterno(sinistraEL ? boxL : boxR, -1);
           // Braccio destro: bordo esterno, specchio del sinistro.
           var boxDx = sinistraEL ? boxR : boxL;
-          ancoraBraccioDx = bordoEsterno(boxDx, 1);
+          ancoraBraccioDx = bordoEsterno(boxDx, 1, 0.62);
           // Un po' dentro il bordo: il nome «Agente Whatsapp» e' largo e a destra il robot lascia meno aria che a sinistra.
           ancoraBraccioDx.x = boxDx.getCenter(new THREE.Vector3()).x + (ancoraBraccioDx.x - boxDx.getCenter(new THREE.Vector3()).x) * 0.75;
         }

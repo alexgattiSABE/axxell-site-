@@ -503,12 +503,20 @@ WC.anatomia = (function () {
       // destro (e' quello che serve alle etichette del pc); quando la voce sta
       // dall'altra parte lo si specchia attorno all'asse del corpo, che arriva
       // nella stessa mappa (`__corpo`).
+      // Il cervello (Atlas) sta in cima: la linea scende dritta dalla voce e si ferma sopra la testa (disegno di Nike, 2026-10-01).
+      if (id === 'testa') {
+        var cc = (ancore.__anim || {})[id];
+        var yFine = cc ? cc.y - cc.r * 1.25 - 10 : a.y - 40;
+        var pt = [[x0, y0], [x0, Math.max(y0 + 12, yFine)]];
+        if (inv) pt.reverse();
+        return pt;
+      }
       var corpo = ancore.__corpo || { x: lar / 2, y: lar * 0.25 };
       // `corpo.y` e' la mezza larghezza con le BRACCIA; la colonna centrale —
       // testa, collo, torso — e' piu' stretta, ed e' quella che la linea non
       // deve attraversare. Fra il torso e il braccio c'e' un vuoto, e la
       // corsia ci passa dentro: e' quello che Nike ha disegnato.
-      var colonna = corpo.y * 0.42;
+      var colonna = corpo.y * 0.28;
       var scarto = a.x - corpo.x;
       var laterale = Math.abs(scarto) > corpo.y * 0.55;   // il braccio: si raggiunge solo dal suo lato
       var lato = laterale ? (scarto < 0 ? -1 : 1) : ((x0 < corpo.x) ? -1 : 1);
@@ -540,7 +548,7 @@ WC.anatomia = (function () {
       // La corsia verticale: quella della voce, se la voce non sta sopra la
       // colonna centrale; se no la prima libera appena fuori dalla colonna,
       // dalla parte giusta. Per il braccio, appena fuori dal braccio.
-      var corsia = laterale ? (a.x + lato * 30)
+      var corsia = laterale ? (a.x + lato * 20)
         : ((Math.abs(x0 - corpo.x) > colonna) ? x0 : (corpo.x + lato * (colonna + 26)));
       if (ds && !laterale) corsia += lato * ds;   // con tutte le linee accese, due zone centrali non dividono la stessa corsia
       corsia = Math.max(10, Math.min(lar - 10, corsia));
@@ -582,7 +590,7 @@ WC.anatomia = (function () {
         var poly = trattoExtra[k];
         if (!poly) { poly = document.createElementNS(SVGNS, 'polyline'); tratto.appendChild(poly); trattoExtra[k] = poly; }
         k++;
-        scrivi(poly, percorso(z.id, riga, false, z.id === 'collo' ? 14 : 0), frazione);
+        scrivi(poly, percorso(z.id, riga, false, 0), frazione);
       });
       for (; k < trattoExtra.length; k++) trattoExtra[k].setAttribute('points', '');
       trattoLinea.setAttribute('points', '');
