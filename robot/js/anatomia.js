@@ -476,15 +476,15 @@ WC.anatomia = (function () {
     // del corpo. Si ridisegna a ogni fotogramma insieme al resto — l'aggancio
     // e' quello vero, proiettato da robot.js, quindi la linea resta attaccata
     // al pezzo anche mentre il torso respira.
-    function disegnaTratto() {
-      if (!forzata || !forzataRiga || !ancore[forzata]) { trattoLinea.setAttribute('points', ''); return; }
-      var r = forzataRiga.getBoundingClientRect(), rh = host.getBoundingClientRect();
+    // Il percorso della linea dalla voce `riga` al pezzo `id` (lista di punti).
+    function percorso(id, riga, inv, ds) {
+      var r = riga.getBoundingClientRect(), rh = host.getBoundingClientRect();
       var x0 = r.left - rh.left + r.width / 2, y0 = r.bottom - rh.top + 6;
       // La linea scende dalla voce: se sotto c'e' un'altra voce (la scaletta ha due file) non ci passa
       // attraverso. Si prova il centro, poi i due bordi della voce, poi appena fuori.
       var sotto = [];
       Array.prototype.forEach.call(scaletta.children, function (c) {
-        if (c === forzataRiga) return;
+        if (c === riga) return;
         var q = c.getBoundingClientRect();
         if (q.top >= r.bottom - 2) sotto.push({ l: q.left - rh.left - 6, r: q.right - rh.left + 6 });
       });
@@ -493,7 +493,7 @@ WC.anatomia = (function () {
         if (libero(x)) { x0 = x; return true; }
         return false;
       });
-      var a = ancore[forzata];
+      var a = ancore[id];
       // ---- IL PERCORSO (Task D13, disegnato da Nike) ----
       // Solo angoli retti, mai una diagonale, e mai attraverso il robot:
       //   giu' dalla voce  →  (se serve) di lato fino a una corsia libera  →
@@ -526,7 +526,7 @@ WC.anatomia = (function () {
       var DENTRO = 26, FUORI = 12, ARIA = 12;
       var fineX = laterale ? (a.x + lato * FUORI)
         : (corpo.x + lato * Math.abs(scarto) - lato * DENTRO);
-      var cerchio = (ancore.__anim || {})[forzata];
+      var cerchio = (ancore.__anim || {})[id];
       if (cerchio) {
         var dy = Math.abs(a.y - cerchio.y), R = cerchio.r + ARIA;
         if (dy < R) {
@@ -542,6 +542,7 @@ WC.anatomia = (function () {
       // dalla parte giusta. Per il braccio, appena fuori dal braccio.
       var corsia = laterale ? (a.x + lato * 30)
         : ((Math.abs(x0 - corpo.x) > colonna) ? x0 : (corpo.x + lato * (colonna + 26)));
+      if (ds && !laterale) corsia += lato * ds;   // con tutte le linee accese, due zone centrali non dividono la stessa corsia
       corsia = Math.max(10, Math.min(lar - 10, corsia));
       var y1 = y0 + 26;                            // il primo tratto verticale, corto
       // Con due file di voci il tratto orizzontale deve passare SOTTO l'ultima, non in mezzo al suo testo.
@@ -555,15 +556,46 @@ WC.anatomia = (function () {
       // Tocco sul pezzo del robot: stesso percorso, percorso al contrario —
       // la linea nasce dal cervello (o dalla sfera, o dal braccio) e sale
       // fino alla sua voce nella scaletta.
-      if (inverso) pts.reverse();
+      if (inv) pts.reverse();
+      return pts;
+    }
+    function lunghezza(pts) {
       var lung = 0;
       for (var k = 1; k < pts.length; k++) lung += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
-      trattoLinea.setAttribute('points', pts.map(function (p) { return n2(p[0]) + ',' + n2(p[1]); }).join(' '));
-
+      return lung;
+    }
+    function scrivi(poly, pts, frazione) {
+      var lung = lunghezza(pts);
+      poly.setAttribute('points', pts.map(function (p) { return n2(p[0]) + ',' + n2(p[1]); }).join(' '));
+      poly.style.strokeDasharray = n2(lung);
+      poly.style.strokeDashoffset = n2(lung * (1 - frazione));
+    }
+    // Con l'occhio acceso, sul telefono, si tirano TUTTE le linee insieme (una per voce).
+    var trattoExtra = [];
+    function disegnaTutte() {
+      var frazione = ridotto() ? 1 : Math.max(0, Math.min(1, (ora() - trattoDa) / DISEGNO));
+      var k = 0;
+      ZONE.forEach(function (z) {
+        if (!z.attiva || !ancore[z.id]) return;
+        var riga = scaletta.querySelector('[data-zona="' + z.id + '"]');
+        if (!riga) return;
+        var poly = trattoExtra[k];
+        if (!poly) { poly = document.createElementNS(SVGNS, 'polyline'); tratto.appendChild(poly); trattoExtra[k] = poly; }
+        k++;
+        scrivi(poly, percorso(z.id, riga, false, z.id === 'collo' ? 14 : 0), frazione);
+      });
+      for (; k < trattoExtra.length; k++) trattoExtra[k].setAttribute('points', '');
+      trattoLinea.setAttribute('points', '');
+      tratto.setAttribute('viewBox', '0 0 ' + lar + ' ' + alt);
+    }
+    function disegnaTratto() {
+      if (tutte && stretto()) { disegnaTutte(); return; }
+      trattoExtra.forEach(function (p) { p.setAttribute('points', ''); });
+      if (!forzata || !forzataRiga || !ancore[forzata]) { trattoLinea.setAttribute('points', ''); return; }
+      var pts = percorso(forzata, forzataRiga, inverso);
       var frazione = ridotto() ? 1
         : Math.max(0, Math.min(1, (ora() - trattoDa) / DISEGNO));
-      trattoLinea.style.strokeDasharray = n2(lung);
-      trattoLinea.style.strokeDashoffset = n2(lung * (1 - frazione));
+      scrivi(trattoLinea, pts, frazione);
       tratto.setAttribute('viewBox', '0 0 ' + lar + ' ' + alt);
     }
 
@@ -785,6 +817,8 @@ WC.anatomia = (function () {
       tutte: function (on) {
         tutte = !!on;
         if (tutte) spegniTocco();
+        trattoDa = ora();
+        tratto.classList.toggle('-on', tutte && stretto());
         accendi(attivo);
         scaletta.classList.toggle('-tutte', tutte);
         rifai(true);
