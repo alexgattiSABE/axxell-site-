@@ -131,13 +131,13 @@
     gap:.55rem 2.2rem;top:calc(var(--nav-h) + .55rem);left:1rem;right:1rem;
     text-align:center;pointer-events:auto;
     text-shadow:0 0 14px rgba(6,6,9,.95),0 0 4px rgba(6,6,9,.9);}
-  /* 2026-10-01 (Nike): in alto Atlas, SABE e Agente Whatsapp; sotto Atelier e Gestionale.
+  /* 2026-10-01 (Nike): in alto Atelier, Atlas e Agente Whatsapp; sotto SABE e Gestionale.
      `order` decide la fila, il ::after e' l'a-capo forzato fra le due. */
-  .wc-anat-riga[data-zona="testa"]{order:1;}
-  .wc-anat-riga[data-zona="collo"]{order:2;}
+  .wc-anat-riga[data-zona="testa"]{order:2;}
+  .wc-anat-riga[data-zona="collo"]{order:5;}
   .wc-anat-riga[data-zona="braccioDx"]{order:3;}
   .wc-anat-scaletta::after{content:'';flex:0 0 100%;order:4;height:0;}
-  .wc-anat-riga[data-zona="braccioSx"]{order:5;}
+  .wc-anat-riga[data-zona="braccioSx"]{order:1;}
   .wc-anat-riga[data-zona="pancia"]{order:6;}
   .wc-anat-riga{display:block;text-decoration:none;color:var(--white);
     /* Bersaglio da dito: in riga le voci si toccano di fianco, quindi l'aria
