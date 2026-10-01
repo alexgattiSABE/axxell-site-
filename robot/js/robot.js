@@ -362,6 +362,8 @@ WC.register('robot', function(ctx){
     if (tastoSpaccato) {
       tastoSpaccato.setAttribute('aria-pressed', spaccato ? 'true' : 'false');
       tastoSpaccato.title = spaccato ? 'Chiudi lo spaccato' : 'Spaccato: mostra gli interni';
+      var t = tastoSpaccato.querySelector('.wc-robot-spaccato-t');
+      if (t) t.textContent = spaccato ? 'Chiudi' : 'Guarda dentro';
     }
     card.classList.toggle('-spaccato', spaccato);
     if (anat && anat.tutte) anat.tutte(spaccato);
@@ -373,7 +375,7 @@ WC.register('robot', function(ctx){
     b.type = 'button';
     b.className = 'wc-robot-spaccato';
     b.setAttribute('aria-label', 'Spaccato: mostra gli interni del robot e i loro nomi');
-    b.innerHTML = OCCHIO_SVG;
+    b.innerHTML = OCCHIO_SVG + '<span class="wc-robot-spaccato-t">Guarda dentro</span>';
     function onTasto() { impostaSpaccato(!spaccato); }
     b.addEventListener('click', onTasto);
     card.appendChild(b);
