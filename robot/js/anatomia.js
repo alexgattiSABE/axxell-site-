@@ -486,7 +486,7 @@ WC.anatomia = (function () {
       Array.prototype.forEach.call(scaletta.children, function (c) {
         if (c === riga) return;
         var q = c.getBoundingClientRect();
-        if (q.top >= r.bottom - 2) sotto.push({ l: q.left - rh.left - 6, r: q.right - rh.left + 6 });
+        if (q.top >= r.bottom - 2) sotto.push({ l: q.left - rh.left - 3, r: q.right - rh.left + 3 });
       });
       var libero = function (x) { return sotto.every(function (q) { return x < q.l || x > q.r; }); };
       [x0, r.left - rh.left + 4, r.right - rh.left - 4, r.left - rh.left - 8, r.right - rh.left + 8].some(function (x) {
