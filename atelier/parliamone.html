@@ -157,6 +157,8 @@
   .campo input,.campo textarea{width:100%;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;
     color:var(--ink);font:inherit;font-size:16px;padding:.8rem .9rem;transition:border-color .18s}
   .campo textarea{min-height:120px;resize:vertical}
+  .campo textarea.-corta{min-height:76px}
+  .spunti{margin:.2rem 0 0;padding-left:1.1rem;color:var(--dim);font-size:.84rem;line-height:1.6}
   .campo input:focus,.campo textarea:focus{outline:none;border-color:var(--cyan)}
   .campo input[aria-invalid="true"]{border-color:var(--err)}
   @media (max-width:640px){ .campi{grid-template-columns:1fr} }
@@ -240,8 +242,8 @@
     </fieldset>
 
     <fieldset>
-      <legend><span class="n">02</span><span data-t="q2">Quale mondo dell'Atelier ti somiglia?</span><span class="opz" data-t="opz">facoltativo</span></legend>
-      <p class="hint" data-t="h2">Puoi sceglierne più di uno: ci dice lo stile che hai in mente.</p>
+      <legend><span class="n">02</span><span data-t="q2">Quale mondo ti ispira di più?</span><span class="opz" data-t="opz">facoltativo</span></legend>
+      <p class="hint" data-t="h2">Guarda cosa mostra ogni mondo: scegli quelli che ti ispirano. Puoi sceglierne più di uno.</p>
       <div class="mondi" id="mondi"></div>
     </fieldset>
 
@@ -295,7 +297,9 @@
         <div class="campo"><label for="email">Email <i>*</i></label><input id="email" type="email" autocomplete="email" inputmode="email" required></div>
         <div class="campo"><label for="tel" data-t="l_tel">Telefono</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel"></div>
         <div class="campo -tutta"><label for="url" data-t="l_url">Il tuo sito attuale, se c'è</label><input id="url" type="url" inputmode="url" placeholder="https://"></div>
-        <div class="campo -tutta"><label for="note" data-t="l_note">Raccontaci il progetto</label><textarea id="note" data-t-ph="ph_note" placeholder="Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…"></textarea></div>
+        <div class="campo -tutta"><label for="ispira" data-t="l_ispira">Siti che ti ispirano</label><textarea id="ispira" class="-corta" data-t-ph="ph_ispira" placeholder="Incolla i link dei siti che ti piacciono, uno per riga."></textarea></div>
+        <div class="campo -tutta"><label for="note" data-t="l_note">Raccontaci il progetto</label><textarea id="note" data-t-ph="ph_note" placeholder="Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…"></textarea>
+          <ul class="spunti" data-t-html="spunti"><li>Cosa fai e da quanti anni?</li><li>Chi sono i tuoi clienti e cosa cercano da te?</li><li>Quale obiettivo deve raggiungere il sito: telefonate, prenotazioni, vendite?</li><li>Cosa ti piace e cosa non ti piace dei siti che hai visto?</li><li>Hai colori, un logo o uno stile già definiti?</li></ul></div>
       </div>
       <p class="err" id="errContatti" role="alert" hidden></p>
     </fieldset>
@@ -354,12 +358,13 @@
          lead:'Rispondi a qualche domanda con un tocco: ci serve per capire che sito ti serve e darti un preventivo preciso. Due minuti, e ti rispondiamo entro un giorno lavorativo.',
          q1:'Che sito ti serve?', t_landing:'Landing page', t_vetrina:'Sito vetrina', t_ecom:'E-commerce', t_pren:'Sito con prenotazioni', t_port:'Portfolio', t_rifa:'Rifare il sito che ho', t_nonso:'Non so ancora',
          errTipo:'Scegli il tipo di sito, anche «Non so ancora».',
-         q2:'Quale mondo dell’Atelier ti somiglia?', opz:'facoltativo', h2:'Puoi sceglierne più di uno: ci dice lo stile che hai in mente.',
+         q2:'Quale mondo ti ispira di più?', opz:'facoltativo', h2:'Guarda cosa mostra ogni mondo: scegli quelli che ti ispirano. Puoi sceglierne più di uno.',
          q3:'Cosa deve saper fare?', f_3d:'Animazioni ed effetti 3D', f_lingue:'Più lingue', f_pren:'Prenotazioni online', f_pag:'Vendita e pagamenti online', f_blog:'Blog o notizie', f_area:'Area riservata ai clienti', f_chat:'Assistente AI in chat', f_form:'Modulo contatti e preventivi', f_social:'Collegamento ai social',
          q4:'Quanto è grande?', p1:'Una pagina sola', p2:'2–5 pagine', p3:'6–10 pagine', p4:'Più di 10', p5:'Non lo so',
          h4:'Testi e foto li hai già?', c1:'Sì, sono pronti', c2:'In parte', c3:'No, servono anche quelli',
          q5:'Tempi', w1:'Il prima possibile', w2:'Entro un mese', w3:'Entro 2–3 mesi', w4:'Nessuna fretta',
-         q6:'A chi rispondiamo?', l_nome:'Nome e cognome', l_azienda:'Azienda o attività', l_tel:'Telefono', l_url:'Il tuo sito attuale, se c’è', l_note:'Raccontaci il progetto',
+         q6:'A chi rispondiamo?', l_nome:'Nome e cognome', l_azienda:'Azienda o attività', l_tel:'Telefono', l_url:'Il tuo sito attuale, se c’è', l_note:'Raccontaci il progetto', l_ispira:'Siti che ti ispirano', ph_ispira:'Incolla i link dei siti che ti piacciono, uno per riga.',
+         spunti:'<li>Cosa fai e da quanti anni?</li><li>Chi sono i tuoi clienti e cosa cercano da te?</li><li>Quale obiettivo deve raggiungere il sito: telefonate, prenotazioni, vendite?</li><li>Cosa ti piace e cosa non ti piace dei siti che hai visto?</li><li>Hai colori, un logo o uno stile già definiti?</li>',
          ph_note:'Chi sei, a chi ti rivolgi, cosa ti piace dei siti che hai visto…',
          consenso:'Ho letto l’informativa sulla', consenso2:'e accetto di essere ricontattato per questo preventivo.',
          invia:'Richiedi il preventivo', invio:'Invio in corso…', altro:'Oppure scrivici a',
@@ -374,12 +379,13 @@
          lead:'Answer a few questions with a tap: it helps us understand the website you need and give you an accurate quote. Two minutes, and we reply within one working day.',
          q1:'What kind of website do you need?', t_landing:'Landing page', t_vetrina:'Showcase website', t_ecom:'E-commerce', t_pren:'Website with bookings', t_port:'Portfolio', t_rifa:'Redo my current site', t_nonso:'Not sure yet',
          errTipo:'Pick a type of website, even “Not sure yet”.',
-         q2:'Which Atelier world feels like you?', opz:'optional', h2:'You can pick more than one: it tells us the style you have in mind.',
+         q2:'Which world inspires you most?', opz:'optional', h2:'Look at what each world shows: pick the ones that inspire you. You can pick more than one.',
          q3:'What should it do?', f_3d:'Animations and 3D effects', f_lingue:'Multiple languages', f_pren:'Online bookings', f_pag:'Online sales and payments', f_blog:'Blog or news', f_area:'Customer area', f_chat:'AI chat assistant', f_form:'Contact and quote forms', f_social:'Social media links',
          q4:'How big is it?', p1:'A single page', p2:'2–5 pages', p3:'6–10 pages', p4:'More than 10', p5:'Not sure',
          h4:'Do you already have texts and photos?', c1:'Yes, they’re ready', c2:'Partly', c3:'No, we need those too',
          q5:'Timing', w1:'As soon as possible', w2:'Within a month', w3:'Within 2–3 months', w4:'No rush',
-         q6:'Who should we reply to?', l_nome:'Full name', l_azienda:'Company or business', l_tel:'Phone', l_url:'Your current website, if any', l_note:'Tell us about the project',
+         q6:'Who should we reply to?', l_nome:'Full name', l_azienda:'Company or business', l_tel:'Phone', l_url:'Your current website, if any', l_note:'Tell us about the project', l_ispira:'Websites that inspire you', ph_ispira:'Paste the links of websites you like, one per line.',
+         spunti:'<li>What do you do, and for how many years?</li><li>Who are your customers and what do they look for?</li><li>What should the site achieve: calls, bookings, sales?</li><li>What do you like and dislike about the sites you have seen?</li><li>Do you already have colours, a logo or a style?</li>',
          ph_note:'Who you are, who you’re speaking to, what you like about websites you’ve seen…',
          consenso:'I have read the', consenso2:'notice and agree to be contacted about this quote.',
          invia:'Request a quote', invio:'Sending…', altro:'Or write to us at',
@@ -422,6 +428,7 @@
     L = l; var D = T[l];
     document.documentElement.lang = l;
     document.querySelectorAll('[data-t]').forEach(function(el){ var v = D[el.getAttribute('data-t')]; if (v !== undefined) el.textContent = v; });
+    document.querySelectorAll('[data-t-html]').forEach(function(el){ var v = D[el.getAttribute('data-t-html')]; if (v !== undefined) el.innerHTML = v; });
     document.querySelectorAll('[data-t-ph]').forEach(function(el){ var v = D[el.getAttribute('data-t-ph')]; if (v !== undefined) el.placeholder = v; });
     document.querySelectorAll('[data-t-aria]').forEach(function(el){ var v = D[el.getAttribute('data-t-aria')]; if (v !== undefined) el.setAttribute('aria-label', v); });
     MONDI.forEach(function(m){ m.b.textContent = l === 'en' ? m.en : m.it; m.s.textContent = l === 'en' ? m.sen : m.sit; });
@@ -487,6 +494,7 @@
       ['Tempi', valori('tempi')[0]],
       ['Azienda', val('azienda')],
       ['Sito attuale', val('url')],
+      ['Siti che ispirano', val('ispira').replace(/\s*\n\s*/g, ', ')],
       ['Lingua del cliente', L === 'en' ? 'inglese' : 'italiano'],
       ['Note', val('note')]
     ];
