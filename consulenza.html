@@ -53,40 +53,58 @@
     <p class="co-sotto">Raccontaci la tua attività: ti rispondiamo <b>entro 24 ore</b>.</p>
 
     <form id="consulenza-modulo" class="co-modulo" novalidate>
+      <p class="co-nota">I campi con <span class="co-req" aria-hidden="true">*</span> sono obbligatori.</p>
       <div class="co-due">
         <div class="co-campo" data-campo="nome">
-          <label for="co-nome">Nome e cognome</label>
-          <input id="co-nome" name="nome" type="text" autocomplete="name" maxlength="100" required aria-describedby="co-nome-errore">
+          <label for="co-nome">Nome <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-nome" name="nome" type="text" autocomplete="given-name" maxlength="60" required aria-describedby="co-nome-errore">
           <p class="co-errore" id="co-nome-errore" hidden></p>
         </div>
-        <div class="co-campo" data-campo="attivita">
-          <label for="co-attivita">Nome dell'attività</label>
-          <input id="co-attivita" name="attivita" type="text" autocomplete="organization" maxlength="120" required aria-describedby="co-attivita-errore">
+        <div class="co-campo" data-campo="cognome">
+          <label for="co-cognome">Cognome <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-cognome" name="cognome" type="text" autocomplete="family-name" maxlength="60" required aria-describedby="co-cognome-errore">
+          <p class="co-errore" id="co-cognome-errore" hidden></p>
+        </div>
+      </div>
+      <div class="co-campo" data-campo="attivita">
+          <label for="co-attivita">Azienda <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-attivita" name="attivita" type="text" autocomplete="organization" maxlength="120" placeholder="Nome della tua azienda" required aria-describedby="co-attivita-errore">
           <p class="co-errore" id="co-attivita-errore" hidden></p>
         </div>
+      <div class="co-due">
+        <div class="co-campo" data-campo="tipo">
+          <label for="co-tipo">Tipo di attività <span class="co-req" aria-hidden="true">*</span></label>
+          <select id="co-tipo" name="tipo" required aria-describedby="co-tipo-errore">
+            <option value="">Seleziona il settore</option>
+            <option value="ristorazione">Ristorante / Pizzeria / Bar</option>
+            <option value="benessere">Salute e benessere</option>
+            <option value="sport">Sport e fitness</option>
+            <option value="ospitalita">Hotel / B&amp;B / Agriturismo</option>
+            <option value="balneare">Stabilimento balneare / Lido</option>
+            <option value="studio">Studio professionale</option>
+            <option value="automotive">Automotive / Officina</option>
+            <option value="commercio">E-commerce / Retail</option>
+            <option value="altro">Altro</option>
+          </select>
+          <p class="co-errore" id="co-tipo-errore" hidden></p>
+        </div>
+        <div class="co-campo" data-campo="piva">
+          <label for="co-piva">Partita IVA <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-piva" name="piva" type="text" inputmode="text" autocomplete="off" maxlength="20" placeholder="IT12345678901" required aria-describedby="co-piva-errore">
+          <p class="co-errore" id="co-piva-errore" hidden></p>
+        </div>
+      </div>
+      <div class="co-due">
         <div class="co-campo" data-campo="email">
-          <label for="co-email">Email</label>
-          <input id="co-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" required aria-describedby="co-email-errore">
+          <label for="co-email">Email <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="200" placeholder="mario@azienda.it" required aria-describedby="co-email-errore">
           <p class="co-errore" id="co-email-errore" hidden></p>
         </div>
         <div class="co-campo" data-campo="telefono">
-          <label for="co-telefono">Telefono <span class="co-facolt">facoltativo</span></label>
-          <input id="co-telefono" name="telefono" type="tel" autocomplete="tel" maxlength="30" aria-describedby="co-telefono-errore">
+          <label for="co-telefono">Telefono <span class="co-req" aria-hidden="true">*</span></label>
+          <input id="co-telefono" name="telefono" type="tel" autocomplete="tel" maxlength="30" placeholder="+39 333 000 0000" required aria-describedby="co-telefono-errore">
           <p class="co-errore" id="co-telefono-errore" hidden></p>
         </div>
-      </div>
-
-      <div class="co-campo" data-campo="tipo">
-        <label for="co-tipo">Tipo di attività <span class="co-facolt">facoltativo</span></label>
-        <select id="co-tipo" name="tipo">
-          <option value="">Scegli…</option>
-          <option value="ristorante">Ristorante</option>
-          <option value="pizzeria">Pizzeria</option>
-          <option value="bar">Bar</option>
-          <option value="hotel">Hotel</option>
-          <option value="altro">Altro</option>
-        </select>
-        <p class="co-errore" id="co-tipo-errore" hidden></p>
       </div>
 
       <fieldset class="co-interessi">
@@ -105,8 +123,8 @@
       </div>
 
       <div class="co-campo" data-campo="messaggio">
-        <label for="co-messaggio">Messaggio <span class="co-facolt">facoltativo</span></label>
-        <textarea id="co-messaggio" name="messaggio" rows="5" maxlength="2000" aria-describedby="co-messaggio-errore" placeholder="Per esempio: quante chiamate ricevi, che gestionale usi oggi, cosa vorresti automatizzare."></textarea>
+        <label for="co-messaggio">Note aggiuntive <span class="co-facolt">facoltativo</span></label>
+        <textarea id="co-messaggio" name="messaggio" rows="4" maxlength="2000" aria-describedby="co-messaggio-errore" placeholder="Descrivi brevemente la tua attività: cosa fai, quante chiamate ricevi, cosa vorresti automatizzare."></textarea>
         <p class="co-errore" id="co-messaggio-errore" hidden></p>
       </div>
 
@@ -115,9 +133,13 @@
         <input id="co-sito" name="sito_web" type="text" tabindex="-1" autocomplete="off">
       </div>
 
+      <div class="co-campo co-consenso" data-campo="privacy">
+        <label class="co-spunta" for="co-privacy"><input id="co-privacy" name="privacy" type="checkbox" value="si" required aria-describedby="co-privacy-errore"><span>Ho letto e accetto la <a href="privacy.html">privacy</a>. <span class="co-req" aria-hidden="true">*</span></span></label>
+        <p class="co-errore" id="co-privacy-errore" hidden></p>
+      </div>
+
       <p class="co-invio-errore" id="co-invio-errore" role="alert" hidden>Non siamo riusciti a inviare la richiesta. Riprova tra poco oppure scrivici a <a href="mailto:info@axxell.ai">info@axxell.ai</a>.</p>
       <button class="btn btn--ink co-invia" type="submit">Invia la richiesta</button>
-      <p class="co-privacy">Usiamo questi dati solo per risponderti. Leggi la <a href="privacy.html">privacy</a>.</p>
     </form>
 
     <div class="co-fatto" id="co-fatto" role="status" hidden>

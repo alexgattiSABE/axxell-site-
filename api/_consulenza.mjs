@@ -12,9 +12,15 @@ export const PIANI = {
 const PIANI_BREVI = { start: 'Start', light: 'Light', pro: 'Pro', enterprise: 'Enterprise' };
 export const INTERESSI = ['sabe', 'anima', 'atlas', 'servizi'];
 const NOMI_INTERESSI = { sabe: 'SABE', anima: 'ANIMA', atlas: 'ATLAS', servizi: 'Servizi' };
-export const TIPI = ['ristorante', 'pizzeria', 'bar', 'hotel', 'altro'];
-const NOMI_TIPI = { ristorante: 'Ristorante', pizzeria: 'Pizzeria', bar: 'Bar', hotel: 'Hotel', altro: 'Altro' };
-const MAX = { nome: 100, attivita: 120, email: 200, telefono: 30, messaggio: 2000 };
+// i settori del modulo del sito vecchio
+const NOMI_TIPI = {
+  ristorazione: 'Ristorante / Pizzeria / Bar', benessere: 'Salute e benessere', sport: 'Sport e fitness',
+  ospitalita: 'Hotel / B&B / Agriturismo', balneare: 'Stabilimento balneare / Lido', studio: 'Studio professionale',
+  automotive: 'Automotive / Officina', commercio: 'E-commerce / Retail', altro: 'Altro',
+};
+export const TIPI = Object.keys(NOMI_TIPI);
+const MAX = { nome: 60, cognome: 60, attivita: 120, email: 200, telefono: 30, messaggio: 2000 };
+const PIVA = /^(IT)?\d{11}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const TELEFONO = /^[0-9+()\s-]+$/;
 const TEMPO_MINIMO = 3000;
@@ -29,19 +35,24 @@ export const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;
 export function valida(corpo) {
   const c = corpo && typeof corpo === 'object' ? corpo : {};
   const d = {
-    nome: riga(c.nome), attivita: riga(c.attivita), email: riga(c.email), telefono: riga(c.telefono),
+    nome: riga(c.nome), cognome: riga(c.cognome), attivita: riga(c.attivita), email: riga(c.email), telefono: riga(c.telefono),
+    piva: riga(c.piva).replace(/\s+/g, '').toUpperCase(), privacy: c.privacy === true,
     tipo: riga(c.tipo), piano: riga(c.piano), messaggio: testo(c.messaggio), pagina: riga(c.pagina).slice(0, 200),
     interessi: Array.isArray(c.interessi) ? [...new Set(c.interessi.map(riga))] : [],
   };
   const campi = [];
+  // obbligatori come nel modulo del sito vecchio: nome, cognome, azienda, tipo di attività, partita IVA, email, telefono, privacy
   if (!d.nome || d.nome.length > MAX.nome) campi.push('nome');
+  if (!d.cognome || d.cognome.length > MAX.cognome) campi.push('cognome');
   if (!d.attivita || d.attivita.length > MAX.attivita) campi.push('attivita');
+  if (!TIPI.includes(d.tipo)) campi.push('tipo');
+  if (!PIVA.test(d.piva)) campi.push('piva');
   if (d.email.length > MAX.email || !EMAIL.test(d.email)) campi.push('email');
-  if (d.telefono && (d.telefono.length > MAX.telefono || !TELEFONO.test(d.telefono))) campi.push('telefono');
-  if (d.tipo && !TIPI.includes(d.tipo)) campi.push('tipo');
+  if (!d.telefono || d.telefono.length > MAX.telefono || !TELEFONO.test(d.telefono)) campi.push('telefono');
   if (!d.interessi.every(i => INTERESSI.includes(i))) campi.push('interessi');
   if (d.piano && !Object.hasOwn(PIANI, d.piano)) campi.push('piano');
   if (d.messaggio.length > MAX.messaggio) campi.push('messaggio');
+  if (!d.privacy) campi.push('privacy');
   return campi.length ? { ok: false, campi } : { ok: true, dati: d };
 }
 
@@ -54,8 +65,8 @@ export function oggetto(d) {
 
 function righe(d) {
   return [
-    ['Nome', d.nome], ['Attività', d.attivita], ['Tipo di attività', NOMI_TIPI[d.tipo] || ''],
-    ['Email', d.email], ['Telefono', d.telefono], ['Cosa interessa', nomiInteressi(d)],
+    ['Nome', `${d.nome} ${d.cognome}`], ['Azienda', d.attivita], ['Tipo di attività', NOMI_TIPI[d.tipo] || ''],
+    ['P.IVA', d.piva], ['Email', d.email], ['Telefono', d.telefono], ['Cosa interessa', nomiInteressi(d)],
     ['Piano scelto', d.piano ? PIANI[d.piano] : ''], ['Messaggio', d.messaggio],
   ].filter(([, v]) => v);
 }

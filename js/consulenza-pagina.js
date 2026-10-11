@@ -28,7 +28,8 @@ function dati() {
   const f = new FormData(modulo);
   const v = k => String(f.get(k) || '');
   return {
-    nome: v('nome'), attivita: v('attivita'), email: v('email'), telefono: v('telefono'), tipo: v('tipo'), messaggio: v('messaggio'),
+    nome: v('nome'), cognome: v('cognome'), attivita: v('attivita'), tipo: v('tipo'), piva: v('piva'), email: v('email'), telefono: v('telefono'),
+    messaggio: v('messaggio'), privacy: f.get('privacy') === 'si',
     interessi: f.getAll('interessi').map(String), piano: pianoScelto, sito_web: v('sito_web'),
     ms_sulla_pagina: Math.round(performance.now() - inizio), pagina: document.referrer.slice(0, 200),
   };
