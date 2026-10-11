@@ -1,0 +1,11 @@
+/* pagine di testo (privacy, note legali): una colonna leggibile, stessi titoli e colori del sito */
+.legale{padding-block:clamp(40px,6vw,88px) clamp(56px,7vw,104px);max-width:calc(72ch + 2 * var(--gutter))}
+.legale .sp-titolo{margin:10px 0 0;font-size:clamp(2rem, 1.3rem + 2.6vw, 3.4rem)}
+.legale-sotto{margin:14px 0 0;color:var(--ink-2)}
+.legale h2{margin:clamp(32px,4vw,44px) 0 0;font-size:clamp(1.2rem, 1rem + .6vw, 1.5rem);letter-spacing:-.02em;line-height:1.15}
+.legale p,.legale li{color:var(--ink-2);line-height:1.6}
+.legale p{margin:12px 0 0}
+.legale ul{margin:12px 0 0;padding-left:1.2em;display:grid;gap:6px}
+.legale b{color:var(--ink)}
+.legale a{color:var(--ink);text-decoration-color:var(--fuchsia);text-underline-offset:3px}
+.legale-data{margin-top:clamp(32px,4vw,44px)!important;font-size:.92rem}

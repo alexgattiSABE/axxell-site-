@@ -1,0 +1,122 @@
+/* ---------- HERO ---------- */
+/* apertura compatta: titolo a sinistra, testo e tasti a destra, sotto la riga «adesso» e i punti di forza;
+   il carosello entra già nella prima schermata */
+.hero{padding-block:clamp(24px,3.6vw,52px) clamp(16px,2vw,28px)}
+.hero-head{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:clamp(24px,4vw,64px);align-items:start}
+.hero h1{font-size:clamp(2.1rem, .9rem + 3.1vw, 4.1rem);max-width:17ch}
+.hero .riga{display:block;overflow:hidden;padding-block:.04em .12em;margin-block:-.04em -.12em}
+.hero .riga > span{display:inline-block}
+.hero h1 em{font-style:normal;white-space:nowrap;padding:0 .12em;margin-left:-.12em;background:linear-gradient(var(--volt),var(--volt)) left bottom/100% 80% no-repeat}
+/* su PC testo e titolo hanno la stessa altezza: partono e finiscono sulla stessa linea */
+@media (min-width:1201px){.hero h1{font-size:3.875rem;align-self:start}}
+/* accanto al titolo il simbolo «Appoggio» in 3D (js/logo-3d.js); la tela è più grande del simbolo,
+   così i pezzi scomposti non vengono tagliati, e sborda sopra e sotto senza spostare il resto */
+.hero-head{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.logo-3d{position:relative;width:clamp(230px,28vw,400px);aspect-ratio:1;margin-block:calc(clamp(230px,28vw,400px) * -.1);margin-right:calc(clamp(230px,28vw,400px) * -.06);pointer-events:none}
+.logo-3d > svg,.logo-3d > canvas{position:absolute;inset:0;width:100%;height:100%}
+.logo-3d > svg{inset:21%;width:58%;height:58%}
+.logo-3d.vivo > svg{display:none}
+@media (max-width:700px){.logo-3d{display:none}}
+/* le tre qualità: in risalto, senza colori, con una descrizione breve */
+.qualita{list-style:none;margin:clamp(20px,2.6vw,34px) 0 0;padding:clamp(16px,2vw,24px) 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,3vw,48px)}
+.qualita li{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;row-gap:6px;align-items:baseline}
+.qualita .n{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.78rem;font-weight:600;color:var(--ink-3);letter-spacing:.04em}
+.qualita b{font-size:clamp(1.6rem, .95rem + 1.5vw, 2.5rem);font-weight:800;font-variation-settings:var(--wide);letter-spacing:-.03em;line-height:1;color:var(--ink)}
+.qualita p{grid-column:2;margin:0;font-size:.98rem;line-height:1.5;color:var(--ink-2);max-width:34ch}
+/* scheda tecnica: cos'è Axxell, in termini tecnici, come il foglio delle specifiche di un prodotto */
+.tecnica{margin-top:clamp(56px,7vw,104px);display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,4vw,64px);align-items:start}
+.tecnica-testa{display:grid;gap:14px;min-width:0}
+.tecnica-etichetta{margin:0;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px}
+.tecnica-etichetta::before{content:"";width:28px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--volt),var(--fuchsia),var(--blue),var(--sistema-nucleo))}
+.tecnica h2{margin:0;font-size:clamp(1.6rem, 1.1rem + 1.4vw, 2.4rem);line-height:1.05;letter-spacing:-.03em}
+.tecnica-testa p:not(.tecnica-etichetta){margin:0;color:var(--ink-2);line-height:1.55;max-width:46ch}
+.tecnica b{color:var(--ink);font-weight:700}
+.tecnica-righe{margin:0;border-top:1px solid var(--line);min-width:0}
+.tecnica-righe > div{display:grid;grid-template-columns:minmax(0,11rem) minmax(0,1fr);gap:8px 24px;padding:14px 0;border-bottom:1px solid var(--line)}
+.tecnica-righe dt{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.76rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding-top:.2em}
+.tecnica-righe dd{margin:0;color:var(--ink-2);line-height:1.5;font-size:.98rem}
+.tecnica-schema{grid-column:1/-1;min-width:0;overflow-x:auto;border-radius:10px;background:#fbfcff;box-shadow:inset 0 0 0 1px var(--line)}   /* lo schema tiene la sua larghezza e sul telefono scorre qui dentro (skill diagram-design) */
+.tecnica-schema svg{display:block;width:100%;min-width:912px}
+.tecnica-schema .diagramma--telefono{display:none;min-width:328px;max-width:480px;margin-inline:auto}
+@media (max-width:999px){ .tecnica-schema svg:not(.diagramma--telefono){display:none} .tecnica-schema .diagramma--telefono{display:block} }   /* sotto i 1000px lo schema verticale, che sta tutto nel riquadro */
+@media print{ .tecnica-schema{overflow-x:visible} .tecnica-schema svg{min-width:0} }
+@media (max-width:860px){ .tecnica{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:520px){ .tecnica-righe > div{grid-template-columns:minmax(0,1fr)} }
+
+.stage-note{margin-top:8px}
+.carosello{position:relative;margin-top:clamp(40px,5vw,72px)}
+.palco{position:relative;height:540px;perspective:2000px;perspective-origin:50% 30%;overflow-x:clip;touch-action:pan-y}
+.anello{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(5deg);pointer-events:none}
+.scheda{--w:min(560px,86vw);position:absolute;left:50%;top:10px;width:var(--w);height:470px;margin-left:calc(var(--w) / -2);border-radius:var(--r);cursor:pointer;
+  transform:translateX(var(--x,0%)) translateZ(var(--zz,0px)) rotateY(var(--gy,0deg)) scale(var(--s,1));
+  transition:transform 1.5s var(--ease);pointer-events:auto}
+.scheda[data-slot="0"]{--x:0%;--zz:60px;--gy:0deg;--s:1;cursor:default;z-index:2}
+.scheda[data-slot="1"]{--x:68%;--zz:-320px;--gy:-32deg;--s:.86}
+.scheda[data-slot="-1"]{--x:-68%;--zz:-320px;--gy:32deg;--s:.86}
+.scheda-corpo{position:absolute;inset:0;border-radius:inherit;overflow:hidden;display:flex;flex-direction:column}
+.velo{position:absolute;inset:0;border-radius:inherit;background:rgba(255,255,255,.62);opacity:0;transition:opacity 1.2s var(--ease);pointer-events:none}
+.scheda:not([data-slot="0"]) .velo{opacity:1}
+.scheda:not([data-slot="0"]):hover .velo{opacity:.4}
+.scheda--sabe{--edge:var(--volt-deep);background:var(--volt);color:var(--ink)}
+.scheda--anima{--edge:var(--edge-paper);background:var(--paper);color:var(--ink)}
+.scheda--atlas{--edge:var(--blue-deep);background:var(--blue);color:#fff}
+.comandi{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:4px}
+.linguette{display:flex;justify-content:center;gap:10px}
+.pausa{all:unset;box-sizing:border-box;cursor:pointer;flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--ink);background:var(--paper);box-shadow:0 4px 0 -1px var(--edge-paper), 0 12px 20px -14px rgba(12,26,143,.4)}
+.pausa svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pausa .ic-play{display:none;fill:currentColor;stroke-width:2}
+.pausa[aria-pressed="true"] .ic-pausa{display:none}
+.pausa[aria-pressed="true"] .ic-play{display:block}
+.pausa:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.linguetta{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:8px;min-width:140px;padding:10px 14px;border-radius:12px;font-weight:800;font-variation-settings:var(--wide);letter-spacing:.06em;font-size:.9rem;transition:background .3s, box-shadow .3s}
+.linguetta .barra{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.linguetta .barra i{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c)}
+.linguetta.corre .barra i{animation:riempi var(--durata,12000ms) linear forwards}
+.linguetta.fatta .barra i{transform:scaleX(1);animation:none}
+.linguetta[aria-selected="true"]{background:var(--paper);box-shadow:0 5px 0 -1px var(--edge-paper), 0 14px 22px -14px rgba(12,26,143,.4)}
+.linguetta:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.carosello.in-pausa .barra i,.carosello.in-pausa .scheda *{animation-play-state:paused!important}
+@keyframes riempi{to{transform:scaleX(1)}}
+
+/* legami tra le linguette: un flusso di dati tra i prodotti (niente frecce)
+   porte quadrate ai capi, pacchetti che scorrono: veloci nel passaggio, lenti quando la sincronizzazione è attiva */
+.legame{display:grid;justify-items:center;align-content:center;gap:7px;width:132px;flex:none;padding:0 4px;color:var(--ink-3)}
+.legame .bus{position:relative;display:block;width:100%;height:4px}
+.legame .bus::before,.legame .bus::after{content:"";position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:2px;background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--line);transition:background .4s, box-shadow .4s}
+.legame .bus::before{left:-2px}
+.legame .bus::after{right:-2px}
+.legame .flusso{position:absolute;left:10px;right:10px;top:1px;height:2px;border-radius:1px;background:var(--line);overflow:hidden}
+.legame .flusso::before{content:"";position:absolute;inset:0 0 0 -24px;background:repeating-linear-gradient(90deg,var(--dot) 0 7px,transparent 7px 12px,var(--fino) 12px 15px,transparent 15px 24px);opacity:0;transition:opacity .4s}
+.legame small{display:grid;justify-items:center;gap:1px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.7rem;font-weight:600;letter-spacing:.02em;text-transform:lowercase;white-space:nowrap;line-height:1.25}
+.legame .stato{font-style:normal;font-weight:500;font-size:.64rem;color:var(--ink-3);min-height:1.25em}
+.legame .stato::after{content:"\00a0"}
+.legame--1{--dot:var(--volt-deep);--fino:var(--fuchsia)}
+.legame--2{--dot:var(--fuchsia);--fino:var(--blue)}
+.legame.passato .bus::before,.legame.scorre .bus::before{background:var(--dot);box-shadow:none}
+.legame.passato .bus::after,.legame.scorre .bus::after{background:var(--fino);box-shadow:none}
+.legame.passato .flusso::before{opacity:.7;animation:flusso 1.6s linear infinite}
+.legame.scorre .flusso::before{opacity:1;animation:flusso .32s linear infinite}
+.legame.scorre .bus{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--fino) 55%,transparent))}
+.legame.scorre .bus::after{animation:porta .5s ease-in-out infinite alternate}
+.legame.passato small,.legame.scorre small{color:var(--ink)}
+.legame.scorre .stato::after{content:"invio…"}
+.legame.passato .stato::after{content:"sincronizzata"}
+@keyframes flusso{to{transform:translateX(24px)}}
+@keyframes porta{to{transform:scale(1.35)}}
+@media (max-width:900px){ .legame{width:26px;padding:0} .legame small{display:none} }
+
+/* marchi dei prodotti: linee intrecciate (js/marchi.js), alti quanto la scheda, metà fuori dal lato destro */
+.scheda-corpo{isolation:isolate}
+.sc-anima .riq{background:color-mix(in srgb,var(--wash) 72%,transparent)}   /* lascia trasparire il marchio */
+
+/* entrata dell'apertura: il titolo sale riga per riga, poi l'evidenziatore passa su «in automatico» */
+@media (prefers-reduced-motion: no-preference){
+  .hero .riga > span{animation:sale .95s var(--ease) both}
+  .hero .riga + .riga > span{animation-delay:.12s}
+  .hero h1 em{animation:evidenzia .7s var(--ease) .75s both}
+  .qualita li{animation:appare .8s var(--ease) both}
+  .qualita li:nth-child(1){animation-delay:.55s} .qualita li:nth-child(2){animation-delay:.67s} .qualita li:nth-child(3){animation-delay:.79s}
+}
+@keyframes sale{from{transform:translateY(105%);opacity:0}}
+@keyframes evidenzia{from{background-size:0% 80%}}
+@keyframes appare{from{opacity:0;transform:translateY(14px)}}

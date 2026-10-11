@@ -1,0 +1,79 @@
+/* ---------- SEZIONI PRODOTTO ---------- */
+.product{padding-block:clamp(64px,8vw,112px)}
+.product + .product{border-top:1px solid var(--line)}
+/* scritta centrale prima dei prodotti */
+.pilastri{padding-block:clamp(56px,7vw,104px) 0;text-align:center}
+.pilastri h2{font-size:clamp(2rem, 1.3rem + 2.2vw, 3.25rem)}
+.pilastri + .product{padding-top:clamp(64px,8vw,120px)}
+.p-head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(20px,4vw,64px);align-items:end;margin-bottom:clamp(32px,5vw,56px)}
+.p-head h2{font-size:var(--step-3)}
+.p-head .side{display:grid;gap:22px}
+.p-head p{color:var(--ink-2);font-size:var(--step-1);line-height:1.4;max-width:34ch}
+.tag{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-variation-settings:var(--wide);font-size:1rem;letter-spacing:.08em;margin-bottom:22px}
+.tag i{width:14px;height:14px;border-radius:4px;background:var(--c);box-shadow:0 3px 0 -1px var(--cd)}
+
+/* SABE: icona e nome in grande, a lato funzioni e servizi, esempi di chiamata in una pila da scorrere */
+.prod-testa{display:grid;gap:14px}
+.product .nome{display:flex;align-items:center;gap:.22em;font-size:clamp(2.8rem, 1.2rem + 5.2vw, 6.25rem);letter-spacing:-.04em;line-height:.9}
+.product .nome .icona{flex:none;width:.92em;height:.92em;border-radius:.2em;background:var(--ic,var(--volt));color:var(--ink);display:grid;place-items:center;box-shadow:0 .06em 0 -.01em var(--icd,var(--volt-deep)), 0 .2em .3em -.2em rgba(11,16,51,.45)}
+.anima .nome .icona{--ic:var(--fuchsia);--icd:var(--fuchsia-deep)}
+.product .nome .icona svg{width:82%;height:82%;display:block}
+.product .motto{margin:0;font-size:var(--step-2);font-weight:700;font-variation-settings:"wdth" 110;letter-spacing:-.02em;line-height:1.15;color:var(--ink);max-width:28ch;text-wrap:balance}
+
+.sabe-corpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(28px,5vw,80px);align-items:start}
+.sabe-info{display:grid;gap:clamp(24px,3vw,36px)}
+.funzioni{list-style:none;margin:0;padding:0;display:grid;border-top:1px solid var(--line)}
+.funzioni li{display:grid;gap:4px;padding:14px 0;border-bottom:1px solid var(--line)}
+.funzioni b{font-size:var(--step-1);font-weight:700;letter-spacing:-.01em}
+.funzioni span{color:var(--ink-2);line-height:1.45;max-width:46ch}
+.servizi-blocco h3{font-size:.78rem;font-weight:700;font-variation-settings:var(--wide);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px}
+.servizi-gruppi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.servizi-gruppi > div{display:grid;align-content:start;gap:12px;padding:16px;border-radius:14px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line), 0 10px 22px -18px rgba(12,26,143,.35)}
+.servizi-gruppi h4{margin:0;display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:800;font-variation-settings:var(--wide);letter-spacing:-.01em}
+.servizi-gruppi h4::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--volt);box-shadow:0 2px 0 -.5px var(--volt-deep)}
+.servizi{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.servizi li{position:relative;padding-left:18px;font-size:.92rem;line-height:1.3;color:var(--ink-2)}
+.servizi li::before{content:"";position:absolute;left:2px;top:.42em;width:8px;height:5px;border-left:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(-45deg)}
+
+.mazzo{display:grid;gap:22px;justify-items:center;min-width:0;position:sticky;top:calc(var(--nav-h,72px) + 24px)}
+.pila{position:relative;width:100%;max-width:540px;height:536px;touch-action:pan-y;outline:none;border-radius:var(--r)}
+.pila:focus-visible{outline:2px solid var(--blue);outline-offset:8px}
+.chiamata{--p:0;position:absolute;left:0;right:0;bottom:0;height:472px;box-sizing:border-box;padding:clamp(18px,2.4vw,26px);border-radius:var(--r);background:var(--volt);color:var(--ink);
+  display:flex;flex-direction:column;gap:14px;overflow:hidden;user-select:none;-webkit-user-select:none;
+  box-shadow:0 5px 0 -1px var(--volt-deep), 0 30px 50px -28px rgba(11,16,51,.55);
+  transform:translate(var(--dx,0px), calc(var(--pv,0) * -20px)) rotate(var(--rot,0deg)) scale(calc(1 - var(--pv,0) * .06));
+  transform-origin:50% 0;z-index:calc(10 - var(--p));transition:transform .32s var(--ease), opacity .3s var(--ease)}
+.chiamata::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--paper);opacity:calc(var(--pv,0) * .3);pointer-events:none;transition:opacity .45s var(--ease)}
+.chiamata[data-pos="0"]{cursor:grab}
+.chiamata[data-pos="0"]::after{opacity:0}
+.chiamata[data-pos="4"],.chiamata[data-pos="5"]{opacity:0;transition:transform .32s var(--ease), opacity .2s .3s}   /* scende in fondo alla fila, poi sfuma */
+.chiamata.trascina{transition:none;cursor:grabbing}
+/* passaggio: la card sale sopra la fila (davanti o da dietro), poi torna al suo posto */
+.chiamata.sale{transform:translateY(-62%) scale(calc(1 - var(--pv,0) * .06));opacity:1;transition:transform .19s cubic-bezier(.3,0,.5,1), opacity .12s}
+.chiamata.sale::after{opacity:calc(var(--pv,0) * .3)}
+.chiamata header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.chiamata .stato{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;background:var(--ink);color:var(--volt)}
+.chiamata .stato svg{width:14px;height:14px}
+.chiamata{isolation:isolate}
+.chiamata .marchio{opacity:.16}   /* stesso marchio della card in apertura (css/hero.css), un po' più leggero sotto il testo */
+.onda-voce{display:block;width:100%;height:40px;flex:none;margin-block:-4px}
+.chiamata .ora{color:var(--ink-3);font-weight:600;letter-spacing:.02em;text-transform:none}
+.chiamata h3{margin:0;font-size:var(--step-2);letter-spacing:-.03em;line-height:1}
+.battute{list-style:none;margin:0;padding:0;display:grid;gap:10px;align-content:start;flex:1}
+.battute li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;font-size:.98rem;line-height:1.4}
+.battute b{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding-top:.3em}
+.battute li.c span{color:var(--ink-3)}
+.esito{margin:0;display:flex;align-items:center;gap:12px;background:var(--ink);color:#fff;border-radius:12px;padding:12px 14px;font-size:.92rem;line-height:1.35}
+.esito b{color:var(--volt)}
+.esito .ok{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--volt);color:var(--ink)}
+.esito .ok svg{width:15px;height:15px}
+.mazzo-comandi{display:flex;align-items:center;gap:16px}
+.mazzo-comandi button{all:unset;box-sizing:border-box;cursor:pointer;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--paper);color:var(--ink);box-shadow:0 4px 0 -1px var(--edge-paper), 0 12px 20px -14px rgba(12,26,143,.4)}
+.mazzo-comandi button svg{width:18px;height:18px}
+.mazzo-comandi button:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.conta{min-width:5ch;text-align:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.85rem;font-weight:600;color:var(--ink-3)}
+@media (prefers-reduced-motion: no-preference){
+  .chiamata.viva .battute li,.chiamata.viva .esito{animation:rise .5s var(--ease) both;animation-delay:calc(.15s + var(--k) * .22s)}
+}
+@media (prefers-reduced-motion: reduce){ .chiamata,.chiamata::after{transition:none} }
+@media (max-width:560px){ .servizi-gruppi{grid-template-columns:minmax(0,1fr)} }
