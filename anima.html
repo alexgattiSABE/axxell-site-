@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="img/appoggio-icona-app.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/appoggio-icona-app.png">
+<title>ANIMA · Axxell per ristoranti</title>
+<meta name="description" content="ANIMA è il gestionale del locale: sala, cucina, cassa, magazzino e fornitori sullo stesso sistema, con le app per gestore, camerieri, fattorini e clienti.">
+<link rel="canonical" href="https://axxell.ai/anima">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Axxell">
+<meta property="og:locale" content="it_IT">
+<meta property="og:title" content="ANIMA · Axxell per ristoranti">
+<meta property="og:description" content="ANIMA è il gestionale del locale: sala, cucina, cassa, magazzino e fornitori sullo stesso sistema, con le app per gestore, camerieri, fattorini e clienti.">
+<meta property="og:url" content="https://axxell.ai/anima">
+<meta property="og:image" content="https://axxell.ai/img/og-axxell.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ANIMA · Axxell per ristoranti">
+<meta name="twitter:description" content="ANIMA è il gestionale del locale: sala, cucina, cassa, magazzino e fornitori sullo stesso sistema, con le app per gestore, camerieri, fattorini e clienti.">
+<meta name="twitter:image" content="https://axxell.ai/img/og-axxell.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sabe.css">
+<link rel="stylesheet" href="css/close.css">
+<link rel="stylesheet" href="css/sabe-pagina.css">
+<link rel="stylesheet" href="css/anima-pagina.css">
+<link rel="stylesheet" href="css/entrate.css">
+<link rel="stylesheet" href="css/inclina.css">
+</head>
+<body class="pagina-anima">
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Axxell, homepage"><span class="brand-logo"><svg class="brand-piatto" width="155" height="34" viewBox="10.22 11 332.78 73" aria-hidden="true"><path d="M56.99 17.66 L56.83 16.47 L56.53 15.48 L56.09 14.55 L55.52 13.69 L54.83 12.93 L53.89 12.18 L52.84 11.6 L51.87 11.25 L50.86 11.05 L49.83 11.0 L48.63 11.13 L47.64 11.41 L46.7 11.83 L45.83 12.38 L45.05 13.05 L44.28 13.97 L43.7 14.95 L10.22 84.0 L25.78 84.0 L33.54 68.0 L62.91 68.0 L57.09 56.0 L39.36 56.0 L56.33 20.99 L56.65 20.2 L56.87 19.37 L56.98 18.51Z" fill="var(--sistema)"/><path d="M74.22 84.0 L89.78 84.0 L59.54 21.62 L51.78 37.71Z" fill="var(--appoggio-gamba)"/><path d="M109.21 84.00 L120.00 67.82 L130.79 84.00 L145.21 84.00 L127.21 57.00 L145.21 30.00 L130.79 30.00 L120.00 46.18 L109.21 30.00 L94.79 30.00 L112.79 57.00 L94.79 84.00Z" fill="var(--sistema)"/><path d="M168.21 84.00 L179.00 67.82 L189.79 84.00 L204.21 84.00 L186.21 57.00 L204.21 30.00 L189.79 30.00 L179.00 46.18 L168.21 30.00 L153.79 30.00 L171.79 57.00 L153.79 84.00Z" fill="var(--sistema)"/><path d="M253.00 30.00 L225.00 30.00 L213.00 30.00 L213.00 41.00 L213.00 51.50 L213.00 62.50 L213.00 73.00 L213.00 84.00 L225.00 84.00 L253.00 84.00 L253.00 73.00 L225.00 73.00 L225.00 62.50 L248.00 62.50 L248.00 51.50 L225.00 51.50 L225.00 41.00 L253.00 41.00Z" fill="var(--sistema)"/><path d="M274.00 30.00 L262.00 30.00 L262.00 73.00 L262.00 84.00 L274.00 84.00 L298.00 84.00 L298.00 73.00 L274.00 73.00Z" fill="var(--sistema)"/><path d="M319.00 30.00 L307.00 30.00 L307.00 73.00 L307.00 84.00 L319.00 84.00 L343.00 84.00 L343.00 73.00 L319.00 73.00Z" fill="var(--sistema)"/></svg></span></a>
+    <div class="nav-voci" id="navVoci">
+      <ul>
+        <li><a href="sabe.html" style="--c:var(--volt)">SABE</a></li>
+        <li><a href="#top" aria-current="page" style="--c:var(--fuchsia)">ANIMA</a></li>
+        <li><a href="atlas.html" style="--c:var(--blue)">ATLAS</a></li>
+        <li><a href="servizi.html" style="--c:var(--appoggio-gamba)">Servizi</a></li>
+        <li><a href="visione.html" style="--c:conic-gradient(var(--volt) 0 25%,var(--fuchsia) 0 50%,var(--blue) 0 75%,var(--sistema-nucleo) 0)">Visione</a></li>
+      </ul>
+      <a class="btn btn--ink" href="#consulenza"><span class="nav-lungo">Richiedi una consulenza</span><span class="nav-corto">Consulenza</span></a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="sp-apertura wrap" id="an-apertura" aria-labelledby="an-h1" data-tone="anima">
+    <div class="sp-apertura-testo">
+      <p class="sp-occhiello"><span class="an-icona" aria-hidden="true"></span>ANIMA · il gestionale del locale</p>
+      <h1 id="an-h1" class="sp-titolo">Tutto il locale, in un solo sistema.</h1>
+      <p class="sp-intro">Sala, cucina, cassa, magazzino e fornitori lavorano sullo <b>stesso sistema</b>: quello che succede in un reparto <b>si aggiorna da solo</b> in tutti gli altri.</p>
+      <div class="sp-azioni"><a class="btn btn--ink" href="#consulenza">Richiedi una consulenza</a><a class="sp-link" href="#an-viaggio">Segui un ordine</a></div>
+      <ul class="sp-fatti">
+        <li><b>PWA offline</b>le app lavorano anche senza internet</li>
+        <li><b>Semplice e automatico</b>si usa da subito, niente da ricopiare</li>
+        <li><b>7 problemi, una soluzione</b>sala, cucina, cassa, magazzino, fornitori, prenotazioni, clienti</li>
+      </ul>
+    </div>
+    <div class="sp-scena-blocco">
+      <div class="an-scena" id="anScena" role="img" aria-label="I reparti del locale collegati ad ANIMA"></div>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-viaggio" aria-labelledby="an-h-viaggio" data-tone="anima">
+    <h2 id="an-h-viaggio" class="sp-h2">Il viaggio di un ordine</h2>
+    <p class="sp-intro">Sabato sera, tavolo 4. Una comanda <b>attraversa tutto il locale</b>: <b>nessuno la ricopia</b>, ogni reparto la vede quando serve.</p>
+    <ol class="an-viaggio" id="anViaggio">
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">01</span><h3>La comanda parte dal tavolo</h3><p>Giulia prende la comanda del tavolo 4 <b>dallo smartphone</b>, anche se <b>il Wi-Fi va e viene</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Sala</span><span class="sp-anima-tipo">Comanda</span></header><b>Tavolo 4 · 4 coperti</b><dl><div><dt>2×</dt><dd>Spaghetti alle vongole · senza aglio</dd></div><div><dt>1×</dt><dd>Branzino al sale</dd></div></dl><p class="sp-anima-nota">Inviata in cucina</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">02</span><h3>La cucina la vede subito</h3><p>Sullo schermo della cucina compare <b>con la variante in evidenza</b>. Quando è pronta, <b>un tocco</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Cucina</span><span class="sp-anima-tipo">In preparazione</span></header><b>Tavolo 4 · 2ª portata</b><dl><div><dt>Variante</dt><dd>senza aglio</dd></div><div><dt>In coda da</dt><dd>14 minuti</dd></div></dl><p class="sp-anima-nota">Segnata pronta</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">03</span><h3>Il conto si compone da solo</h3><p>Ogni comanda <b>finisce nel conto del tavolo</b>: alla cassa si sceglie contanti o carta e <b>parte lo scontrino</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Cassa</span><span class="sp-anima-tipo">Scontrino</span></header><b>Tavolo 4 · 91,00 €</b><dl><div><dt>Coperti</dt><dd>3 adulti, 1 bambino</dd></div><div><dt>Pagamento</dt><dd>Carta</dd></div></dl><p class="sp-anima-nota">Scontrino n. 0038</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">04</span><h3>Il magazzino si scarica da solo</h3><p><b>Dalla ricetta</b>: per due spaghetti alle vongole escono <b>240 g di vongole</b> e 200 g di spaghetti.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Magazzino</span><span class="sp-anima-tipo">Scarico</span></header><b>Vongole veraci</b><dl><div><dt>Prima</dt><dd>3,94 kg</dd></div><div><dt>Dopo</dt><dd>3,70 kg</dd></div></dl><p class="sp-anima-nota">Sotto la soglia di 5 kg</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">05</span><h3>L'ordine al fornitore è pronto</h3><p>Le vongole sono <b>sotto soglia</b>: ANIMA <b>prepara l'ordine</b> con le quantità, da mandare al fornitore.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Fornitori</span><span class="sp-anima-tipo">Da ordinare</span></header><b>Ittica Adriatica</b><dl><div><dt>Vongole veraci</dt><dd>6 kg</dd></div><div><dt>Gamberi rossi</dt><dd>2 kg</dd></div></dl><p class="sp-anima-nota">Pronto da mandare</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">06</span><h3>La bolla si legge da una foto</h3><p>Arriva la merce: <b>si fotografa la bolla</b>, ANIMA legge righe e prezzi e <b>segnala cosa è cambiato</b> dall'ultima volta.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Fornitori</span><span class="sp-anima-tipo">Bolla · DDT 1187</span></header><b>12 righe lette</b><dl><div><dt>Vongole veraci</dt><dd>9,40 €/kg · uguale</dd></div><div><dt>Salmone fresco</dt><dd>18,90 €/kg · +8%</dd></div></dl><p class="sp-anima-nota">Magazzino e costi aggiornati</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">07</span><h3>Il cliente resta nella sua scheda</h3><p>Il tavolo era prenotato a nome Bianchi: la visita <b>entra nella sua scheda</b>. Se non torna da un po', finisce fra i <b>clienti da ricontattare</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"></span><span>Clienti</span><span class="sp-anima-tipo">Scheda cliente</span></header><b>Marco Bianchi</b><dl><div><dt>Visite</dt><dd>6 quest'anno</dd></div><div><dt>Ultima</dt><dd>Sabato, tavolo 4</dd></div></dl><p class="sp-anima-nota">Da ricontattare se non torna</p></div></li>
+    </ol>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-altre" aria-labelledby="an-h-altre" data-tone="anima">
+    <div class="sp-altre">
+      <div>
+        <h2 id="an-h-altre" class="sp-h2">Non solo ristoranti</h2>
+        <p class="sp-intro">ANIMA lavora anche per <b>parrucchieri, barbieri e centri estetici</b>: lo stesso sistema, con <b>calendario, staff e servizi</b> al posto di sala e cucina.</p>
+      </div>
+      <ul class="sp-categorie an-categorie"><li><span class="sp-categoria-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20M8.1 15.9 20 4"/></svg></span><span>Parrucchieri</span></li><li><span class="sp-categoria-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10"/><rect x="8" y="3" width="8" height="18" rx="2"/><path d="M8 8l8 4M8 13l8 4"/></svg></span><span>Barbieri</span></li><li><span class="sp-categoria-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span><span>Centri estetici</span></li></ul>
+      <ul class="sp-altre-elenco"><li><b>Calendario degli appuntamenti</b><span>La giornata e il mese, <b>per ogni persona dello staff</b>.</span></li><li><b>Staff e servizi</b><span>Chi fa cosa, con <b>la durata di ogni servizio</b>.</span></li><li><b>Orari e assenze</b><span>Ferie e permessi di ognuno: <b>gli orari liberi si aggiornano da soli</b>.</span></li><li><b>Prenotazione online</b><span>I clienti prenotano <b>dal sito</b>, solo negli orari liberi.</span></li><li><b>Storico</b><span>Gli appuntamenti passati, <b>mese per mese</b>.</span></li><li><b>Con SABE, anche al telefono</b><span>Gli appuntamenti presi da SABE <b>arrivano nel calendario</b>.</span></li></ul>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-numeri" aria-labelledby="an-h-numeri" data-tone="anima">
+    <h2 id="an-h-numeri" class="sp-h2">I numeri di ANIMA</h2>
+    <p class="sp-intro">Precisione, tempo, sprechi, clienti: <b>come cambia il lavoro</b> senza e con un solo sistema. I numeri sono <b>italiani, con la fonte</b>.</p>
+    <div class="an-numeri">
+      <article class="an-numero"><span class="an-tema">Comodità</span><b class="num"><span data-conta data-a="22.3">22,3</span>%</b><p>dei bar e ristoranti italiani usa un software gestionale</p>
+        <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Agenda, fogli e programmi separati</dd></div><div><dt>Con ANIMA</dt><dd>Un solo sistema per tutto il locale</dd></div></dl>
+        <a class="sp-fonte" href="https://www.fipe.it/wp-content/uploads/2024/04/Presentazione-Rapporto-Ristorazione-2024-slides.pdf" target="_blank" rel="noopener">Fipe-Confcommercio · Rapporto Ristorazione 2024</a></article>
+      <article class="an-numero"><span class="an-tema">Sprechi</span><b class="num"><span data-conta data-a="1.3">1,3</span> <small>miliardi €</small></b><p>di cibo sprecato in un anno dalla ristorazione italiana</p>
+        <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Giacenze a occhio, scadenze scoperte tardi</dd></div><div><dt>Con ANIMA</dt><dd>Il magazzino si scarica dalle ricette e segnala cosa sta finendo</dd></div></dl>
+        <a class="sp-fonte" href="https://quifinanza.it/economia/spreco-alimentare-italia/879754/" target="_blank" rel="noopener">Centro studi Divulga · 2025</a></article>
+      <article class="an-numero"><span class="an-tema">Tempo recuperato</span><b class="num"><small>fino a</small> <span data-conta data-a="20">20</span> <small>ore</small></b><p>a settimana: quanto dice di risparmiare con la tecnologia un ristoratore su due</p>
+        <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Ordini ricopiati, inventari a mano, conti a fine serata</dd></div><div><dt>Con ANIMA</dt><dd>Si fa da sé mentre si lavora</dd></div></dl>
+        <a class="sp-fonte" href="https://en.ilsole24ore.com/art/ecco-come-l-intelligenza-artificiale-rivoluziona-ristoranti-e-fa-crescere-affari-AFmPqSXC" target="_blank" rel="noopener">Osservatorio Ristorazione · Il Sole 24 Ore, 2024</a></article>
+      <article class="an-numero"><span class="an-tema">Clienti</span><b class="num"><span data-conta data-a="34">34</span>% <small>→</small> <span data-conta data-a="48">48</span>%</b><p>i clienti che tornano entro 60 giorni, senza e con strumenti di fidelizzazione</p>
+        <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Nessuno sa chi non torna</dd></div><div><dt>Con ANIMA</dt><dd>La scheda di ogni cliente e la lista di chi ricontattare</dd></div></dl>
+        <a class="sp-fonte" href="https://www.beverfood.com/ristorazione-2025-prenotazioni-digitali-e-fidelizzazione/" target="_blank" rel="noopener">Osservatorio Incrementoo 2025 · 300 ristoranti</a></article>
+      <article class="an-numero"><span class="an-tema">Recensioni</span><b class="num"><span data-conta data-a="65.5">65,5</span>%</b><p>dei clienti sceglie il locale in base alle recensioni</p>
+        <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Recensioni sparse fra siti e app</dd></div><div><dt>Con ANIMA</dt><dd>Le recensioni accanto ai clienti</dd></div></dl>
+        <a class="sp-fonte" href="https://fipe.it/wp-content/uploads/2023/10/2023-10-16CSla-sfida-digitale-per-bar-e-ristoranti.pdf" target="_blank" rel="noopener">Fipe · 2023</a></article>
+    </div>
+    <div class="an-pilastri">
+      <div class="an-pilastri-testa">
+        <p>Con ANIMA il locale lavora con <b>precisione</b>, <b>affidabilità</b> ed <b>efficienza</b>.</p>
+        <span class="an-pilastri-centro" aria-hidden="true"></span>
+      </div>
+      <div class="an-pilastri-fila">
+        <article class="an-pilastro"><span class="an-tema">Precisione</span><b class="an-modo">Quello che si chiede è quello che si fa</b>
+          <ul class="servizi"><li>La comanda arriva in cucina <b>com'è stata presa</b>, con varianti e note</li><li>Il conto <b>si compone dalle comande</b>, senza ribattere niente</li><li>Il magazzino <b>scarica il giusto</b>, dalle ricette</li></ul>
+          <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Scritta a mano e riletta in cucina</dd></div><div><dt>Con ANIMA</dt><dd>Meno errori fra sala, cucina e cassa</dd></div></dl></article>
+        <article class="an-pilastro"><span class="an-tema">Affidabilità</span><b class="an-modo">Il servizio non si ferma</b>
+          <ul class="servizi"><li>La sala prende comande <b>anche senza internet</b></li><li>Quando la rete torna <b>tutto si allinea da solo</b></li><li>Scontrini, scarichi e bolle restano <b>nello storico</b>, in ordine</li></ul>
+          <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Se cade internet si torna alla carta</dd></div><div><dt>Con ANIMA</dt><dd>Un sabato sera senza sorprese</dd></div></dl></article>
+        <article class="an-pilastro"><span class="an-tema">Efficienza</span><b class="an-modo">Meno passi per ogni ordine</b>
+          <ul class="servizi"><li>La comanda <b>parte dal tavolo</b>, non dal bancone</li><li>Il fattorino trova <b>l'indirizzo sulla mappa</b></li><li>Gli ordini ai fornitori sono <b>già pronti</b>, niente da ricopiare</li></ul>
+          <dl class="an-confronto"><div><dt>Senza ANIMA</dt><dd>Il cameriere va e torna dalla cucina</dd></div><div><dt>Con ANIMA</dt><dd>Più tempo per i clienti</dd></div></dl></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-occhio" aria-labelledby="an-h-occhio" data-tone="anima">
+    <h2 id="an-h-occhio" class="sp-h2">L'occhio che osserva</h2>
+    <p class="sp-intro">ANIMA è <b>l'uomo in più del locale</b>: guarda i numeri, non le impressioni. Impara dallo <b>storico del tuo locale</b> (medie, ritmi, stagioni) e ti dice <b>cosa sta cambiando</b>, <b>cosa succederà</b> e <b>dove intervenire</b>.</p>
+
+    <div class="an-occhio-fc">
+      <article class="an-fc">
+        <header><span class="an-tema">Food cost di un piatto</span><span class="an-fc-avviso">Prezzo salito</span></header>
+        <b class="an-fc-piatto">Tartare di salmone</b>
+        <dl class="an-fc-righe">
+          <div><dt>Prezzo in menu</dt><dd class="num">16,00 €</dd></div>
+          <div><dt>Costo del piatto</dt><dd class="num"><s>4,32 €</s> 4,57 €</dd></div>
+        </dl>
+        <div class="an-fc-barra" role="img" aria-label="Food cost dal 27% al 29%"><i></i><span class="an-fc-da num">27%</span><span class="an-fc-a num">29%</span></div>
+        <p class="an-fc-nota">Salmone fresco da 17,50 a 18,90 €/kg <b class="num">+8%</b>, letto dalla bolla DDT 1187: il food cost del piatto passa dal 27% al 29%.</p>
+      </article>
+      <article class="an-fc-mese">
+        <span class="an-tema">Food cost del locale</span>
+        <div class="an-fc-colonne">
+          <div><span class="an-fc-col" style="--h:.78"></span><b class="num">31,2%</b><small>mese prima</small></div>
+          <div><span class="an-fc-col an-fc-col--ora" style="--h:.735"></span><b class="num">29,4%</b><small>ultimi 30 giorni</small></div>
+        </div>
+        <p class="an-fc-nota">29,4% · era 31,2%. Costo della merce diviso l'incasso, calcolato dalle ricette su ogni piatto venduto.</p>
+      </article>
+    </div>
+
+    <div class="an-occhio-due">
+      <article class="an-margini-carta">
+        <span class="an-tema">Margine per piatto</span>
+        <p class="an-fc-nota">Quanto ti resta di ogni piatto, <b>tolto il costo della ricetta</b>: chi rende di più e chi di meno.</p>
+        <ul class="an-margini">
+          <li style="--m:.80"><b>Margherita</b><span class="num">5,60 € · 80%</span><i class="an-margine-barra"></i></li>
+          <li style="--m:.72"><b>Spaghetti alle vongole</b><span class="num">10,10 € · 72%</span><i class="an-margine-barra"></i></li>
+          <li style="--m:.71"><b>Tartare di salmone</b><span class="num">11,43 € · 71%</span><i class="an-margine-barra"></i></li>
+          <li style="--m:.58" class="basso"><b>Branzino al sale</b><span class="num">12,80 € · 58%</span><i class="an-margine-barra"></i></li>
+        </ul>
+        <p class="an-fc-nota">Il branzino porta più euro, ma <b>rende meno in percentuale</b>: è il primo da guardare se il pesce sale ancora.</p>
+      </article>
+      <article class="an-giorni-carta">
+        <span class="an-tema">Per giorno della settimana</span>
+        <p class="an-fc-nota">L'incasso medio di ogni giorno, <b>sulle ultime 8 settimane</b>.</p>
+        <div class="an-giorni" role="img" aria-label="Incasso medio per giorno: il sabato è il giorno più forte con 2.910 euro">
+          <div class="an-giorno" style="--h:.33"><span class="num">980</span><i></i><small>lun</small></div>
+          <div class="an-giorno" style="--h:.37"><span class="num">1.120</span><i></i><small>mar</small></div>
+          <div class="an-giorno" style="--h:.41"><span class="num">1.240</span><i></i><small>mer</small></div>
+          <div class="an-giorno" style="--h:.50"><span class="num">1.510</span><i></i><small>gio</small></div>
+          <div class="an-giorno" style="--h:.79"><span class="num">2.380</span><i></i><small>ven</small></div>
+          <div class="an-giorno top" style="--h:.97"><span class="num">2.910</span><i></i><small>sab</small></div>
+          <div class="an-giorno" style="--h:.62"><span class="num">1.860</span><i></i><small>dom</small></div>
+        </div>
+        <p class="an-fc-nota">Il <b>sabato vale tre lunedì</b>: turni, scorte e ordini si preparano di conseguenza.</p>
+      </article>
+    </div>
+
+    <div class="an-prezzi">
+      <article class="an-prezzi-elenco">
+        <span class="an-tema">Prezzi dei fornitori</span>
+        <p class="an-fc-nota">Ogni bolla è confrontata con quella prima: ANIMA ti dice <b>cosa è salito e cosa è sceso</b>, e <b>cosa cambia nei tuoi piatti</b>.</p>
+        <ul>
+          <li class="an-prezzo"><span class="an-variazione su">▲ +8%</span><div><b>Salmone fresco</b> <small>· Ittica Adriatica</small><span class="num">17,50 → 18,90 €/kg</span><small class="an-prezzo-bolla">bolla del 3 ott rispetto a quella del 20 set</small></div><p class="an-prezzo-effetto">Tartare di salmone: food cost dal 27% al 29%.</p></li>
+          <li class="an-prezzo"><span class="an-variazione su">▲ +8%</span><div><b>Gamberi rossi</b> <small>· Ittica Adriatica</small><span class="num">32,00 → 34,50 €/kg</span><small class="an-prezzo-bolla">bolla del 3 ott rispetto a quella del 20 set</small></div><p class="an-prezzo-effetto">Crudo di gamberi: food cost dal 31% al 33%.</p></li>
+          <li class="an-prezzo"><span class="an-variazione giu">▼ −6%</span><div><b>Mozzarella fior di latte</b> <small>· Caseificio Valle</small><span class="num">8,20 → 7,70 €/kg</span><small class="an-prezzo-bolla">bolla del 1 ott rispetto a quella del 24 set</small></div><p class="an-prezzo-effetto">Sceso: ti fa risparmiare circa 14 € a settimana.</p></li>
+          <li class="an-prezzo"><span class="an-variazione uguale">= uguale</span><div><b>Vongole veraci</b> <small>· Ittica Adriatica</small><span class="num">9,40 €/kg</span><small class="an-prezzo-bolla">bolla del 3 ott rispetto a quella del 20 set</small></div><p class="an-prezzo-effetto">Come la bolla prima.</p></li>
+        </ul>
+      </article>
+      <article class="an-prezzi-fornitore">
+        <span class="an-tema">Storico di un fornitore</span>
+        <b class="an-fc-piatto">Ittica Adriatica</b>
+        <p class="an-fc-nota num">14 bolle · 2.170 € nell'ultimo anno · 6 ordini</p>
+        <div class="an-spesa" role="img" aria-label="Spesa mese per mese da Ittica Adriatica negli ultimi 12 mesi, da 120 a 260 euro"><div style="--h:0.44"><i title="nov: 120 €"></i><small>n</small></div><div style="--h:0.52"><i title="dic: 140 €"></i><small>d</small></div><div style="--h:0.59"><i title="gen: 160 €"></i><small>g</small></div><div style="--h:0.56"><i title="feb: 150 €"></i><small>f</small></div><div style="--h:0.78"><i title="mar: 210 €"></i><small>m</small></div><div style="--h:0.85"><i title="apr: 230 €"></i><small>a</small></div><div style="--h:0.96"><i title="mag: 260 €"></i><small>m</small></div><div style="--h:0.89"><i title="giu: 240 €"></i><small>g</small></div><div style="--h:0.67"><i title="lug: 180 €"></i><small>l</small></div><div style="--h:0.56"><i title="ago: 150 €"></i><small>a</small></div><div style="--h:0.59"><i title="set: 160 €"></i><small>s</small></div><div style="--h:0.63"><i title="ott: 170 €"></i><small>o</small></div></div>
+        <p class="an-prezzi-media"><span class="an-variazione su">▲</span>Prezzi di Ittica Adriatica: <b>+5% in 6 mesi</b></p>
+        <p class="an-fc-nota">La spesa mese per mese e i prezzi nel tempo, <b>dalle bolle confermate</b>.</p>
+      </article>
+    </div>
+
+    <div class="sp-grafico an-grafico" id="anGrafico" data-settimane="48,52,47,55,50,53,49,54">
+      <div class="sp-grafico-testa">
+        <h3 class="sp-h3">Storico e proiezione</h3>
+        <p>Le consegne delle ultime otto settimane e quelle attese per la prossima, dalla media del locale. Passa sul grafico per leggere ogni settimana.</p>
+      </div>
+      <div class="sp-grafico-tela"></div>
+      <p class="sp-grafico-punto" aria-live="polite"></p>
+      <p class="sp-nota">La proiezione parte da tre settimane di storico; con otto la fiducia è alta. Se i dati non bastano, ANIMA lo dice e non mostra numeri.</p>
+    </div>
+
+    <h3 class="sp-h3 an-consigli-titolo">Cosa ti consiglia</h3>
+    <ul class="an-consigli">
+      <li class="an-consiglio"><b>Un fattorino in più il sabato a cena</b><span>La zona Centro è la più richiesta il sabato a cena: <b>il 31% delle consegne</b>.</span><small class="an-perche">Dalle consegne delle ultime 8 settimane</small></li>
+      <li class="an-consiglio"><b>Più fattorini nel weekend</b><span><b>Il 41% delle consegne</b> arriva venerdì e sabato sera.</span><small class="an-perche">Consegne divise per giorno e fascia</small></li>
+      <li class="an-consiglio"><b>Vongole per 2 giorni</b><span>Al ritmo di consumo di questi giorni <b>la scorta finisce lunedì</b>: l'ordine a Ittica Adriatica è <b>già pronto</b>.</span><small class="an-perche">Consumo medio dalle ricette dei piatti venduti</small></li>
+      <li class="an-consiglio"><b>Mozzarella scesa del 6%</b><span>Nell'ultima bolla costa meno: <b>risparmi circa 14 € a settimana</b> sulle pizze.</span><small class="an-perche">Prezzo confrontato con la bolla precedente</small></li>
+      <li class="an-consiglio"><b>La Margherita tira di più</b><span>312 vendute negli ultimi 30 giorni, <b>+9% sul mese prima</b>: tienila sempre in evidenza.</span><small class="an-perche">Classifica dei piatti sul periodo precedente</small></li>
+      <li class="an-consiglio"><b>Stasera circa 2.139 €</b><span>L'<b>incasso previsto</b> a fine servizio, mentre il servizio è ancora in corso.</span><small class="an-perche">1.320 € già incassati + 18 coperti prenotati × 45,50 € di scontrino medio</small></li>
+    </ul>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-app" aria-labelledby="an-h-app" data-tone="anima">
+    <h2 id="an-h-app" class="sp-h2">Quattro app, un solo sistema</h2>
+    <p class="sp-intro">Chi lavora nel locale usa <b>la sua app</b>, i clienti la loro: quello che fa uno <b>lo vedono subito gli altri</b>.</p>
+    <div class="an-app-fila">
+      <article class="an-app"><div class="an-telefono" aria-hidden="true"><div class="an-schermo an-schermo--gestore">
+          <p class="an-s-testa">Oggi · sabato</p>
+          <div class="an-s-tessere"><span><small>Incasso</small><b>1.842 €</b></span><span><small>Coperti</small><b>96</b></span><span><small>Prenotazioni</small><b>12</b></span><span><small>In cucina</small><b>7</b></span></div>
+          <p class="an-s-avviso">3 articoli sotto soglia</p>
+          <p class="an-s-riga">Nuova prenotazione · Ferri, 6 persone</p>
+          <p class="an-s-riga">Asporto · Russo, ritiro 20:30</p></div></div>
+        <h3>Gestore</h3><p><b>Il locale dal telefono</b>: incassi, prenotazioni, magazzino, clienti, cucina e consegne.</p></article>
+      <article class="an-app"><div class="an-telefono" aria-hidden="true"><div class="an-schermo an-schermo--cameriere">
+          <p class="an-s-testa">Sala · interna</p>
+          <div class="an-s-tavoli"><span class="occupato">T1</span><span>T2</span><span class="conto">T3</span><span class="occupato attivo">T4</span><span>T5</span><span class="occupato">T6</span></div>
+          <p class="an-s-riga"><b>Tavolo 4</b> · 2 Spaghetti alle vongole · senza aglio</p>
+          <p class="an-s-offline">Senza rete: le comande partono lo stesso</p></div></div>
+        <h3>Cameriere</h3><p>Comande dal tavolo, <b>anche offline</b>, con varianti e coperti. <b>Si apre da un QR</b> e si aggiunge alla schermata Home.</p></article>
+      <article class="an-app"><div class="an-telefono" aria-hidden="true"><div class="an-schermo an-schermo--fattorino">
+          <p class="an-s-testa">Consegne · 2 da fare</p>
+          <div class="an-s-mappa"><i style="left:30%;top:40%"></i><i style="left:68%;top:62%"></i></div>
+          <p class="an-s-riga"><b>Verdi</b> · Via Marconi 14 · 20:05</p>
+          <p class="an-s-riga"><b>Galli</b> · Via Dante 3 · 20:20</p></div></div>
+        <h3>Fattorino</h3><p>Le consegne in ordine, con <b>indirizzo sulla mappa</b> e i dettagli dell'ordine.</p></article>
+      <article class="an-app"><div class="an-telefono" aria-hidden="true"><div class="an-schermo an-schermo--cliente">
+          <p class="an-s-testa">Ordina · ritiro alle 20:30</p>
+          <p class="an-s-piatto"><span>Margherita</span><b>7,00 €</b></p>
+          <p class="an-s-piatto"><span>Metà diavola · metà capricciosa</span><b>9,00 €</b></p>
+          <p class="an-s-piatto"><span>Tiramisù</span><b>5,00 €</b></p>
+          <p class="an-s-carrello">3 piatti · 21,00 € · Ordina</p></div></div>
+        <h3>Cliente</h3><p><b>Asporto e domicilio</b> dal sito o dal link del locale, con <b>orario scelto</b> e allergeni.</p></article>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-reparti" aria-labelledby="an-h-reparti" data-tone="anima">
+    <h2 id="an-h-reparti" class="sp-h2">Reparto per reparto</h2>
+    <p class="sp-intro">Apri un reparto per vedere <b>cosa fa ANIMA lì dentro</b> e con quali reparti si collega.</p>
+    <div class="an-reparti">
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M6 12v8M18 12v8M9 4h6"/></svg></span><b>Sala</b><span>Comande dal tavolo, anche offline</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M6 12v8M18 12v8M9 4h6"/></svg></span><strong class="num">9 / 14</strong><small>tavoli occupati</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li>Comande dallo <b>smartphone dei camerieri</b>, con varianti e note</li><li>Funziona <b>anche se cade la connessione</b></li><li><b>Planimetria</b> della sala disegnata da te</li><li><b>Tavoli assegnati in automatico</b> e tavolate per i gruppi</li><li><b>Coperto</b> adulti e bambini</li><li><b>Alla carta</b> e <b>all you can eat</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Cucina · Cassa · Clienti</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M6 13a4 4 0 0 1 1-7.9A4 4 0 0 1 12 3a4 4 0 0 1 5 2.1A4 4 0 0 1 18 13"/></svg></span><b>Cucina</b><span>Le comande arrivano subito</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M6 13a4 4 0 0 1 1-7.9A4 4 0 0 1 12 3a4 4 0 0 1 5 2.1A4 4 0 0 1 18 13"/></svg></span><strong class="num">7</strong><small>comande in coda</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li><b>Schermo in cucina</b>, diviso per tavoli, asporto e domicilio</li><li>Varianti e note <b>in evidenza</b></li><li><b>Un tocco</b> per segnare pronto</li><li><b>Metà e metà, aggiunte e combo</b> guidate dal menu</li><li>Gli ordini al telefono arrivano <b>da SABE</b>, nello stesso flusso</li></ul>
+          <p class="an-reparto-link">Si collega a <b>Sala · Magazzino · Prenotazioni</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg></span><b>Cassa e scontrino</b><span>Il conto si compone da solo</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg></span><strong class="num">1.842 €</strong><small>incassati oggi</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li>Il conto del tavolo <b>si forma dalle comande</b></li><li><b>Contanti o carta</b>, e lo scontrino parte</li><li><b>PIN di cassa</b> e turni del personale</li><li><b>Incassi del giorno</b> sempre aggiornati</li><li>Il <b>coperto</b> entra nel conto da solo</li></ul>
+          <p class="an-reparto-link">Si collega a <b>Sala · Magazzino · Report</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 20v-7h8v7"/></svg></span><b>Magazzino e ricette</b><span>Si scarica dalle ricette</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 20v-7h8v7"/></svg></span><strong class="num">3</strong><small>articoli sotto soglia</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li>Ogni piatto venduto <b>scarica i suoi ingredienti</b></li><li><b>Giacenze e soglie</b>, con gli articoli da riordinare</li><li><b>Per quanti giorni basta</b> ogni scorta, al ritmo di consumo</li><li><b>Inventari veloci</b>, anche dal telefono</li><li><b>Food cost</b> di ogni piatto, dalle ricette</li><li><b>Report</b> di vendite e margini</li></ul>
+          <p class="an-reparto-link">Si collega a <b>Cucina · Fornitori · Cassa</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span><b>Fornitori</b><span>La bolla si legge da una foto</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span><strong class="num">2</strong><small>ordini pronti</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li><b>Fotografi la bolla</b>: righe, quantità e prezzi letti da ANIMA</li><li><b>Prezzi confrontati</b> con la bolla precedente</li><li><b>Ordini pronti</b> con le quantità giuste</li><li>Magazzino e costi <b>si aggiornano da soli</b></li><li>Lo <b>storico</b> degli acquisti di ogni fornitore</li></ul>
+          <p class="an-reparto-link">Si collega a <b>Magazzino · Report</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/></svg></span><b>Prenotazioni</b><span>Pranzo, cena, asporto e domicilio</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/></svg></span><strong class="num">12</strong><small>prenotazioni stasera</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li><b>Calendario</b> della giornata e del mese</li><li><b>Ordini online</b> con orario scelto e allergeni</li><li><b>Zona di consegna</b> riconosciuta dall'indirizzo</li><li><b>No-show segnato in automatico</b>, con le statistiche</li><li><b>Notifica al gestore</b> per prenotazioni e ordini dei clienti</li><li>Con SABE, anche <b>le prenotazioni al telefono</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Sala · Cucina · Clienti</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg></span><b>Clienti e recensioni</b><span>Chi torna e chi no</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg></span><strong class="num">4</strong><small>da ricontattare</small><span class="an-reparto-sfondo" aria-hidden="true"></span></div>
+          <ul class="servizi"><li>La <b>scheda di ogni cliente</b>, con le sue visite</li><li>Quante volte è venuto e <b>quando l'ultima</b></li><li>La <b>lista di chi ricontattare</b></li><li>Le <b>recensioni</b> accanto ai clienti</li><li>Con SABE, chi richiama <b>viene riconosciuto</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Prenotazioni · Sala</b></p></div></details>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-insieme" aria-labelledby="an-h-insieme" data-tone="anima">
+    <h2 id="an-h-insieme" class="sp-h2">ANIMA lavora con SABE e ATLAS</h2>
+    <p class="sp-intro">ANIMA è il centro del locale: <b>SABE</b> ci scrive dal telefono, con <b>ATLAS</b> lo interroghi a voce dal Mac.</p>
+    <div class="an-insieme">
+      <article class="an-insieme-carta" data-prodotto="sabe"><span class="an-insieme-segno sp-segno-sabe" aria-hidden="true"></span><h3>Con SABE anche il telefono scrive in ANIMA</h3><p>Prenotazioni e ordini presi al telefono <b>arrivano in ANIMA da soli</b>, a qualsiasi ora, senza ricopiare niente.</p><a class="btn btn--ink" href="sabe.html">Scopri SABE</a></article>
+      <article class="an-insieme-carta" data-prodotto="atlas"><span class="an-insieme-segno an-segno-atlas" aria-hidden="true"></span><h3>Con ATLAS il locale lo chiedi a voce</h3><p>Dal Mac: <b>chi viene stasera</b>, i coperti del mese, <b>cosa manca in magazzino</b>, gli ordini ai fornitori su WhatsApp, la prenotazione da spostare. <b>Sempre con conferma.</b></p><a class="btn btn--ink" href="atlas.html">Scopri ATLAS</a></article>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-piani" aria-labelledby="an-h-piani" data-tone="anima">
+    <h2 id="an-h-piani" class="sp-h2">Piani</h2>
+    <p class="sp-intro">ANIMA da solo con <b>Start</b>, oppure insieme a SABE con <b>Light</b> e <b>Pro</b>.</p>
+    <div class="sp-piani an-piani">
+      <article class="sp-piano" data-piano="start">
+        <h3>Start</h3>
+        <p class="sp-prezzo num"><b>49 €</b><span>al mese<small>IVA inclusa</small></span></p>
+        <ul class="servizi"><li>ANIMA: gestionale, calendario e cucina</li><li>App per gestore, camerieri, fattorini e clienti</li><li>Ordini online, magazzino, fornitori e clienti</li><li class="an-no">Senza SABE, l'agente vocale</li></ul>
+        <a class="btn btn--ink" href="#consulenza">Richiedi una consulenza</a>
+      </article>
+      <article class="sp-piano" data-piano="light">
+        <h3>Light</h3>
+        <p class="sp-prezzo num"><b>149 €</b><span>al mese<small>IVA inclusa</small></span></p>
+        <ul class="servizi"><li>Tutto quello che c'è in Start</li><li>SABE al telefono del locale</li><li><b class="num">350</b> minuti inclusi al mese</li><li>Minuti extra <b class="num">0,45 €</b> al minuto</li></ul>
+        <a class="btn" href="#consulenza">Richiedi una consulenza</a>
+      </article>
+      <article class="sp-piano sp-piano--pro" data-piano="pro">
+        <span class="sp-badge">Per chi riceve più chiamate</span>
+        <h3>Pro</h3>
+        <p class="sp-prezzo num"><b>249 €</b><span>al mese<small>IVA inclusa</small></span></p>
+        <ul class="servizi"><li>Tutto quello che c'è in Light</li><li><b class="num">700</b> minuti inclusi al mese</li><li>Minuti extra <b class="num">0,39 €</b> al minuto</li></ul>
+        <a class="btn" href="#consulenza">Richiedi una consulenza</a>
+      </article>
+      <article class="sp-piano" data-piano="enterprise">
+        <h3>Enterprise</h3>
+        <p class="sp-prezzo"><b>Su misura</b></p>
+        <ul class="servizi"><li>Per più locali</li><li>Per volumi di chiamate più alti</li><li>Condizioni concordate</li></ul>
+        <a class="btn" href="#consulenza">Parliamone</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-attiva" aria-labelledby="an-h-attiva" data-tone="anima">
+    <h2 id="an-h-attiva" class="sp-h2">Come si attiva</h2>
+    <p class="sp-intro">Ci dai il locale <b>come lo hai</b>, al resto <b>pensiamo noi</b>.</p>
+    <ol class="sp-passi">
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span><span class="num">01</span></span><b>Ci racconti il locale</b><span>Menu, ricette, sala e magazzino: ce li dai <b>come li hai</b>, anche in un file, e <b>li impostiamo noi</b>.</span></li>
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span><span class="num">02</span></span><b>Configuriamo ANIMA e le app</b><span><b>Planimetria della sala</b>, schermo della cucina, <b>app per camerieri e fattorini</b>, ordini online.</span></li>
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span class="num">03</span></span><b>Lo provi prima</b><span><b>Un servizio di prova</b> con il tuo menu, prima di accenderlo.</span></li>
+    </ol>
+  </section>
+
+  <section class="sp-sezione wrap" id="an-domande" aria-labelledby="an-h-domande" data-tone="anima">
+    <h2 id="an-h-domande" class="sp-h2">Domande frequenti</h2>
+    <div class="sp-domande">
+      <details name="sp-domande"><summary>Funziona senza internet?</summary><p>Sì. L'app dei camerieri e il pannello <b>continuano a lavorare</b> anche se cade la connessione: le comande partono e il servizio va avanti, poi <b>tutto si allinea da solo</b> quando la rete torna.</p></details>
+      <details name="sp-domande"><summary>Come entrano menu e ricette?</summary><p>Ce li dai come li hai, anche in un file: <b>li impostiamo noi</b>. Le ricette servono al magazzino per scaricarsi da solo e al food cost di ogni piatto.</p></details>
+      <details name="sp-domande"><summary>Su cosa funziona?</summary><p><b>Dal computer</b> il pannello, <b>dal telefono</b> le app di gestore, camerieri e fattorini, in cucina <b>uno schermo o un tablet</b>. I clienti ordinano dal sito o dal link del locale, senza scaricare niente.</p></details>
+      <details name="sp-domande"><summary>Come si fa lo scontrino?</summary><p>Dalla cassa di ANIMA: <b>il conto si compone dalle comande</b>, scegli contanti o carta e lo scontrino parte.</p></details>
+      <details name="sp-domande"><summary>Serve anche SABE?</summary><p>No: <b>ANIMA funziona da solo</b> con il piano Start. Con SABE, nei piani Light e Pro, anche il telefono scrive in ANIMA: prenotazioni e ordini arrivano senza ricopiare niente.</p></details>
+      <details name="sp-domande"><summary>Funziona con ATLAS?</summary><p>Sì: con <b>ATLAS</b> sul Mac chiedi a voce <b>prenotazioni, coperti e cosa manca</b>, sposti una prenotazione o mandi gli ordini ai fornitori, <b>sempre con conferma</b>.</p></details>
+      <details name="sp-domande"><summary>Posso cambiare tutto da solo?</summary><p>Sì: menu, prezzi, sala, orari e regole <b>si cambiano dal pannello</b> quando vuoi, e <b>le app si aggiornano da sole</b>.</p></details>
+      <details name="sp-domande"><summary>Cosa comprende Start?</summary><p><b>ANIMA completo</b>: gestionale, calendario e cucina, con <b>le app</b> per gestore, camerieri, fattorini e clienti. Senza l'agente vocale SABE.</p></details>
+    </div>
+  </section>
+
+  <section class="close" id="consulenza" aria-labelledby="an-h-close" data-tone="close">
+    <div class="wrap">
+      <h2 id="an-h-close" class="sp-chiusura">Compra più tempo.</h2>
+      <div class="close-row">
+        <a class="btn btn--ink" href="mailto:info@axxell.ai?subject=Richiesta%20di%20consulenza%20ANIMA">Richiedi una consulenza<span class="ar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><span>© 2026 Axxell AI</span><span><a href="privacy.html">Privacy e cookie</a> · <a href="note-legali.html">Note legali</a></span></div>
+</footer>
+
+<script type="module" src="js/anima-pagina.js"></script>
+</body>
+</html>

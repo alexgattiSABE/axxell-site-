@@ -1,0 +1,152 @@
+/* PERCHÉ AXXELL: il triangolo Affidabile (in cima), Semplice e Preciso (negli angoli), Autonomo al centro che gira.
+   I flussi fra i punti li disegna js/perche.js in .flussi */
+.perche{padding-block:clamp(88px,11vw,160px) clamp(64px,8vw,112px)}
+.perche h2{margin:0 auto;text-align:center;font-size:clamp(2.4rem, 1.2rem + 3.6vw, 4.5rem);line-height:1;letter-spacing:-.035em;max-width:16ch;text-wrap:balance}
+.solo-lettori{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.triangolo{position:relative;margin-top:clamp(48px,6vw,80px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr);
+  grid-template-areas:"a a a" ". c ." "s . p";row-gap:clamp(8px,1.4vw,20px);column-gap:24px}
+.flussi{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0}
+.vertice{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;min-width:0}
+.vertice h3{margin:0;font-size:clamp(1.7rem, 1rem + 1.6vw, 2.6rem);line-height:1;letter-spacing:-.03em;font-variation-settings:var(--wide)}
+.vertice p{margin:0;color:var(--ink-2);line-height:1.5;max-width:34ch;text-wrap:pretty}
+.v-affidabile{grid-area:a} .v-affidabile p{max-width:46ch}
+.v-autonomo{grid-area:c;padding-block:clamp(36px,4vw,56px) 10px} .v-autonomo p{max-width:30ch}
+.v-semplice{grid-area:s} .v-preciso{grid-area:p}
+.vertice .punto{flex:none;width:60px;height:60px;border-radius:18px;display:grid;place-items:center;background:var(--paper);color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--line), 0 14px 26px -16px rgba(12,26,143,.45)}
+.vertice .punto svg{width:28px;height:28px}
+.v-affidabile .punto{background:var(--blue);color:#fff;box-shadow:0 5px 0 -1px var(--blue-deep), 0 18px 30px -16px rgba(12,26,143,.6)}
+.v-semplice .punto{background:var(--volt);box-shadow:0 5px 0 -1px var(--volt-deep), 0 18px 30px -16px rgba(11,16,51,.4)}
+.v-preciso .punto{background:var(--fuchsia);box-shadow:0 5px 0 -1px var(--fuchsia-deep), 0 18px 30px -16px rgba(176,0,95,.45)}
+/* Autonomo: un anello che ruota coi tre prodotti, la scritta ferma al centro */
+.v-autonomo .punto{position:relative;width:184px;height:184px;border-radius:50%;background:radial-gradient(circle, var(--paper) 52%, var(--wash) 53%);
+  box-shadow:inset 0 0 0 1px var(--line), 0 30px 50px -28px rgba(12,26,143,.5)}
+.v-autonomo .punto b{position:relative;z-index:1;font-size:1.15rem;font-weight:800;font-variation-settings:var(--wide);letter-spacing:-.01em}
+.v-autonomo .anello{position:absolute;inset:0;border-radius:50%;animation:gira-anello 16s linear infinite}
+.v-autonomo .anello::before{content:"";position:absolute;inset:10px;border-radius:50%;border:2px dashed color-mix(in srgb, var(--blue) 45%, transparent)}
+/* la scia gira lungo l'anello e, a ogni icona che incontra, ne prende il colore: ATLAS (0°), ANIMA (120°), SABE (240°).
+   Gira dentro l'anello, nello stesso riferimento delle icone, così il cambio cade proprio al passaggio */
+.scia{position:absolute;inset:-1px;border-radius:50%;color:var(--blue);
+  background:conic-gradient(from 0deg, transparent 0 66%, color-mix(in srgb, currentColor 35%, transparent) 84%, currentColor 99.4%, transparent 99.5%);
+  -webkit-mask:radial-gradient(circle, transparent 64%, #000 65%, #000 72%, transparent 73%);mask:radial-gradient(circle, transparent 64%, #000 65%, #000 72%, transparent 73%);
+  animation:scia-giro 6s linear infinite, scia-colore 6s linear infinite}
+@keyframes scia-giro{to{transform:rotate(1turn)}}
+@keyframes scia-colore{0%{color:var(--volt-deep)}3%{color:var(--blue)}33.3%{color:var(--blue)}36.3%{color:var(--fuchsia)}66.6%{color:var(--fuchsia)}69.6%{color:var(--volt-deep)}100%{color:var(--volt-deep)}}
+.orbita{position:absolute;inset:0}
+.satellite{position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:12px;display:grid;place-items:center;padding:6px;box-sizing:border-box;
+  transform:rotate(calc(var(--k) * 120deg)) translateY(-92px) rotate(calc(var(--k) * -120deg));}
+.satellite svg{width:100%;height:100%;animation:raddrizza 16s linear infinite}
+.s-sabe{background:var(--volt);color:var(--ink);box-shadow:0 3px 0 -1px var(--volt-deep)}
+.s-anima{background:var(--fuchsia);color:var(--ink);box-shadow:0 3px 0 -1px var(--fuchsia-deep)}
+.s-atlas{background:var(--blue);color:#fff;box-shadow:0 3px 0 -1px var(--blue-deep)}
+@keyframes gira-anello{to{transform:rotate(1turn)}}
+@keyframes raddrizza{to{transform:rotate(-1turn)}}
+/* i flussi: una linea tenue, un tratto che scorre, una cometa che viaggia e un'onda quando arriva */
+/* ogni flusso ha il colore dell'icona da cui parte; i raggi quello della scia di Autonomo, in fase con lei */
+.flussi [data-da="affidabile"]{--fc:var(--blue)} .flussi [data-da="preciso"]{--fc:var(--fuchsia)} .flussi [data-da="semplice"]{--fc:var(--volt-deep)}
+.flussi [data-da="autonomo"]{--fc:currentColor;color:var(--blue);animation:scia-colore 6s linear infinite;animation-delay:var(--fase,0ms)}
+.flussi .linea{fill:none;stroke:color-mix(in srgb, var(--fc) 30%, var(--line));stroke-width:2;stroke-linecap:round}
+.flussi .flusso{fill:none;stroke:var(--fc);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:10 16;opacity:.6;
+  animation:scorre 1.6s linear infinite;animation-delay:calc(var(--k) * -.4s)}
+.flussi .flusso[data-da="autonomo"]{animation:scorre 1.6s linear infinite, scia-colore 6s linear infinite;animation-delay:calc(var(--k) * -.4s), var(--fase,0ms)}
+.flussi .cometa{fill:var(--fc);color:var(--fc)}
+.flussi .cometa circle:first-child{filter:drop-shadow(0 0 5px currentColor)}
+.flussi .onda{fill:none;stroke:var(--fc);stroke-width:2}
+.flussi [data-tocca]{transition:opacity .3s var(--ease)}
+@keyframes scorre{to{stroke-dashoffset:-26}}
+/* l'entrata: i lati si disegnano uno dopo l'altro e accendono i vertici, poi il centro e i raggi, poi i flussi */
+.triangolo{--tv:0s}
+.v-affidabile{--tv:0s} .v-preciso{--tv:.55s} .v-semplice{--tv:1s} .v-autonomo{--tv:1.2s}
+/* nello stato di attesa si nasconde senza transizioni; le transizioni (coi loro ritardi) valgono solo entrando */
+.triangolo.pronto .linea{stroke-dasharray:1;stroke-dashoffset:1}
+.triangolo.pronto .vertice .punto{scale:.3;opacity:0;rotate:-14deg}
+.triangolo.pronto .vertice h3,.triangolo.pronto .vertice > p{opacity:0;filter:blur(6px);translate:0 10px}
+.triangolo.pronto .flussi-g,.triangolo.pronto .luci,.triangolo.pronto .onde{opacity:0}
+.triangolo.acceso .linea{stroke-dashoffset:0;transition:stroke-dashoffset .45s var(--ease);transition-delay:calc(var(--t) * 1s)}
+.triangolo.acceso .vertice .punto{scale:1;opacity:1;rotate:0deg;transition:scale .7s var(--ease), opacity .3s var(--ease), rotate .7s var(--ease);transition-delay:var(--tv)}
+.triangolo.acceso .vertice h3,.triangolo.acceso .vertice > p{opacity:1;filter:none;translate:none;
+  transition:opacity .5s var(--ease), filter .6s var(--ease), translate .7s var(--ease);transition-delay:calc(var(--tv) + .12s)}
+.triangolo.acceso .vertice > p{transition-delay:calc(var(--tv) + .24s)}
+.triangolo.acceso .flussi-g,.triangolo.acceso .luci,.triangolo.acceso .onde{opacity:1;transition:opacity .6s var(--ease) 1.9s}
+/* Autonomo respira: un alone fucsia che si allarga e si ritira */
+.v-autonomo .punto::before{content:"";position:absolute;inset:-22px;z-index:-1;border-radius:50%;background:radial-gradient(circle, rgba(255,31,143,.2), rgba(29,60,255,.08) 55%, transparent 72%);animation:respira 3.4s ease-in-out infinite}
+@keyframes respira{50%{transform:scale(1.12);opacity:.6}}
+/* col mouse su un vertice: le sue linee in primo piano, le altre in secondo, i suoi flussi più veloci */
+.vertice .punto{transition:scale .35s var(--ease), box-shadow .35s var(--ease)}
+.triangolo[data-fuoco] .flussi [data-tocca]{opacity:.12}
+.triangolo[data-fuoco="affidabile"] .flussi [data-tocca~="affidabile"],.triangolo[data-fuoco="semplice"] .flussi [data-tocca~="semplice"],
+.triangolo[data-fuoco="preciso"] .flussi [data-tocca~="preciso"],.triangolo[data-fuoco="autonomo"] .flussi [data-tocca~="autonomo"]{opacity:1}
+.triangolo[data-fuoco="affidabile"] .flusso[data-tocca~="affidabile"],.triangolo[data-fuoco="semplice"] .flusso[data-tocca~="semplice"],
+.triangolo[data-fuoco="preciso"] .flusso[data-tocca~="preciso"],.triangolo[data-fuoco="autonomo"] .flusso[data-tocca~="autonomo"]{animation-duration:.7s, 6s}   /* accelera lo scorrimento, non il colore */
+.triangolo.acceso[data-fuoco] .vertice .punto,.triangolo.acceso[data-fuoco] .vertice > p{transition-delay:0s}
+.triangolo.acceso .vertice:hover .punto{scale:1.08}
+.triangolo[data-fuoco] .vertice:not(:hover) > p{opacity:.55}
+@media (prefers-reduced-motion: reduce){ .v-autonomo .anello,.satellite svg,.flussi .flusso,.v-autonomo .punto::before{animation:none} }
+@media (max-width:900px){   /* in colonna: un flusso verticale collega i punti */
+  .triangolo{grid-template-columns:minmax(0,1fr);grid-template-areas:"a" "c" "s" "p";row-gap:40px}
+  .flussi{display:none}
+  .triangolo::before{content:"";position:absolute;left:50%;top:40px;bottom:40px;width:2px;margin-left:-1px;z-index:0;
+    background:repeating-linear-gradient(to bottom, var(--fuchsia) 0 10px, transparent 10px 26px);opacity:.5;animation:scorre-giu 1.6s linear infinite}
+  .vertice{background:color-mix(in srgb, var(--paper) 86%, transparent);padding:16px;border-radius:18px}
+  .v-affidabile .punto{order:-1}
+  .v-autonomo .punto{width:172px;height:172px} .v-autonomo .punto b{font-size:.95rem} .satellite{transform:rotate(calc(var(--k) * 120deg)) translateY(-86px) rotate(calc(var(--k) * -120deg))}
+}
+@keyframes scorre-giu{to{background-position:0 26px}}
+@media (max-width:900px) and (prefers-reduced-motion: reduce){ .triangolo::before{animation:none} }
+
+/* DOVE SI RIPAGA: numeri veri, un unico elenco e la stima del ritorno coi numeri del visitatore */
+.ripaga{padding-block:0 clamp(80px,10vw,140px)}
+.ripaga-testa{display:grid;gap:clamp(24px,3vw,40px);padding-top:clamp(40px,5vw,64px);border-top:1px solid var(--line)}
+.ripaga-testa h2{margin:0;font-size:clamp(2rem, 1.2rem + 2.2vw, 3.25rem);letter-spacing:-.03em}
+.numeri{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(16px,2.4vw,32px)}
+.numeri li{display:grid;gap:6px;align-content:start}
+.numeri b{font-size:clamp(2.6rem, 1.4rem + 3vw, 4.5rem);line-height:.95;font-weight:800;letter-spacing:-.04em;font-variation-settings:var(--wide)}
+.numeri li:nth-child(1) b{color:var(--ink);text-shadow:0 .06em 0 var(--volt)}
+.numeri li:nth-child(2) b{color:var(--fuchsia-ink)}
+.numeri li:nth-child(3) b{color:var(--blue)}
+.numeri span{color:var(--ink-2);line-height:1.4;max-width:24ch}
+.ripaga-corpo{margin-top:clamp(36px,4.5vw,56px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,4vw,64px);align-items:stretch}
+.ripaga-elenco{display:flex;flex-direction:column;justify-content:space-between;gap:14px}   /* la lista si distende sull'altezza del calcolo: cominciano e finiscono insieme */
+.ripaga-elenco li{line-height:1.45;color:var(--ink-2)}
+.ripaga-elenco li b{display:block;color:var(--ink);font-weight:800}
+.calcolo{display:grid;gap:16px;padding:clamp(20px,2.6vw,32px);border-radius:22px;background:var(--ink);color:#fff;box-shadow:0 40px 70px -40px rgba(11,16,51,.7)}
+.calcolo h3{margin:0;font-size:var(--step-1);font-weight:800;letter-spacing:-.01em}
+.cursori{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px}
+.calcolo label{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:baseline;font-size:.95rem;color:rgba(255,255,255,.78)}
+.calcolo output{font-weight:800;color:#fff}
+.calcolo input{grid-column:1 / -1;-webkit-appearance:none;appearance:none;width:100%;height:6px;margin:4px 0;border-radius:3px;cursor:pointer;
+  background:linear-gradient(to right, var(--volt) var(--pieno,50%), rgba(255,255,255,.18) var(--pieno,50%))}
+.calcolo input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 4px rgba(229,255,31,.35), 0 4px 10px rgba(0,0,0,.4)}
+.calcolo input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 4px rgba(229,255,31,.35)}
+.calcolo input:focus-visible{outline:2px solid var(--volt);outline-offset:6px}
+.stima{display:grid;gap:10px;margin-top:6px;padding-top:16px;border-top:1px solid rgba(255,255,255,.14)}
+.stima small{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.stima-cifre{display:flex;flex-wrap:wrap;gap:8px clamp(20px,3vw,40px)}
+.stima-cifre > div{display:grid;gap:4px}
+.stima-totale,.stima-anno{font-size:clamp(2.2rem, 1.3rem + 2vw, 3.3rem);line-height:1;font-weight:800;letter-spacing:-.04em;color:var(--volt)}
+.stima-anno{color:#fff}
+.stima-parti{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.9rem;color:rgba(255,255,255,.75);line-height:1.4}
+.stima-parti b{color:#fff}
+.ipotesi{margin:0;font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.55)}
+@media (max-width:900px){ .numeri{grid-template-columns:repeat(2,minmax(0,1fr))} .ripaga-corpo{grid-template-columns:minmax(0,1fr)} .ripaga-elenco{justify-content:flex-start} }
+@media (max-width:560px){ .cursori{grid-template-columns:minmax(0,1fr)} }
+
+/* CHIUSURA: contattaci, provalo, scala */
+.close{background:var(--volt);padding-block:clamp(72px,10vw,140px)}
+.solo-lettori{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.passi{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,3vw,44px)}
+.passi li{display:grid;gap:14px;align-content:start;padding-top:18px;border-top:2px solid var(--ink)}
+.passo-testa{display:flex;align-items:center;gap:.28em;font-size:clamp(1.9rem, .75rem + 2.4vw, 3.1rem);min-width:0}
+.passi b{font-size:1em;font-weight:800;line-height:1;letter-spacing:-.035em;font-variation-settings:var(--wide);white-space:nowrap}
+/* l'icona dell'azione accanto al verbo: un tondo scuro con il segno volt, come la freccia del tasto */
+.passo-ic{flex:none;display:grid;place-items:center;width:.95em;height:.95em;border-radius:50%;background:var(--ink);color:var(--volt)}
+.passo-ic svg{width:54%;height:54%}
+.passi li > span:not(.passo-testa){font-size:var(--step-1);color:color-mix(in srgb, var(--ink) 80%, var(--volt));line-height:1.45;max-width:30ch}
+.close-row{margin-top:clamp(36px,4.5vw,52px);display:flex;justify-content:center}   /* solo il tasto, al centro (Alex, 2026-10-09) */
+.close-row .btn .ar{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:-.6em;border-radius:50%;background:var(--volt);color:var(--ink)}
+.close-row .btn .ar svg{width:16px;height:16px}
+@media (max-width:900px){ .passi{grid-template-columns:minmax(0,1fr)} }
+footer{padding-block:28px;font-size:.85rem;color:var(--ink-2);background:var(--paper)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between}
+footer a{text-decoration:none}
+

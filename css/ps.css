@@ -1,0 +1,60 @@
+/* PROBLEMA E SOLUZIONE (sotto il titolo e le tre qualità): a sinistra il problema, a destra la soluzione,
+   al centro sei pezzi sparsi e scollegati che si ricompongono in un'unica piattaforma (js/problema.js alterna le fasi).
+   Il palco è disegnato a 440×340 e si rimpicciolisce con --s. */
+.ps{margin-top:clamp(48px,6vw,88px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px) minmax(0,1fr);grid-template-areas:"prob palco sol";
+  gap:clamp(28px,3.6vw,56px);align-items:center}
+.ps-problema{grid-area:prob} .ps-palco{grid-area:palco} .ps-soluzione{grid-area:sol}
+.ps h2{margin:0;font-size:clamp(1.45rem, 1rem + 1.2vw, 2rem);line-height:1.12;letter-spacing:-.025em;text-wrap:balance}
+.ps p{margin:14px 0 0;color:var(--ink-2);line-height:1.55;max-width:42ch}
+.ps ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
+.ps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:baseline;color:var(--ink-2);line-height:1.45}
+.ps li b{min-width:5.6em;box-sizing:border-box;text-align:center;font-size:.78rem;font-weight:800;font-variation-settings:var(--wide);letter-spacing:.06em;padding:3px 8px;border-radius:6px;color:var(--ink)}
+.ps li:nth-child(1) b{background:var(--volt)} .ps li:nth-child(2) b{background:var(--fuchsia)} .ps li:nth-child(3) b{background:var(--blue);color:#fff}
+
+.ps-palco{--s:1;position:relative;height:calc(340px * var(--s))}
+.ps-scena{position:absolute;left:50%;top:0;width:440px;height:340px;margin-left:-220px;transform:scale(var(--s));transform-origin:50% 0}
+/* i collegamenti del problema: agganciati ai pezzi, interrotti a metà da una × (li disegna js/problema.js) */
+.ps-rotture{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ps-rotture .filo{fill:none;stroke:var(--ink-2);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:0}
+.ps-rotture .aggancio{fill:var(--paper);stroke:var(--ink-2);stroke-width:2}
+.ps-rotture .rotto circle{fill:var(--paper);stroke:var(--fuchsia);stroke-width:2}
+.ps-rotture .rotto path{fill:none;stroke:var(--fuchsia-ink);stroke-width:2;stroke-linecap:round}
+.ps-rotture .ps-legame{opacity:0;transition:opacity .25s var(--ease)}
+.ps[data-fase="problema"] .ps-rotture .ps-legame{opacity:1;transition:opacity .3s var(--ease) calc(.45s + var(--k) * 80ms)}
+/* entrando nel problema i fili si tendono dai pezzi verso il centro, poi compare la × */
+.ps[data-fase="soluzione"] .ps-rotture .filo{stroke-dashoffset:1}
+.ps[data-fase="problema"] .ps-rotture .filo{transition:stroke-dashoffset .5s var(--ease) calc(.5s + var(--k) * 80ms)}
+.ps-rotture .rotto{scale:.3;opacity:0;transition:scale .2s, opacity .2s}
+.ps[data-fase="problema"] .ps-rotture .rotto{scale:1;opacity:1;transition:scale .45s cubic-bezier(.3,1.6,.5,1) calc(.95s + var(--k) * 80ms), opacity .2s calc(.95s + var(--k) * 80ms)}
+/* la piattaforma della soluzione: un'unica cornice, il marchio Axxell e una linea che collega tutto */
+.ps-piattaforma{position:absolute;left:78px;top:8px;width:284px;height:324px;border-radius:22px;background:var(--paper);
+  box-shadow:inset 0 0 0 1px var(--line), 0 40px 60px -36px rgba(12,26,143,.45);opacity:0;scale:.92;transition:opacity .5s var(--ease), scale .8s var(--ease)}
+.ps[data-fase="soluzione"] .ps-piattaforma{opacity:1;scale:1;transition-delay:.15s}
+.ps-marchio{position:absolute;left:20px;top:16px;display:flex;align-items:center;gap:8px;font-weight:800;font-variation-settings:var(--wide);letter-spacing:.06em;font-size:.85rem}
+.ps-marchio svg{width:16px;height:16px;flex:none}
+.ps-bus{position:absolute;left:22px;top:58px;bottom:28px;width:2px;border-radius:1px;
+  background:repeating-linear-gradient(to bottom, var(--blue) 0 8px, transparent 8px 16px);opacity:.55;animation:ps-bus 1.2s linear infinite}
+@keyframes ps-bus{to{background-position:0 16px}}
+/* i pezzi: sparsi, storti e scollegati nel problema; in fila e coi colori del prodotto nella soluzione */
+.pezzo{--x:0px;--y:0px;--r:0deg;position:absolute;left:0;top:0;width:222px;height:44px;box-sizing:border-box;padding:0 12px;border-radius:12px;
+  display:flex;align-items:center;gap:10px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line), 0 12px 22px -16px rgba(11,16,51,.45);
+  transform:translate(var(--x), var(--y)) rotate(var(--r)) scale(var(--sc,1));transition:transform .9s var(--ease), box-shadow .5s var(--ease);transition-delay:calc(var(--i) * 70ms)}
+.pezzo .ic{width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;background:var(--wash);color:var(--ink-3);transition:background .5s var(--ease), color .5s var(--ease)}
+.pezzo .ic svg{width:16px;height:16px}
+.pezzo b{font-size:.95rem;font-weight:700}
+.pezzo em{margin-left:auto;font-style:normal;font-size:.68rem;font-weight:800;font-variation-settings:var(--wide);letter-spacing:.06em;padding:3px 7px;border-radius:6px;
+  opacity:0;translate:6px 0;transition:opacity .4s var(--ease), translate .5s var(--ease);transition-delay:calc(var(--i) * 70ms + .5s)}
+.pezzo[data-prodotto="sabe"]{--pc:var(--volt);--pt:var(--ink)} .pezzo[data-prodotto="anima"]{--pc:var(--fuchsia);--pt:var(--ink)} .pezzo[data-prodotto="atlas"]{--pc:var(--blue);--pt:#fff}
+.pezzo em{background:var(--pc);color:var(--pt)}
+/* posizioni del problema: le scrive js/problema.js (--x1, --y1, --r1), da cui calcola anche i collegamenti */
+.ps[data-fase="problema"] .pezzo{--x:var(--x1);--y:var(--y1);--r:var(--r1);--sc:.8;transition-duration:.6s;transition-delay:calc(var(--i) * 40ms)}
+/* posizioni della soluzione: in fila dentro la piattaforma */
+.ps[data-fase="soluzione"] .pezzo{--x:108px;box-shadow:inset 0 0 0 1px var(--line), 0 6px 12px -10px rgba(11,16,51,.35)}
+.ps[data-fase="soluzione"] .p-telefono{--y:56px} .ps[data-fase="soluzione"] .p-agenda{--y:100px} .ps[data-fase="soluzione"] .p-comande{--y:144px}
+.ps[data-fase="soluzione"] .p-magazzino{--y:188px} .ps[data-fase="soluzione"] .p-email{--y:232px} .ps[data-fase="soluzione"] .p-whatsapp{--y:276px}
+.ps[data-fase="soluzione"] .pezzo .ic{background:var(--pc);color:var(--pt)}
+.ps[data-fase="soluzione"] .pezzo em{opacity:1;translate:0 0}
+@media (prefers-reduced-motion: reduce){ .pezzo,.pezzo em,.ps-piattaforma,.ps-bus{transition:none;animation:none} }
+
+@media (max-width:1200px){ .ps{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"prob sol" "palco palco";align-items:start} }
+@media (max-width:700px){ .ps{grid-template-columns:minmax(0,1fr);grid-template-areas:"prob" "palco" "sol"} }

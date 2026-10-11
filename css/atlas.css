@@ -1,0 +1,113 @@
+/* ATLAS: icona e nome, una scrivania dove si vede ATLAS lavorare nelle app, poi le funzioni in cinque gruppi */
+.atlas .nome .icona{--ic:var(--blue);--icd:var(--blue-deep);color:#fff}
+/* nome e testo alla stessa altezza: il testo parte con l'icona e finisce con il motto (i due paragrafi si distribuiscono) */
+.atlas-testa{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,80px);align-items:stretch;margin-bottom:clamp(28px,4vw,48px)}
+.atlas .prod-testa{align-content:space-between}
+.atlas-lato{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.atlas-lato .intro{margin:0;color:var(--ink-2);font-size:clamp(17px, 8px + .9vw, 22px);line-height:1.45}
+.atlas > .more{margin-top:clamp(28px,3.5vw,40px)}
+
+/* compiti da guardare */
+.compiti{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.compiti button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:10px;padding:10px 16px 10px 12px;border-radius:999px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);font-weight:700;font-size:.95rem;transition:background .25s,color .25s,box-shadow .25s}
+.compiti button .n{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.75rem;color:var(--ink-3)}
+.compiti button[aria-selected="true"]{background:var(--blue);color:#fff;box-shadow:0 4px 0 -1px var(--blue-deep)}
+.compiti button[aria-selected="true"] .n{color:rgba(255,255,255,.75)}
+.compiti button:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+
+/* la scrivania: un desktop blu con le finestre delle app e la barra della voce */
+.scrivania{position:relative;border-radius:22px;overflow:hidden;color:var(--ink);
+  background:radial-gradient(120% 90% at 85% 0%, #5a6bff 0%, transparent 55%), radial-gradient(90% 80% at 0% 100%, #1a2bd8 0%, transparent 60%), var(--blue);
+  box-shadow:0 6px 0 -1px var(--blue-deep), 0 50px 80px -40px rgba(12,26,143,.6)}
+.scrivania::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.2px);background-size:22px 22px;pointer-events:none}
+.barra-mac{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:rgba(9,14,60,.28);color:#fff;font-size:.82rem;font-weight:600}
+.semafori{display:flex;gap:7px}
+.semafori i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.45)}
+.stato-atlas{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 10px;border-radius:999px;background:rgba(255,255,255,.14)}
+.stato-atlas i{width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 4px rgba(229,255,31,.22)}
+.barra-mac .ora{opacity:.8}
+.finestre{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,2vw,24px);padding:clamp(18px,3vw,36px);min-height:340px;align-items:start}
+.finestra{background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 30px 50px -26px rgba(5,10,60,.6);
+  opacity:0;transform:translateY(18px) scale(.97);transition:opacity .45s var(--ease), transform .55s var(--ease)}
+.finestra.aperta{opacity:1;transform:none}
+.scrivania{isolation:isolate}
+.scrivania > .filigrana{position:absolute;z-index:-1;left:50%;top:50%;height:78%;aspect-ratio:1;transform:translate(-50%,-50%);opacity:.1;color:#fff;pointer-events:none}   /* il cubo di ATLAS, grande e leggero, al centro del pannello */
+.scrivania > .filigrana svg{display:block;width:100%;height:100%}
+.finestra.subito{transition:none}
+.finestra:nth-child(2){margin-top:clamp(0px,4vw,48px)}
+.finestra header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--wash);font-size:.85rem}
+.finestra header .ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--blue);color:#fff}
+.finestra header .ic svg{width:15px;height:15px}
+.finestra .corpo{padding:14px;display:grid;gap:8px;font-size:.92rem}
+.finestra .r{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.finestra .r span:first-child{color:var(--ink-3);font-size:.8rem;font-weight:600;padding-top:.1em}
+.finestra .r span:last-child{text-align:right;font-weight:600}
+.finestra .r.forte span:last-child{text-align:left}
+.finestra .testo{margin:4px 0 0;line-height:1.5;color:var(--ink-2)}
+.finestra.aperta .corpo > *{animation:rise .45s var(--ease) both}
+.finestra.aperta .corpo > :nth-child(2){animation-delay:.12s}
+.finestra.aperta .corpo > :nth-child(3){animation-delay:.24s}
+.finestra.aperta .corpo > :nth-child(4){animation-delay:.36s}
+.foglio{display:grid;font-size:.85rem;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.foglio div{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.7fr) minmax(0,1fr);border-top:1px solid var(--line)}
+.foglio div:first-child{border-top:0}
+.foglio span{padding:6px 8px;border-left:1px solid var(--line);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foglio span:first-child{border-left:0}
+.foglio span:not(:first-child){text-align:right}
+.foglio .th{background:var(--wash);font-weight:700;color:var(--ink-3);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+.foglio .tot{font-weight:800;background:color-mix(in srgb,var(--volt) 40%,var(--paper))}
+.finestra.aperta .foglio div{animation:rise .35s var(--ease) both;animation-delay:calc(.15s + var(--k) * .16s)}
+.sposta{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}
+.sposta .ev{display:grid;gap:2px;padding:10px 12px;border-radius:10px;border-left:4px solid var(--blue);background:var(--wash)}
+.sposta .ev small{color:var(--ink-3);font-weight:600}
+.sposta .da{opacity:.5;text-decoration:line-through;text-decoration-color:var(--ink-3)}
+.sposta .freccia{font-weight:800;color:var(--blue)}
+.finestra .esito{margin:0;display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:.86rem;font-weight:700;color:var(--ink-3);min-height:1.4em;opacity:0}
+.finestra .esito.su{opacity:1;transition:opacity .3s}
+.finestra .esito.fatto{color:var(--ink);background:color-mix(in srgb,var(--volt) 30%,var(--paper))}
+.esito .ok{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--volt)}
+.esito .ok svg{width:13px;height:13px}
+.esito .att{width:10px;height:10px;border-radius:50%;border:2px solid var(--blue);border-right-color:transparent;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(1turn)}}
+
+/* la voce: chi parla, con l'onda che si muove */
+.voce{position:relative;display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:14px;margin:0 clamp(18px,3vw,36px) clamp(18px,3vw,28px);padding:14px 18px;border-radius:16px;
+  background:rgba(9,14,60,.42);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.voce .onda{display:flex;align-items:center;gap:3px;height:22px}
+.voce .onda i{width:3px;height:30%;border-radius:2px;background:#fff;opacity:.9}
+.voce[data-chi="atlas"] .onda i{background:var(--volt)}
+@media (prefers-reduced-motion: no-preference){
+  .voce .onda i{animation:onda .9s ease-in-out infinite}
+  .voce .onda i:nth-child(2){animation-delay:.12s} .voce .onda i:nth-child(3){animation-delay:.24s} .voce .onda i:nth-child(4){animation-delay:.36s} .voce .onda i:nth-child(5){animation-delay:.48s}
+}
+@keyframes onda{50%{height:100%}}
+.voce .chi{font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.voce[data-chi="atlas"] .chi{color:var(--volt);opacity:1}
+.voce .dice{font-size:var(--step-0);line-height:1.4}
+
+/* funzioni in cinque gruppi (stessi stili dei servizi di SABE); titoli ed elenchi sulla stessa riga in tutti i gruppi;
+   l'integrazione con ANIMA ha il simbolo di ANIMA */
+.atlas .gruppi{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:clamp(28px,4vw,44px)}
+.atlas .gruppi > div{display:grid;grid-row:span 2;grid-template-rows:subgrid;align-content:start;align-items:start;gap:12px;padding:16px;border-radius:14px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line), 0 10px 22px -18px rgba(12,26,143,.35)}
+.atlas .gruppi h4{margin:0;display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:800;font-variation-settings:var(--wide);letter-spacing:-.01em}
+.atlas .gruppi h4::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--blue);box-shadow:0 2px 0 -.5px var(--blue-deep)}
+.atlas .servizi li::before{border-color:var(--blue)}
+.atlas > .note{margin-top:16px}
+
+.atlas .gruppi .integrata h4{align-items:flex-start}
+.atlas .gruppi .integrata h4::before{content:none}
+.atlas .gruppi .simbolo{flex:none;width:22px;height:22px;margin-top:-1px;color:var(--fuchsia-ink)}
+.atlas .gruppi .simbolo svg{display:block;width:100%;height:100%}
+@media (max-width:1200px){   /* tre sopra e due sotto, larghe quanto la riga */
+  .atlas .gruppi{grid-template-columns:repeat(6,minmax(0,1fr))} .atlas .gruppi > div{grid-column:span 2} .atlas .gruppi > div:nth-child(n+4){grid-column:span 3} }
+@media (max-width:760px){ .atlas .gruppi{grid-template-columns:repeat(2,minmax(0,1fr))} .atlas .gruppi > div,.atlas .gruppi > div:nth-child(n+4){grid-column:auto} .atlas .gruppi > div:last-child{grid-column:1 / -1} }
+@media (max-width:980px){ .atlas-testa{grid-template-columns:minmax(0,1fr)} .atlas-lato{gap:12px} }
+@media (max-width:720px){
+  .finestre{grid-template-columns:minmax(0,1fr);min-height:0}
+  .finestra:nth-child(2){margin-top:0}
+  .finestra:not(.aperta){display:none}
+  .voce{grid-template-columns:auto minmax(0,1fr);gap:8px 12px}
+  .voce .onda{grid-row:span 2}
+  .barra-mac .ora{display:none}
+}
+@media (max-width:560px){ .atlas .gruppi{grid-template-columns:minmax(0,1fr)} .compiti button{font-size:.85rem} }

@@ -1,0 +1,21 @@
+/* Caselle col mouse sopra (js/inclina.js): inclinazione verso il puntatore, luce che lo segue, bordo acceso vicino al cursore.
+   Usa rotate e translate (proprietà a sé), così non tocca il transform delle entrate. */
+.app,.atlas .gruppi,.servizi-gruppi{perspective:1000px}
+.inclina{--luce:var(--blue);--mx:50%;--my:50%;--px:0;--py:0;position:relative;
+  transition:rotate .7s var(--ease), translate .7s var(--ease), box-shadow .5s var(--ease)}
+.app li.inclina{--luce:var(--fuchsia)}
+.servizi-gruppi > .inclina{--luce:var(--volt-deep)}
+.inclina.sopra{translate:0 -6px;transition:rotate .18s ease-out, translate .4s var(--ease), box-shadow .4s var(--ease);
+  box-shadow:inset 0 0 0 1px var(--line), 0 26px 40px -24px rgba(12,26,143,.42)}
+/* la luce morbida sulla superficie */
+.inclina::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .45s var(--ease);
+  background:radial-gradient(220px circle at var(--mx) var(--my), color-mix(in srgb, var(--luce) 13%, transparent), transparent 70%)}
+/* il bordo che si accende solo vicino al cursore */
+.inclina::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;opacity:0;transition:opacity .45s var(--ease);
+  background:radial-gradient(160px circle at var(--mx) var(--my), var(--luce), transparent 75%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)}
+.inclina.sopra::after,.inclina.sopra::before{opacity:1}
+/* l'icona e il titolo seguono il puntatore un po' di più: sembrano stare sopra la casella */
+.inclina .ic,.inclina h4{transition:translate .7s var(--ease)}
+.inclina.sopra .ic,.inclina.sopra h4{translate:calc(var(--px) * 8px) calc(var(--py) * 8px);transition:translate .2s ease-out}

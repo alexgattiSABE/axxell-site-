@@ -1,0 +1,75 @@
+/* Entrate e uscite di testi e caselle (js/entrate.js). Valgono solo con html.entrate: senza script tutto resta visibile.
+   Stati: a riposo = in attesa di entrare; .dentro = entrato; .uscito = passato sotto la barra in alto.
+   Si entra lenti e decisi (--ease), si esce in fretta. */
+:root{--esce:cubic-bezier(.4,0,1,1)}
+
+/* ── nome del prodotto: l'icona si posa, il nome esce da dietro di lei ── */
+.entrate [data-entra="nome"] .icona{position:relative;z-index:1;transform:scale(.55) rotate(-24deg);opacity:0;
+  transition:transform .8s var(--ease), opacity .35s var(--ease)}
+.entrate [data-entra="nome"] .nome-testo{display:inline-block;transform:translateX(-.9em);opacity:0;filter:blur(10px);
+  clip-path:inset(-.2em -.2em -.3em 100%);
+  transition:transform .9s var(--ease) .12s, opacity .5s var(--ease) .12s, filter .8s var(--ease) .12s, clip-path .9s var(--ease) .12s}
+.entrate [data-entra="nome"].dentro .icona{transform:none;opacity:1}
+.entrate [data-entra="nome"].dentro .nome-testo{transform:none;opacity:1;filter:none;clip-path:inset(-.2em -.2em -.3em -.4em)}
+.entrate [data-entra="nome"].uscito .icona{transform:translateY(-14px) scale(.92);opacity:0;transition:transform .35s var(--esce), opacity .3s var(--esce)}
+.entrate [data-entra="nome"].uscito .nome-testo{transform:translateY(-14px);opacity:0;filter:blur(8px);clip-path:inset(-.2em -.2em -.3em -.4em);
+  transition:transform .35s var(--esce), opacity .3s var(--esce), filter .35s var(--esce)}
+
+/* ── titoli e motti: parola per parola da una maschera ── */
+.parola{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.16em;margin-bottom:-.16em}
+.entrate [data-entra="parole"] .parola > span{display:inline-block;transform:translateY(108%);opacity:0;filter:blur(6px);
+  transition:transform .85s var(--ease), opacity .5s var(--ease), filter .7s var(--ease);transition-delay:calc(var(--d,0) * 1ms)}
+.entrate [data-entra="parole"].dentro .parola > span{transform:none;opacity:1;filter:none}
+.entrate [data-entra="parole"].uscito .parola > span{transform:translateY(-60%);opacity:0;filter:blur(6px);
+  transition:transform .35s var(--esce), opacity .3s var(--esce), filter .35s var(--esce);transition-delay:calc(var(--d,0) * .25ms)}
+
+/* ── paragrafi: si svelano dall'alto con un bordo morbido (una maschera alta 2,5 volte il testo che scorre su) ── */
+.entrate [data-entra="testo"]{
+  -webkit-mask-image:linear-gradient(to bottom, #000 40%, transparent 60%);mask-image:linear-gradient(to bottom, #000 40%, transparent 60%);
+  -webkit-mask-size:100% 250%;mask-size:100% 250%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  -webkit-mask-position:0 100%;mask-position:0 100%;transform:translateY(10px);filter:blur(3px);
+  transition:-webkit-mask-position 1.1s var(--ease) .1s, mask-position 1.1s var(--ease) .1s, transform .9s var(--ease) .1s, filter .8s var(--ease) .1s, opacity .3s}
+.entrate [data-entra="testo"].dentro{-webkit-mask-position:0 0;mask-position:0 0;transform:none;filter:none}
+.entrate [data-entra="testo"].uscito{-webkit-mask-position:0 0;mask-position:0 0;opacity:0;transform:translateY(-12px);filter:blur(4px);
+  transition:opacity .3s var(--esce), transform .35s var(--esce), filter .35s var(--esce)}
+
+/* ── voci di elenco: in fila, poi la spunta si disegna ── */
+.entrate [data-entra="elenco"]{transform:translateY(16px);opacity:0;filter:blur(4px);
+  transition:transform .75s var(--ease), opacity .45s var(--ease), filter .6s var(--ease);transition-delay:calc(var(--d,0) * 1ms)}
+.entrate [data-entra="elenco"].dentro{transform:none;opacity:1;filter:none}
+.entrate [data-entra="elenco"].uscito{transform:translateY(-12px);opacity:0;filter:blur(4px);
+  transition:transform .3s var(--esce), opacity .25s var(--esce), filter .3s var(--esce);transition-delay:calc(var(--d,0) * .25ms)}
+
+.entrate [data-entra] .servizi li::before{clip-path:inset(0 80% 100% 0)}
+.entrate .dentro .servizi li::before{animation:spunta .45s var(--ease) both;animation-delay:calc(var(--d,0) * 1ms + var(--d2,260) * 1ms)}
+@keyframes spunta{0%{clip-path:inset(0 80% 100% 0)}40%{clip-path:inset(0 80% 0 0)}100%{clip-path:inset(0 0 0 0)}}
+
+/* ── caselle: si aprono dall'alto con un taglio netto, poi entra il contenuto ── */
+.entrate [data-entra="casella"]{clip-path:inset(0 0 100% 0 round 14px);transform:translateY(22px);
+  transition:clip-path .8s var(--ease), transform .8s var(--ease);transition-delay:calc(var(--d,0) * 1ms)}
+.entrate [data-entra="casella"].dentro{clip-path:inset(-40px -40px -60px -40px round 14px);transform:none}
+.entrate [data-entra="casella"] > *{opacity:0;transform:translateY(10px);transition:opacity .4s var(--ease), transform .6s var(--ease);
+  transition-delay:calc(var(--d,0) * 1ms + 220ms)}
+.entrate [data-entra="casella"].dentro > *{opacity:1;transform:none}
+.entrate [data-entra="casella"] li{opacity:0;transform:translateX(-8px);transition:opacity .4s var(--ease), transform .6s var(--ease);
+  transition-delay:calc(var(--d,0) * 1ms + var(--d2,260) * 1ms)}
+.entrate [data-entra="casella"].dentro li{opacity:1;transform:none}
+.entrate [data-entra="casella"].uscito{clip-path:inset(0 0 100% 0 round 14px);transform:translateY(-10px);
+  transition:clip-path .35s var(--esce), transform .35s var(--esce);transition-delay:calc(var(--d,0) * .25ms)}
+
+/* ── scene grandi: si aprono dal centro ── */
+.entrate [data-entra="scena"]{clip-path:inset(7% 5% 7% 5% round 22px);transform:scale(.97);opacity:0;
+  transition:clip-path 1s var(--ease), transform 1s var(--ease), opacity .5s var(--ease)}
+.entrate [data-entra="scena"].dentro{clip-path:inset(-80px -80px -80px -80px round 22px);transform:none;opacity:1}
+.entrate [data-entra="scena"].uscito{clip-path:inset(-80px -80px -80px -80px round 22px);opacity:.25;transform:translateY(-16px) scale(.985);
+  transition:opacity .35s var(--esce), transform .4s var(--esce)}
+
+/* ── l'icona dei passi finali arriva dopo la sua voce, girando su se stessa ── */
+.entrate .passi .passo-ic{transform:scale(.4) rotate(-45deg);opacity:0;transition:transform .7s var(--ease), opacity .35s var(--ease);transition-delay:calc(var(--d,0) * 1ms + 260ms)}
+.entrate .passi li.dentro .passo-ic{transform:none;opacity:1}
+.entrate .passi li.uscito .passo-ic{transition-delay:0s}
+
+/* ── movimento ridotto: niente spostamenti né sfocature, solo dissolvenze brevi ── */
+.entrate-dolci [data-entra]{opacity:0;transition:opacity .5s ease;transition-delay:calc(var(--d,0) * .5ms)}
+.entrate-dolci [data-entra].dentro{opacity:1}
+.entrate-dolci [data-entra].uscito{opacity:.4;transition-duration:.25s}
