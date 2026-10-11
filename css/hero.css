@@ -38,13 +38,10 @@
 .tecnica-schema{grid-column:1/-1;min-width:0;overflow-x:auto;border-radius:10px;background:#fbfcff;box-shadow:inset 0 0 0 1px var(--line)}   /* lo schema tiene la sua larghezza e sul telefono scorre qui dentro (skill diagram-design) */
 .tecnica-schema svg{display:block;width:100%;min-width:912px}
 .tecnica-schema .diagramma--telefono{display:none;min-width:328px;max-width:480px;margin-inline:auto}
-/* un segnale fucsia percorre in loop il flusso principale (chiamata → SABE → ANIMA → sala): passa sotto le caselle, poi una pausa e riparte.
-   Senza questo CSS, con movimento ridotto e in stampa resta invisibile (skill diagram-design, modo loop).
-   Il ritmo: lento sulle frecce, veloce dentro le caselle (le tappe sono le posizioni delle frecce lungo il percorso). */
-.diagramma-flusso{opacity:1;stroke-dasharray:.05 2;stroke-dashoffset:.05;animation:diagramma-flusso 6s linear infinite}
-.diagramma--telefono .diagramma-flusso{animation-name:diagramma-flusso-telefono}
-@keyframes diagramma-flusso{0%{stroke-dashoffset:.05}4%{stroke-dashoffset:-.047}22%{stroke-dashoffset:-.21}28%{stroke-dashoffset:-.379}46%{stroke-dashoffset:-.543}52%{stroke-dashoffset:-.721}68%{stroke-dashoffset:-.897}72%,100%{stroke-dashoffset:-1}}
-@keyframes diagramma-flusso-telefono{0%{stroke-dashoffset:.05}5%{stroke-dashoffset:-.015}19%{stroke-dashoffset:-.161}25%{stroke-dashoffset:-.24}39%{stroke-dashoffset:-.371}49%{stroke-dashoffset:-.773}66%{stroke-dashoffset:-.935}70%,100%{stroke-dashoffset:-1}}
+/* flusso sempre acceso su ogni freccia dello schema (richiesta di Alex): i trattini scorrono verso la punta, tutti insieme.
+   Con movimento ridotto e in stampa il flusso sparisce e restano le frecce ferme. */
+.diagramma-flusso{animation:diagramma-flusso .4s linear infinite}
+@keyframes diagramma-flusso{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion:reduce){.diagramma-flusso{display:none;animation:none}}
 @media print{.diagramma-flusso{display:none}}
 @media (max-width:999px){ .tecnica-schema svg:not(.diagramma--telefono){display:none} .tecnica-schema .diagramma--telefono{display:block} }   /* sotto i 1000px lo schema verticale, che sta tutto nel riquadro */
