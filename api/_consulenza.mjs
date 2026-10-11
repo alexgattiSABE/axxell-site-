@@ -103,9 +103,30 @@ function righe(d) {
 }
 
 const comeTesto = r => r.map(([k, v]) => (k === 'Messaggio' ? `${k}:\n${v}` : `${k}: ${v}`)).join('\n');
-const comeHtml = r => `<table cellpadding="6" style="border-collapse:collapse;font:15px/1.5 Arial,sans-serif;color:#0b1033">${
-  r.map(([k, v]) => `<tr><td style="vertical-align:top;color:#454d7a;white-space:nowrap">${escapeHtml(k)}</td><td>${escapeHtml(v).replace(/\n/g, '<br>')}</td></tr>`).join('')
-}</table>`;
+// Grafica delle mail, come il sito: sfondo chiaro, inchiostro blu scuro, Archivo, i colori dei tre prodotti.
+// Solo tabelle e stili in linea, perché i programmi di posta ignorano il resto.
+const F = "Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const INK = '#0b1033', INK2 = '#454d7a', LINEA = '#dde1f2', FONDO = '#f2f4ff';
+const comeHtml = r => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${r.map(([k, v], i) => {
+  const valore = k === 'Email' ? `<a href="mailto:${escapeHtml(v)}" style="color:#1d3cff;text-decoration:none">${escapeHtml(v)}</a>` : escapeHtml(v).replace(/\n/g, '<br>');
+  return `<tr><td style="padding:12px 0;${i ? `border-top:1px solid ${LINEA};` : ''}"><p style="margin:0 0 4px;font:600 11px/1.3 ${F};letter-spacing:.12em;text-transform:uppercase;color:${INK2}">${escapeHtml(k)}</p><p style="margin:0;font:500 15px/1.55 ${F};color:${INK}">${valore}</p></td></tr>`;
+}).join('')}</table>`;
+function cornice({ etichetta, titolo, prima = '', righe = [], dopo = '' }) {
+  const p = t => `<p style="margin:0 0 14px;font:400 15px/1.6 ${F};color:${INK}">${t}</p>`;
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet"><title>${escapeHtml(titolo)}</title></head>
+<body style="margin:0;padding:0;background:${FONDO}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${FONDO};padding:32px 16px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${LINEA};border-radius:16px;overflow:hidden">
+<tr><td style="padding:0;font-size:0;line-height:0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td height="4" style="background:#e5ff1f"></td><td height="4" style="background:#ff1f8f"></td><td height="4" style="background:#1d3cff"></td></tr></table></td></tr>
+<tr><td style="padding:28px 32px 22px;border-bottom:1px solid ${LINEA}">
+<img src="https://axxell.ai/img/mail/axxell.png" width="124" height="27" alt="Axxell" style="display:block;border:0;margin:0 0 22px">
+<p style="margin:0 0 8px;font:600 11px/1.3 ${F};letter-spacing:.14em;text-transform:uppercase;color:#d1006c">${escapeHtml(etichetta)}</p>
+<h1 style="margin:0;font:700 22px/1.25 ${F};letter-spacing:-.01em;color:${INK}">${escapeHtml(titolo)}</h1>
+</td></tr>
+<tr><td style="padding:24px 32px 28px">${prima ? prima.map(p).join('') : ''}${righe.length ? comeHtml(righe) : ''}${dopo}</td></tr>
+<tr><td style="padding:18px 32px;background:${FONDO};border-top:1px solid ${LINEA}"><p style="margin:0;font:500 12px/1.5 ${F};color:${INK2}">axxell.ai · info@axxell.ai</p></td></tr>
+</table></td></tr></table></body></html>`;
+}
 
 const quando = ora => new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(ora);
 
@@ -114,7 +135,8 @@ export function componiMailAxxell(d, { a, ora }) {
   return {
     from: MITTENTE, to: [a], reply_to: d.email, subject: oggetto(d),
     text: `Nuova richiesta di consulenza dal sito.\n\n${comeTesto(r)}\n\nRispondi a questa mail per scrivere direttamente al cliente.`,
-    html: `<p style="font:15px/1.5 Arial,sans-serif;color:#0b1033">Nuova richiesta di consulenza dal sito.</p>${comeHtml(r)}<p style="font:13px/1.5 Arial,sans-serif;color:#454d7a">Rispondi a questa mail per scrivere direttamente al cliente.</p>`,
+    html: cornice({ etichetta: 'Dal sito · consulenza', titolo: 'Nuova richiesta di consulenza', righe: r,
+      dopo: `<p style="margin:18px 0 0;font:400 13px/1.5 ${F};color:${INK2}">Rispondi a questa mail per scrivere direttamente al cliente.</p>` }),
   };
 }
 
@@ -125,11 +147,13 @@ const NOME_PULITO = /^[\p{L}' -]{1,60}$/u;
 export function componiConferma(d) {
   const r = scelte(d).filter(([, v]) => v);
   const saluto = NOME_PULITO.test(d.nome) ? `Ciao ${d.nome},` : 'Ciao,';
-  const p = t => `<p style="font:15px/1.5 Arial,sans-serif;color:#0b1033">${t}</p>`;
   return {
     from: MITTENTE, to: [d.email], reply_to: 'info@axxell.ai', subject: 'Abbiamo ricevuto la tua richiesta',
     text: `${saluto}\ngrazie per averci scritto: abbiamo ricevuto la tua richiesta di consulenza e ti rispondiamo entro 24 ore.${r.length ? `\n\nLe tue scelte:\n${comeTesto(r)}` : ''}\n\nSe vuoi aggiungere qualcosa, rispondi a questa mail.\n\nAxxell\nhttps://axxell.ai`,
-    html: `${p(escapeHtml(saluto))}${p('grazie per averci scritto: abbiamo ricevuto la tua richiesta di consulenza e ti rispondiamo <b>entro 24 ore</b>.')}${r.length ? p('Le tue scelte:') + comeHtml(r) : ''}${p('Se vuoi aggiungere qualcosa, rispondi a questa mail.')}${p('Axxell<br><a href="https://axxell.ai" style="color:#0b1033">axxell.ai</a>')}`,
+    html: cornice({ etichetta: 'Richiesta ricevuta', titolo: 'Abbiamo ricevuto la tua richiesta',
+      prima: [escapeHtml(saluto), 'grazie per averci scritto: ti rispondiamo <b>entro 24 ore</b>.', ...(r.length ? ['Le tue scelte:'] : [])],
+      righe: r,
+      dopo: `<p style="margin:18px 0 22px;font:400 15px/1.6 ${F};color:${INK}">Se vuoi aggiungere qualcosa, rispondi a questa mail.</p><a href="https://axxell.ai" style="display:inline-block;padding:13px 22px;border-radius:999px;background:${INK};color:#ffffff;font:600 14px/1 ${F};text-decoration:none">Scopri Axxell</a>` }),
   };
 }
 
