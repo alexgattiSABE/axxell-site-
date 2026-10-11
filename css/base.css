@@ -80,7 +80,8 @@ main{position:relative}
 .nav ul{display:flex;gap:6px;list-style:none;margin:0 auto;padding:0}
 .nav ul a{display:block;padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:600;font-size:.95rem;letter-spacing:.02em}
 .nav ul a:hover{background:var(--wash)}
-.nav ul a::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px;background:var(--c)}
+.nav ul a{display:flex;align-items:center;gap:8px}
+.nav-ic{flex:none;width:18px;height:18px;display:block}   /* le icone dei prodotti al posto dei pallini (Alex, 2026-10-11) */
 .nav .btn{min-height:42px;font-size:.92rem}
 /* il menu: sul computer link e tasto stanno nella barra (.nav-voci non fa da scatola); sul telefono il tasto menu apre una
    tendina sotto la barra con le pagine e «Richiedi una consulenza» sempre in fondo (js/menu.js). Vale per tutte le pagine */
@@ -100,7 +101,8 @@ main{position:relative}
   .nav-voci ul{display:flex;flex-direction:column;gap:0;margin:0}
   .nav-voci ul a{padding:15px 2px;font-size:1.1rem;border-radius:0;border-bottom:1px solid var(--line)}
   .nav-voci ul a:hover{background:none}
-  .nav-voci ul a::before{width:10px;height:10px;margin-right:12px}
+  .nav-voci ul a{gap:12px}
+  .nav-voci .nav-ic{width:22px;height:22px}
   .nav-voci .btn{width:100%;justify-content:center;min-height:52px;font-size:1rem}
 }
 /* con quattro link (SABE, ANIMA, ATLAS, Servizi) fra 721 e 900px la barra si stringe per restare su una riga */
