@@ -278,3 +278,6 @@
 .sp-grafico-punto i{flex:none}
 @media (max-width:600px){ .sp-piano--pro{padding-top:38px} }
 @media (max-width:420px){ .sp-spicchio{white-space:normal;max-width:7.2em;text-align:center;line-height:1.15} .sp-centro{inset:37%} }
+/* «Non solo ristoranti»: una riga sotto la presentazione, più piccola */
+.sp-anche{margin:12px 0 0;max-width:52ch;font-size:.95rem;color:var(--ink-2);text-wrap:pretty}
+.sp-anche b{color:var(--ink)}
