@@ -3,15 +3,35 @@
 // Il trattino basso iniziale fa sì che Vercel non la pubblichi come funzione.
 
 export const MITTENTE = 'Axxell <noreply@axxell.ai>';
+// Listino (IVA inclusa): SABE e ANIMA condividono i piani, al mese o all'anno; ATLAS solo al mese.
 export const PIANI = {
-  start: 'Start · 49 € al mese, IVA inclusa',
-  light: 'Light · 149 € al mese, IVA inclusa',
-  pro: 'Pro · 249 € al mese, IVA inclusa',
-  enterprise: 'Enterprise · su misura',
+  start: { nome: 'Start', mese: 49, anno: 490 },
+  light: { nome: 'Light', mese: 149, anno: 1490 },
+  pro: { nome: 'Pro', mese: 249, anno: 2490 },
+  enterprise: { nome: 'Enterprise' },
 };
-const PIANI_BREVI = { start: 'Start', light: 'Light', pro: 'Pro', enterprise: 'Enterprise' };
-export const INTERESSI = ['sabe', 'anima', 'atlas', 'servizi'];
-const NOMI_INTERESSI = { sabe: 'SABE', anima: 'ANIMA', atlas: 'ATLAS', servizi: 'Servizi' };
+export const PIANI_ATLAS = {
+  light: { nome: 'Light', mese: 29 },
+  pro: { nome: 'Pro', mese: 149 },
+};
+export const TIPI_SITO = {
+  landing: 'Landing page', vetrina: 'Sito vetrina', ecommerce: 'E-commerce', prenotazioni: 'Sito con prenotazioni',
+  portfolio: 'Portfolio', rifacimento: 'Rifare il sito che ho', nonso: 'Non so ancora',
+};
+const migliaia = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+export function descriviPiano(piano, periodo = 'mese') {
+  const p = PIANI[piano];
+  if (!p) return '';
+  if (!p.mese) return `${p.nome} · su misura`;
+  return periodo === 'anno' ? `${p.nome} · ${migliaia(p.anno)} € l'anno, IVA inclusa` : `${p.nome} · ${migliaia(p.mese)} € al mese, IVA inclusa`;
+}
+export function descriviAtlas(piano) {
+  const p = PIANI_ATLAS[piano];
+  return p ? `${p.nome} · ${migliaia(p.mese)} € al mese, IVA inclusa` : '';
+}
+export const INTERESSI = ['sabe', 'anima', 'atlas', 'chatbot', 'sito'];
+const NOMI_INTERESSI = { sabe: 'SABE', anima: 'ANIMA', atlas: 'ATLAS', chatbot: 'Chatbot sul sito', sito: 'Sito web' };
+const SITO = /^(https?:\/\/)?[^\s/]+\.[^\s/]{2,}(\/\S*)?$/i;
 // i settori del modulo del sito vecchio
 const NOMI_TIPI = {
   ristorazione: 'Ristorante / Pizzeria / Bar', benessere: 'Salute e benessere', sport: 'Sport e fitness',
@@ -37,7 +57,8 @@ export function valida(corpo) {
   const d = {
     nome: riga(c.nome), cognome: riga(c.cognome), attivita: riga(c.attivita), email: riga(c.email), telefono: riga(c.telefono),
     piva: riga(c.piva).replace(/\s+/g, '').toUpperCase(), privacy: c.privacy === true,
-    tipo: riga(c.tipo), piano: riga(c.piano), messaggio: testo(c.messaggio), pagina: riga(c.pagina).slice(0, 200),
+    tipo: riga(c.tipo), piano: riga(c.piano), periodo: riga(c.periodo) || 'mese', piano_atlas: riga(c.piano_atlas),
+    sito_tipo: riga(c.sito_tipo), sito_url: riga(c.sito_url), messaggio: testo(c.messaggio), pagina: riga(c.pagina).slice(0, 200),
     interessi: Array.isArray(c.interessi) ? [...new Set(c.interessi.map(riga))] : [],
   };
   const campi = [];
@@ -51,6 +72,10 @@ export function valida(corpo) {
   if (!d.telefono || d.telefono.length > MAX.telefono || !TELEFONO.test(d.telefono)) campi.push('telefono');
   if (!d.interessi.every(i => INTERESSI.includes(i))) campi.push('interessi');
   if (d.piano && !Object.hasOwn(PIANI, d.piano)) campi.push('piano');
+  if (!['mese', 'anno'].includes(d.periodo)) campi.push('periodo');
+  if (d.piano_atlas && !Object.hasOwn(PIANI_ATLAS, d.piano_atlas)) campi.push('piano_atlas');
+  if (d.sito_tipo && !Object.hasOwn(TIPI_SITO, d.sito_tipo)) campi.push('sito_tipo');
+  if (d.sito_url && (d.sito_url.length > 200 || !SITO.test(d.sito_url))) campi.push('sito_url');
   if (d.messaggio.length > MAX.messaggio) campi.push('messaggio');
   if (!d.privacy) campi.push('privacy');
   return campi.length ? { ok: false, campi } : { ok: true, dati: d };
@@ -59,15 +84,21 @@ export function valida(corpo) {
 const nomiInteressi = d => d.interessi.map(i => NOMI_INTERESSI[i]).join(', ');
 
 export function oggetto(d) {
-  const cosa = d.piano ? PIANI_BREVI[d.piano] : nomiInteressi(d);
+  const piani = [d.piano && PIANI[d.piano].nome + (d.periodo === 'anno' && PIANI[d.piano].mese ? ' annuale' : ''), d.piano_atlas && `ATLAS ${PIANI_ATLAS[d.piano_atlas].nome}`].filter(Boolean);
+  const cosa = piani.length ? piani.join(' + ') : nomiInteressi(d);
   return ['Consulenza', cosa, d.attivita].filter(Boolean).join(' · ');
 }
 
+// le scelte fatte nel configuratore: solo valori dell'elenco, quindi possono tornare anche nella conferma
+const scelte = d => [
+  ['Tipo di attività', NOMI_TIPI[d.tipo] || ''], ['Cosa interessa', nomiInteressi(d)],
+  ['Piano', descriviPiano(d.piano, d.periodo)], ['ATLAS', descriviAtlas(d.piano_atlas)], ['Sito web', TIPI_SITO[d.sito_tipo] || ''],
+];
+
 function righe(d) {
   return [
-    ['Nome', `${d.nome} ${d.cognome}`], ['Azienda', d.attivita], ['Tipo di attività', NOMI_TIPI[d.tipo] || ''],
-    ['P.IVA', d.piva], ['Email', d.email], ['Telefono', d.telefono], ['Cosa interessa', nomiInteressi(d)],
-    ['Piano scelto', d.piano ? PIANI[d.piano] : ''], ['Messaggio', d.messaggio],
+    ['Nome', `${d.nome} ${d.cognome}`], ['Azienda', d.attivita], ['P.IVA', d.piva], ['Email', d.email], ['Telefono', d.telefono],
+    ...scelte(d), ['Sito attuale', d.sito_url], ['Messaggio', d.messaggio],
   ].filter(([, v]) => v);
 }
 
@@ -92,7 +123,7 @@ export function componiMailAxxell(d, { a, ora }) {
 const NOME_PULITO = /^[\p{L}' -]{1,60}$/u;
 
 export function componiConferma(d) {
-  const r = [['Tipo di attività', NOMI_TIPI[d.tipo] || ''], ['Cosa interessa', nomiInteressi(d)], ['Piano scelto', d.piano ? PIANI[d.piano] : '']].filter(([, v]) => v);
+  const r = scelte(d).filter(([, v]) => v);
   const saluto = NOME_PULITO.test(d.nome) ? `Ciao ${d.nome},` : 'Ciao,';
   const p = t => `<p style="font:15px/1.5 Arial,sans-serif;color:#0b1033">${t}</p>`;
   return {

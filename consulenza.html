@@ -113,13 +113,58 @@
           <label class="co-scelta" style="--c:var(--volt-deep)"><input type="checkbox" name="interessi" value="sabe"><span>SABE</span></label>
           <label class="co-scelta" style="--c:var(--fuchsia)"><input type="checkbox" name="interessi" value="anima"><span>ANIMA</span></label>
           <label class="co-scelta" style="--c:var(--blue)"><input type="checkbox" name="interessi" value="atlas"><span>ATLAS</span></label>
-          <label class="co-scelta" style="--c:var(--appoggio-gamba)"><input type="checkbox" name="interessi" value="servizi"><span>Servizi</span></label>
+          <label class="co-scelta" style="--c:var(--appoggio-gamba)"><input type="checkbox" name="interessi" value="chatbot"><span>Chatbot</span></label>
+          <label class="co-scelta" style="--c:var(--appoggio-gamba)"><input type="checkbox" name="interessi" value="sito"><span>Sito web</span></label>
         </div>
       </fieldset>
 
-      <div class="co-piano" id="co-piano" hidden>
-        <span>Piano scelto: <b id="co-piano-nome"></b></span>
-        <button type="button" class="co-togli" id="co-piano-togli">Togli</button>
+      <div class="co-conf" id="co-conf-piano" hidden><fieldset class="co-conf-campi">
+        <legend class="co-conf-titolo">Piano SABE e ANIMA</legend>
+        <div class="co-periodo">
+          <label><input type="radio" name="periodo" value="mese" id="co-periodo-mese" checked><span>Mensile</span></label>
+          <label><input type="radio" name="periodo" value="anno" id="co-periodo-anno"><span>Annuale <small>2 mesi gratis</small></span></label>
+        </div>
+        <div class="co-carte">
+          <label class="co-carta" data-piano="start"><input type="radio" name="piano" value="start"><span><b>Start</b><span class="co-prezzo" data-prezzo="start">49 € al mese</span><small>ANIMA, senza SABE</small></span></label>
+          <label class="co-carta" data-piano="light"><input type="radio" name="piano" value="light"><span><b>Light</b><span class="co-prezzo" data-prezzo="light">149 € al mese</span><small>ANIMA e SABE, 350 minuti al mese</small></span></label>
+          <label class="co-carta" data-piano="pro"><input type="radio" name="piano" value="pro"><span><b>Pro</b><span class="co-prezzo" data-prezzo="pro">249 € al mese</span><small>ANIMA e SABE, 700 minuti al mese</small></span></label>
+          <label class="co-carta" data-piano="enterprise"><input type="radio" name="piano" value="enterprise"><span><b>Enterprise</b><span class="co-prezzo">Su misura</span><small>Più locali, volumi più alti</small></span></label>
+          <label class="co-carta"><input type="radio" name="piano" value=""><span><b>Consigliatemi voi</b><small>Ne parliamo in consulenza</small></span></label>
+        </div>
+      </fieldset></div>
+
+      <div class="co-conf" id="co-conf-atlas" hidden><fieldset class="co-conf-campi">
+        <legend class="co-conf-titolo">Piano ATLAS</legend>
+        <div class="co-carte">
+          <label class="co-carta"><input type="radio" name="piano_atlas" value="light"><span><b>Light</b><span class="co-prezzo">29 € al mese</span><small>Voce, calendario, posta e documenti</small></span></label>
+          <label class="co-carta"><input type="radio" name="piano_atlas" value="pro"><span><b>Pro</b><span class="co-prezzo">149 € al mese</span><small>In più fatturato, cassa, clienti, fatture e PEC</small></span></label>
+          <label class="co-carta"><input type="radio" name="piano_atlas" value=""><span><b>Consigliatemi voi</b><small>Ne parliamo in consulenza</small></span></label>
+        </div>
+        <p class="co-conf-nota">Vuoi attivarlo subito? <a id="co-atlas-subito" href="https://atlas-server-production-787d.up.railway.app/buy/light">Abbonati su Stripe</a>, per Mac.</p>
+      </fieldset></div>
+
+      <div class="co-conf" id="co-conf-sito" hidden><fieldset class="co-conf-campi">
+        <legend class="co-conf-titolo">Sito web</legend>
+        <div class="co-scelte">
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="landing"><span>Landing page</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="vetrina"><span>Sito vetrina</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="ecommerce"><span>E-commerce</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="prenotazioni"><span>Sito con prenotazioni</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="portfolio"><span>Portfolio</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="rifacimento"><span>Rifare il sito che ho</span></label>
+          <label class="co-scelta co-scelta--tipo"><input type="radio" name="sito_tipo" value="nonso"><span>Non so ancora</span></label>
+        </div>
+        <div class="co-campo" data-campo="sito_url">
+          <label for="co-sito-url">Il tuo sito di adesso <span class="co-facolt">facoltativo</span></label>
+          <input id="co-sito-url" name="sito_url" type="text" inputmode="url" autocomplete="url" maxlength="200" placeholder="www.tuosito.it" aria-describedby="co-sito_url-errore">
+          <p class="co-errore" id="co-sito_url-errore" hidden></p>
+        </div>
+      </fieldset></div>
+
+      <div class="co-riepilogo" id="co-riepilogo" aria-live="polite" hidden>
+        <p class="co-conf-titolo">Il tuo riepilogo</p>
+        <ul id="co-riepilogo-voci"></ul>
+        <p class="co-conf-nota">Prezzi IVA inclusa. Ti mandiamo noi il preventivo, entro 24 ore.</p>
       </div>
 
       <div class="co-campo" data-campo="messaggio">
