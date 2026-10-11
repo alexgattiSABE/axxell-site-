@@ -9,3 +9,7 @@
 .legale b{color:var(--ink)}
 .legale a{color:var(--ink);text-decoration-color:var(--fuchsia);text-underline-offset:3px}
 .legale-data{margin-top:clamp(32px,4vw,44px)!important;font-size:.92rem}
+/* piè di pagina: le pagine di testo non caricano close.css */
+footer{padding-block:28px;font-size:.85rem;color:var(--ink-2);background:var(--paper)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between}
+footer a{text-decoration:none}
