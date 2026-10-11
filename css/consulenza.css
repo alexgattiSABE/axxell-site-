@@ -33,8 +33,33 @@
 .co-scelta input:checked + span{border-color:var(--ink);background:var(--wash)}
 .co-scelta input:checked + span::before{opacity:1}
 .co-scelta input:focus-visible + span{box-shadow:0 0 0 3px rgba(29,60,255,.18)}
-.co-piano{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 10px 10px 16px;border:1px solid var(--line);border-radius:12px;background:var(--wash)}
-.co-togli{min-height:44px;padding:0 10px;font:inherit;font-weight:600;color:var(--ink);background:none;border:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--fuchsia);text-underline-offset:3px}
+/* configuratore: opzioni del prodotto scelto, carte selezionabili, riepilogo */
+.co-conf,.co-riepilogo{margin:0;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--paper);display:grid;gap:14px;min-width:0}
+.co-conf-titolo{padding:0;margin:0;font-weight:700;font-size:1rem;color:var(--ink)}
+.co-conf-campi{margin:0;padding:0;border:0;min-width:0;display:grid;gap:14px}   /* il riquadro è il div intorno: così il titolo (legend) sta dentro come un titolo normale */
+.co-conf-nota{margin:0;font-size:.9rem;color:var(--ink-2)}
+.co-conf-nota a{color:var(--ink);font-weight:600;text-decoration-color:var(--blue);text-underline-offset:3px}
+.co-periodo{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--wash);justify-self:start}
+.co-periodo label{position:relative}
+.co-periodo input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.co-periodo span{display:inline-flex;align-items:center;gap:.4em;min-height:40px;padding:0 16px;border-radius:999px;font-weight:600;font-size:.95rem;transition:background-color .2s var(--ease), box-shadow .2s var(--ease)}
+.co-periodo small{font-weight:500;color:var(--fuchsia-ink)}
+.co-periodo input:checked + span{background:var(--paper);box-shadow:0 1px 3px rgba(11,16,51,.18)}
+.co-periodo input:focus-visible + span{box-shadow:0 0 0 3px rgba(29,60,255,.25)}
+.co-carte{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.co-carta{position:relative;display:flex}
+.co-carta input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.co-carta > span{flex:1;display:grid;gap:4px;align-content:start;padding:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);transition:border-color .2s var(--ease), background-color .2s var(--ease)}
+.co-carta b{font-size:1rem}
+.co-carta .co-prezzo{font-weight:700;font-variant-numeric:tabular-nums}
+.co-carta small{font-size:.85rem;color:var(--ink-2);line-height:1.35}
+.co-carta input:hover + span{border-color:var(--edge-paper)}
+.co-carta input:checked + span{border-color:var(--ink);background:var(--wash)}
+.co-carta input:focus-visible + span{box-shadow:0 0 0 3px rgba(29,60,255,.25)}
+.co-scelta--tipo span::before{display:none}
+.co-scelta input[type=radio]:checked + span{border-color:var(--ink);background:var(--wash)}
+.co-riepilogo{background:var(--wash);border-color:transparent}
+.co-riepilogo ul{margin:0;padding-left:1.1em;display:grid;gap:4px;font-weight:600}
 .co-trappola{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
 .co-invio-errore{margin:0;padding:14px 16px;border:1.5px solid var(--fuchsia-ink);border-radius:12px;color:var(--ink)}
 .co-invia{justify-self:start}
