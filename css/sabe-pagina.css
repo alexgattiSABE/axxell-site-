@@ -86,7 +86,7 @@
 .sp-spicchio{all:unset;box-sizing:border-box;position:absolute;translate:-50% -50%;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;
   background:var(--paper);color:var(--ink);font-weight:700;font-size:.95rem;box-shadow:inset 0 0 0 1px var(--line), 0 10px 20px -12px rgba(12,26,143,.45);
   transition:background .4s var(--ease), color .4s var(--ease), scale .4s var(--ease)}
-.sp-spicchio:hover{scale:1.05}
+@media (hover:hover) and (pointer:fine){.sp-spicchio:hover{scale:1.05}}
 .sp-spicchio[aria-selected="true"]{background:var(--ink);color:var(--volt);box-shadow:0 12px 24px -12px rgba(11,16,51,.6)}
 .sp-spicchio:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .sp-spicchio[data-k="0"]{left:50%;top:10%}

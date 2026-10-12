@@ -9,7 +9,7 @@
 .sezioni button i{width:12px;height:12px;border-radius:4px;border:1.5px solid var(--ink-2);margin-top:.45em;transition:background .25s,border-color .25s,transform .35s var(--ease)}
 .sezioni button b{display:block;font-size:var(--step-1);font-weight:800;font-variation-settings:"wdth" 110;letter-spacing:-.01em}
 .sezioni button span span{display:block;margin-top:3px;color:var(--ink-2);font-size:.95rem;line-height:1.45}
-.sezioni button:hover{padding-left:10px}
+@media (hover:hover) and (pointer:fine){.sezioni button:hover{padding-left:10px}}
 .sezioni button[aria-expanded="true"]{padding-left:10px}
 .sezioni button[aria-expanded="true"] i{background:var(--fuchsia);border-color:var(--fuchsia);transform:scale(1.2)}
 .sezioni button[aria-expanded="true"] b{color:var(--fuchsia-ink)}
@@ -22,7 +22,7 @@
   box-shadow:inset 0 0 0 1px var(--line), 0 26px 40px -28px rgba(12,26,143,.4);
   transform:translate(0px, calc((var(--i) - 3) * -1 * var(--g) - var(--lift))) scale(1, .56) rotate(-38deg);
   z-index:var(--i);transition:transform .5s var(--ease), opacity .35s var(--ease), box-shadow .35s}
-.strato:hover{--lift:12px}
+@media (hover:hover) and (pointer:fine){.strato:hover{--lift:12px}}
 .strato .corpo{position:absolute;inset:16px 18px 46px;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden}
 .strato .etichetta{position:absolute;left:18px;bottom:13px;display:flex;gap:8px;align-items:center;font-weight:800;font-variation-settings:var(--wide);letter-spacing:.06em;font-size:.95rem}
 .strato .etichetta i{width:10px;height:10px;border-radius:3px;background:var(--fuchsia)}
