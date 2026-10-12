@@ -46,20 +46,28 @@ p{margin:0}
 .num{font-variant-numeric:tabular-nums}
 .note{font-size:.8125rem;color:var(--ink-2)}
 #bg{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+/* Sul telefono, tenendo il dito appoggiato, Safari accendeva gli effetti «col mouse sopra» (velo sulle schede dietro
+   del carosello, carte che si sollevano) e il riquadro grigio del tocco: con le schede che girano sotto il dito
+   lampeggiavano a intermittenza (Alex, 2026-10-12). Gli effetti al passaggio valgono solo col mouse; il riquadro
+   grigio non si disegna (i tasti hanno il loro :active). */
+html{-webkit-tap-highlight-color:transparent}
+/* E tenendo il dito su un disegno che si muove (carosello, schede impilate, scrivania di ATLAS) Safari non prova a
+   selezionarne il testo: i riquadri blu della selezione lampeggiavano sopra le schede che cambiano. */
+.carosello,.ps-palco,.palco-anima,.scrivania,[aria-hidden="true"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 main{position:relative}
 
 .btn{display:inline-flex;align-items:center;gap:.6em;min-height:52px;padding:0 1.35em;border-radius:999px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);font:600 1rem/1 var(--f-sans);text-decoration:none;cursor:pointer;transition:transform .5s var(--ease), box-shadow .5s var(--ease)}
-.btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px -12px rgba(11,16,51,.45)}
+@media (hover:hover) and (pointer:fine){.btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px -12px rgba(11,16,51,.45)}}
 .btn:active{transform:translateY(0) scale(.98)}
 .btn--volt{background:var(--volt);border-color:var(--volt);box-shadow:0 4px 0 -1px var(--volt-deep)}
-.btn--volt:hover{box-shadow:0 6px 0 -1px var(--volt-deep), 0 16px 26px -14px rgba(11,16,51,.5)}
+@media (hover:hover) and (pointer:fine){.btn--volt:hover{box-shadow:0 6px 0 -1px var(--volt-deep), 0 16px 26px -14px rgba(11,16,51,.5)}}
 .btn--ink{background:var(--ink);color:var(--paper)}
 .btn svg{width:18px;height:18px;flex:none}
 .more{display:inline-flex;align-items:center;gap:12px;align-self:start;justify-self:start;min-height:54px;padding:0 10px 0 22px;border-radius:999px;background:var(--c);color:var(--t,var(--ink));font-weight:700;text-decoration:none;box-shadow:0 5px 0 -1px var(--cd), 0 18px 28px -16px rgba(11,16,51,.45);transition:transform .5s var(--ease), box-shadow .5s var(--ease)}
 .more span.ar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--c);transition:transform .5s var(--ease)}
 .more span.ar svg{width:18px;height:18px}
-.more:hover{transform:translateY(-3px);box-shadow:0 8px 0 -1px var(--cd), 0 24px 34px -16px rgba(11,16,51,.5)}
-.more:hover span.ar{transform:rotate(-45deg)}
+@media (hover:hover) and (pointer:fine){.more:hover{transform:translateY(-3px);box-shadow:0 8px 0 -1px var(--cd), 0 24px 34px -16px rgba(11,16,51,.5)}}
+@media (hover:hover) and (pointer:fine){.more:hover span.ar{transform:rotate(-45deg)}}
 .more:active{transform:translateY(1px)}
 
 /* ---------- blocchi in rilievo ---------- */

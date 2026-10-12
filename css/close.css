@@ -79,8 +79,8 @@
 .triangolo[data-fuoco="affidabile"] .flusso[data-tocca~="affidabile"],.triangolo[data-fuoco="semplice"] .flusso[data-tocca~="semplice"],
 .triangolo[data-fuoco="preciso"] .flusso[data-tocca~="preciso"],.triangolo[data-fuoco="autonomo"] .flusso[data-tocca~="autonomo"]{animation-duration:.7s, 6s}   /* accelera lo scorrimento, non il colore */
 .triangolo.acceso[data-fuoco] .vertice .punto,.triangolo.acceso[data-fuoco] .vertice > p{transition-delay:0s}
-.triangolo.acceso .vertice:hover .punto{scale:1.08}
-.triangolo[data-fuoco] .vertice:not(:hover) > p{opacity:.55}
+@media (hover:hover) and (pointer:fine){.triangolo.acceso .vertice:hover .punto{scale:1.08}}
+@media (hover:hover) and (pointer:fine){.triangolo[data-fuoco] .vertice:not(:hover) > p{opacity:.55}}
 @media (prefers-reduced-motion: reduce){ .v-autonomo .anello,.satellite svg,.flussi .flusso,.v-autonomo .punto::before{animation:none} }
 @media (max-width:900px){   /* in colonna: un flusso verticale collega i punti */
   .triangolo{grid-template-columns:minmax(0,1fr);grid-template-areas:"a" "c" "s" "p";row-gap:40px}

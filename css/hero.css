@@ -62,7 +62,7 @@
 .scheda-corpo{position:absolute;inset:0;border-radius:inherit;overflow:hidden;display:flex;flex-direction:column}
 .velo{position:absolute;inset:0;border-radius:inherit;background:rgba(255,255,255,.62);opacity:0;transition:opacity 1.2s var(--ease);pointer-events:none}
 .scheda:not([data-slot="0"]) .velo{opacity:1}
-.scheda:not([data-slot="0"]):hover .velo{opacity:.4}
+@media (hover:hover) and (pointer:fine){.scheda:not([data-slot="0"]):hover .velo{opacity:.4}}
 .scheda--sabe{--edge:var(--volt-deep);background:var(--volt);color:var(--ink)}
 .scheda--anima{--edge:var(--edge-paper);background:var(--paper);color:var(--ink)}
 .scheda--atlas{--edge:var(--blue-deep);background:var(--blue);color:#fff}
