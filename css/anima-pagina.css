@@ -321,3 +321,18 @@
 .pagina-anima .sp-categoria-ic{color:var(--fuchsia-ink)}
 @media (max-width:520px){ .pagina-anima .an-categorie{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:380px){ .an-scena{--marchio:72px;width:100%} }
+
+/* i video al posto dell'occhio che osserva e delle quattro app: largo 16:9, sul telefono 9:16 */
+.an-video{margin:0;border-radius:clamp(18px,2.4vw,32px);overflow:hidden;background:#fff6fa;box-shadow:inset 0 0 0 1px var(--line);aspect-ratio:16/9}
+.an-video--alto{aspect-ratio:9/16;max-width:520px;margin-inline:auto}
+.an-video-v{display:block;width:100%;height:100%;object-fit:cover}
+#an-occhio .an-recap + .an-consigli-titolo{margin-top:clamp(32px,5vw,64px)}
+/* il riassunto sotto i video */
+.an-recap{list-style:none;margin:clamp(18px,2.4vw,28px) 0 0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(10px,1.4vw,18px);counter-reset:passo}
+.an-recap li{counter-increment:passo;display:grid;gap:4px;align-content:start;font-size:.9rem;line-height:1.4;color:var(--ink-2)}
+.an-recap li::before{content:counter(passo);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--fuchsia);color:#fff;font-weight:800;font-size:.8rem;margin-bottom:4px}
+.an-recap b{color:var(--ink);font-weight:800}
+.an-recap-nota{margin-inline:auto;text-align:center}
+.an-recap-nota b{color:var(--ink);font-weight:700}
+@media (max-width:860px){ .an-recap{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:520px){ .an-recap{grid-template-columns:minmax(0,1fr)} .an-recap li{grid-template-columns:26px 1fr;column-gap:12px} .an-recap li::before{grid-row:span 2;margin:0} }

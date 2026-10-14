@@ -20,7 +20,7 @@ import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 
 const DEFAULTS = {
   color: '#FFFFFF',      // gamba sinistra e traversa
-  accent: '#38D6E8',     // gamba destra e sfera
+  accent: '#1F4BFF',     // gamba destra e sfera
   background: null,      // null = trasparente
   period: 10,            // secondi per ciclo
   hold: 0.22,            // frazione del ciclo ferma da composta (frontale)
@@ -28,7 +28,7 @@ const DEFAULTS = {
   flips: true,           // giri veloci: all'apertura, sui pezzi separati e alla chiusura
   sway: 0.5,             // oscillazione mentre i pezzi sono separati (radianti)
   detach: 1,             // quanto si allontanano i pezzi
-  dot: false,            // sfera ciano nella punta (true = A con il pallino)
+  dot: false,            // sfera blu nella punta (true = A con il pallino)
   depth: 1.1,            // spessore
   fallbackSrc: null,
   maxPixelRatio: 2,

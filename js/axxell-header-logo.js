@@ -24,7 +24,7 @@ const DEFAULTS = {
   mode: 'once',          // 'once' | 'loop'
   replayOnHover: true,   // in 'once', ripete l'animazione al passaggio del mouse
   color: '#FFFFFF',      // A e scritta
-  accent: '#38D6E8',     // gamba destra e sfera
+  accent: '#1F4BFF',     // gamba destra e sfera
   period: 8,             // secondi per ciclo completo
   hold: 0.2,             // frazione del ciclo ferma da composta
   apart: 0.3,            // frazione del ciclo con i pezzi separati
@@ -32,7 +32,7 @@ const DEFAULTS = {
   sway: 0.35,            // oscillazione da separati
   flips: true,           // giri veloci
   overscan: 3.6,         // area di disegno attorno alla A, in multipli dell'altezza del logo
-  dot: false,            // sfera ciano nella punta (true = A con il pallino)
+  dot: false,            // sfera blu nella punta (true = A con il pallino)
   depth: 1.1,
   label: 'Axxell',
   maxPixelRatio: 2,
