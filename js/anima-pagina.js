@@ -8,12 +8,12 @@ import { avviaLogoHeader } from './logo-header.js';
 import { avviaMenu } from './menu.js';
 import { avviaScena } from './an-scena.js';
 import { avviaViaggio } from './an-viaggio.js';
-import { avviaOcchio } from './an-occhio.js';
+import { avviaVideo } from './an-video.js';
 
 // La pagina ANIMA: sfondo vivo, la scena dei reparti in apertura, il viaggio di un ordine, i numeri che contano.
 avviaScena();
 avviaViaggio();
-avviaOcchio();
+avviaVideo();
 document.querySelectorAll('.an-icona, .an-icona-grande, .sp-anima-ic, .an-pilastri-centro, .an-reparto-sfondo').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.anima, 'an' + k); });
 document.querySelectorAll('.sp-segno-sabe').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.sabe, 'as' + k); });
 document.querySelectorAll('.an-segno-atlas').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.atlas, 'aa' + k); });

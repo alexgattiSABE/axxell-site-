@@ -321,3 +321,9 @@
 .pagina-anima .sp-categoria-ic{color:var(--fuchsia-ink)}
 @media (max-width:520px){ .pagina-anima .an-categorie{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:380px){ .an-scena{--marchio:72px;width:100%} }
+
+/* i video al posto dell'occhio che osserva e delle quattro app: largo 16:9, sul telefono 9:16 */
+.an-video{margin:0;border-radius:clamp(18px,2.4vw,32px);overflow:hidden;background:#fff6fa;box-shadow:inset 0 0 0 1px var(--line);aspect-ratio:16/9}
+.an-video--alto{aspect-ratio:9/16;max-width:520px;margin-inline:auto}
+.an-video-v{display:block;width:100%;height:100%;object-fit:cover}
+#an-occhio .an-video + .an-consigli-titolo{margin-top:clamp(32px,5vw,64px)}
