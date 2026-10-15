@@ -306,3 +306,9 @@
 .sp-categoria-foto{display:block;width:100%;aspect-ratio:4/5;height:auto;object-fit:cover;border-radius:16px;box-shadow:0 18px 32px -22px rgba(11,16,51,.55)}
 .sp-categoria-foto + .sp-categoria-ic{width:46px;height:46px;border-radius:14px;margin:-23px 0 8px;position:relative}
 .sp-categoria-foto + .sp-categoria-ic svg{width:22px;height:22px}
+
+/* testo a sinistra e una foto a destra in testa alla sezione (SABE «Una serata», ATLAS «Una giornata») */
+.sp-testa-foto{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,4vw,56px);align-items:center}
+.sp-foto{margin:0}
+.sp-foto img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;object-position:var(--fx,50%) 50%;border-radius:22px;box-shadow:0 24px 40px -28px rgba(11,16,51,.55)}
+@media (max-width:820px){ .sp-testa-foto{grid-template-columns:minmax(0,1fr)} }

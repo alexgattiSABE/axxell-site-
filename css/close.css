@@ -150,3 +150,9 @@ footer{padding-block:28px;font-size:.85rem;color:var(--ink-2);background:var(--p
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between}
 footer a{text-decoration:none}
 
+
+/* foto nelle chiusure: una fascia larga sopra il titolo (21:9, sul telefono 4:3) */
+.close-foto{margin:0 auto clamp(28px,4vw,48px);aspect-ratio:21/9;border-radius:clamp(18px,2.4vw,28px);overflow:hidden;box-shadow:0 26px 44px -30px rgba(11,16,51,.6)}
+.close-foto img{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--fx,50%) 50%}
+.close-foto--stretta{max-width:760px;aspect-ratio:21/8;margin-top:clamp(24px,3vw,36px);margin-bottom:0}
+@media (max-width:600px){ .close-foto{aspect-ratio:4/3} }
