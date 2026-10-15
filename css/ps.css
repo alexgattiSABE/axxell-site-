@@ -58,3 +58,7 @@
 
 @media (max-width:1200px){ .ps{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"prob sol" "palco palco";align-items:start} }
 @media (max-width:700px){ .ps{grid-template-columns:minmax(0,1fr);grid-template-areas:"prob" "palco" "sol"} }
+/* «La maggior parte» contro «Noi»: il primo segnato in grigio spento, il secondo con l'evidenziatore volt dell'apertura */
+.ps h2 mark{color:inherit;padding:0 .12em;margin-inline:-.04em;border-radius:.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.ps h2 .ps-loro{background:linear-gradient(color-mix(in srgb,var(--ink-2) 16%,transparent),color-mix(in srgb,var(--ink-2) 16%,transparent)) left bottom/100% 78% no-repeat;color:var(--ink-2)}
+.ps h2 .ps-noi{background:linear-gradient(var(--volt),var(--volt)) left bottom/100% 80% no-repeat}
