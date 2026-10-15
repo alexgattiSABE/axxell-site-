@@ -20,10 +20,19 @@ const GRUPPI = [
 const PASSO = { elenco: 70, casella: 90, parole: 32 };   // le risposte del «Perché» e i passi finali seguono il passo degli elenchi
 const MAX = 520;   // ms: anche gli elenchi lunghi finiscono di entrare presto
 
+// un elemento dentro il titolo (es. <mark class="ps-loro">) resta attorno alle sue parole, così tiene il suo stile
 function inParole(el) {
-  const parti = el.textContent.trim().split(/\s+/);
+  let i = 0;
+  const parola = p => `<span class="parola" aria-hidden="true"><span style="--d:${Math.min(i++ * PASSO.parole, MAX)}">${p}</span></span>`;
+  const pezzi = [...el.childNodes].map(n => {
+    const parole = n.textContent.trim().split(/\s+/).filter(Boolean);
+    if (!parole.length) return '';
+    const testo = parole.map(parola).join(' ');
+    const prima = /^\s/.test(n.textContent) ? ' ' : '', dopo = /\s$/.test(n.textContent) ? ' ' : '';
+    return prima + (n.nodeType === 1 ? `<${n.localName} class="${n.className}">${testo}</${n.localName}>` : testo) + dopo;
+  });
   el.setAttribute('aria-label', el.textContent.trim());
-  el.innerHTML = parti.map((p, i) => `<span class="parola" aria-hidden="true"><span style="--d:${Math.min(i * PASSO.parole, MAX)}">${p}</span></span>`).join(' ');
+  el.innerHTML = pezzi.join('').trim();
 }
 
 function nome(el) {
