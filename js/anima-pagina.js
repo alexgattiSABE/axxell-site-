@@ -14,7 +14,7 @@ import { avviaVideo } from './an-video.js';
 avviaScena();
 avviaViaggio();
 avviaVideo();
-document.querySelectorAll('.an-icona, .an-icona-grande, .sp-anima-ic, .an-pilastri-centro, .an-reparto-sfondo').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.anima, 'an' + k); });
+document.querySelectorAll('.an-icona, .an-icona-grande, .sp-anima-ic, .an-reparto-sfondo').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.anima, 'an' + k); });
 document.querySelectorAll('.sp-segno-sabe').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.sabe, 'as' + k); });
 document.querySelectorAll('.an-segno-atlas').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI.atlas, 'aa' + k); });
 avviaSfondo($('bg'));

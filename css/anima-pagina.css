@@ -225,29 +225,6 @@
 @media (max-width:560px){ .an-consigli{grid-template-columns:minmax(0,1fr)} }
 @media (prefers-reduced-motion:reduce){ .an-g-punto,.an-g-proiezione,.an-g-atteso{opacity:1} }
 
-/* i punti di forza: tre colonne unite in un blocco solo, una linea fucsia le congiunge sul marchio di ANIMA */
-.an-pilastri{position:relative;margin-top:clamp(36px,5vw,64px)}
-.an-pilastri-testa{position:relative;display:grid;justify-items:center;gap:18px;text-align:center}
-.an-pilastri-testa p{font-size:var(--step-1);font-weight:600;letter-spacing:-.01em;max-width:40ch}
-.an-pilastri-testa b{color:var(--fuchsia-ink)}
-.an-pilastri-centro{position:relative;z-index:1;width:64px;height:64px;padding:12px;border-radius:20px;background:var(--ink);color:var(--fuchsia);box-shadow:0 0 0 6px color-mix(in srgb,var(--fuchsia) 18%,transparent), 0 18px 34px -18px rgba(11,16,51,.6)}
-.an-pilastri-centro svg{width:100%;height:100%}
-/* la linea: dal centro scende e si apre sulle tre colonne */
-.an-pilastri-testa::after{content:"";position:absolute;left:calc(100% / 6);right:calc(100% / 6);top:calc(100% - 33px);height:59px;border:2px solid var(--fuchsia);border-bottom:0;border-radius:16px 16px 0 0}
-.an-pilastri-fila{margin-top:26px}
-.an-pilastri-fila{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-radius:var(--r);background:var(--paper);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--fuchsia) 40%,var(--line)), 0 24px 44px -30px rgba(176,0,95,.5)}
-.an-pilastro{position:relative;display:grid;gap:14px;align-content:start;padding:clamp(20px,2.4vw,30px)}
-.an-pilastro + .an-pilastro{box-shadow:inset 1px 0 0 var(--line)}
-.an-pilastro::before{content:"";position:absolute;left:50%;top:-6px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--fuchsia);box-shadow:0 0 0 4px var(--paper)}
-.an-pilastro .an-modo{font-size:var(--step-1);line-height:1.2;letter-spacing:-.02em}
-.an-pilastro .servizi li::before{border-color:var(--fuchsia)}
-.an-pilastro .servizi b{font-weight:700;color:var(--ink)}
-@media (max-width:760px){
-  .an-pilastri-fila{grid-template-columns:minmax(0,1fr)}
-  .an-pilastro + .an-pilastro{box-shadow:inset 0 1px 0 var(--line)}
-  .an-pilastro::before,.an-pilastri-testa::after{display:none}
-}
-
 /* margine per piatto e incasso per giorno della settimana */
 .an-occhio-due{margin-top:clamp(12px,1.6vw,20px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,1.6vw,20px)}
 .an-margini-carta,.an-giorni-carta{display:grid;gap:14px;align-content:start;padding:clamp(18px,2.2vw,26px);border-radius:var(--r);background:var(--paper);box-shadow:inset 0 0 0 1px var(--line), 0 18px 34px -26px rgba(12,26,143,.45)}
