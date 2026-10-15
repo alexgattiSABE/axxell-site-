@@ -281,3 +281,22 @@
 /* «Non solo ristoranti»: una riga sotto la presentazione, più piccola */
 .sp-anche{margin:12px 0 0;max-width:52ch;font-size:.95rem;color:var(--ink-2);text-wrap:pretty}
 .sp-anche b{color:var(--ink)}
+
+/* i punti di forza in breve (ANIMA, ATLAS): tre colonne, per ognuna il tema, la frase e il prima → ora */
+.pb{margin-top:clamp(40px,5vw,72px)}
+.pb-frase{text-align:center;font-size:var(--step-1);font-weight:600;letter-spacing:-.01em;max-width:40ch;margin:0 auto clamp(22px,3vw,34px)}
+.pb-frase b{color:var(--pb-ink)}
+.pb-fila{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.pb-voce{display:grid;gap:10px;align-content:start;padding:6px clamp(18px,2.4vw,34px) 4px;border-top:3px solid var(--pb)}
+.pb-voce + .pb-voce{box-shadow:inset 1px 0 0 var(--line)}
+.pb-tema{padding-top:16px;font-size:clamp(1.5rem,1.1rem + 1.4vw,2.2rem);font-weight:800;font-variation-settings:var(--wide);letter-spacing:-.03em;line-height:1;color:var(--pb-ink)}
+.pb-titolo{font-size:1.05rem;font-weight:700;line-height:1.3;color:var(--ink)}
+.pb-cambio{margin:4px 0 0;display:grid;gap:4px;font-size:.92rem;line-height:1.4}
+.pb-cambio s{color:var(--ink-2);text-decoration-color:color-mix(in srgb,var(--ink-2) 60%,transparent)}
+.pb-ora{font-weight:700;color:var(--ink)}
+.pb-ora::before{content:"→ ";color:var(--pb-ink)}
+@media (max-width:760px){
+  .pb-fila{grid-template-columns:minmax(0,1fr);gap:22px}
+  .pb-voce{padding-inline:0}
+  .pb-voce + .pb-voce{box-shadow:none}
+}

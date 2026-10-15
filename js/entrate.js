@@ -13,7 +13,7 @@ const GRUPPI = [
   ['nome', '.product .nome'],
   ['parole', '#h-tecnica, .pilastri h2, .product .motto, #h-perche, #h-ripaga, .passi b, .ps h2, .sp-titolo, .sp-h2, .sp-h3, .sp-chiusura'],
   ['testo', '.tecnica-testa > p:last-child, .ps p, .anima-info .intro, .atlas-lato .intro, .product .note, .anima-info .hint, .sp-intro'],
-  ['casella', '.tecnica-schema, .atlas .gruppi > div, .app li, .anima > .more, .atlas > .more, .sabe-info > .more, .calcolo, .sp-stat, .sp-gruppi > div, .sp-piano, .an-numero, .an-pilastri, .an-app, .an-fc, .an-fc-mese, .an-margini-carta, .an-giorni-carta, .an-prezzi-elenco, .an-prezzi-fornitore, .an-grafico, .at-area, .at-pro-blocco, .at-numero, .at-pilastri, .at-esempio, .at-privacy-carte article, .at-anima-gruppi, .an-insieme-carta, .se-carte article, .se-mondo, .se-tecnica, .se-servizio, .vi-credo, .vi-ragione, .vi-fisco-carta, .vi-grafico'],
+  ['casella', '.tecnica-schema, .atlas .gruppi > div, .app li, .anima > .more, .atlas > .more, .sabe-info > .more, .calcolo, .sp-stat, .sp-gruppi > div, .sp-piano, .an-numero, .pb-voce, .an-app, .an-fc, .an-fc-mese, .an-margini-carta, .an-giorni-carta, .an-prezzi-elenco, .an-prezzi-fornitore, .an-grafico, .at-area, .at-pro-blocco, .at-numero,  .at-esempio, .at-privacy-carte article, .at-anima-gruppi, .an-insieme-carta, .se-carte article, .se-mondo, .se-tecnica, .se-servizio, .vi-credo, .vi-ragione, .vi-fisco-carta, .vi-grafico'],
   ['elenco', '.tecnica-righe > div, .ps li, .funzioni li, .servizi-gruppi > div, .sezioni li, .app-blocco h3, .numeri li, .ripaga-elenco li, .passi li, .close-row, .sp-fatti li, .sp-passi li, .sp-domande details, .sp-altre-elenco li, .sp-nota, .an-reparto, .an-consiglio'],
   ['scena', '#sabePila, #animaPalco, #atlasScrivania, .atlas .compiti'],
 ];
