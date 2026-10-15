@@ -293,10 +293,10 @@
 .servizi li.an-no::before{content:"×";top:-.15em;left:0;width:auto;height:auto;border:0;transform:none;font-size:1.25em;font-weight:800;line-height:1;color:var(--fuchsia-ink)}
 
 /* non solo ristoranti: le categorie in tre colonne, i punti col fucsia */
-.pagina-anima .an-categorie{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pagina-anima .an-categorie{grid-template-columns:repeat(4,minmax(0,1fr))}
 .pagina-anima .sp-altre-elenco li::before{background:var(--fuchsia);box-shadow:0 2px 0 -.5px var(--fuchsia-deep)}
 .pagina-anima .sp-categoria-ic{color:var(--fuchsia-ink)}
-@media (max-width:520px){ .pagina-anima .an-categorie{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:520px){ .pagina-anima .an-categorie{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:380px){ .an-scena{--marchio:72px;width:100%} }
 
 /* i video al posto dell'occhio che osserva e delle quattro app: largo 16:9, sul telefono 9:16 */
