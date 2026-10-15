@@ -300,3 +300,9 @@
   .pb-voce{padding-inline:0}
   .pb-voce + .pb-voce{box-shadow:none}
 }
+
+/* «Non solo ristoranti»: una foto vera per ogni settore, con l'icona appoggiata sul bordo */
+.sp-categorie li:has(.sp-categoria-foto){gap:0}
+.sp-categoria-foto{display:block;width:100%;aspect-ratio:4/5;height:auto;object-fit:cover;border-radius:16px;box-shadow:0 18px 32px -22px rgba(11,16,51,.55)}
+.sp-categoria-foto + .sp-categoria-ic{width:46px;height:46px;border-radius:14px;margin:-23px 0 8px;position:relative}
+.sp-categoria-foto + .sp-categoria-ic svg{width:22px;height:22px}
