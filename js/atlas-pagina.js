@@ -9,12 +9,14 @@ import { avviaMenu } from './menu.js';
 import { avviaScena } from './at-scena.js';
 import { avviaGiornata } from './at-giornata.js';
 import { avviaLettura } from './at-lettura.js';
+import { avviaVideo } from './an-video.js';
 
 // La pagina ATLAS: sfondo vivo, la scena delle app in apertura, la giornata, i numeri che contano.
 document.documentElement.classList.add('js');   // senza JavaScript le card della giornata restano visibili
 avviaScena();
 avviaGiornata();
 avviaLettura();
+avviaVideo();
 document.querySelectorAll('.at-icona, .at-icona-grande, .at-app-ic, .at-pro-centro, .at-anima-m, .at-anima-gigante').forEach((el, k) => { el.innerHTML = copiaMarchio(MARCHI[el.dataset.marchio || 'atlas'], 'at' + k); });
 avviaSfondo($('bg'));
 avviaNumeri();
