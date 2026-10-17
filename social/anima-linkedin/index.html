@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kit LinkedIn · ANIMA · Axxell</title>
+<style>
+:root{--ink:#0b1033;--ink-2:#454d7a;--line:#dde1f2;--fuchsia:#ff1f8f;--paper:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6fb;color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 16px 64px;display:grid;gap:24px}
+h1{margin:0;font-size:clamp(1.6rem,1.2rem + 2vw,2.4rem);letter-spacing:-.02em}
+p{margin:0;color:var(--ink-2)}
+.card{background:var(--paper);border-radius:20px;padding:20px;box-shadow:inset 0 0 0 1px var(--line);display:grid;gap:14px}
+video{width:100%;border-radius:14px;display:block;background:#000}
+.azioni{display:flex;flex-wrap:wrap;gap:10px}
+a.btn,button{display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:#fff;font:600 15px/1 inherit;font-family:inherit;text-decoration:none;cursor:pointer}
+a.btn.chiaro{background:var(--paper);color:var(--ink)}
+pre{margin:0;white-space:pre-wrap;font:15px/1.55 inherit;font-family:inherit;color:var(--ink)}
+small{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kit LinkedIn · ANIMA</h1>
+  <p>Video, copertina e testo del post, pronti da scaricare e pubblicare. Scarica il file originale: non registrarlo dallo schermo e non inoltrarlo via WhatsApp, che lo comprime.</p>
+  <section class="card">
+    <video src="/social/anima-linkedin/anima-linkedin-1x1.mp4" poster="/social/anima-linkedin/anima-linkedin-copertina.jpg" controls playsinline preload="metadata"></video>
+    <div class="azioni">
+      <a class="btn" href="/social/anima-linkedin/anima-linkedin-1x1.mp4" download>Scarica il video (MP4)</a>
+      <a class="btn chiaro" href="/social/anima-linkedin/anima-linkedin-copertina.jpg" download>Scarica la copertina</a>
+    </div>
+    <small>1080×1080 · 42 secondi · con voce e musica · H.264 + AAC</small>
+  </section>
+  <section class="card">
+    <pre id="testo">Ma quanti programmi usi per il tuo locale?!
+
+ANIMA è il gestionale completamente automatizzato di Axxell: sala, cucina, cassa, magazzino e fornitori in un unico sistema. Ogni dato si inserisce una volta e arriva da solo dove serve.
+
+🍽️ Comande dallo smartphone, anche senza rete
+📦 Magazzino e food cost che si aggiornano a ogni piatto venduto
+🧾 Bolle e fatture lette da sole, ordini ai fornitori già pronti
+📊 Ti dice cosa sta cambiando nei tuoi numeri e cosa fare
+
+Funziona anche per parrucchieri, barbieri, centri estetici e studi medici.
+
+👉 axxell.ai/anima
+
+#ristorazione #gestionale #automazione #PMI</pre>
+    <div class="azioni"><button type="button" id="copia">Copia il testo</button></div>
+  </section>
+  <p><small>Su LinkedIn: carica il video, imposta la copertina come miniatura e incolla il testo. Il link a axxell.ai/anima rende di più nel primo commento.</small></p>
+</main>
+<script>
+document.getElementById('copia').addEventListener('click', async (e) => {
+  try { await navigator.clipboard.writeText(document.getElementById('testo').textContent); e.target.textContent = 'Testo copiato'; }
+  catch { e.target.textContent = 'Seleziona il testo e copialo'; }
+});
+</script>
+</body>
+</html>
