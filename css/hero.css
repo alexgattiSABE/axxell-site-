@@ -126,3 +126,12 @@
 @keyframes sale{from{transform:translateY(105%);opacity:0}}
 @keyframes evidenzia{from{background-size:0% 80%}}
 @keyframes appare{from{opacity:0;transform:translateY(14px)}}
+
+/* Da dove parti: tre percorsi, uno per tipo di attività */
+.percorsi{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:12px clamp(12px,2vw,20px);align-items:stretch;margin-top:clamp(22px,3vw,36px)}
+.percorsi-titolo{margin:0;align-self:center;font-weight:800;font-size:1.05rem;color:var(--ink)}
+.percorsi a{display:grid;gap:4px;align-content:start;padding:14px 18px;border-radius:18px;background:var(--paper);text-decoration:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--tinta);transition:transform .2s,box-shadow .2s}
+.percorsi a:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1.5px var(--tinta),inset 4px 0 0 var(--tinta)}
+.percorsi b{font-size:1rem;line-height:1.25}
+.percorsi span{font-size:.88rem;line-height:1.35;color:var(--ink-2)}
+@media (max-width:900px){ .percorsi{grid-template-columns:minmax(0,1fr)} }

@@ -59,14 +59,14 @@ export const MESSAGGI = {
 const t = v => (typeof v === 'string' ? v.trim() : '');
 
 // Gli stessi controlli della funzione sul server (api/_consulenza.mjs), per dire subito cosa correggere.
-// Obbligatori come nel modulo del sito vecchio.
+// Obbligatori solo nome, tipo di attività, email, telefono e privacy: il resto si chiede dopo, in consulenza.
 export function controlla(d) {
   const campi = [];
   if (!t(d.nome) || t(d.nome).length > 60) campi.push('nome');
-  if (!t(d.cognome) || t(d.cognome).length > 60) campi.push('cognome');
-  if (!t(d.attivita) || t(d.attivita).length > 120) campi.push('attivita');
+  if (t(d.cognome).length > 60) campi.push('cognome');
+  if (t(d.attivita).length > 120) campi.push('attivita');
   if (!t(d.tipo)) campi.push('tipo');
-  if (!/^(IT)?\d{11}$/.test(t(d.piva).replace(/\s+/g, '').toUpperCase())) campi.push('piva');
+  if (t(d.piva) && !/^(IT)?\d{11}$/.test(t(d.piva).replace(/\s+/g, '').toUpperCase())) campi.push('piva');
   if (t(d.email).length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t(d.email))) campi.push('email');
   if (!t(d.telefono) || t(d.telefono).length > 30 || !/^[0-9+()\s-]+$/.test(t(d.telefono))) campi.push('telefono');
   if (t(d.sito_url) && (t(d.sito_url).length > 200 || !/^(https?:\/\/)?[^\s/]+\.[^\s/]{2,}(\/\S*)?$/i.test(t(d.sito_url)))) campi.push('sito_url');
