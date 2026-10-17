@@ -62,12 +62,12 @@ export function valida(corpo) {
     interessi: Array.isArray(c.interessi) ? [...new Set(c.interessi.map(riga))] : [],
   };
   const campi = [];
-  // obbligatori come nel modulo del sito vecchio: nome, cognome, azienda, tipo di attività, partita IVA, email, telefono, privacy
+  // obbligatori: nome, tipo di attività, email, telefono, privacy; cognome, azienda e partita IVA facoltativi
   if (!d.nome || d.nome.length > MAX.nome) campi.push('nome');
-  if (!d.cognome || d.cognome.length > MAX.cognome) campi.push('cognome');
-  if (!d.attivita || d.attivita.length > MAX.attivita) campi.push('attivita');
+  if (d.cognome.length > MAX.cognome) campi.push('cognome');
+  if (d.attivita.length > MAX.attivita) campi.push('attivita');
   if (!TIPI.includes(d.tipo)) campi.push('tipo');
-  if (!PIVA.test(d.piva)) campi.push('piva');
+  if (d.piva && !PIVA.test(d.piva)) campi.push('piva');
   if (d.email.length > MAX.email || !EMAIL.test(d.email)) campi.push('email');
   if (!d.telefono || d.telefono.length > MAX.telefono || !TELEFONO.test(d.telefono)) campi.push('telefono');
   if (!d.interessi.every(i => INTERESSI.includes(i))) campi.push('interessi');
@@ -97,7 +97,7 @@ const scelte = d => [
 
 function righe(d) {
   return [
-    ['Nome', `${d.nome} ${d.cognome}`], ['Azienda', d.attivita], ['P.IVA', d.piva], ['Email', d.email], ['Telefono', d.telefono],
+    ['Nome', `${d.nome} ${d.cognome}`.trim()], ['Azienda', d.attivita], ['P.IVA', d.piva], ['Email', d.email], ['Telefono', d.telefono],
     ...scelte(d), ['Sito attuale', d.sito_url], ['Messaggio', d.messaggio],
   ].filter(([, v]) => v);
 }

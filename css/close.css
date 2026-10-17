@@ -156,3 +156,19 @@ footer a{text-decoration:none}
 .close-foto img{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--fx,50%) 50%}
 .close-foto--stretta{max-width:760px;aspect-ratio:21/8;margin-top:clamp(24px,3vw,36px);margin-bottom:0}
 @media (max-width:600px){ .close-foto{aspect-ratio:4/3} }
+
+/* Quanto costa: i tre punti di partenza, con il link ai piani */
+.prezzi{padding-block:0 clamp(80px,10vw,120px);display:grid;gap:clamp(24px,3vw,36px);justify-items:start}
+.prezzi-testa{display:grid;gap:10px;padding-top:clamp(40px,5vw,64px);border-top:1px solid var(--line);width:100%}
+.prezzi-testa h2{margin:0;font-size:clamp(2rem, 1.2rem + 2.2vw, 3.25rem);letter-spacing:-.03em}
+.prezzi-testa p{margin:0;max-width:60ch;color:var(--ink-2);font-size:1.05rem;line-height:1.5}
+.prezzi-testa b{color:var(--ink)}
+.prezzi-lista{list-style:none;margin:0;padding:0;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(14px,2vw,24px)}
+.prezzi-lista li{display:flex;flex-direction:column;gap:10px;padding:clamp(20px,2.5vw,28px);border-radius:24px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line),inset 0 5px 0 var(--tinta)}
+.prezzi-nome{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.85rem;color:var(--ink)}
+.prezzi-lista p{margin:0;color:var(--ink-2);line-height:1.45}
+.prezzi-lista p b{color:var(--ink)}
+.prezzi-cifra{font-size:1rem}
+.prezzi-cifra b{font-size:clamp(2rem,1.5rem + 1.4vw,2.75rem);letter-spacing:-.03em;font-weight:800}
+.prezzi-lista a{margin-top:auto;font-weight:700;color:var(--ink);text-underline-offset:4px}
+@media (max-width:860px){ .prezzi-lista{grid-template-columns:minmax(0,1fr)} }

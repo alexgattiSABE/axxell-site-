@@ -2,7 +2,7 @@ import { riduci, copiaMarchio } from './utili.js';
 import { MARCHI } from './marchi.js';
 import { euro } from './euro.js';
 
-// «Perché scegliere Axxell Intelligence?»: il triangolo Affidabile / Semplice / Preciso con Autonomo al centro.
+// «Perché scegliere Axxell?»: il triangolo Affidabile / Semplice / Preciso con Autonomo al centro.
 // I lati e i raggi sono flussi: un tratto che scorre e una luce che viaggia da un punto all'altro.
 // Le linee si calcolano dalle posizioni vere dei punti, così seguono la pagina a ogni larghezza.
 const NS = 'http://www.w3.org/2000/svg';
