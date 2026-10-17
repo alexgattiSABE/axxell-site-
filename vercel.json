@@ -2,9 +2,36 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/atelier", "destination": "/servizi#se-atelier", "permanent": true },
-    { "source": "/atelier/:path*", "destination": "/servizi#se-atelier", "permanent": true },
-    { "source": "/website-creation", "destination": "/servizi#se-atelier", "permanent": true },
-    { "source": "/website-creation/:path*", "destination": "/servizi#se-atelier", "permanent": true }
+    {
+      "source": "/atelier",
+      "destination": "/servizi#se-atelier",
+      "permanent": true
+    },
+    {
+      "source": "/atelier/:path*",
+      "destination": "/servizi#se-atelier",
+      "permanent": true
+    },
+    {
+      "source": "/website-creation",
+      "destination": "/servizi#se-atelier",
+      "permanent": true
+    },
+    {
+      "source": "/website-creation/:path*",
+      "destination": "/servizi#se-atelier",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/social/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
   ]
 }
