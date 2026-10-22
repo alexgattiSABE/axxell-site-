@@ -113,7 +113,7 @@ const comeHtml = r => `<table role="presentation" width="100%" cellpadding="0" c
 }).join('')}</table>`;
 function cornice({ etichetta, titolo, prima = '', righe = [], dopo = '' }) {
   const p = t => `<p style="margin:0 0 14px;font:400 15px/1.6 ${F};color:${INK}">${t}</p>`;
-  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet"><title>${escapeHtml(titolo)}</title></head>
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><link href="https://axxell.ai/fonts/archivo.css" rel="stylesheet"><title>${escapeHtml(titolo)}</title></head>
 <body style="margin:0;padding:0;background:${FONDO}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${FONDO};padding:32px 16px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${LINEA};border-radius:16px;overflow:hidden">
