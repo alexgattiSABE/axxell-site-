@@ -37,7 +37,7 @@ const RIQUADRI = [
      <li><span>1 × Vermentino</span><span>19,00 €</span></li>
      <li class="tot"><span>Totale tavolo 7</span><span>89,00 €</span></li>
    </ul>
-   <p class="riq-esito num">Diviso in 4 · 22,25 € a testa · scontrino inviato</p>`,
+   <p class="riq-esito num">Diviso in 4 · 22,25 € a testa · conto chiuso</p>`,
   `<p class="riq-nota">Dal QR del tavolo, dopo il pagamento</p>
    <div class="riq-msg">Com'è andata la serata?</div>
    <div class="riq-stelle" aria-label="5 stelle su 5">${Array.from({ length: 5 }, (_, i) => `<span style="--k:${i}">${SVG(IC.stella, 1.6)}</span>`).join('')}</div>
