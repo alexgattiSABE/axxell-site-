@@ -14,21 +14,36 @@
 .pagina-argo .an-icona-grande{filter:none}
 @media (max-width:1200px){ .pagina-argo .sp-apertura{grid-template-columns:minmax(0,1fr)} }
 
-/* apertura: cento occhi in dieci file, uno si accende sull'aumento e l'avviso gli si posa sopra */
-.ar-scena{position:relative;width:100%;container-type:inline-size;padding-bottom:clamp(120px,36cqi,170px)}
-.ar-occhi{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:clamp(4px,1.6cqi,10px);padding:clamp(14px,3cqi,22px);border-radius:24px;background:color-mix(in srgb,var(--argo) 7%,var(--paper));box-shadow:inset 0 0 0 1px var(--line)}
-.ar-occhio{display:grid;place-items:center;aspect-ratio:1;color:color-mix(in srgb,var(--argo) 30%,var(--paper));transition:color .5s var(--ease), scale .5s var(--ease)}
-.ar-occhio svg{display:block;width:100%;height:100%}
-.ar-occhio .pupilla{fill:currentColor;stroke:none;transition:translate .8s var(--ease)}
-.ar-occhio.sveglio{color:var(--argo);scale:1.18}
-.ar-avviso{position:absolute;left:clamp(10px,6cqi,36px);right:clamp(10px,6cqi,36px);bottom:0;filter:drop-shadow(0 18px 24px rgba(154,52,18,.2))}
+/* apertura: due schede da prodotto, i costi per fornitore e la posizione del tuo prezzo nella fascia della provincia */
+.ar-scena{position:relative;width:100%;container-type:inline-size;display:grid;gap:0;padding-bottom:8px}
+.ar-scena .sp-anima{opacity:1;translate:none;scale:1}
+.ar-carta{box-shadow:inset 0 0 0 1px var(--line), 0 24px 40px -28px rgba(154,52,18,.4)}
+.ar-zona{margin:-14px 0 0 clamp(20px,9cqi,52px);position:relative}
+.ar-costi{margin-right:clamp(20px,9cqi,52px)}
+.ar-forn{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.ar-forn li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px;align-items:baseline;font-size:.92rem}
+.ar-nome{color:var(--ink-2)}
+.ar-forn b{font-weight:700}
+.ar-forn em{font-style:normal;font-weight:800;font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--argo-fondo);color:#fff}
+.ar-forn li:not(.su) b{grid-column:2 / 4}
+.ar-barra{grid-column:1 / -1;height:8px;border-radius:4px;background:color-mix(in srgb,var(--argo) 14%,var(--paper));position:relative;overflow:hidden}
+.ar-barra::after{content:"";position:absolute;inset:0;width:var(--w);border-radius:4px;background:color-mix(in srgb,var(--argo) 55%,var(--paper));transform-origin:left}
+.ar-forn .su .ar-barra::after{background:var(--argo)}
+/* la fascia della provincia: dal primo al terzo quartile, la mediana, e il segno «Tu» */
+.ar-fascia{position:relative;height:10px;margin:30px 0 6px;border-radius:5px;background:color-mix(in srgb,var(--argo) 12%,var(--paper))}
+.ar-fascia-q{position:absolute;left:var(--a);width:calc(var(--b) - var(--a));top:0;bottom:0;border-radius:5px;background:color-mix(in srgb,var(--argo) 42%,var(--paper))}
+.ar-med{position:absolute;left:var(--x);top:-4px;bottom:-4px;width:2px;background:var(--ink-2)}
+.ar-med small{position:absolute;top:calc(100% + 4px);left:50%;translate:-50% 0;font-size:.7rem;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.ar-tu{position:absolute;left:var(--x);top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--argo-fondo);box-shadow:0 0 0 4px #fff,0 0 0 6px var(--argo-fondo)}
+.ar-tu small{position:absolute;bottom:calc(100% + 10px);left:50%;translate:-50% 0;font-size:.74rem;font-weight:800;color:#fff;background:var(--argo-fondo);padding:2px 8px;border-radius:999px}
+.ar-zona dl{margin-top:18px}
 @media (prefers-reduced-motion:no-preference){
-  .ar-avviso{animation:ar-sale .9s var(--ease) .3s both}
+  .ar-carta{animation:ar-sale .9s var(--ease) both}
+  .ar-zona{animation-delay:.25s}
+  .ar-barra::after{animation:ar-cresce 1s var(--ease) .4s both}
+  .ar-tu{animation:ar-tu 1s var(--ease) .8s both}
 }
 @keyframes ar-sale{from{opacity:0;translate:0 18px}}
-
-/* gratis: tre caselle sotto il titolo, una colonna sola */
-.pagina-argo .sp-altre{background:color-mix(in srgb,var(--argo) 7%,var(--paper))}
-.ar-gratis{grid-template-columns:minmax(0,1fr)}
-.ar-gratis .sp-altre-elenco li::before{background:var(--argo-fondo);box-shadow:0 2px 0 -.5px var(--argo-scuro)}
-.ar-avviso .sp-anima{opacity:1;translate:none;scale:1}
+@keyframes ar-cresce{from{transform:scaleX(0)}}
+@keyframes ar-tu{from{left:18%}}
+.pagina-argo .sp-titolo{font-size:clamp(2.2rem,1.1rem + 3vw,3.9rem)}
