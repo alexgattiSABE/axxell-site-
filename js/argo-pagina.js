@@ -4,10 +4,10 @@ import { avviaEntrate } from './entrate.js';
 import { avviaInclina } from './inclina.js';
 import { avviaLogoHeader } from './logo-header.js';
 import { avviaMenu } from './menu.js';
-import { avviaViaggio } from './an-viaggio.js';
+import { avviaVideo } from './an-video.js';
 
-// La pagina Argo: sfondo vivo, il viaggio di una bolla.
-avviaViaggio();
+// La pagina Argo: sfondo vivo, il video del viaggio di una bolla.
+avviaVideo();
 avviaSfondo($('bg'));
 avviaEntrate();
 avviaInclina();

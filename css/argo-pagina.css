@@ -47,3 +47,6 @@
 @keyframes ar-cresce{from{transform:scaleX(0)}}
 @keyframes ar-tu{from{left:18%}}
 .pagina-argo .sp-titolo{font-size:clamp(2.2rem,1.1rem + 3vw,3.9rem)}
+
+/* Video «Il viaggio di una bolla»: stesse regole dei video di SABE, ANIMA e ATLAS (js/an-video.js), fondo caldo di Argo. */
+.pagina-argo .an-video{background:#fff6ef;margin-top:clamp(24px,3vw,40px)}
