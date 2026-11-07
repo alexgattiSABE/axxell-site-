@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="img/appoggio-icona-app.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/appoggio-icona-app.png">
+<title>Argo · Axxell</title>
+<meta name="description" content="Argo legge le bolle e le fatture dei tuoi fornitori, ti avvisa degli aumenti e ti confronta con la media anonima della tua provincia. Gratis per i ristoranti.">
+<link rel="stylesheet" href="/fonts/archivo.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sabe.css">
+<link rel="stylesheet" href="css/close.css">
+<link rel="stylesheet" href="css/sabe-pagina.css">
+<link rel="stylesheet" href="css/anima-pagina.css">
+<link rel="stylesheet" href="css/argo-pagina.css">
+<link rel="stylesheet" href="css/entrate.css">
+<link rel="stylesheet" href="css/inclina.css">
+</head>
+<body class="pagina-argo">
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Axxell, homepage"><span class="brand-logo"><svg class="brand-piatto" width="155" height="34" viewBox="10.22 11 332.78 73" aria-hidden="true"><path d="M56.99 17.66 L56.83 16.47 L56.53 15.48 L56.09 14.55 L55.52 13.69 L54.83 12.93 L53.89 12.18 L52.84 11.6 L51.87 11.25 L50.86 11.05 L49.83 11.0 L48.63 11.13 L47.64 11.41 L46.7 11.83 L45.83 12.38 L45.05 13.05 L44.28 13.97 L43.7 14.95 L10.22 84.0 L25.78 84.0 L33.54 68.0 L62.91 68.0 L57.09 56.0 L39.36 56.0 L56.33 20.99 L56.65 20.2 L56.87 19.37 L56.98 18.51Z" fill="var(--sistema)"/><path d="M74.22 84.0 L89.78 84.0 L59.54 21.62 L51.78 37.71Z" fill="var(--appoggio-gamba)"/><path d="M109.21 84.00 L120.00 67.82 L130.79 84.00 L145.21 84.00 L127.21 57.00 L145.21 30.00 L130.79 30.00 L120.00 46.18 L109.21 30.00 L94.79 30.00 L112.79 57.00 L94.79 84.00Z" fill="var(--sistema)"/><path d="M168.21 84.00 L179.00 67.82 L189.79 84.00 L204.21 84.00 L186.21 57.00 L204.21 30.00 L189.79 30.00 L179.00 46.18 L168.21 30.00 L153.79 30.00 L171.79 57.00 L153.79 84.00Z" fill="var(--sistema)"/><path d="M253.00 30.00 L225.00 30.00 L213.00 30.00 L213.00 41.00 L213.00 51.50 L213.00 62.50 L213.00 73.00 L213.00 84.00 L225.00 84.00 L253.00 84.00 L253.00 73.00 L225.00 73.00 L225.00 62.50 L248.00 62.50 L248.00 51.50 L225.00 51.50 L225.00 41.00 L253.00 41.00Z" fill="var(--sistema)"/><path d="M274.00 30.00 L262.00 30.00 L262.00 73.00 L262.00 84.00 L274.00 84.00 L298.00 84.00 L298.00 73.00 L274.00 73.00Z" fill="var(--sistema)"/><path d="M319.00 30.00 L307.00 30.00 L307.00 73.00 L307.00 84.00 L319.00 84.00 L343.00 84.00 L343.00 73.00 L319.00 73.00Z" fill="var(--sistema)"/></svg></span></a>
+    <div class="nav-voci" id="navVoci">
+      <ul>
+        <li><a href="sabe.html"><img class="nav-ic" src="img/icone/sabe.svg" alt="" width="18" height="18">SABE</a></li>
+        <li><a href="anima.html"><img class="nav-ic" src="img/icone/anima.svg" alt="" width="18" height="18">ANIMA</a></li>
+        <li><a href="atlas.html"><img class="nav-ic" src="img/icone/atlas.svg" alt="" width="18" height="18">ATLAS</a></li>
+        <li><a href="servizi.html"><img class="nav-ic" src="img/icone/servizi.svg" alt="" width="18" height="18">Sito e chatbot</a></li>
+        <li><a href="visione.html"><img class="nav-ic" src="img/icone/visione.svg" alt="" width="18" height="18">Visione</a></li>
+      </ul>
+      <a class="btn btn--ink" href="consulenza.html"><span class="nav-lungo">Richiedi una consulenza</span><span class="nav-corto">Consulenza</span></a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<main id="top">
+  <!-- Pagina spenta: non è nel menu, nel footer né in sitemap.xml. Il link di iscrizione diventa il dominio di Argo quando lo compriamo. -->
+  <section class="sp-apertura wrap" id="ar-apertura" aria-labelledby="ar-h1" data-tone="atlas">
+    <div class="sp-apertura-testo">
+      <p class="sp-occhiello"><span class="an-icona" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>Argo · il controllo degli acquisti</p>
+      <h1 id="ar-h1" class="sp-titolo">Cento occhi sui tuoi prezzi.</h1>
+      <p class="sp-intro">Inoltri le bolle e le fatture dei fornitori: Argo legge <b>ogni riga</b> e <b>ti avvisa quando un prezzo sale</b>, prima che lo scopra il conto a fine mese.</p>
+      <p class="sp-anche"><b>Il nome:</b> viene da Argo Panoptes, il gigante dai cento occhi che non dormiva mai.</p>
+      <div class="sp-azioni"><a class="btn btn--ink" href="https://axxell-acquisti.vercel.app/iscriviti">Iscrivi il tuo locale</a><a class="sp-link" href="#ar-viaggio">Segui una bolla</a></div>
+      <ul class="sp-fatti">
+        <li><b>Gratis</b>per i ristoranti</li>
+        <li><b>Ogni riga letta</b>prodotto, quantità e prezzo</li>
+        <li><b>Dati in UE</b>i prezzi degli altri restano anonimi</li>
+      </ul>
+    </div>
+    <div class="sp-scena-blocco">
+      <div class="ar-scena" id="arScena" role="img" aria-label="Cento occhi, uno dei quali si accende su un aumento di prezzo">
+        <div class="ar-occhi" id="arOcchi" aria-hidden="true"></div>
+        <div class="ar-avviso">
+          <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Avvisi</span><span class="sp-anima-tipo">Avviso aumento</span></header><b>Salmone fresco · +8%</b><dl><div><dt>Prima</dt><dd>17,50 €/kg</dd></div><div><dt>Ora</dt><dd>18,90 €/kg</dd></div></dl><p class="sp-anima-nota">Segnalato sul telefono</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap contrasto" id="ar-contrasto" aria-labelledby="ar-h-contrasto" data-tone="atlas">
+    <h2 id="ar-h-contrasto" class="sp-h2 contrasto-titolo">Gli aumenti, <mark>il giorno stesso</mark>.</h2>
+    <div class="contrasto-coppia">
+      <div class="contrasto-lato no"><ul class="contrasto-pillole" aria-hidden="true"><li>Bolle di carta</li><li>Fatture</li><li>Email</li><li>Memoria</li></ul><p class="contrasto-etichetta"><span class="contrasto-segno"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></span>Nessuno confronta i prezzi</p><p>Le righe sono in tanti posti e <b>nessuno le mette a confronto</b> con la consegna prima. L'aumento passa, e lo scopri a fine mese.</p></div>
+      <div class="contrasto-lato si"><ul class="contrasto-pillole si" aria-hidden="true"><li>Argo</li></ul><p class="contrasto-etichetta"><span class="contrasto-segno"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Ogni riga è controllata</p><p>Argo legge <b>ogni riga</b>, la confronta con la consegna precedente e <b>ti avvisa subito</b> se il prezzo è cambiato.</p></div>
+    </div>
+    <p class="contrasto-chiusa">Un aumento che non vedi è un margine che sparisce.</p>
+  </section>
+
+  <section class="sp-sezione wrap" id="ar-viaggio" aria-labelledby="ar-h-viaggio" data-tone="atlas">
+    <h2 id="ar-h-viaggio" class="sp-h2">Il viaggio di una bolla</h2>
+    <p class="sp-intro">Martedì mattina, arriva la consegna del pesce. La bolla <b>attraversa Argo</b>: nessuno la ricopia, <b>nessun prezzo sfugge</b>.</p>
+    <ol class="an-viaggio" id="anViaggio">
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">01</span><h3>La bolla arriva per mail</h3><p>Il fornitore manda la bolla: tu la <b>inoltri al tuo indirizzo Argo</b>, oppure carichi il file o <b>una foto dal telefono</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Documenti</span><span class="sp-anima-tipo">Bolla ricevuta</span></header><b>Ittica Adriatica · DDT 1187</b><dl><div><dt>Arrivata</dt><dd>Martedì, 7:42</dd></div><div><dt>Come</dt><dd>Email inoltrata</dd></div></dl><p class="sp-anima-nota">Ricevuta, la leggo</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">02</span><h3>Argo legge ogni riga</h3><p>Per ognuna <b>prodotto, quantità e prezzo</b>. Niente da ricopiare, anche se la bolla è una foto.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Lettura</span><span class="sp-anima-tipo">12 righe lette</span></header><b>Ittica Adriatica · DDT 1187</b><dl><div><dt>Vongole veraci</dt><dd>6 kg · 9,40 €/kg</dd></div><div><dt>Salmone fresco</dt><dd>4 kg · 18,90 €/kg</dd></div></dl><p class="sp-anima-nota">Prodotto, quantità e prezzo</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">03</span><h3>L'aumento viene segnalato</h3><p>Il prezzo è <b>confrontato con la consegna precedente</b>. Se sale, ti arriva l'avviso; Argo controlla anche il <b>prezzo pattuito</b>.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Avvisi</span><span class="sp-anima-tipo">Avviso aumento</span></header><b>Salmone fresco</b><dl><div><dt>Prima</dt><dd>17,50 €/kg</dd></div><div><dt>Ora</dt><dd>18,90 €/kg · +8%</dd></div></dl><p class="sp-anima-nota">Avviso sul tuo telefono</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">04</span><h3>Il confronto con la zona</h3><p>Quanto paghi rispetto alla <b>media anonima</b> dei ristoranti della tua provincia. Solo con <b>almeno 10 locali</b>, senza mostrare i prezzi di nessuno.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Zona</span><span class="sp-anima-tipo">Confronto</span></header><b>Salmone fresco</b><dl><div><dt>Tu paghi</dt><dd>18,90 €/kg</dd></div><div><dt>Media provincia</dt><dd>17,80 €/kg</dd></div></dl><p class="sp-anima-nota">Media anonima, mai i prezzi di un singolo locale</p></div></li>
+      <li class="an-tappa"><div class="an-tappa-testo"><span class="num">05</span><h3>Il report del mese</h3><p>A fine mese ricevi il <b>PDF</b> con gli aumenti, i prezzi scesi e i prodotti da tenere d'occhio. Ogni settimana, un riepilogo.</p></div>
+        <div class="sp-anima"><header><span class="sp-anima-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Report</span><span class="sp-anima-tipo">Ottobre</span></header><b>Il mese in un PDF</b><dl><div><dt>Aumenti</dt><dd>3</dd></div><div><dt>Prezzi scesi</dt><dd>2</dd></div></dl><p class="sp-anima-nota">Nella tua casella, ogni mese</p></div></li>
+    </ol>
+  </section>
+
+  <section class="sp-sezione wrap" id="ar-cosa" aria-labelledby="ar-h-cosa" data-tone="atlas">
+    <h2 id="ar-h-cosa" class="sp-h2">Cosa fa Argo</h2>
+    <p class="sp-intro">Apri una voce per vedere <b>cosa controlla Argo</b> e con cosa si collega.</p>
+    <div class="an-reparti">
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span><b>Lettura dei documenti</b><span>Bolle e fatture, da email, file o foto</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span><strong class="num">12 righe</strong><small>lette in una bolla</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span></div>
+          <ul class="servizi"><li>Inoltri le <b>email dei fornitori</b> al tuo indirizzo Argo</li><li>Oppure <b>carichi file e foto</b> dal telefono</li><li>Ogni riga: <b>prodotto, quantità e prezzo</b></li><li>Funziona con <b>bolle e fatture</b></li></ul>
+          <p class="an-reparto-link">Alimenta <b>Avvisi · Zona · Food cost</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><b>Avvisi sui prezzi</b><span>Quando un prezzo cambia lo sai subito</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><strong class="num">+8%</strong><small>sul salmone fresco</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span></div>
+          <ul class="servizi"><li><b>Avviso aumento</b> rispetto alla consegna precedente</li><li>Anche i <b>prezzi scesi</b>, così lo sai</li><li>Controllo del <b>prezzo pattuito</b> con il fornitore</li><li>Le <b>differenze tra bolla e fattura</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Lettura · Report</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg></span><b>Confronto con la zona</b><span>Cosa pagano gli altri, in modo anonimo</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg></span><strong class="num">10 locali</strong><small>il minimo per una media</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg></span></div>
+          <ul class="servizi"><li>La <b>media anonima</b> dei ristoranti della tua provincia</li><li>Solo con <b>almeno 10 locali</b>: prima non si mostra niente</li><li><b>Mai i prezzi di un singolo locale</b></li><li>Puoi confrontarti anche con chi compra <b>quantità simili</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Lettura · Report</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg></span><b>Food cost</b><span>Ricette, prezzi di vendita, margine</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg></span><strong class="num">1 piatto</strong><small>da ritoccare</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg></span></div>
+          <ul class="servizi"><li>Scrivi <b>ricette e prezzi di vendita</b></li><li>Argo ti dice quale <b>piatto ritoccare</b> (prezzo da ritoccare)</li><li>Il costo si aggiorna <b>con i prezzi delle bolle</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Lettura · Avvisi</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><b>Report e notifiche</b><span>PDF del mese, riepilogo della settimana</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><strong class="num">1 PDF</strong><small>ogni mese</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span></div>
+          <ul class="servizi"><li><b>Report mensile</b> in PDF</li><li><b>Riepilogo settimanale</b> dei prezzi</li><li>Notifiche <b>per email</b> e <b>push sul telefono</b></li></ul>
+          <p class="an-reparto-link">Si collega a <b>Avvisi · Zona</b></p></div></details>
+      <details class="an-reparto" name="an-reparti"><summary><span class="an-reparto-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M19 4v4M17 6h4"/></svg></span><b>Il tuo staff</b><span>Un collega nello stesso locale</span></summary>
+        <div class="an-reparto-corpo"><div class="an-reparto-vivo"><span class="an-reparto-ic-grande"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M19 4v4M17 6h4"/></svg></span><strong class="num">+1 collega</strong><small>nello stesso locale</small><span class="an-reparto-sfondo" aria-hidden="true"><svg width="170" height="170" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M19 4v4M17 6h4"/></svg></span></div>
+          <ul class="servizi"><li><b>Inviti un collega</b> con la sua email</li><li>Vede <b>gli stessi dati</b> del locale</li><li>Anche chi riceve la merce può caricare una foto</li></ul>
+          <p class="an-reparto-link">Si collega a <b>Lettura · Avvisi</b></p></div></details>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="ar-gratis" aria-labelledby="ar-h-gratis" data-tone="atlas">
+    <div class="sp-altre ar-gratis">
+      <div>
+        <h2 id="ar-h-gratis" class="sp-h2">Gratis per i ristoranti</h2>
+        <p class="sp-intro">Argo non si paga. Il locale lo usa gratis, e <b>il confronto resta neutro</b>.</p>
+      </div>
+      <ul class="sp-altre-elenco">
+        <li><b>Per il locale</b><span><b>Gratis</b>: leggere i documenti, avvisi, confronto con la zona, report.</span></li>
+        <li><b>In futuro</b><span>I <b>fornitori della zona</b> potranno pagare per proporsi ai locali che comprano quella merce.</span></li>
+        <li><b>Sempre</b><span>Chi paga <b>non sale nel confronto</b> e non vede i prezzi di nessun locale.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sp-sezione wrap" id="ar-attiva" aria-labelledby="ar-h-attiva" data-tone="atlas">
+    <h2 id="ar-h-attiva" class="sp-h2">Come si attiva</h2>
+    <p class="sp-intro">Ti iscrivi da solo, poi <b>basta inoltrare</b>.</p>
+    <ol class="sp-passi">
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></span><span class="num">01</span></span><b>Iscrivi il tuo locale</b><span>Dal sito, in autonomia: <b>pochi dati del locale</b> e sei dentro. Ricevi il tuo indirizzo Argo.</span></li>
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span class="num">02</span></span><b>Inoltra le email dei fornitori</b><span>Bolle e fatture <b>all'indirizzo del locale</b>, oppure un file o una foto dal telefono. I fornitori restano <b>gli stessi</b>.</span></li>
+      <li><span class="sp-passo-testa"><span class="sp-passo-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span class="num">03</span></span><b>Ricevi i primi avvisi</b><span>Argo legge, confronta con la consegna prima e <b>ti avvisa</b> se un prezzo sale.</span></li>
+    </ol>
+  </section>
+
+  <section class="sp-sezione wrap" id="ar-domande" aria-labelledby="ar-h-domande" data-tone="atlas">
+    <h2 id="ar-h-domande" class="sp-h2">Domande frequenti</h2>
+    <div class="sp-domande">
+      <details name="sp-domande"><summary>È davvero gratis?</summary><p>Sì: <b>Argo è gratis per i ristoranti</b>. In futuro i fornitori della zona potranno pagare per proporsi, ma il confronto dei prezzi resta neutro.</p></details>
+      <details name="sp-domande"><summary>I miei prezzi li vedono gli altri?</summary><p>No. Il confronto usa <b>la media anonima</b> dei ristoranti della tua provincia, e compare <b>solo con almeno 10 locali</b>. I prezzi di un singolo locale non si vedono mai.</p></details>
+      <details name="sp-domande"><summary>Devo cambiare fornitori?</summary><p>No. Compri dagli stessi di sempre: Argo legge <b>le loro bolle e fatture</b> così come arrivano. I fornitori non devono fare niente.</p></details>
+      <details name="sp-domande"><summary>Funziona con le bolle di carta?</summary><p>Sì: <b>fai una foto dal telefono</b> e la carichi. Argo legge le righe come se fosse un documento in digitale.</p></details>
+      <details name="sp-domande"><summary>Chi legge i documenti?</summary><p><b>Argo</b>, in automatico: prodotto, quantità e prezzo di ogni riga. I dati restano <b>nell'Unione europea</b>.</p></details>
+      <details name="sp-domande"><summary>Posso invitare il personale?</summary><p>Sì: <b>inviti un collega</b> con la sua email e lavora nello stesso locale, con gli stessi dati.</p></details>
+    </div>
+  </section>
+
+  <section class="close" id="iscriviti" aria-labelledby="ar-h-close" data-tone="close">
+    <div class="wrap">
+      <h2 id="ar-h-close" class="sp-chiusura">Non farti sfuggire un aumento.</h2>
+      <div class="close-row">
+        <a class="btn btn--ink" href="https://axxell-acquisti.vercel.app/iscriviti">Iscrivi il tuo locale<span class="ar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><span>© 2026 Axxell AI</span><span><a href="privacy.html">Privacy e cookie</a> · <a href="termini.html">Termini di servizio</a> · <a href="note-legali.html">Note legali</a></span></div>
+</footer>
+
+<script type="module" src="js/argo-pagina.js"></script>
+</body>
+</html>

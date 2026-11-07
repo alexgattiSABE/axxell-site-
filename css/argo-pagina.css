@@ -1,0 +1,31 @@
+/* Pagina Argo (spenta, non linkata): riusa i blocchi di ANIMA (css/anima-pagina.css) rimappando il fucsia sul blu di ATLAS; le parti nuove hanno il prefisso ar- */
+.pagina-argo{--fuchsia:var(--blue);--fuchsia-ink:var(--blue-deep);--fuchsia-deep:var(--blue-deep)}
+.pagina-argo .inclina{--luce:var(--blue)}
+.pagina-argo .close-row{margin-top:0}
+.pagina-argo .sp-link{text-decoration-color:var(--blue)}
+.pagina-argo .sp-passo-ic{background:var(--blue);color:#fff;box-shadow:0 3px 0 -1px var(--blue-deep)}
+.pagina-argo .sp-domande summary::after{background:var(--blue);color:#fff}
+.pagina-argo .sp-anima{box-shadow:inset 0 0 0 1px var(--line), 0 24px 40px -28px rgba(12,26,143,.45)}
+.pagina-argo .an-numero,.pagina-argo .an-consiglio{box-shadow:inset 0 0 0 1px var(--line)}
+.pagina-argo .an-reparto[open]{box-shadow:inset 0 0 0 2px var(--blue), 0 18px 34px -24px rgba(12,26,143,.45)}
+.pagina-argo .an-reparto-sfondo svg{stroke-width:1.2}
+.pagina-argo .an-icona-grande{filter:none}
+@media (max-width:1200px){ .pagina-argo .sp-apertura{grid-template-columns:minmax(0,1fr)} }
+
+/* apertura: cento occhi in dieci file, uno si accende sull'aumento e l'avviso gli si posa sopra */
+.ar-scena{position:relative;width:100%;container-type:inline-size;padding-bottom:clamp(120px,36cqi,170px)}
+.ar-occhi{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:clamp(4px,1.6cqi,10px);padding:clamp(14px,3cqi,22px);border-radius:24px;background:var(--wash);box-shadow:inset 0 0 0 1px var(--line)}
+.ar-occhio{display:grid;place-items:center;aspect-ratio:1;color:color-mix(in srgb,var(--blue) 22%,var(--paper));transition:color .5s var(--ease), scale .5s var(--ease)}
+.ar-occhio svg{display:block;width:100%;height:100%}
+.ar-occhio .pupilla{fill:currentColor;stroke:none;transition:translate .8s var(--ease)}
+.ar-occhio.sveglio{color:var(--blue);scale:1.18}
+.ar-avviso{position:absolute;left:clamp(10px,6cqi,36px);right:clamp(10px,6cqi,36px);bottom:0;filter:drop-shadow(0 18px 24px rgba(12,26,143,.18))}
+@media (prefers-reduced-motion:no-preference){
+  .ar-avviso{animation:ar-sale .9s var(--ease) .3s both}
+}
+@keyframes ar-sale{from{opacity:0;translate:0 18px}}
+
+/* gratis: tre caselle sotto il titolo, una colonna sola */
+.ar-gratis{grid-template-columns:minmax(0,1fr)}
+.ar-gratis .sp-altre-elenco li::before{background:var(--blue);box-shadow:0 2px 0 -.5px var(--blue-deep)}
+.ar-avviso .sp-anima{opacity:1;translate:none;scale:1}
